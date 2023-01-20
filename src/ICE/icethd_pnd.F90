@@ -65,7 +65,7 @@ MODULE icethd_pnd
 #  include "do_loop_substitute.h90"
    !!----------------------------------------------------------------------
    !! NEMO/ICE 4.0 , NEMO Consortium (2018)
-   !! $Id: icethd_pnd.F90 15244 2021-09-10 09:56:20Z clem $
+   !! $Id: icethd_pnd.F90 16092 2022-12-07 11:58:52Z isabellaascione $
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
@@ -140,10 +140,10 @@ CONTAINS
       !------------------------------------
       !  Diagnostics
       !------------------------------------
-      CALL iom_put( 'dvpn_mlt', diag_dvpn_mlt ) ! input from melting
-      CALL iom_put( 'dvpn_lid', diag_dvpn_lid ) ! exchanges with lid
-      CALL iom_put( 'dvpn_drn', diag_dvpn_drn ) ! vertical drainage
-      CALL iom_put( 'dvpn_rnf', diag_dvpn_rnf ) ! runoff + overflow
+      IF( iom_use('dvpn_mlt'  ) ) CALL iom_put( 'dvpn_mlt', diag_dvpn_mlt * 100._wp * 86400._wp ) ! input from melting
+      IF( iom_use('dvpn_lid'  ) ) CALL iom_put( 'dvpn_lid', diag_dvpn_lid * 100._wp * 86400._wp ) ! exchanges with lid
+      IF( iom_use('dvpn_drn'  ) ) CALL iom_put( 'dvpn_drn', diag_dvpn_drn * 100._wp * 86400._wp ) ! vertical drainage
+      IF( iom_use('dvpn_rnf'  ) ) CALL iom_put( 'dvpn_rnf', diag_dvpn_rnf * 100._wp * 86400._wp ) ! runoff + overflow
       !
       DEALLOCATE( diag_dvpn_mlt   , diag_dvpn_lid   , diag_dvpn_drn   , diag_dvpn_rnf    )
       DEALLOCATE( diag_dvpn_mlt_1d, diag_dvpn_lid_1d, diag_dvpn_drn_1d, diag_dvpn_rnf_1d )
@@ -1319,7 +1319,9 @@ CONTAINS
        !-----------------------------------------------------------------
        ! brine salinity and liquid fraction
        !-----------------------------------------------------------------
-
+       
+      SELECT CASE( nn_pnd_brsal )
+      CASE( 0 )
        DO k = 1, nlay_i
 
           Sbr    = - Tin(k) / rTmlt ! Consistent expression with SI3 (linear liquidus)
@@ -1328,6 +1330,16 @@ CONTAINS
           phi(k) = salin(k) / Sbr
 
        END DO
+       
+      CASE( 1 )
+       DO k = 1, nlay_i
+       
+          Sbr  = - 18.7 * Tin(k) - 0.519 * Tin(k)**2 - 0.00535 * Tin(k) **3
+          phi(k) = salin(k) / Sbr
+
+       END DO
+       
+      END SELECT
 
        !-----------------------------------------------------------------
        ! permeability
@@ -1354,7 +1366,7 @@ CONTAINS
       NAMELIST/namthd_pnd/  ln_pnd, ln_pnd_LEV , rn_apnd_min, rn_apnd_max, rn_pnd_flush, &
          &                          ln_pnd_CST , rn_apnd, rn_hpnd,         &
          &                          ln_pnd_TOPO,                           &
-         &                          ln_pnd_lids, ln_pnd_alb
+         &                          ln_pnd_lids, ln_pnd_alb, nn_pnd_brsal
       !!-------------------------------------------------------------------
       !
       READ  ( numnam_ice_ref, namthd_pnd, IOSTAT = ios, ERR = 901)
@@ -1379,6 +1391,7 @@ CONTAINS
          WRITE(numout,*) '            Prescribed pond depth                                 rn_hpnd      = ', rn_hpnd
          WRITE(numout,*) '         Frozen lids on top of melt ponds                         ln_pnd_lids  = ', ln_pnd_lids
          WRITE(numout,*) '         Melt ponds affect albedo or not                          ln_pnd_alb   = ', ln_pnd_alb
+         WRITE(numout,*) '         Brine salinity formulation                               nn_pnd_brsal = ', nn_pnd_brsal
       ENDIF
       !
       !                             !== set the choice of ice pond scheme ==!

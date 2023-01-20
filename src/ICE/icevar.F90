@@ -558,6 +558,20 @@ CONTAINS
             !
          END_2D
          !
+         !-----------------------------------------------------------------
+         ! zap small ponds
+         !-----------------------------------------------------------------
+         DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
+            IF ( v_ip(ji,jj,jl) <= epsi10 ) THEN
+               a_ip(ji,jj,jl) = 0._wp
+               a_ip_frac(ji,jj,jl) = 0._wp
+               v_ip(ji,jj,jl) = 0._wp
+               h_ip(ji,jj,jl) = 0._wp
+               v_il(ji,jj,jl) = 0._wp
+               h_il(ji,jj,jl) = 0._wp
+            ENDIF
+         END_2D
+         
       END DO
 
       ! to be sure that at_i is the sum of a_i(jl)
