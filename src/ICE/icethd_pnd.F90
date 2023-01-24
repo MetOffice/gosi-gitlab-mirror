@@ -140,10 +140,10 @@ CONTAINS
       !------------------------------------
       !  Diagnostics
       !------------------------------------
-      IF( iom_use('dvpn_mlt'  ) ) CALL iom_put( 'dvpn_mlt', diag_dvpn_mlt * 100._wp * 86400._wp ) ! input from melting
-      IF( iom_use('dvpn_lid'  ) ) CALL iom_put( 'dvpn_lid', diag_dvpn_lid * 100._wp * 86400._wp ) ! exchanges with lid
-      IF( iom_use('dvpn_drn'  ) ) CALL iom_put( 'dvpn_drn', diag_dvpn_drn * 100._wp * 86400._wp ) ! vertical drainage
-      IF( iom_use('dvpn_rnf'  ) ) CALL iom_put( 'dvpn_rnf', diag_dvpn_rnf * 100._wp * 86400._wp ) ! runoff + overflow
+      IF( iom_use('dvpn_mlt'  ) ) CALL iom_put( 'dvpn_mlt', diag_dvpn_mlt ) ! input from melting
+      IF( iom_use('dvpn_lid'  ) ) CALL iom_put( 'dvpn_lid', diag_dvpn_lid ) ! exchanges with lid
+      IF( iom_use('dvpn_drn'  ) ) CALL iom_put( 'dvpn_drn', diag_dvpn_drn ) ! vertical drainage
+      IF( iom_use('dvpn_rnf'  ) ) CALL iom_put( 'dvpn_rnf', diag_dvpn_rnf ) ! runoff + overflow
       !
       DEALLOCATE( diag_dvpn_mlt   , diag_dvpn_lid   , diag_dvpn_drn   , diag_dvpn_rnf    )
       DEALLOCATE( diag_dvpn_mlt_1d, diag_dvpn_lid_1d, diag_dvpn_drn_1d, diag_dvpn_rnf_1d )

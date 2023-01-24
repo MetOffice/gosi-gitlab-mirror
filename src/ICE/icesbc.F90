@@ -119,8 +119,6 @@ CONTAINS
       !!-------------------------------------------------------------------
       INTEGER, INTENT(in) ::   kt     ! ocean time step
       INTEGER, INTENT(in) ::   ksbc   ! flux formulation (user defined, bulk or Pure Coupled)
-      REAL(wp) ::   zmiss_val         ! missing value retrieved from xios
-      REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   zalb, zmsk00      ! 2D workspace
       !!--------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('icesbc')
@@ -130,10 +128,6 @@ CONTAINS
          WRITE(numout,*)'ice_sbc_flx: Surface boundary condition for sea ice (flux)'
          WRITE(numout,*)'~~~~~~~~~~~~~~~'
       ENDIF
-
-      ! get missing value from xml
-      CALL iom_miss_val( "icetemp", zmiss_val )
-      
       !                     !== ice albedo ==!
       CALL ice_alb( t_su, h_i, h_s, ln_pnd_alb, a_ip_eff, h_ip, cloud_fra, alb_ice )
       !
@@ -155,29 +149,6 @@ CONTAINS
                                   CALL sbc_cpl_ice_flx( kt, picefr=at_i_b, palbi=alb_ice, psst=sst_m, pist=t_su, phs=h_s, phi=h_i )
          IF( nn_flxdist /= -1 )   CALL ice_flx_dist   ( t_su, alb_ice, qns_ice, qsr_ice, dqns_ice, evap_ice, devap_ice, nn_flxdist )
       END SELECT
-
-      !--- output ice albedo and surface albedo ---!
-      IF( iom_use('icealb') .OR. iom_use('albedo') ) THEN
-
-         ALLOCATE( zalb(jpi,jpj), zmsk00(jpi,jpj) )
-
-         WHERE( at_i_b < 1.e-03 )
-            zmsk00(:,:) = 0._wp
-            zalb  (:,:) = rn_alb_oce
-         ELSEWHERE
-            zmsk00(:,:) = 1._wp
-            zalb  (:,:) = SUM( alb_ice * a_i_b, dim=3 ) / at_i_b
-         END WHERE
-         ! ice albedo
-         CALL iom_put( 'icealb' , zalb * zmsk00 + zmiss_val * ( 1._wp - zmsk00 ) )
-         ! ice+ocean albedo
-         zalb(:,:) = SUM( alb_ice * a_i_b, dim=3 ) + rn_alb_oce * ( 1._wp - at_i_b )
-         CALL iom_put( 'albedo' , zalb )
-
-         DEALLOCATE( zalb, zmsk00 )
-
-      ENDIF
-     
       !                     !== some fluxes at the ice-ocean interface and in the leads
       CALL ice_flx_other
       !

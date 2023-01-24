@@ -105,18 +105,6 @@ CONTAINS
          CALL ice_var_zapsmall      !  Zap small values                                  !
          !                          !-----------------------------------------------------
       ENDIF
-      !                             !-----------------------------------------------------
-      IF( kn == 2 ) THEN            !  Ice drift case: Corrections to avoid wrong values !
-         DO_2D( 0, 0, 0, 0 )        !-----------------------------------------------------
-            IF ( at_i(ji,jj) == 0._wp ) THEN    ! what to do if there is no ice
-               IF ( at_i(ji+1,jj) == 0._wp )   u_ice(ji  ,jj) = 0._wp   ! right side
-               IF ( at_i(ji-1,jj) == 0._wp )   u_ice(ji-1,jj) = 0._wp   ! left side
-               IF ( at_i(ji,jj+1) == 0._wp )   v_ice(ji,jj  ) = 0._wp   ! upper side
-               IF ( at_i(ji,jj-1) == 0._wp )   v_ice(ji,jj-1) = 0._wp   ! bottom side
-            ENDIF
-         END_2D
-         CALL lbc_lnk( 'icecor', u_ice, 'U', -1.0_wp, v_ice, 'V', -1.0_wp )
-      ENDIF
       !
       ! controls
       IF( sn_cfctl%l_prtctl ) &
