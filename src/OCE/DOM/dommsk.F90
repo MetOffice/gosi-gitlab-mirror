@@ -33,6 +33,9 @@ MODULE dommsk
    USE iom            ! IOM library
    USE lbclnk         ! ocean lateral boundary conditions (or mpp link)
    USE lib_mpp        ! Massively Parallel Processing library
+   USE iom             ! For shlat2d
+   USE fldread         ! for sn_shlat2d
+
 
    IMPLICIT NONE
    PRIVATE
@@ -85,7 +88,11 @@ CONTAINS
       INTEGER  ::   iktop, ikbot   !   -       -
       INTEGER  ::   ios, inum
       !!
-      NAMELIST/namlbc/ rn_shlat, ln_vorlat
+      REAL(wp) :: zshlat           !: locally modified shlat for some strait
+      REAL(wp), ALLOCATABLE, DIMENSION(:,:) :: zshlat2d
+      LOGICAL                         :: ln_shlat2d
+      CHARACTER(len = 256)            :: cn_shlat2d_file, cn_shlat2d_var  
+      NAMELIST/namlbc/ rn_shlat, ln_vorlat, ln_shlat2d, cn_shlat2d_file, cn_shlat2d_var
       NAMELIST/nambdy/ ln_bdy ,nb_bdy, ln_coords_file, cn_coords_file,         &
          &             ln_mask_file, cn_mask_file, cn_dyn2d, nn_dyn2d_dta,     &
          &             cn_dyn3d, nn_dyn3d_dta, cn_tra, nn_tra_dta,             &
@@ -110,12 +117,20 @@ CONTAINS
       ENDIF
       !
       IF(lwp) WRITE(numout,*)
-      IF     (      rn_shlat == 0.               ) THEN   ;   IF(lwp) WRITE(numout,*) '   ==>>>   ocean lateral  free-slip'
-      ELSEIF (      rn_shlat == 2.               ) THEN   ;   IF(lwp) WRITE(numout,*) '   ==>>>   ocean lateral  no-slip'
-      ELSEIF ( 0. < rn_shlat .AND. rn_shlat < 2. ) THEN   ;   IF(lwp) WRITE(numout,*) '   ==>>>   ocean lateral  partial-slip'
-      ELSEIF ( 2. < rn_shlat                     ) THEN   ;   IF(lwp) WRITE(numout,*) '   ==>>>   ocean lateral  strong-slip'
-      ELSE
-         CALL ctl_stop( 'dom_msk: wrong value for rn_shlat (i.e. a negalive value). We stop.' )
+      IF ( ln_shlat2d ) THEN
+         IF(lwp) WRITE(numout,*) '         READ shlat as a 2D coefficient in a file '
+         ALLOCATE( zshlat2d(jpi,jpj) )
+         CALL iom_open(TRIM(cn_shlat2d_file), inum)
+         CALL iom_get (inum, jpdom_global, TRIM(cn_shlat2d_var), zshlat2d, 1) !
+         CALL iom_close(inum)
+       ELSE
+         IF     (      rn_shlat == 0.               ) THEN   ;   IF(lwp) WRITE(numout,*) '   ==>>>   ocean lateral  free-slip'
+         ELSEIF (      rn_shlat == 2.               ) THEN   ;   IF(lwp) WRITE(numout,*) '   ==>>>   ocean lateral  no-slip'
+         ELSEIF ( 0. < rn_shlat .AND. rn_shlat < 2. ) THEN   ;   IF(lwp) WRITE(numout,*) '   ==>>>   ocean lateral  partial-slip'
+         ELSEIF ( 2. < rn_shlat                     ) THEN   ;   IF(lwp) WRITE(numout,*) '   ==>>>   ocean lateral  strong-slip'
+         ELSE
+            CALL ctl_stop( 'dom_msk: wrong value for rn_shlat (i.e. a negalive value). We stop.' )
+         ENDIF
       ENDIF
 
       !  Ocean/land mask at t-point  (computed from ko_top and ko_bot)
@@ -198,14 +213,26 @@ CONTAINS
 
       ! Lateral boundary conditions on velocity (modify fmask)
       ! ---------------------------------------  
-      IF( rn_shlat /= 0._wp ) THEN      ! Not free-slip lateral boundary condition
+      IF( rn_shlat /= 0._wp .or. ln_shlat2d ) THEN      ! Not free-slip lateral boundary condition
          !
-         DO_3D( 0, 0, 0, 0, 1, jpk )
-            IF( fmask(ji,jj,jk) == 0._wp ) THEN
-               fmask(ji,jj,jk) = rn_shlat * MIN( 1._wp , MAX( umask(ji,jj,jk), umask(ji,jj+1,jk), &
-                  &                                           vmask(ji,jj,jk), vmask(ji+1,jj,jk) ) )
-            ENDIF
-         END_3D
+         IF (  ln_shlat2d ) THEN
+            DO_3D( 0, 0, 0, 0, 1, jpk )
+               IF( fmask(ji,jj,jk) == 0._wp ) THEN
+                  fmask(ji,jj,jk) = zshlat2d(ji,jj) * MIN( 1._wp , MAX( umask(ji,jj,jk), umask(ji,jj+1,jk), &
+                     &                                           vmask(ji,jj,jk), vmask(ji+1,jj,jk) ) )
+               ENDIF
+            END_3D
+         ELSE
+            DO_3D( 0, 0, 0, 0, 1, jpk )
+               IF( fmask(ji,jj,jk) == 0._wp ) THEN
+                  fmask(ji,jj,jk) = rn_shlat * MIN( 1._wp , MAX( umask(ji,jj,jk), umask(ji,jj+1,jk), &
+                     &                                           vmask(ji,jj,jk), vmask(ji+1,jj,jk) ) )
+               ENDIF
+            END_3D
+         END IF
+         !
+         IF( ln_shlat2d ) DEALLOCATE( zshlat2d )
+         !
          CALL lbc_lnk( 'dommsk', fmask, 'F', 1._wp )      ! Lateral boundary conditions on fmask
          !
          ! CAUTION : The fmask may be further modified in dyn_vor_init ( dynvor.F90 ) depending on ln_vorlat
@@ -215,7 +242,9 @@ CONTAINS
       ! User defined alteration of fmask (use to reduce ocean transport in specified straits)
       ! -------------------------------- 
       !
-      CALL usr_def_fmask( cn_cfg, nn_cfg, fmask )
+      IF ( .not. ln_shlat2d ) THEN      
+         CALL usr_def_fmask( cn_cfg, nn_cfg, fmask )
+      ENDIF
       !
 #if defined key_agrif
       ! Reset masks defining updated points over parent grids

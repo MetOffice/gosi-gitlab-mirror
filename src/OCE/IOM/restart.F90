@@ -204,6 +204,9 @@ CONTAINS
 #endif
       ENDIF
 
+      CALL iom_rstput( kt, nitrst, numrow, 'neos'    , REAL(neos))   ! equation of state
+      !CALL iom_rstput( kt, nitrst, numrow, 'neos'    , neos      , ktype = jp_i1, ldxios = lwxios)   ! equation of state
+
       IF( ln_diurnal )   CALL iom_rstput( kt, nitrst, numrow, 'Dsst', x_dsst )
       IF( kt == nitrst ) THEN
          IF( .NOT.lwxios ) THEN
@@ -289,6 +292,7 @@ CONTAINS
       INTEGER          , INTENT(in) ::   Kbb, Kmm   ! ocean time level indices
       INTEGER  ::   jk
       INTEGER  ::   id1 
+      REAL(wp) ::   zeos
       REAL(wp), DIMENSION(jpi, jpj, jpk) :: w3d
       REAL(wp), ALLOCATABLE, DIMENSION(:,:,:)   :: zgdept       ! 3D workspace for QCO
       !!----------------------------------------------------------------------
@@ -341,6 +345,18 @@ CONTAINS
       CALL iom_get( numror, jpdom_auto, 'tn', ts(:,:,:,jp_tem,Kmm) )
       CALL iom_get( numror, jpdom_auto, 'sn', ts(:,:,:,jp_sal,Kmm) )
       !
+      
+      IF ( ln_rst_eos ) THEN
+         ! Check equation of state used is consistent with the restart
+         IF( iom_varid( numror, 'neos') == -1 ) THEN
+            CALL ctl_stop( 'restart, rst_read: variable neos not found. STOP check that the equations of state in the restart file and in the namelist nameos are consistent and use ln_rst_eos=F')
+         ELSE
+            CALL iom_get( numror, 'neos'   , zeos )
+            IF ( INT(zeos) /= neos ) CALL ctl_stop( 'restart, rst_read: equation of state used in restart file differs from namelist nameos')
+         ENDIF
+      ENDIF
+      
+      
       IF( l_1st_euler ) THEN        !*  Euler restart   (MLF only)
          IF(lwp) WRITE(numout,*) '           Kbb u, v and T-S fields set to Kmm values'
          uu(:,:,:  ,Kbb) = uu(:,:,:  ,Kmm)         ! all before fields set to now values
