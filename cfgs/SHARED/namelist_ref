@@ -65,6 +65,7 @@
    nn_chunksz  =       0   !  chunksize (bytes) for NetCDF file (works only with iom_nf90 routines)
    ln_xios_read = .false.,  !  use XIOS to read restart file (only for a single file restart)
    nn_wxios = 0      !  use XIOS to write restart file 0 - no, 1 - single file output, 2 - multiple file output
+   ln_rst_eos = .TRUE.,     ! check if the equation of state used to produce the restart is consistent with model
 /
 !-----------------------------------------------------------------------
 &namdom        !   time and space domain
@@ -1577,4 +1578,6 @@
    ln_rstseed  = .true.,    ! read seed of RNG from restart file
    cn_storst_in  = "restart_sto" !  suffix of stochastic parameter restart file (input)
    cn_storst_out = "restart_sto" !  suffix of stochastic parameter restart file (output)
+/
+&namzdf_mldzint
 /

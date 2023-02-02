@@ -223,6 +223,9 @@
          rn_hpnd     =   0.05         !     prescribed pond depth,    at Tsu=0 degC
       ln_pnd_lids    = .true.         !  frozen lids on top of the ponds (only for ln_pnd_LEV)
       ln_pnd_alb     = .true.         !  effect of melt ponds on ice albedo
+      nn_pnd_brsal   = 0              !  brine salinity formulation 0 = Consistent expression with SI3 
+                                      !                                 (linear liquidus)
+                                      !                             1 = used in GOSI9
 /
 !------------------------------------------------------------------------------
 &namini         !   Ice initialization

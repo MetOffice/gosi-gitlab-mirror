@@ -27,8 +27,8 @@
        <field field_ref="icesalt"          name="sisali" />
        <field field_ref="iceapnd"          name="siapnd" />
        <field field_ref="icevpnd"          name="sivpnd" />
-       <field field_ref="sst_m"            name="sst_m"  />
-       <field field_ref="sss_m"            name="sss_m"  />
+       <field field_ref="sst_m_pot"        name="sst_m_pot"  />
+       <field field_ref="sss_m_abs"        name="sss_m_abs"  />
        
        <!-- heat -->
        <field field_ref="icetemp"          name="sitemp" />

@@ -13,12 +13,12 @@
       <file_group id="5d" output_freq="5d"  output_level="10" enabled=".TRUE.">  <!-- 5d files -->   
         <file id="file11" name_suffix="_grid_T" description="ocean T grid variables" >
           <field field_ref="e3t"      />
-          <field field_ref="toce"         name="thetao"                                                                      operation="instant" freq_op="5d" > @toce_e3t / @e3t </field>
-          <field field_ref="soce"         name="so"                                                                          operation="instant" freq_op="5d" > @soce_e3t / @e3t </field>
-          <field field_ref="sst"          name="tos"   />
-          <field field_ref="sss"          name="sos"   />
+          <field field_ref="toce_con"         name="thetao_con"                                                                      operation="instant" freq_op="5d" > @toce_con_e3t / @e3t </field>
+          <field field_ref="soce_abs"         name="so_abs"                                                                          operation="instant" freq_op="5d" > @soce_abs_e3t / @e3t </field>
+          <field field_ref="sst_con"          name="tos_con"   />
+          <field field_ref="sss_abs"          name="sos_abs"   />
           <field field_ref="ssh"          name="zos"   />
-          <field field_ref="sst"          name="tosstd"       long_name="sea surface temperature standard deviation"         operation="instant" freq_op="5d" > sqrt( @sst2 - @sst * @sst ) </field>
+          <field field_ref="sst_con"          name="tosstd_con"       long_name="sea surface temperature standard deviation"         operation="instant" freq_op="5d" > sqrt( @sst2_con - @sst_con * @sst_con ) </field>
           <field field_ref="ssh"          name="zosstd"       long_name="sea surface height above geoid standard deviation"  operation="instant" freq_op="5d" > sqrt( @ssh2 - @ssh * @ssh ) </field>
           <field field_ref="sst"          name="sstdcy"       long_name="amplitude of sst diurnal cycle"                     operation="average" freq_op="1d" > @sstmax - @sstmin </field>
           <field field_ref="mldkz5"   />
