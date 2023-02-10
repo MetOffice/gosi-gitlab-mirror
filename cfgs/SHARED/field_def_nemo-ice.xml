@@ -199,7 +199,7 @@
       <!-- EOS-80 -->
       <field id="sss_m_pra"    unit="psu"  />
       <!-- TEOS-10 -->
-      <field id="sss_m_abs"    unit="psu"  />
+      <field id="sss_m_abs"    unit="g/kg"  />
       <!-- SEOS -->
       <field id="sss_m_seos"   unit="psu"  />
       
@@ -427,7 +427,7 @@
       <!-- EOS-80 -->
       <field id="sss_m_pra"    unit="psu"  />
       <!-- TEOS-10 -->
-      <field id="sss_m_abs"    unit="psu"  />
+      <field id="sss_m_abs"    unit="g/kg"  />
       <!-- SEOS -->
       <field id="sss_m_seos"   unit="psu"  />
 
