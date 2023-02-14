@@ -84,6 +84,7 @@ MODULE zdftke
    REAL(wp) ::   rn_bshear ! background shear (>0) currently a numerical threshold (do not change it)
    INTEGER  ::   nn_etau   ! type of depth penetration of surface tke (=0/1/2/3)
    INTEGER  ::      nn_htau   ! type of tke profile of penetration (=0/1)
+   REAL(wp) ::      rn_htau_scaling   ! a acaling factor to apply to the penetration of TKE
    INTEGER  ::   nn_bc_surf! surface condition (0/1=Dir/Neum) ! Only applicable for wave coupling
    INTEGER  ::   nn_bc_bot ! surface condition (0/1=Dir/Neum) ! Only applicable for wave coupling
    REAL(wp) ::      rn_efr    ! fraction of TKE surface value which penetrates in the ocean
@@ -96,7 +97,7 @@ MODULE zdftke
    REAL(wp) ::   rhftau_add = 1.e-3_wp     ! add offset   applied to HF part of taum  (nn_etau=3)
    REAL(wp) ::   rhftau_scl = 1.0_wp       ! scale factor applied to HF part of taum  (nn_etau=3)
 
-   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)   ::   htau    ! depth of tke penetration (nn_htau)
+   REAL(wp), ALLOCATABLE, SAVE, PUBLIC, DIMENSION(:,:)   ::   htau    ! depth of tke penetration (nn_htau)
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   dissl   ! now mixing lenght of dissipation
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   apdlr   ! now mixing lenght of dissipation
 
@@ -721,6 +722,7 @@ CONTAINS
          &                 rn_emin0, rn_bshear, nn_mxl   , ln_mxl0  ,  &
          &                 rn_mxl0 , nn_mxlice, rn_mxlice,             &
          &                 nn_pdl  , ln_lc    , rn_lc    ,             &
+         &                 rn_htau_scaling    ,                        &
          &                 nn_etau , nn_htau  , rn_efr   , nn_eice  ,  &
          &                 nn_bc_surf, nn_bc_bot, ln_mxhsw
       !!----------------------------------------------------------------------
@@ -777,6 +779,7 @@ CONTAINS
          ENDIF
          WRITE(numout,*) '      test param. to add tke induced by wind      nn_etau   = ', nn_etau
          WRITE(numout,*) '          type of tke penetration profile            nn_htau   = ', nn_htau
+         WRITE(numout,*) '          scaling factor for tke penetration depth   rn_htau_scaling   = ', rn_htau_scaling
          WRITE(numout,*) '          fraction of TKE that penetrates            rn_efr    = ', rn_efr
          WRITE(numout,*) '      langmuir & surface wave breaking under ice  nn_eice = ', nn_eice
          SELECT CASE( nn_eice )
@@ -807,7 +810,7 @@ CONTAINS
       !                               !* Check of some namelist values
       IF( nn_mxl  < 0   .OR.  nn_mxl  > 3 )   CALL ctl_stop( 'bad flag: nn_mxl is  0, 1, 2 or 3' )
       IF( nn_pdl  < 0   .OR.  nn_pdl  > 1 )   CALL ctl_stop( 'bad flag: nn_pdl is  0 or 1' )
-      IF( nn_htau < 0   .OR.  nn_htau > 1 )   CALL ctl_stop( 'bad flag: nn_htau is 0 or 1' )
+      IF( ( nn_htau < 0   .OR.  nn_htau > 1 ) .AND. nn_htau .NE. 4 .AND. nn_htau .NE. 5 )   CALL ctl_stop( 'bad flag: nn_htau is 0, 1 or 4 ' )
       IF( nn_etau == 3 .AND. .NOT. ln_cpl )   CALL ctl_stop( 'nn_etau == 3 : HF taum only known in coupled mode' )
       !
       IF( ln_mxl0 ) THEN
@@ -819,9 +822,24 @@ CONTAINS
       IF( nn_etau /= 0 ) THEN
          SELECT CASE( nn_htau )             ! Choice of the depth of penetration
          CASE( 0 )                                 ! constant depth penetration (here 10 meters)
-            htau(:,:) = 10._wp
+            htau(:,:) = rn_htau_scaling*10._wp 
          CASE( 1 )                                 ! F(latitude) : 0.5m to 30m poleward of 40 degrees
             htau(:,:) = MAX(  0.5_wp, MIN( 30._wp, 45._wp* ABS( SIN( rpi/180._wp * gphit(:,:) ) ) )   )
+         CASE( 4 )                                 ! F(latitude) : 0.5m to 10m/30m poleward of 13/40 degrees north/south
+            DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
+                  IF( gphit(ji,jj) <= 0._wp ) THEN
+                     htau(ji,jj) = MAX(  0.5_wp, MIN( 30._wp, 45._wp* rn_htau_scaling*ABS( SIN( rpi/180._wp * gphit(ji,jj) ) ) )   )
+                  ELSE
+                     htau(ji,jj) = MAX(  0.5_wp, MIN( 10._wp, 45._wp* rn_htau_scaling*ABS( SIN( rpi/180._wp * gphit(ji,jj) ) ) )   )
+                  ENDIF
+            END_2D
+         CASE( 5 )                                 ! Variation on case 4 with a steeper ramp further south in Southern Hemisphere
+            DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
+                  htau(ji,jj) = MAX(  0.5_wp, MIN( 10._wp, 45._wp* rn_htau_scaling*ABS( SIN( rpi/180._wp * gphit(ji,jj) ) ) )   )
+                  IF( gphit(ji,jj) <= -40._wp ) THEN
+                      htau(ji,jj) = htau(ji,jj) + MIN( 20._wp, 135._wp * ABS( SIN( rpi/180._wp * (gphit(ji,jj) + 40.0) ) ) )
+                  ENDIF
+            END_2D
          END SELECT
       ENDIF
       !                                !* read or initialize all required files

@@ -544,7 +544,7 @@ CONTAINS
       ! a_ip      -> apond
       ! a_ip_frac -> apnd
 
-      CALL ctl_stop( 'STOP', 'icethd_pnd : topographic melt ponds are still an ongoing work' )
+      !CALL ctl_stop( 'STOP', 'icethd_pnd : topographic melt ponds are still an ongoing work' )
 
       !---------------------------------------------------------------
       ! Initialise
@@ -644,12 +644,6 @@ CONTAINS
                !--------------------------
                ! Pond lid growth and melt
                !--------------------------
-               ! Mean surface temperature
-               zTavg = 0._wp
-               DO jl = 1, jpl
-                  zTavg = zTavg + t_su(ji,jj,jl)*a_i(ji,jj,jl)
-               END DO
-               zTavg = zTavg / a_i(ji,jj,jl) !!! could get a division by zero here
 
                DO jl = 1, jpl-1
 
