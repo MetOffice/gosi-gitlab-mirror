@@ -830,6 +830,8 @@ that are available in the tidal-forcing implementation (see
     <field id="mf_app"      long_name="convective area"        standard_name="mf_convective_area"    unit="%"      grid_ref="grid_W_3D" />
     <field id="mf_wp"       long_name="convective velocity"    standard_name="mf_convective_velo"    unit="m/s"    grid_ref="grid_W_3D" />
 
+    <!-- av_tmx: available with ln_zdftmx -->
+    <field id="av_tmx"      long_name="vertical diffusivity due to tidal mixing" unit="m2/s" />
 
     <!-- avt_tide: available with ln_zdfiwm=T -->
     <field id="av_ratio"     long_name="S over T diffusivity ratio"                     standard_name="salinity_over_temperature_diffusivity_ratio"                     unit="1"    />

@@ -442,6 +442,7 @@
    rn_abs      =   0.58       !  RGB & 2BD: fraction absorbed in the very near surface
    rn_si0      =   0.35       !  RGB & 2BD: shortess depth of extinction
    nn_chldta   =      0       !  RGB : Chl data (=1) or cst value (=0)
+   rn_chl_conc =   0.05       !  Chlorophyll concentration (for nn_chldta=0)
    rn_si1      =   23.0       !  2BD : longest depth of extinction
 
    cn_dir      = './'      !  root directory for the chlorophyl data location
