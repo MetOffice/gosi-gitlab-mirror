@@ -656,9 +656,7 @@ CONTAINS
       INTEGER  ::   ji, jj               ! dummy loop indices
       REAL(wp) ::   zztmp                ! local variable
       REAL(wp) ::   zstmax, zstau
-#if defined key_cyclone
       REAL(wp), DIMENSION(jpi,jpj) ::   zwnd_i, zwnd_j    ! wind speed components at T-point
-#endif
       REAL(wp), DIMENSION(jpi,jpj) ::   ztau_i, ztau_j    ! wind stress components at T-point
       REAL(wp), DIMENSION(jpi,jpj) ::   zU_zu             ! bulk wind speed at height zu  [m/s]
       REAL(wp), DIMENSION(jpi,jpj) ::   zcd_oce           ! momentum transfert coefficient over ocean
@@ -684,9 +682,10 @@ CONTAINS
       ! ----------------------------------------------------------------------------- !
 
       ! ... components ( U10m - U_oce ) at T-point (unmasked)
-#if defined key_cyclone
+
       zwnd_i(:,:) = 0._wp
       zwnd_j(:,:) = 0._wp
+#if defined key_cyclone
       CALL wnd_cyc( kt, zwnd_i, zwnd_j )    ! add analytical tropical cyclone (Vincent et al. JGR 2012)
       DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
          zwnd_i(ji,jj) = pwndi(ji,jj) + zwnd_i(ji,jj)
@@ -699,7 +698,7 @@ CONTAINS
       DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
          zwnd_i(ji,jj) = (  pwndi(ji,jj) - rn_vfac * 0.5 * ( pu(ji-1,jj  ) + pu(ji,jj) )  )
          zwnd_j(ji,jj) = (  pwndj(ji,jj) - rn_vfac * 0.5 * ( pv(ji  ,jj-1) + pv(ji,jj) )  )
-         wndm(ji,jj) = SQRT(  pwndi(ji,jj) * pwndi(ji,jj) + pwndj(ji,jj) * pwndj(ji,jj)  )
+         wndm(ji,jj) = SQRT(  zwnd_i(ji,jj) * zwnd_i(ji,jj) + zwnd_j(ji,jj) * zwnd_j(ji,jj)  )
       END_2D
 #endif
       ! ----------------------------------------------------------------------------- !
