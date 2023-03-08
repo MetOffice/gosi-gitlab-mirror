@@ -119,6 +119,7 @@ MODULE sbcblk
    !
    REAL(wp)         ::   rn_pfac   ! multiplication factor for precipitation
    REAL(wp), PUBLIC ::   rn_efac   ! multiplication factor for evaporation
+   REAL(wp)         ::   rn_vfac   ! multiplication factor for ice/ocean velocity in the calculation of wind stress                        !
    REAL(wp)         ::   rn_zqt    ! z(q,t) : height of humidity and temperature measurements
    REAL(wp)         ::   rn_zu     ! z(u)   : height of wind measurements
    !
@@ -219,7 +220,7 @@ CONTAINS
       INTEGER     ::   ipka                                    ! number of levels in the atmospheric variable
       NAMELIST/namsbc_blk/ ln_NCAR, ln_COARE_3p0, ln_COARE_3p6, ln_ECMWF, ln_ANDREAS, &   ! bulk algorithm
          &                 rn_zqt, rn_zu, nn_iter_algo, ln_skin_cs, ln_skin_wl,       &
-         &                 rn_pfac, rn_efac,                                          &
+         &                 rn_pfac, rn_efac, rn_vfac,                                 &
          &                 ln_crt_fbk, rn_stau_a, rn_stau_b,                          &   ! current feedback
          &                 ln_humi_sph, ln_humi_dpt, ln_humi_rlh, ln_tair_pot,        &
          &                 ln_Cx_ice_cst, rn_Cd_i, rn_Ce_i, rn_Ch_i,                  &
@@ -413,6 +414,7 @@ CONTAINS
          WRITE(numout,*) '      Wind vector reference height (m)                    rn_zu        = ', rn_zu
          WRITE(numout,*) '      factor applied on precipitation (total & snow)      rn_pfac      = ', rn_pfac
          WRITE(numout,*) '      factor applied on evaporation                       rn_efac      = ', rn_efac
+         WRITE(numout,*) '      factor applied on ocean/ice velocity                rn_vfac      = ', rn_vfac
          WRITE(numout,*) '         (form absolute (=0) to relative winds(=1))'
          WRITE(numout,*) '      use surface current feedback on wind stress         ln_crt_fbk   = ', ln_crt_fbk
          IF(ln_crt_fbk) THEN
@@ -695,6 +697,8 @@ CONTAINS
 #else
       ! ... scalar wind module at T-point (not masked)
       DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
+         zwnd_i(ji,jj) = (  pwndi(ji,jj) - rn_vfac * 0.5 * ( pu(ji-1,jj  ) + pu(ji,jj) )  )
+         zwnd_j(ji,jj) = (  pwndj(ji,jj) - rn_vfac * 0.5 * ( pv(ji  ,jj-1) + pv(ji,jj) )  )
          wndm(ji,jj) = SQRT(  pwndi(ji,jj) * pwndi(ji,jj) + pwndj(ji,jj) * pwndj(ji,jj)  )
       END_2D
 #endif
@@ -1016,7 +1020,8 @@ CONTAINS
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
       REAL(wp) ::   zootm_su                      ! sea-ice surface mean temperature
-      REAL(wp) ::   zztmp1, zztmp2                ! temporary scalars
+      REAL(wp) ::   zwndi_t , zwndj_t 
+      REAL(wp) ::   zztmp0,zztmp1, zztmp2                ! temporary scalars
       REAL(wp), DIMENSION(jpi,jpj) :: ztmp, zsipt ! temporary array
       !!---------------------------------------------------------------------
       !
@@ -1025,6 +1030,8 @@ CONTAINS
       ! ------------------------------------------------------------ !
       ! C-grid ice dynamics :   U & V-points (same as ocean)
       DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
+         zwndi_t(ji,jj) = (  pwndi(ji,jj) - rn_vfac * 0.5 * ( u_ice(ji-1,jj  ) + u_ice(ji,jj) )  )
+         zwndj_t(ji,jj) = (  pwndj(ji,jj) - rn_vfac * 0.5 * ( v_ice(ji  ,jj-1) + v_ice(ji,jj) )  )
          wndm_ice(ji,jj) = SQRT( pwndi(ji,jj) * pwndi(ji,jj) + pwndj(ji,jj) * pwndj(ji,jj) )
       END_2D
       !
@@ -1073,10 +1080,11 @@ CONTAINS
          !    Wind stress relative to nonmoving ice ( U10m )    !
          ! ---------------------------------------------------- !
          ! supress moving ice in wind stress computation as we don't know how to do it properly...
+         zztmp0 = rn_vfac * 0.5_wp
          DO_2D( 0, 1, 0, 1 )    ! at T point
             zztmp1        = rhoa(ji,jj) * Cd_ice(ji,jj) * wndm_ice(ji,jj)
-            putaui(ji,jj) = zztmp1 * pwndi(ji,jj)
-            pvtaui(ji,jj) = zztmp1 * pwndj(ji,jj)
+            putaui(ji,jj) = zztmp1 * ( pwndi(ji,jj) - zztmp0 * ( u_ice(ji-1,jj  ) + u_ice(ji,jj) ) )
+            pvtaui(ji,jj) = zztmp1 * ( pwndj(ji,jj) - zztmp0 * ( v_ice(ji  ,jj-1) + v_ice(ji,jj) ) )
          END_2D
 
          !#LB: saving the module, and x-y components, of the ai wind-stress at T-points: NOT weighted by the ice concentration !!!
