@@ -1030,9 +1030,9 @@ CONTAINS
       ! ------------------------------------------------------------ !
       ! C-grid ice dynamics :   U & V-points (same as ocean)
       DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
-         zwndi_t(ji,jj) = (  pwndi(ji,jj) - rn_vfac * 0.5 * ( u_ice(ji-1,jj  ) + u_ice(ji,jj) )  )
-         zwndj_t(ji,jj) = (  pwndj(ji,jj) - rn_vfac * 0.5 * ( v_ice(ji  ,jj-1) + v_ice(ji,jj) )  )
-         wndm_ice(ji,jj) = SQRT( pwndi(ji,jj) * pwndi(ji,jj) + pwndj(ji,jj) * pwndj(ji,jj) )
+         zwndi_t = (  pwndi(ji,jj) - rn_vfac * 0.5 * ( u_ice(ji-1,jj  ) + u_ice(ji,jj) )  )
+         zwndj_t = (  pwndj(ji,jj) - rn_vfac * 0.5 * ( v_ice(ji  ,jj-1) + v_ice(ji,jj) )  )
+         wndm_ice(ji,jj) = SQRT( zwndi_t * zwndi_t + zwndj_t * zwndj_t )
       END_2D
       !
       ! potential sea-ice surface temperature [K]
