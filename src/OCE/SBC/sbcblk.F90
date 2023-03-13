@@ -700,7 +700,7 @@ CONTAINS
          zwnd_j(ji,jj) = (  pwndj(ji,jj) - rn_vfac * 0.5 * ( pv(ji  ,jj-1) + pv(ji,jj) )  )
       END_2D
       
-      CALL lbc_lnk_multi( 'sbcblk', zwnd_i, 'T', -1., zwnd_j, 'T', -1. )
+      CALL lbc_lnk( 'sbcblk', zwnd_i, 'T', -1., zwnd_j, 'T', -1. )
       ! ... scalar wind ( = | U10m - U_oce | ) at T-point (masked)
       wndm(:,:) = SQRT(  zwnd_i(:,:) * zwnd_i(:,:)   &
          &             + zwnd_j(:,:) * zwnd_j(:,:)  ) * tmask(:,:,1)
