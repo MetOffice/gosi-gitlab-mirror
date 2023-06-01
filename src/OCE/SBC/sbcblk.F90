@@ -1035,8 +1035,9 @@ CONTAINS
       DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
          zwndi_t = (  pwndi(ji,jj) - rn_vfac * 0.5 * ( u_ice(ji-1,jj  ) + u_ice(ji,jj) )  )
          zwndj_t = (  pwndj(ji,jj) - rn_vfac * 0.5 * ( v_ice(ji  ,jj-1) + v_ice(ji,jj) )  )
-         wndm_ice(ji,jj) = SQRT( zwndi_t * zwndi_t + zwndj_t * zwndj_t )
+         wndm_ice(ji,jj) = SQRT( zwndi_t * zwndi_t + zwndj_t * zwndj_t )* tmask(ji,jj,1)
       END_2D
+      CALL lbc_lnk( 'sbcblk', wndm_ice, 'T',  1. )
       !
       ! potential sea-ice surface temperature [K]
       zsipt(:,:) = theta_exner( ptsui(:,:), pslp(:,:) )
