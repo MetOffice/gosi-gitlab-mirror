@@ -569,13 +569,13 @@ CONTAINS
          ENDIF
          !
          CALL blk_oce_1( kt, sf(jp_wndi )%fnow(:,:,1), sf(jp_wndj )%fnow(:,:,1),   &   !   <<= in
-            &                ptair=sf(jp_tair)%fnow(:,:,1), q_air_zt(:,:),                     &   !   <<= in
+            &                theta_air_zt(:,:), q_air_zt(:,:),                     &   !   <<= in
             &                sf(jp_slp  )%fnow(:,:,1), sst_m, ssu_m, ssv_m,        &   !   <<= in
             &                sf(jp_uoatm)%fnow(:,:,1), sf(jp_voatm)%fnow(:,:,1),   &   !   <<= in
             &                sf(jp_qsr  )%fnow(:,:,1), sf(jp_qlw  )%fnow(:,:,1),   &   !   <<= in (wl/cs)
             &                tsk_m, zssq, zcd_du, zsen, zlat, zevp )                   !   =>> out
 
-         CALL blk_oce_2(     ptair=sf(jp_tair)%fnow(:,:,1),                                    &   !   <<= in
+         CALL blk_oce_2(     theta_air_zt(:,:),                                    &   !   <<= in
             &                sf(jp_qlw  )%fnow(:,:,1), sf(jp_prec )%fnow(:,:,1),   &   !   <<= in
             &                sf(jp_snow )%fnow(:,:,1), tsk_m,                      &   !   <<= in
             &                zsen, zlat, zevp )                                        !   <=> in out
@@ -812,7 +812,7 @@ CONTAINS
 
          DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
             zpre(ji,jj) = pres_temp( q_zu(ji,jj), pslp(ji,jj), rn_zu, ptpot=theta_zu(ji,jj), pta=ztabs(ji,jj) )
-            rhoa(ji,jj) = rho_air( ptair(ji,jj), pqair(ji,jj), pslp(ji,jj) )
+            rhoa(ji,jj) = rho_air( ztabs(ji,jj), q_zu(ji,jj), zpre(ji,jj) )
          END_2D
 
          CALL BULK_FORMULA( rn_zu, zsspt(:,:), pssq(:,:), theta_zu(:,:), q_zu(:,:), &
@@ -833,7 +833,6 @@ CONTAINS
                ztau_i(ji,jj) = zztmp * zwnd_i(ji,jj)
                ztau_j(ji,jj) = zztmp * zwnd_j(ji,jj)
 #else
-
                IF ( rn_vfac > 0._wp ) THEN
                    IF(lwp) WRITE(numout,*) ' update ztau_i and ztau_j using zwnd_i and zwnd_j'
                    ztau_i(ji,jj) = zztmp * zwnd_i(ji,jj)
