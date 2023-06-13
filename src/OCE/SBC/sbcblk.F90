@@ -833,8 +833,14 @@ CONTAINS
                ztau_i(ji,jj) = zztmp * zwnd_i(ji,jj)
                ztau_j(ji,jj) = zztmp * zwnd_j(ji,jj)
 #else
-               ztau_i(ji,jj) = zztmp * pwndi(ji,jj)
-               ztau_j(ji,jj) = zztmp * pwndj(ji,jj)
+               IF ( rn_vfac > 0._wp ) THEN
+                   IF(lwp) WRITE(numout,*) ' update ztau_i and ztau_j using zwnd_i and zwnd_j'
+                   ztau_i(ji,jj) = zztmp * zwnd_i(ji,jj)
+                   ztau_j(ji,jj) = zztmp * zwnd_j(ji,jj)
+               ELSE
+                   ztau_i(ji,jj) = zztmp * pwndi(ji,jj)
+                   ztau_j(ji,jj) = zztmp * pwndj(ji,jj)
+               ENDIF
 #endif
             ELSE
                ztau_i(ji,jj) = 0._wp
@@ -1035,8 +1041,9 @@ CONTAINS
       DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
          zwndi_t = (  pwndi(ji,jj) - rn_vfac * 0.5 * ( u_ice(ji-1,jj  ) + u_ice(ji,jj) )  )
          zwndj_t = (  pwndj(ji,jj) - rn_vfac * 0.5 * ( v_ice(ji  ,jj-1) + v_ice(ji,jj) )  )
-         wndm_ice(ji,jj) = SQRT( zwndi_t * zwndi_t + zwndj_t * zwndj_t )
+         wndm_ice(ji,jj) = SQRT( zwndi_t * zwndi_t + zwndj_t * zwndj_t )* tmask(ji,jj,1)
       END_2D
+      CALL lbc_lnk( 'sbcblk', wndm_ice, 'T',  1. )
       !
       ! potential sea-ice surface temperature [K]
       zsipt(:,:) = theta_exner( ptsui(:,:), pslp(:,:) )

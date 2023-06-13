@@ -49,6 +49,7 @@ MODULE zdftmx
 
    !! * Substitutions
 #  include "do_loop_substitute.h90"
+#  include "domzgr_substitute.h90"
    !!----------------------------------------------------------------------
    !! NEMO/OPA 4.0 , NEMO Consortium (2011)
    !! $Id: zdftmx.F90 8788 2017-11-22 18:01:02Z davestorkey $
