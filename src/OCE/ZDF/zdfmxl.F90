@@ -27,6 +27,7 @@ MODULE zdfmxl
    PRIVATE
 
    PUBLIC   zdf_mxl, zdf_mxl_turb, zdf_mxl_alloc   ! called by zdfphy.F90
+   PUBLIC   zdf_mxl_zint                           ! called by diahth.F90
 
    INTEGER , PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   nmln    !: number of level in the mixed layer (used by LDF, ZDF, TRD, TOP)
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   hmld    !: mixing layer depth (turbocline)      [m]   (used by TOP)
@@ -131,8 +132,6 @@ CONTAINS
       ENDIF
       !
       IF(sn_cfctl%l_prtctl)   CALL prt_ctl( tab2d_1=REAL(nmln,wp), clinfo1=' nmln : ', tab2d_2=hmlp, clinfo2=' hmlp : ' )
-      ! Vertically-interpolated mixed-layer depth diagnostic
-      CALL zdf_mxl_zint( kt , Kmm)
       !
       !
    END SUBROUTINE zdf_mxl
@@ -413,6 +412,8 @@ CONTAINS
 
       CHARACTER(len=1) :: cmld
 
+      LOGICAL, SAVE, DIMENSION(5) :: l_mld, l_htc
+
       TYPE(MXL_ZINT) :: sn_mld1, sn_mld2, sn_mld3, sn_mld4, sn_mld5
       TYPE(MXL_ZINT), SAVE, DIMENSION(5) ::   mld_diags
 
@@ -430,21 +431,33 @@ CONTAINS
 
          IF( nn_mld_diag > 5 )   CALL ctl_stop( 'STOP', 'zdf_mxl_ini: Specify no more than 5 MLD definitions' )
 
+         l_mld(:) = .FALSE. ; l_htc(:) = .FALSE.
+
          mld_diags(1) = sn_mld1
          mld_diags(2) = sn_mld2
          mld_diags(3) = sn_mld3
          mld_diags(4) = sn_mld4
          mld_diags(5) = sn_mld5
 
-         IF( lwp .AND. (nn_mld_diag > 0) ) THEN
-            WRITE(numout,*) '=============== Vertically-interpolated mixed layer ================'
-            WRITE(numout,*) '(Diagnostic number, nn_mld_type, rn_zref, rn_dT_crit, rn_iso_frac)'
+         IF( nn_mld_diag > 0 ) THEN
+            IF( lwp ) THEN
+               WRITE(numout,*) '=============== Vertically-interpolated mixed layer ================'
+               WRITE(numout,*) '(Diagnostic number, nn_mld_type, rn_zref, rn_dT_crit, rn_iso_frac)'
+            ENDIF
+
             DO jn = 1, nn_mld_diag
-               WRITE(numout,*) 'MLD criterion',jn,':'
-               WRITE(numout,*) '    nn_mld_type =', mld_diags(jn)%mld_type
-               WRITE(numout,*) '    rn_zref ='    , mld_diags(jn)%zref
-               WRITE(numout,*) '    rn_dT_crit =' , mld_diags(jn)%dT_crit
-               WRITE(numout,*) '    rn_iso_frac =', mld_diags(jn)%iso_frac
+               ! Whether the diagnostic is requested
+               WRITE(cmld,'(I1)') jn
+               IF( iom_use( "mldzint_"//cmld ) ) l_mld(jn) = .TRUE.
+               IF( iom_use( "mldhtc_"//cmld  ) ) l_htc(jn) = .TRUE.
+
+               IF( lwp ) THEN
+                  WRITE(numout,*) 'MLD criterion',jn,':'
+                  WRITE(numout,*) '    nn_mld_type =', mld_diags(jn)%mld_type
+                  WRITE(numout,*) '    rn_zref ='    , mld_diags(jn)%zref
+                  WRITE(numout,*) '    rn_dT_crit =' , mld_diags(jn)%dT_crit
+                  WRITE(numout,*) '    rn_iso_frac =', mld_diags(jn)%iso_frac
+               ENDIF
             END DO
             WRITE(numout,*) '===================================================================='
          ENDIF
@@ -453,16 +466,15 @@ CONTAINS
       IF( nn_mld_diag > 0 ) THEN
          DO jn = 1, nn_mld_diag
             WRITE(cmld,'(I1)') jn
-            IF( iom_use( "mldzint_"//cmld ) .OR. iom_use( "mldhtc_"//cmld ) ) THEN
-               CALL zdf_mxl_zint_mld( mld_diags(jn) , Kmm)
 
-               IF( iom_use( "mldzint_"//cmld ) ) THEN
-                  CALL iom_put( "mldzint_"//cmld, hmld_zint(:,:) )
-               ENDIF
+            IF( l_mld(jn) .OR. l_htc(jn) ) THEN
+               CALL zdf_mxl_zint_mld( mld_diags(jn), Kmm)
 
-               IF( iom_use( "mldhtc_"//cmld ) )  THEN
-                  CALL zdf_mxl_zint_htc( kt , Kmm )
-                  CALL iom_put( "mldhtc_"//cmld , htc_mld(:,:)   )
+               IF( l_mld(jn) ) CALL iom_put( "mldzint_"//cmld, hmld_zint(:,:) )
+
+               IF( l_htc(jn) ) THEN
+                  CALL zdf_mxl_zint_htc( kt, Kmm )
+                  CALL iom_put( "mldhtc_"//cmld, htc_mld(:,:) )
                ENDIF
             ENDIF
          END DO
