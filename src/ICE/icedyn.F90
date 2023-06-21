@@ -118,9 +118,13 @@ CONTAINS
       CASE ( np_dynALL )           !==  all dynamical processes  ==!
          !
          CALL ice_dyn_rhg   ( kt, Kmm )                                     ! -- rheology
+         CALL ice_prt2D_vel('ice_dyn_rhg')
          CALL ice_dyn_adv   ( kt )                                          ! -- advection of ice
+         CALL ice_prt2D_vel('ice_dyn_adv')
          CALL ice_dyn_rdgrft( kt )                                          ! -- ridging/rafting
+         CALL ice_prt2D_vel('ice_dyn_rdgrft')
          CALL ice_cor       ( kt , 1 )                                      ! -- Corrections
+         CALL ice_prt2D_vel('ice_cor')
          !
       CASE ( np_dynRHGADV  )       !==  no ridge/raft & no corrections ==!
          !

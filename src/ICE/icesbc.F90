@@ -254,7 +254,7 @@ CONTAINS
       !! ** Outputs :   qsb_ice_bot, fhld, qlead
       !!-----------------------------------------------------------------------
       INTEGER  ::   ji, jj             ! dummy loop indices
-      REAL(wp) ::   zfric_u, zqld, zqfr, zqfr_neg, zqfr_pos, zu_io, zv_io, zu_iom1, zv_iom1
+      REAL(wp) ::   zfric_u, zqld, zqfr, zqfr_neg, zqfr_pos, zu_io, zv_io, zu_iom1, zv_iom1, sum_qsb_ice_bot
       REAL(wp), PARAMETER ::   zfric_umin = 0._wp       ! lower bound for the friction velocity (cice value=5.e-04)
       REAL(wp), PARAMETER ::   zch        = 0.0057_wp   ! heat transfer coefficient
       REAL(wp), DIMENSION(jpi,jpj) ::  zfric, zvel      ! ice-ocean velocity (m/s) and frictional velocity (m2/s2)
@@ -362,6 +362,9 @@ CONTAINS
          qsb_ice_bot(:,:) = 0._wp
          fhld       (:,:) = 0._wp
       ENDIF
+      
+      sum_qsb_ice_bot=glob_sum( 'icethd', qsb_ice_bot)
+      WRITE(numout,*) 'qsb_ice_bot', sum_qsb_ice_bot
       
    END SUBROUTINE ice_flx_other
    

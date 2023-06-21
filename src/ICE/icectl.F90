@@ -42,6 +42,7 @@ MODULE icectl
    PUBLIC   ice_ctl
    PUBLIC   ice_prt
    PUBLIC   ice_prt3D
+   PUBLIC   ice_prt2D_vel
    PUBLIC   ice_drift_wri
    PUBLIC   ice_drift_init
 
@@ -739,6 +740,23 @@ CONTAINS
          &         tab2d_2=vtau_ice   , clinfo2= ' vtau_ice  : ', mask2 = vmask)
 
    END SUBROUTINE ice_prt3D
+   
+   SUBROUTINE ice_prt2D_vel( cd_routine )
+      !!-------------------------------------------------------------------
+      !!                  ***  ROUTINE ice_prt2D ***
+      !!
+      !! ** Purpose : CTL prints of global sum u_ice
+      !!
+      !!-------------------------------------------------------------------
+      CHARACTER(len=*), INTENT(in) ::   cd_routine  ! name of the routine   
+      REAL(wp), DIMENSION(jpi,jpj) :: glob_sum_u,glob_sum_v
+      CALL prt_ctl_info( cd_routine )
+      glob_sum_u = glob_sum( 'icectl', u_ice )
+      glob_sum_v = glob_sum( 'icectl', v_ice )
+      WRITE(numout,*) cd_routine,' : glob_sum_u_ice = ', glob_sum_u
+      WRITE(numout,*) cd_routine,' : glob_sum_v_ice = ', glob_sum_v
+      !CALL prt_ctl(tab2d_1=u_ice       , clinfo1= ' u_ice      : ', tab2d_2=v_ice       , clinfo2= ' v_ice      : ')
+   END SUBROUTINE ice_prt2D_vel
 
 
    SUBROUTINE ice_drift_wri( kt )
