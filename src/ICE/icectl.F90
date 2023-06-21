@@ -749,7 +749,7 @@ CONTAINS
       !!
       !!-------------------------------------------------------------------
       CHARACTER(len=*), INTENT(in) ::   cd_routine  ! name of the routine   
-      REAL(wp), DIMENSION(jpi,jpj) :: glob_sum_u,glob_sum_v
+      REAL(wp) :: glob_sum_u,glob_sum_v
       CALL prt_ctl_info( cd_routine )
       glob_sum_u = glob_sum( 'icectl', u_ice )
       glob_sum_v = glob_sum( 'icectl', v_ice )
