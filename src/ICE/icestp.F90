@@ -116,6 +116,7 @@ CONTAINS
       INTEGER, INTENT(in) ::   kt       ! ocean time step
       INTEGER, INTENT(in) ::   Kbb, Kmm ! ocean time level indices
       INTEGER, INTENT(in) ::   ksbc     ! flux formulation (user defined, bulk, or Pure Coupled)
+      REAL(wp) :: sum_utau_ice, sum_vtau_ice
       !
       INTEGER ::   jl   ! dummy loop index
       !!----------------------------------------------------------------------
@@ -152,6 +153,10 @@ CONTAINS
          !    utau_ice, vtau_ice = surface ice stress [N/m2]
          !------------------------------------------------!
                                         CALL ice_sbc_tau( kt, ksbc, utau_ice, vtau_ice )
+                                        
+                                        sum_utau_ice=glob_sum( 'icestp', utau_ice)
+                                        sum_vtau_ice=glob_sum( 'icestp', vtau_ice)
+                                        WRITE(numout,*) 'global sum utau_ice, vtau_ice', sum_utau_ice, sum_vtau_ice
          !-------------------------------------!
          ! --- ice dynamics and advection  --- !
          !-------------------------------------!
