@@ -80,6 +80,7 @@ CONTAINS
       INTEGER  ::   ji, jj        ! dummy loop indices
       REAL(wp) ::   zcoefu, zcoefv
       REAL(wp), ALLOCATABLE, DIMENSION(:,:) ::   zdivu_i
+      REAL(wp) :: glob_sum_u,glob_sum_v
       !!--------------------------------------------------------------------
       !
       ! controls
@@ -118,13 +119,39 @@ CONTAINS
       CASE ( np_dynALL )           !==  all dynamical processes  ==!
          !
          CALL ice_dyn_rhg   ( kt, Kmm )                                     ! -- rheology
-         CALL ice_prt2D_vel('ice_dyn_rhg')
+         
+         glob_sum_u = glob_sum( 'icedyn', u_ice )
+         glob_sum_v = glob_sum( 'icedyn', v_ice )
+         
+         WRITE(numout,*) 'ice_dyn_rhg : glob_sum_u_ice = ', glob_sum_u
+         WRITE(numout,*) 'ice_dyn_rhg : glob_sum_v_ice = ', glob_sum_v
+         
+         
          CALL ice_dyn_adv   ( kt )                                          ! -- advection of ice
-         CALL ice_prt2D_vel('ice_dyn_adv')
+         
+         
+         glob_sum_u = glob_sum( 'icedyn', u_ice )
+         glob_sum_v = glob_sum( 'icedyn', v_ice )
+         
+         WRITE(numout,*) 'ice_dyn_adv : glob_sum_u_ice = ', glob_sum_u
+         WRITE(numout,*) 'ice_dyn_adv : glob_sum_v_ice = ', glob_sum_v
+         
          CALL ice_dyn_rdgrft( kt )                                          ! -- ridging/rafting
-         CALL ice_prt2D_vel('ice_dyn_rdgrft')
+         
+         glob_sum_u = glob_sum( 'icedyn', u_ice )
+         glob_sum_v = glob_sum( 'icedyn', v_ice )
+         
+         WRITE(numout,*) 'ice_dyn_rdgrft : glob_sum_u_ice = ', glob_sum_u
+         WRITE(numout,*) 'ice_dyn_rdgrft : glob_sum_v_ice = ', glob_sum_v
+         
          CALL ice_cor       ( kt , 1 )                                      ! -- Corrections
-         CALL ice_prt2D_vel('ice_cor')
+         
+         
+         glob_sum_u = glob_sum( 'icedyn', u_ice )
+         glob_sum_v = glob_sum( 'icedyn', v_ice )
+         
+         WRITE(numout,*) 'ice_cor : glob_sum_u_ice = ', glob_sum_u
+         WRITE(numout,*) 'ice_cor : glob_sum_v_ice = ', glob_sum_v
          !
       CASE ( np_dynRHGADV  )       !==  no ridge/raft & no corrections ==!
          !
