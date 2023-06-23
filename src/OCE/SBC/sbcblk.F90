@@ -1031,12 +1031,15 @@ CONTAINS
       REAL(wp) ::   zootm_su                      ! sea-ice surface mean temperature
       REAL(wp) ::   zwndi_t , zwndj_t 
       REAL(wp) ::   zztmp0,zztmp1, zztmp2                ! temporary scalars
-      REAL(wp), DIMENSION(jpi,jpj) :: ztmp, zsipt ! temporary array
+      REAL(wp), DIMENSION(jpi,jpj) :: ztmp, zsipt,out_1,out_2 ! temporary array
       !!---------------------------------------------------------------------
       !
       ! ------------------------------------------------------------ !
       !    Wind module relative to the moving ice ( U10m - U_ice )   !
       ! ------------------------------------------------------------ !
+      
+      out_1(:,:)=0._wp
+      out_2(:,:)=0._wp
       ! C-grid ice dynamics :   U & V-points (same as ocean)
       DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
          zwndi_t = (  pwndi(ji,jj) - rn_vfac * 0.5 * ( u_ice(ji-1,jj  ) + u_ice(ji,jj) )  )
@@ -1093,9 +1096,16 @@ CONTAINS
          zztmp0 = rn_vfac * 0.5_wp
          DO_2D( 0, 1, 0, 1 )    ! at T point
             zztmp1        = rhoa(ji,jj) * Cd_ice(ji,jj) * wndm_ice(ji,jj)
+            
+            out_1(ji,jj)=zztmp1 
+            out_2(ji,jj)=rhoa(ji,jj) * Cd_ice(ji,jj)
+            
             putaui(ji,jj) = zztmp1 * ( pwndi(ji,jj) - zztmp0 * ( u_ice(ji-1,jj  ) + u_ice(ji,jj) ) )
             pvtaui(ji,jj) = zztmp1 * ( pwndj(ji,jj) - zztmp0 * ( v_ice(ji  ,jj-1) + v_ice(ji,jj) ) )
          END_2D
+         
+         WRITE(numout,*) 'glob_sum zztmp1 = ', glob_sum( 'blk_ice_1', out_1 )
+         WRITE(numout,*) 'glob_sum rhoa * Cd_ice = ', glob_sum( 'blk_ice_1', out_2 )
 
          !#LB: saving the module, and x-y components, of the ai wind-stress at T-points: NOT weighted by the ice concentration !!!
          IF(iom_use('taum_ice')) CALL iom_put('taum_ice', SQRT( putaui*putaui + pvtaui*pvtaui )*ztmp )

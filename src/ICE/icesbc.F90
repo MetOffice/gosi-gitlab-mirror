@@ -363,8 +363,8 @@ CONTAINS
          fhld       (:,:) = 0._wp
       ENDIF
       
-      sum_qsb_ice_bot=glob_sum( 'icethd', qsb_ice_bot)
-      WRITE(numout,*) 'qsb_ice_bot', sum_qsb_ice_bot
+      !sum_qsb_ice_bot=glob_sum( 'icethd', qsb_ice_bot)
+      !WRITE(numout,*) 'qsb_ice_bot', sum_qsb_ice_bot
       
    END SUBROUTINE ice_flx_other
    
