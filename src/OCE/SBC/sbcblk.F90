@@ -1037,8 +1037,8 @@ CONTAINS
       ! ------------------------------------------------------------ !
       !    Wind module relative to the moving ice ( U10m - U_ice )   !
       ! ------------------------------------------------------------ !
-      WRITE(numout,*) 'glob_sum_u_ice', glob_sum('blk_ice_1',u_ice)
-      WRITE(numout,*) 'glob_sum_puice', glob_sum('blk_ice_1',puice)
+      WRITE(numout,*) 'glob_sum_u_ice blk_ice_1', glob_sum('blk_ice_1',u_ice)
+      WRITE(numout,*) 'glob_sum_puice blk_ice_1', glob_sum('blk_ice_1',puice)
       
       out_1(:,:)=0._wp
       out_2(:,:)=0._wp
@@ -1099,6 +1099,8 @@ CONTAINS
          ! supress moving ice in wind stress computation as we don't know how to do it properly...
          zztmp0 = rn_vfac * 0.5_wp
          WRITE(numout,*) 'glob_sum_utau_ice_before_calculation_at_T_points', glob_sum('blk_ice_1',putaui)
+         WRITE(numout,*) 'glob_sum_vtau_ice_before_calculation_at_T_points', glob_sum('blk_ice_1',pvtaui)
+         
          DO_2D( 0, 1, 0, 1 )    ! at T point
             zztmp1        = rhoa(ji,jj) * Cd_ice(ji,jj) * wndm_ice(ji,jj)
             
@@ -1114,6 +1116,7 @@ CONTAINS
          WRITE(numout,*) 'glob_sum rhoa * Cd_ice = ', glob_sum( 'blk_ice_1', out_2 )
          
          WRITE(numout,*) 'glob_sum_utau_ice_after_calculation_at_T_points', glob_sum('blk_ice_1',putaui)
+         WRITE(numout,*) 'glob_sum_vtau_ice_after_calculation_at_T_points', glob_sum('blk_ice_1',pvtaui)
 
          !#LB: saving the module, and x-y components, of the ai wind-stress at T-points: NOT weighted by the ice concentration !!!
          IF(iom_use('taum_ice')) CALL iom_put('taum_ice', SQRT( putaui*putaui + pvtaui*pvtaui )*ztmp )
@@ -1131,7 +1134,8 @@ CONTAINS
             pvtaui(ji,jj) = zztmp2 * ( pvtaui(ji,jj) + pvtaui(ji  ,jj+1) )
          END_2D
          
-         WRITE(numout,*) 'glob_sum_utau_ice_after_TU_conversion ', glob_sum('blk_ice_1',putaui)
+         WRITE(numout,*) 'glob_sum_utau_ice_after_TUV_conversion ', glob_sum('blk_ice_1',putaui)
+         WRITE(numout,*) 'glob_sum_vtau_ice_after_TUV_conversion ', glob_sum('blk_ice_1',pvtaui)
          
          CALL lbc_lnk( 'sbcblk', putaui, 'U', -1._wp, pvtaui, 'V', -1._wp )
          !

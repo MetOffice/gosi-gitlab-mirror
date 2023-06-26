@@ -154,9 +154,9 @@ CONTAINS
          !------------------------------------------------!
                                         CALL ice_sbc_tau( kt, ksbc, utau_ice, vtau_ice )
                                         
-                                        sum_utau_ice=glob_sum( 'icestp', utau_ice)
-                                        sum_vtau_ice=glob_sum( 'icestp', vtau_ice)
-                                        WRITE(numout,*) 'global sum utau_ice, vtau_ice', sum_utau_ice, sum_vtau_ice
+                                        !sum_utau_ice=glob_sum( 'icestp', utau_ice)
+                                        !sum_vtau_ice=glob_sum( 'icestp', vtau_ice)
+                                        !WRITE(numout,*) 'icestp : global sum utau_ice, vtau_ice after call to ice_sbc_tau', sum_utau_ice, sum_vtau_ice
          !-------------------------------------!
          ! --- ice dynamics and advection  --- !
          !-------------------------------------!
