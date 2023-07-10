@@ -812,7 +812,7 @@ CONTAINS
 
          DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
             zpre(ji,jj) = pres_temp( q_zu(ji,jj), pslp(ji,jj), rn_zu, ptpot=theta_zu(ji,jj), pta=ztabs(ji,jj) )
-            rhoa(ji,jj) = rho_air( ztabs(ji,jj), q_zu(ji,jj), zpre(ji,jj) )
+            rhoa(ji,jj) = rho_air_old(sf(jp_tair)%fnow(ji,jj,1), sf(jp_humi)%fnow(ji,jj,1), sf(jp_slp)%fnow(ji,jj,1))
          END_2D
 
          CALL BULK_FORMULA( rn_zu, zsspt(:,:), pssq(:,:), theta_zu(:,:), q_zu(:,:), &
