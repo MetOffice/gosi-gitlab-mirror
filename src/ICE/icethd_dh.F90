@@ -192,8 +192,8 @@ CONTAINS
 
       ! Snow melting
       ! ------------
-      ! If heat still available (zq_top > 0)
-      ! then all snw precip has been melted and we need to melt more snow
+      ! Melt snow layers, starting with newly fallen snow layer 0 
+      ! and moving downward, until zq_top=0
       DO jk = 0, nlay_s
          DO ji = 1, npti
             IF( zh_s(ji,jk) > 0._wp .AND. zq_top(ji) > 0._wp ) THEN
@@ -216,10 +216,10 @@ CONTAINS
          END DO
       END DO
 
-      ! Snow sublimation
-      !-----------------
-      ! qla_ice is always >=0 (upwards), heat goes to the atmosphere, therefore snow sublimates
-      !    comment: not counted in mass/heat exchange in iceupdate.F90 since this is an exchange with atm. (not ocean)
+      ! Snow sublimation and deposition
+      !--------------------------------
+      ! when evap_ice_1d > 0 (upwards) snow sublimates and snow thickness decreases
+      ! when evap_ice_1d < 0 (downwards) deposition occurs and snow thickness increases
       zdeltah   (1:npti) = 0._wp ! total snow thickness that sublimates, < 0
       zevap_rema(1:npti) = 0._wp
       DO ji = 1, npti

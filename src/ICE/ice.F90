@@ -241,6 +241,7 @@ MODULE ice
    REAL(wp), PUBLIC ::   rn_hpnd          !: prescribed pond depth    (0<rn_hpnd<1)
    LOGICAL,  PUBLIC ::   ln_pnd_lids      !: Allow ponds to have frozen lids
    LOGICAL , PUBLIC ::   ln_pnd_alb       !: melt ponds affect albedo
+   INTEGER , PUBLIC ::   nn_pnd_brsal     !: brine salinity formulation 0 = Consistent expression with SI3 (linear liquidus) ; 1 = used in GOSI9 
 
    !                                     !!** ice-diagnostics namelist (namdia) **
    LOGICAL , PUBLIC ::   ln_icediachk     !: flag for ice diag (T) or not (F)
