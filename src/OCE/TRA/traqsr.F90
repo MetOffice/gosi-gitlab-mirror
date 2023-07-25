@@ -48,6 +48,7 @@ MODULE traqsr
    LOGICAL , PUBLIC ::   ln_qsr_2bd   !: 2 band         light absorption flag
    LOGICAL , PUBLIC ::   ln_qsr_bio   !: bio-model      light absorption flag
    INTEGER , PUBLIC ::   nn_chldta    !: use Chlorophyll data (=1) or not (=0)
+   REAL(wp), PUBLIC ::   rn_chl_conc  !: Chlorophyll concentration (for nn_chldta=0)
    REAL(wp), PUBLIC ::   rn_abs       !: fraction absorbed in the very near surface (RGB & 2 bands)
    REAL(wp), PUBLIC ::   rn_si0       !: very near surface depth of extinction      (RGB & 2 bands)
    REAL(wp), PUBLIC ::   rn_si1       !: deepest depth of extinction (water type I)       (2 bands)
@@ -221,7 +222,7 @@ CONTAINS
                ztmp3d(ji,jj,jk) = 41 + 20.*LOG10(zchl) + 1.e-15
             END_3D
          ELSE                                !* constant chlorophyll
-            zchl = 0.05
+            zchl = rn_chl_conc
             ! NB. make sure constant value is such that:
             zchl = MIN( 10. , MAX( 0.03, zchl ) )
             ! Convert chlorophyll value to attenuation coefficient look-up table index
@@ -341,14 +342,14 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER  ::   ji, jj, jk                  ! dummy loop indices
       INTEGER  ::   ios, irgb, ierror, ioptio   ! local integer
-      REAL(wp) ::   zz0, zc0 , zc1, zcoef      ! local scalars
-      REAL(wp) ::   zz1, zc2 , zc3, zchl       !   -      -
+      REAL(wp) ::   zz0, zc0 , zc1, zcoef       ! local scalars
+      REAL(wp) ::   zz1, zc2 , zc3, zchl        !   -      -
       !
       CHARACTER(len=100) ::   cn_dir   ! Root directory for location of ssr files
       TYPE(FLD_N)        ::   sn_chl   ! informations about the chlorofyl field to be read
       !!
       NAMELIST/namtra_qsr/  sn_chl, cn_dir, ln_qsr_rgb, ln_qsr_2bd, ln_qsr_bio,  &
-         &                  nn_chldta, rn_abs, rn_si0, rn_si1
+         &                  nn_chldta, rn_chl_conc, rn_abs, rn_si0, rn_si1
       !!----------------------------------------------------------------------
       !
       READ  ( numnam_ref, namtra_qsr, IOSTAT = ios, ERR = 901)
@@ -367,6 +368,7 @@ CONTAINS
          WRITE(numout,*) '      2 band               light penetration       ln_qsr_2bd = ', ln_qsr_2bd
          WRITE(numout,*) '      bio-model            light penetration       ln_qsr_bio = ', ln_qsr_bio
          WRITE(numout,*) '      RGB : Chl data (=1) or cst value (=0)        nn_chldta  = ', nn_chldta
+         WRITE(numout,*) '      Chlorophyll concentration (for nn_chldta=0)  rn_chl_conc = ', rn_chl_conc
          WRITE(numout,*) '      RGB & 2 bands: fraction of light (rn_si1)    rn_abs     = ', rn_abs
          WRITE(numout,*) '      RGB & 2 bands: shortess depth of extinction  rn_si0     = ', rn_si0
          WRITE(numout,*) '      2 bands: longest depth of extinction         rn_si1     = ', rn_si1
@@ -415,7 +417,7 @@ CONTAINS
                &           'Solar penetration function of read chlorophyll', 'namtra_qsr' , no_print )
          ENDIF
          IF( nqsr == np_RGB ) THEN                 ! constant Chl
-            IF(lwp) WRITE(numout,*) '   ==>>>   Constant Chlorophyll concentration = 0.05'
+            IF(lwp) WRITE(numout,*) '   ==>>>   Constant Chlorophyll concentration = ', rn_chl_conc
          ENDIF
          !
       CASE( np_2BD )                   !==  2 bands light penetration  ==!
