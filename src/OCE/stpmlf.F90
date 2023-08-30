@@ -300,6 +300,7 @@ CONTAINS
                          CALL dia_ar5   ( kstp,      Nnn )      ! ar5 diag
                          CALL dia_ptr   ( kstp,      Nnn )      ! Poleward adv/ldf TRansports diagnostics
                          CALL dia_wri   ( kstp,      Nnn )      ! ocean model: outputs
+                         CALL dia_prod  ( kstp,      Nnn )  
       END DO
       IF( ln_tile ) CALL dom_tile_stop
 

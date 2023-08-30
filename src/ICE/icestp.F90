@@ -288,7 +288,7 @@ CONTAINS
          CALL ice_istate( nit000, Kbb, Kmm, Kaa )   ! start from rest or read a file
       ENDIF
       CALL ice_var_glo2eqv(1)
-      CALL ice_var_agg(1)
+      CALL ice_var_agg(2)
       !
       CALL ice_dyn_init                ! set ice dynamics parameters
       !

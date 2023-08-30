@@ -246,7 +246,6 @@ MODULE ice
    REAL(wp), PUBLIC ::   rn_hpnd          !: prescribed pond depth    (0<rn_hpnd<1)
    LOGICAL,  PUBLIC ::   ln_pnd_lids      !: Allow ponds to have frozen lids
    LOGICAL , PUBLIC ::   ln_pnd_alb       !: melt ponds affect albedo
-
    !                                     !!** ice-diagnostics namelist (namdia) **
    LOGICAL , PUBLIC ::   ln_icediachk     !: flag for ice diag (T) or not (F)
    REAL(wp), PUBLIC ::   rn_icechk_cel    !: rate of ice spuriously gained/lost (at any gridcell)

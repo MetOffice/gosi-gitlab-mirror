@@ -39,6 +39,7 @@ MODULE restart
    !
    USE in_out_manager ! I/O manager
    USE iom            ! I/O module
+   USE ioipsl, ONLY : ju2ymds    ! for calendar
    USE lib_mpp        ! distribued memory computing library
 
    IMPLICIT NONE
@@ -72,6 +73,9 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER, INTENT(in) ::   kt     ! ocean time-step
       !!
+      INTEGER             ::   iyear, imonth, iday
+      REAL (wp)           ::   zsec
+      REAL (wp)           ::   zfjulday
       CHARACTER(LEN=20)   ::   clkt     ! ocean time-step deine as a character
       CHARACTER(LEN=50)   ::   clname   ! ocean output restart file name
       CHARACTER(lc)       ::   clpath   ! full path to ocean output restart file
@@ -103,8 +107,16 @@ CONTAINS
       IF( kt == nitrst - 1 .OR. nn_stock == 1 .OR. ( kt == nitend .AND. .NOT. lrst_oce ) ) THEN
          IF( nitrst <= nitend .AND. nitrst > 0 ) THEN
             ! beware of the format used to write kt (default is i8.8, that should be large enough...)
-            IF( nitrst > 999999999 ) THEN   ;   WRITE(clkt, *       ) nitrst
-            ELSE                            ;   WRITE(clkt, '(i8.8)') nitrst
+            
+            IF ( ln_rstdate ) THEN
+               zfjulday = fjulday + rdt / rday
+               IF( ABS(zfjulday - REAL(NINT(zfjulday),wp)) < 0.1 / rday )   zfjulday = REAL(NINT(zfjulday),wp)   ! avoid truncation error
+               CALL ju2ymds( zfjulday, iyear, imonth, iday, zsec )           
+               WRITE(clkt, '(i4.4,2i2.2)') iyear, imonth, iday
+            ELSE
+               IF( nitrst > 999999999 ) THEN   ;   WRITE(clkt, *       ) nitrst
+               ELSE                            ;   WRITE(clkt, '(i8.8)') nitrst
+               ENDIF
             ENDIF
             ! create the file
             clname = TRIM(cexper)//"_"//TRIM(ADJUSTL(clkt))//"_"//TRIM(cn_ocerst_out)
@@ -192,6 +204,9 @@ CONTAINS
 #endif
       ENDIF
 
+      CALL iom_rstput( kt, nitrst, numrow, 'neos'    , REAL(neos))   ! equation of state
+      !CALL iom_rstput( kt, nitrst, numrow, 'neos'    , neos      , ktype = jp_i1, ldxios = lwxios)   ! equation of state
+
       IF( ln_diurnal )   CALL iom_rstput( kt, nitrst, numrow, 'Dsst', x_dsst )
       IF( kt == nitrst ) THEN
          IF( .NOT.lwxios ) THEN
@@ -277,6 +292,7 @@ CONTAINS
       INTEGER          , INTENT(in) ::   Kbb, Kmm   ! ocean time level indices
       INTEGER  ::   jk
       INTEGER  ::   id1 
+      REAL(wp) ::   zeos
       REAL(wp), DIMENSION(jpi, jpj, jpk) :: w3d
       REAL(wp), ALLOCATABLE, DIMENSION(:,:,:)   :: zgdept       ! 3D workspace for QCO
       !!----------------------------------------------------------------------
@@ -329,6 +345,18 @@ CONTAINS
       CALL iom_get( numror, jpdom_auto, 'tn', ts(:,:,:,jp_tem,Kmm) )
       CALL iom_get( numror, jpdom_auto, 'sn', ts(:,:,:,jp_sal,Kmm) )
       !
+      
+      IF ( ln_rst_eos ) THEN
+         ! Check equation of state used is consistent with the restart
+         IF( iom_varid( numror, 'neos') == -1 ) THEN
+            CALL ctl_stop( 'restart, rst_read: variable neos not found. STOP check that the equations of state in the restart file and in the namelist nameos are consistent and use ln_rst_eos=F')
+         ELSE
+            CALL iom_get( numror, 'neos'   , zeos )
+            IF ( INT(zeos) /= neos ) CALL ctl_stop( 'restart, rst_read: equation of state used in restart file differs from namelist nameos')
+         ENDIF
+      ENDIF
+      
+      
       IF( l_1st_euler ) THEN        !*  Euler restart   (MLF only)
          IF(lwp) WRITE(numout,*) '           Kbb u, v and T-S fields set to Kmm values'
          uu(:,:,:  ,Kbb) = uu(:,:,:  ,Kmm)         ! all before fields set to now values

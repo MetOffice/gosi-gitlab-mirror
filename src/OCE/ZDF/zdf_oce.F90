@@ -39,6 +39,7 @@ MODULE zdf_oce
    !                             ! gravity wave-induced vertical mixing
    LOGICAL , PUBLIC ::   ln_zdfswm   !: surface  wave-induced mixing flag
    LOGICAL , PUBLIC ::   ln_zdfiwm   !: internal wave-induced mixing flag
+   LOGICAL , PUBLIC ::   ln_zdftmx   !: old tidal mixing scheme (Simmons et al 2004) 
    LOGICAL , PUBLIC ::   ln_zdfmfc   !: convection: eddy diffusivity Mass Flux Convection
    !                             ! coefficients
    REAL(wp), PUBLIC ::   rn_avm0     !: vertical eddy viscosity (m2/s)

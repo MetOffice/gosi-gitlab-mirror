@@ -78,7 +78,7 @@ CONTAINS
       CASE( jp_blk     )                 !--- Forced formulation
          !
          CALL blk_ice_1( sf(jp_wndi)%fnow(:,:,1), sf(jp_wndj)%fnow(:,:,1), theta_air_zt(:,:), q_air_zt(:,:), & ! <<== in
-            &            sf(jp_slp )%fnow(:,:,1), tm_su(:,:),                                                & ! <<== in
+            &            sf(jp_slp )%fnow(:,:,1), u_ice, v_ice, tm_su(:,:),                                                & ! <<== in
             &            putaui=utau_ice(A2D(0)), pvtaui=vtau_ice(A2D(0)) )                                    ! ==>> out
          !
          !CASE( jp_abl    )              !--- ABL formulation (utau_ice & vtau_ice are computed in ablmod)

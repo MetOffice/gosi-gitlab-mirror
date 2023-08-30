@@ -54,6 +54,7 @@ MODULE traqsr
    LOGICAL , PUBLIC ::   ln_qsr_2bd   !: 2 band         light absorption flag
    LOGICAL , PUBLIC ::   ln_qsr_bio   !: bio-model      light absorption flag
    INTEGER , PUBLIC ::   nn_chldta    !: use Chlorophyll data 3D/Surface (=2/1) or not (=0)
+   REAL(wp), PUBLIC ::   rn_chl_conc  !: Chlorophyll concentration (for nn_chldta=0)   
    REAL(wp), PUBLIC ::   rn_abs       !: fraction absorbed in the very near surface (RGB & 2 bands)
    REAL(wp), PUBLIC ::   rn_si0       !: very near surface depth of extinction      (RGB & 2 bands)
    REAL(wp), PUBLIC ::   rn_si1       !: deepest depth of extinction (water type I)       (2 bands)
@@ -784,7 +785,7 @@ CONTAINS
       TYPE(FLD_N)        ::   sn_chl   ! informations about the chlorofyl field to be read
       !!
       NAMELIST/namtra_qsr/  sn_chl, cn_dir, ln_qsr_rgb, ln_qsr_2bd, ln_qsr_bio,  &
-         &                  nn_chldta, rn_abs, rn_si0, rn_si1
+         &                  nn_chldta, rn_chl_conc, rn_abs, rn_si0, rn_si1
       !!----------------------------------------------------------------------
       !
       READ  ( numnam_ref, namtra_qsr, IOSTAT = ios, ERR = 901)
@@ -802,6 +803,7 @@ CONTAINS
          WRITE(numout,*) '      2 band               light penetration           ln_qsr_2bd = ', ln_qsr_2bd
          WRITE(numout,*) '      bio-model            light penetration           ln_qsr_bio = ', ln_qsr_bio
          WRITE(numout,*) '      RGB : 3D/Surface Chl data or Cst value (2,1,0)   nn_chldta  = ', nn_chldta
+         WRITE(numout,*) '      Chlorophyll concentration (for nn_chldta=0)  rn_chl_conc = ', rn_chl_conc         
          WRITE(numout,*) '      RGB & 2 bands: fraction of light (rn_si1)        rn_abs     = ', rn_abs
          WRITE(numout,*) '      RGB & 2 bands: shortess attenuation depth        rn_si0     = ', rn_si0
          WRITE(numout,*) '      2 bands: longest attenuation depth               rn_si1     = ', rn_si1
@@ -839,7 +841,7 @@ CONTAINS
       CASE( np_RGBc, np_RGB )          !==  Red-Green-Blue light attenuation  ==!   (Chl data or constant)
          !                             !========================================!
          !
-         IF( nqsr == np_RGB ) THEN   ;   zchl   = 0.05        ! constant Chl value
+         IF( nqsr == np_RGB ) THEN   ;   zchl   = rn_chl_conc   ! constant Chl value
          ELSE                        ;   zchl   = 0.03        ! minimum  Chl value
          ENDIF
          zchl   = MAX( 0.03_wp , MIN( zchl , 10._wp) )     ! NB. make sure that chosen value verifies: 0.03 < zchl < 10

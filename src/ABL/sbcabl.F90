@@ -347,7 +347,7 @@ CONTAINS
 #if defined key_si3
          CALL blk_ice_1(  u_abl(:,:,2,nt_n      ),  v_abl(:,:,2,nt_n      ),    &   !   <<= in
             &            tq_abl(:,:,2,nt_n,jp_ta), tq_abl(:,:,2,nt_n,jp_qa),    &   !   <<= in
-            &            sf(jp_slp)%fnow(:,:,1)  ,  tm_su(:,:)             ,    &   !   <<= in
+            &            sf(jp_slp)%fnow(:,:,1)  , u_ice, v_ice, tm_su(:,:)             ,    &   !   <<= in
             &            pseni=zseni, pevpi=zevpi, pssqi=zssqi, pcd_dui=zcd_dui )   !   <<= out
 #endif
 
