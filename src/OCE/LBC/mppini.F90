@@ -333,8 +333,8 @@ CONTAINS
       nimpp = iimppt(ii,ij)
       njmpp = ijmppt(ii,ij)
       !
-      CALL init_doloop    ! set start/end indices of do-loop, depending on the halo width value (nn_hls)
       CALL init_locglo    ! define now functions needed to convert indices from/to global to/from local domains
+      CALL init_doloop    ! set start/end indices of do-loop, depending on the halo width value (nn_hls)
       !
       IF(lwp) THEN
          WRITE(numout,*)
@@ -1409,9 +1409,46 @@ ENDIF
       Njs0 =   1+nn_hls
       Nie0 = jpi-nn_hls
       Nje0 = jpj-nn_hls
+
       !
       Ni_0 = Nie0 - Nis0 + 1
       Nj_0 = Nje0 - Njs0 + 1
+
+      ! Start and end indexes for actual coupling fields on extended grid
+      Nis0_ext = Nis0
+      Nie0_ext = Nie0
+      Njs0_ext = Njs0
+      Nje0_ext = Nje0
+      IF (mig(1) == 1 ) THEN
+         ! Drag start column 1 place to the left/west
+         Nis0_ext=Nis0_ext-1
+      ENDIF
+
+      IF (mig(jpi) == jpiglo ) THEN
+         ! Drag end column 1 place to the right/east
+         Nie0_ext=Nie0_ext+1
+      ENDIF
+
+      IF (mjg(jpj) == jpjglo ) THEN
+         ! Drag end row 1 place to the top/north
+         Nje0_ext=Nje0_ext+1
+      ENDIF
+
+      ! Set up dimensions for old style coupling exchanges on extended grid
+      Ni_0_ext = Ni_0
+      Nj_0_ext = Nj_0
+      IF (mig(1) == 1 .OR. mig(jpi) == jpiglo ) THEN
+         ! We're at the extreme left or right edge of the grid so need to cater
+         ! for an extra column
+         Ni_0_ext = Ni_0_ext + 1
+      ENDIF
+
+      IF (mjg(jpj) == jpjglo ) THEN
+         ! We're at the extreme top of the grid so need to cater 
+         ! for an extra row
+         Nj_0_ext = Nj_0_ext + 1
+      ENDIF
+     
       !
       jpkm1 = jpk-1                             !   "           "
       !
