@@ -179,6 +179,14 @@ MODULE dom_oce
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::   hu, r1_hu   !: u-depth            [m] and [1/m]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::   hv, r1_hv   !: v-depth            [m] and [1/m]
 #endif
+   ! RDP
+   !CEOD Scale of water column down to shallowest of neighbourinbg points over total
+   !water depth
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) :: scaled_e3t_0_ik   , scaled_e3t_0_jk
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) :: scaled_e3t_0_ip1k , scaled_e3t_0_jp1k
+   !CEOD
+   ! END RDP
+
    INTEGER, PUBLIC ::   nla10              !: deepest    W level Above  ~10m (nlb10 - 1)
    INTEGER, PUBLIC ::   nlb10              !: shallowest W level Bellow ~10m (nla10 + 1)
 
@@ -352,6 +360,11 @@ CONTAINS
       ALLOCATE( tmask_upd(jpi,jpj) , umask_upd(jpi,jpj), vmask_upd(jpi,jpj), & 
          &      tmask_agrif(jpi,jpj), STAT=ierr(ii) )
 #endif
+      ! RDP
+      ALLOCATE(  scaled_e3t_0_ik  (jpi,jpj) , scaled_e3t_0_jk  (jpi,jpj) ,      &
+         &       scaled_e3t_0_ip1k(jpi,jpj) , scaled_e3t_0_jp1k(jpi,jpj) ,  STAT=ierr(13) )
+         !
+      ! END RDP
       !
       dom_oce_alloc = MAXVAL(ierr)
       !

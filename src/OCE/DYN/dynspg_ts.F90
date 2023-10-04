@@ -161,6 +161,7 @@ CONTAINS
       REAL(wp)  :: zhu_bck, zhv_bck!   -      -
       REAL(dp)  :: zhdiv!   -      -
       REAL(wp) ::   zun_save, zvn_save              !   -      -
+      REAL(wp), DIMENSION(jpi,jpj) :: zdep_u, zdep_v ! RDP
       REAL(wp), DIMENSION(jpi,jpj) :: zu_trd, zu_frc, zu_spg
       REAL(wp), DIMENSION(jpi,jpj) :: zv_trd, zv_frc, zv_spg
       REAL(wp), DIMENSION(jpi,jpj) :: zsshu_a, zhup2_e, zhtp2_e
@@ -482,14 +483,22 @@ CONTAINS
 #else
             !                                ! no 'key_qcoTest_FluxForm' : surface weighted ssh average
             DO_2D( 1, 0, 1, 1 )   ! not jpi-column
-               zhup2_e(ji,jj) = hu_0(ji,jj) + r1_2 * r1_e1e2u(ji,jj)                        &
-                    &                              * (  e1e2t(ji  ,jj) * zsshp2_e(ji  ,jj)  &
-                    &                                 + e1e2t(ji+1,jj) * zsshp2_e(ji+1,jj)  ) * ssumask(ji,jj)
+               ! RDP
+                zhup2_e(ji,jj) = r1_2 * r1_e1e2u(ji,jj) * ( e1e2t(ji  ,jj) * zhtp2_e(ji  ,jj)*scaled_e3t_0_ik  (ji,jj) &
+                                                 &         +  e1e2t(ji+1,jj) * zhtp2_e(ji+1,jj)*scaled_e3t_0_ip1k(ji,jj) ) *ssumask(ji,jj)
+               !zhup2_e(ji,jj) = hu_0(ji,jj) + r1_2 * r1_e1e2u(ji,jj)                        &
+               !     &                              * (  e1e2t(ji  ,jj) * zsshp2_e(ji  ,jj)  &
+               !     &                                 + e1e2t(ji+1,jj) * zsshp2_e(ji+1,jj)  ) * ssumask(ji,jj)
+               ! END RDP
             END_2D
             DO_2D( 1, 1, 1, 0 )   ! not jpj-row
-               zhvp2_e(ji,jj) = hv_0(ji,jj) + r1_2 * r1_e1e2v(ji,jj)                        &
-                    &                              * (  e1e2t(ji,jj  ) * zsshp2_e(ji,jj  )  &
-                    &                                 + e1e2t(ji,jj+1) * zsshp2_e(ji,jj+1)  ) * ssvmask(ji,jj)
+               ! RDP
+               zhvp2_e(ji,jj) = r1_2 * r1_e1e2v(ji,jj) * ( e1e2t(ji,jj  ) * zhtp2_e(ji,  jj)*scaled_e3t_0_jk  (ji,jj) &
+                                                     &     +  e1e2t(ji,jj+1) * zhtp2_e(ji,jj+1)*scaled_e3t_0_jp1k(ji,jj) ) *ssvmask(ji,jj)
+               !zhvp2_e(ji,jj) = hv_0(ji,jj) + r1_2 * r1_e1e2v(ji,jj)                        &
+               !     &                              * (  e1e2t(ji,jj  ) * zsshp2_e(ji,jj  )  &
+               !     &                                 + e1e2t(ji,jj+1) * zsshp2_e(ji,jj+1)  ) * ssvmask(ji,jj)
+               ! END RDP
             END_2D
 #endif               
             !
@@ -647,14 +656,24 @@ CONTAINS
                zhu_bck = hu_0(ji,jj) + r1_2 * (  zsshp2_e(ji,jj) + zsshp2_e(ji+1,jj  )  ) * ssumask(ji,jj)
                zhv_bck = hv_0(ji,jj) + r1_2 * (  zsshp2_e(ji,jj) + zsshp2_e(ji  ,jj+1)  ) * ssvmask(ji,jj)
 #else
-               zhu_bck = hu_0(ji,jj) + r1_2*r1_e1e2u(ji,jj) * (  e1e2t(ji  ,jj) * zsshp2_e(ji  ,jj)    &
-                    &                                          + e1e2t(ji+1,jj) * zsshp2_e(ji+1,jj)  ) * ssumask(ji,jj)
-               zhv_bck = hv_0(ji,jj) + r1_2*r1_e1e2v(ji,jj) * (  e1e2t(ji,jj  ) * zsshp2_e(ji,jj  )    &
-                    &                                          + e1e2t(ji,jj+1) * zsshp2_e(ji,jj+1)  ) * ssvmask(ji,jj)
+               ! RDP
+               zhu_bck = r1_2 * r1_e1e2u(ji,jj) * ( e1e2t(ji  ,jj)*(ht_0(ji  ,jj) + zsshp2_e(ji  ,jj))*scaled_e3t_0_ik  (ji,jj) &
+                    &                         + e1e2t(ji+1,jj)*(ht_0(ji+1,jj) + zsshp2_e(ji+1,jj))*scaled_e3t_0_ip1k(ji,jj) &
+                    &        ) * ssumask(ji,jj)
+ 
+               zhv_bck = r1_2 * r1_e1e2v(ji,jj) * ( e1e2t(ji,jj  )*(ht_0(ji,jj  ) + zsshp2_e(ji,jj  ))*scaled_e3t_0_jk  (ji,jj) &
+                        &                         + e1e2t(ji,jj+1)*(ht_0(ji,jj+1) + zsshp2_e(ji,jj+1))*scaled_e3t_0_jp1k(ji,jj) &
+                        &        ) * ssvmask(ji,jj)
+               ! END RDP
 #endif
                !                    ! inverse depth at jn+1
-               z1_hu = ssumask(ji,jj) / ( hu_0(ji,jj) + zsshu_a(ji,jj) + 1._wp - ssumask(ji,jj) )
-               z1_hv = ssvmask(ji,jj) / ( hv_0(ji,jj) + zsshv_a(ji,jj) + 1._wp - ssvmask(ji,jj) )
+               ! RDP
+               z1_hu = ssumask(ji,jj) / ( r1_2 * r1_e1e2u(ji,jj) *(e1e2t(ji  ,jj)*(ht_0(ji,jj)   + ssha_e(ji,jj)  )*scaled_e3t_0_ik(ji  ,jj) &
+                                         &      +e1e2t(ji+1,jj)*(ht_0(ji+1,jj) + ssha_e(ji+1,jj))*scaled_e3t_0_ip1k(ji,jj)) + 1._wp - ssumask(ji,jj) )
+ 
+               z1_hv = ssvmask(ji,jj) / ( r1_2 * r1_e1e2v(ji,jj)* ( e1e2t(ji,jj  )*(ht_0(ji,jj)   + ssha_e(ji,jj)  )*scaled_e3t_0_jk(ji  ,jj) &
+                                              &      + e1e2t(ji,jj+1)* (ht_0(ji,jj+1) + ssha_e(ji,jj+1))*scaled_e3t_0_jp1k(ji,jj)) + 1._wp - ssvmask(ji,jj) )
+               ! END RDP
                !
                ua_e(ji,jj) = (               hu_e  (ji,jj) *   un_e (ji,jj)      & 
                     &            + rDt_e * (  zhu_bck        * zu_spg (ji,jj)  &   !
@@ -674,12 +693,33 @@ CONTAINS
                va_e(ji,jj) =  va_e(ji,jj) / ( 1._wp - rDt_e * zCdU_v(ji,jj) * hvr_e(ji,jj) )
             END_2D
          ENDIF
+         ! RDP
+         DO_2D( 0, 0, 0, 0 )
+            zdep_u(ji,jj) = r1_2 * r1_e1e2u(ji,jj) * ( e1e2t(ji,jj  ) * (ssha_e(ji,  jj)+ht_0(ji,  jj))*scaled_e3t_0_ik  (ji,jj) &
+                                              &     +  e1e2t(ji+1,jj) * (ssha_e(ji+1,jj)+ht_0(ji+1,jj))*scaled_e3t_0_ip1k(ji,jj) )*ssumask(ji,jj)
+            zdep_v(ji,jj) = r1_2 * r1_e1e2v(ji,jj) * ( e1e2t(ji,jj  ) * (ssha_e(ji,  jj)+ht_0(ji,  jj))*scaled_e3t_0_jk  (ji,jj  ) &
+                                              &     +  e1e2t(ji,jj+1) * (ssha_e(ji,jj+1)+ht_0(ji,jj+1))*scaled_e3t_0_jp1k(ji,jj) )*ssvmask(ji,jj)
+            !WRITE(numout,*) 'scaled_e3t_0_jk', ji, jj, zdep_u(ji,jj)
+         END_2D
+         CALL lbc_lnk( 'dynspg_ts', zdep_u, 'U', -1._wp )
+         CALL lbc_lnk( 'dynspg_ts', zdep_v, 'V', -1._wp )
+
+         ! END RDP
+
        
          IF( .NOT.ln_linssh ) THEN !* Update ocean depth (variable volume case only)
             DO_2D( 0, 0, 0, 0 )
-               hu_e (ji,jj) =    hu_0(ji,jj) + zsshu_a(ji,jj)
+               !hu_e (ji,jj) =    hu_0(ji,jj) + zsshu_a(ji,jj)
+               !hur_e(ji,jj) = ssumask(ji,jj) / (  hu_e(ji,jj) + 1._wp - ssumask(ji,jj)  )
+               !hv_e (ji,jj) =    hv_0(ji,jj) + zsshv_a(ji,jj)
+               !hvr_e(ji,jj) = ssvmask(ji,jj) / (  hv_e(ji,jj) + 1._wp - ssvmask(ji,jj)  )
+               ! END RDP
+               hu_e (ji,jj) = zdep_u(ji,jj)
+               ! END RDP
                hur_e(ji,jj) = ssumask(ji,jj) / (  hu_e(ji,jj) + 1._wp - ssumask(ji,jj)  )
-               hv_e (ji,jj) =    hv_0(ji,jj) + zsshv_a(ji,jj)
+               ! END RDP
+               hv_e (ji,jj) = zdep_v(ji,jj)
+               ! END RDP
                hvr_e(ji,jj) = ssvmask(ji,jj) / (  hv_e(ji,jj) + 1._wp - ssvmask(ji,jj)  )
             END_2D
          ENDIF
@@ -781,8 +821,18 @@ CONTAINS
                &                                      + e1e2t(ji+1,jj) * pssh(ji+1,jj,Kaa) ) * ssumask(ji,jj)
             zsshv_a(ji,jj) = r1_2 * r1_e1e2v(ji,jj) * ( e1e2t(ji,jj  ) * pssh(ji,jj  ,Kaa)   &
                &                                      + e1e2t(ji,jj+1) * pssh(ji,jj+1,Kaa) ) * ssvmask(ji,jj)
+            ! RDP
+            zdep_u(ji,jj) = r1_2 * r1_e1e2u(ji,jj) * ( e1e2t(ji,jj  ) * (pssh(ji,  jj,Kaa)+ht_0(ji,  jj))*scaled_e3t_0_ik(ji  ,jj) &
+                                              &     +  e1e2t(ji+1,jj) * (pssh(ji+1,jj,Kaa)+ht_0(ji+1,jj))*scaled_e3t_0_ip1k(ji,jj) )
+            zdep_v(ji,jj) = r1_2 * r1_e1e2v(ji,jj) * ( e1e2t(ji,jj  ) * (pssh(ji,  jj,Kaa)+ht_0(ji,  jj))*scaled_e3t_0_jk(ji,jj  ) &
+                                              &     +  e1e2t(ji,jj+1) * (pssh(ji,jj+1,Kaa)+ht_0(ji,jj+1))*scaled_e3t_0_jp1k(ji,jj) )
+            ! END RDP
          END_2D
-#endif   
+#endif    
+         ! RDP
+         CALL lbc_lnk( 'dynspg_ts', zdep_u, 'U', -1._wp )
+         CALL lbc_lnk( 'dynspg_ts', zdep_v, 'V', -1._wp )
+         ! END RDP
          CALL lbc_lnk( 'dynspg_ts', zsshu_a, 'U', 1._wp, zsshv_a, 'V', 1._wp ) ! Boundary conditions
          !
          DO jk=1,jpkm1
@@ -792,8 +842,13 @@ CONTAINS
                &             * ( pvv_b(:,:,Kaa) - pvv_b(:,:,Kbb) * hv(:,:,Kbb) ) * r1_Dt_b
          END DO
          ! Save barotropic velocities not transport:
-         puu_b(:,:,Kaa) =  puu_b(:,:,Kaa) / ( hu_0(:,:) + zsshu_a(:,:) + 1._wp - ssumask(:,:) )
-         pvv_b(:,:,Kaa) =  pvv_b(:,:,Kaa) / ( hv_0(:,:) + zsshv_a(:,:) + 1._wp - ssvmask(:,:) )
+         ! RDP
+         !puu_b(:,:,Kaa) =  puu_b(:,:,Kaa) / ( hu_0(:,:) + zsshu_a(:,:) + 1._wp - ssumask(:,:) )
+         !pvv_b(:,:,Kaa) =  pvv_b(:,:,Kaa) / ( hv_0(:,:) + zsshv_a(:,:) + 1._wp - ssvmask(:,:) )
+         ! RDP: I am not sure this is correct when using vector invariant equaitons as zdep_u/v is not updated in that case
+         puu_b(:,:,Kaa) =  puu_b(:,:,Kaa) / ( zdep_u(:,:) + 1._wp - ssumask(:,:) ) ! CEOD
+         pvv_b(:,:,Kaa) =  pvv_b(:,:,Kaa) / ( zdep_v(:,:) + 1._wp - ssvmask(:,:) ) ! CEOD
+         ! END RDP
       ENDIF
 
 

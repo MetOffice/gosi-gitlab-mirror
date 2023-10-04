@@ -72,6 +72,10 @@ CONTAINS
          &             cn_ice, nn_ice_dta,                                     &
          &             ln_vol, nn_volctl, nn_rimwidth
          !
+      ! RDP boundary shift of ssh
+      NAMELIST/nambdy_ssh/ ln_ssh_bdy, rn_ssh_shift
+      INTEGER  ::   ib_bdy              ! dummy loop indices
+      ! END RDP
       INTEGER  ::   ios                 ! Local integer output status for namelist read
       !!----------------------------------------------------------------------
 
@@ -99,6 +103,30 @@ CONTAINS
       READ  ( numnam_cfg, nambdy, IOSTAT = ios, ERR = 902 )
 902   IF( ios >  0 )   CALL ctl_nam ( ios , 'nambdy in configuration namelist' )
       IF(lwm) WRITE ( numond, nambdy )
+
+      ! RDP boundary shift of ssh
+      READ  ( numnam_ref, nambdy_ssh, IOSTAT = ios, ERR = 905)
+905   IF( ios /= 0 ) CALL ctl_nam ( ios , 'nambdy_ssh in reference namelist' )
+
+      READ  ( numnam_cfg, nambdy_ssh, IOSTAT = ios, ERR = 906)
+906   IF( ios /= 0 ) CALL ctl_nam ( ios , 'nambdy_ssh in configuration namelist' )
+      IF(lwm) WRITE ( numond, nambdy_ssh )
+
+      IF(lwp) WRITE(numout,*)
+      IF(lwp) WRITE(numout,*) 'nambdy_ssh : use of ssh boundaries'
+      IF(lwp) WRITE(numout,*) '~~~~~~~~'
+      IF(lwp) WRITE(numout,*) '      ln_ssh_bdy: '
+      DO ib_bdy = 1,nb_bdy
+        IF(lwp) WRITE(numout,*) '      ln_ssh_bdy  (',ib_bdy,'): ',ln_ssh_bdy(ib_bdy)
+      IF(lwp) WRITE(numout,*) '      rn_ssh_shift: '
+      ENDDO
+      DO ib_bdy = 1,nb_bdy
+        IF(lwp) WRITE(numout,*) '      rn_ssh_shift(',ib_bdy,'): ',rn_ssh_shift(ib_bdy)
+      ENDDO
+      IF(lwp) WRITE(numout,*) '~~~~~~~~'
+      IF(lwp) WRITE(numout,*)
+      ! END RDP
+
 
       IF( .NOT. Agrif_Root() ) ln_bdy = .FALSE.   ! forced for Agrif children
 
@@ -159,6 +187,7 @@ CONTAINS
       INTEGER  ::   iibe, ijbe, iibi, ijbi                 !   -       -
       INTEGER  ::   flagu, flagv                           ! short cuts
       INTEGER  ::   nbdyind, nbdybeg, nbdyend
+      INTEGER  ::   itanh                                  ! reference scaling for FRS tanh profile (RDP)
       INTEGER              , DIMENSION(4)             ::   kdimsz
       INTEGER              , DIMENSION(jpbgrd,jp_bdy) ::   nblendta          ! Length of index arrays 
       INTEGER,  ALLOCATABLE, DIMENSION(:,:,:)         ::   nbidta, nbjdta    ! Index arrays: i and j indices of bdy dta
@@ -208,6 +237,16 @@ CONTAINS
 
          dta_bdy(ib_bdy)%lneed_ssh   = cn_dyn2d(ib_bdy) == 'flather'
          dta_bdy(ib_bdy)%lneed_dyn2d = cn_dyn2d(ib_bdy) /= 'none'
+
+         ! RDP override dta_bdy(ib_bdy)%ll_ssh with namelist value (ln_ssh_bdy)
+         dta_bdy(ib_bdy)%lforced_ssh = ln_ssh_bdy(ib_bdy)
+         IF(lwp) WRITE(numout,*) 'nambdy_ssh : use of ssh boundaries'
+         IF(lwp) WRITE(numout,*) '~~~~~~~~'
+         IF(lwp) WRITE(numout,*) '      ib_bdy: ',ib_bdy
+         IF(lwp) WRITE(numout,*) '      dta_bdy(ib_bdy)%lneed_ssh  : ',dta_bdy(ib_bdy)%lneed_ssh
+         IF(lwp) WRITE(numout,*) '      dta_bdy(ib_bdy)%lforced_ssh: ',dta_bdy(ib_bdy)%lforced_ssh
+         IF(lwp) WRITE(numout,*) '~~~~~~~~'
+         ! END RDP
 
          IF( lwp .AND. dta_bdy(ib_bdy)%lneed_dyn2d ) THEN
             SELECT CASE( nn_dyn2d_dta(ib_bdy) )                   ! 
@@ -667,10 +706,14 @@ CONTAINS
          
          ! Compute rim weights for FRS scheme
          ! ----------------------------------
+         itanh = 10 ! RDP reference length scale for TanH profile (from JG)
          DO igrd = 1, jpbgrd
             DO ib = 1, idx_bdy(ib_bdy)%nblen(igrd)
                ir = MAX( 1, idx_bdy(ib_bdy)%nbr(ib,igrd) )   ! both rim 0 and rim 1 have the same weights
-               idx_bdy(ib_bdy)%nbw(ib,igrd) = 1.- TANH( REAL( ir - 1 ) *0.5 )      ! tanh formulation
+               ! RDP Set TanH profile equivalent regardless of rimwidth, according to reference length scale (itanh)
+               idx_bdy(ib_bdy)%nbw(ib,igrd) = 1.- TANH( REAL( ir - 1 ) *0.5 &
+               &          *(FLOAT(itanh)/FLOAT(nn_rimwidth(ib_bdy))) )      ! tanh formulation
+               ! END RDP
                !               idx_bdy(ib_bdy)%nbw(ib,igrd) = (REAL(nn_rimwidth(ib_bdy)+1-ir)/REAL(nn_rimwidth(ib_bdy)))**2.  ! quadratic
                !               idx_bdy(ib_bdy)%nbw(ib,igrd) =  REAL(nn_rimwidth(ib_bdy)+1-ir)/REAL(nn_rimwidth(ib_bdy))       ! linear
             END DO

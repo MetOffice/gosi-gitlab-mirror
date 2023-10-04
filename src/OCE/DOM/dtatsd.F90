@@ -199,43 +199,45 @@ CONTAINS
          ptsd(ji,jj,jk,jp_sal) = sf_tsd(jp_sal)%fnow(ji,jj,jk)
       END_3D
       !
-      IF( ln_sco ) THEN                   !==   s- or mixed s-zps-coordinate   ==!
-         !
-         IF( .NOT. l_istiled .OR. ntile == 1 )  THEN                       ! Do only on the first tile
-            IF( kt == nit000 .AND. lwp )THEN
-               WRITE(numout,*)
-               WRITE(numout,*) 'dta_tsd: interpolates T & S data onto the s- or mixed s-z-coordinate mesh'
-            ENDIF
-         ENDIF
-         !
-         DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )                  ! vertical interpolation of T & S
-            DO jk = 1, jpk                        ! determines the intepolated T-S profiles at each (i,j) points
-               zl = gdept_0(ji,jj,jk)
-               IF(     zl < gdept_1d(1  ) ) THEN          ! above the first level of data
-                  ztp(jk) =  ptsd(ji,jj,1    ,jp_tem)
-                  zsp(jk) =  ptsd(ji,jj,1    ,jp_sal)
-               ELSEIF( zl > gdept_1d(jpk) ) THEN          ! below the last level of data
-                  ztp(jk) =  ptsd(ji,jj,jpkm1,jp_tem)
-                  zsp(jk) =  ptsd(ji,jj,jpkm1,jp_sal)
-               ELSE                                      ! inbetween : vertical interpolation between jkk & jkk+1
-                  DO jkk = 1, jpkm1                                  ! when  gdept(jkk) < zl < gdept(jkk+1)
-                     IF( (zl-gdept_1d(jkk)) * (zl-gdept_1d(jkk+1)) <= 0._wp ) THEN
-                        zi = ( zl - gdept_1d(jkk) ) / (gdept_1d(jkk+1)-gdept_1d(jkk))
-                        ztp(jk) = ptsd(ji,jj,jkk,jp_tem) + ( ptsd(ji,jj,jkk+1,jp_tem) - ptsd(ji,jj,jkk,jp_tem) ) * zi
-                        zsp(jk) = ptsd(ji,jj,jkk,jp_sal) + ( ptsd(ji,jj,jkk+1,jp_sal) - ptsd(ji,jj,jkk,jp_sal) ) * zi
-                     ENDIF
-                  END DO
-               ENDIF
-            END DO
-            DO jk = 1, jpkm1
-               ptsd(ji,jj,jk,jp_tem) = ztp(jk) * tmask(ji,jj,jk)     ! mask required for mixed zps-s-coord
-               ptsd(ji,jj,jk,jp_sal) = zsp(jk) * tmask(ji,jj,jk)
-            END DO
-            ptsd(ji,jj,jpk,jp_tem) = 0._wp
-            ptsd(ji,jj,jpk,jp_sal) = 0._wp
-         END_2D
-         !
-      ELSE                                !==   z- or zps- coordinate   ==!
+! RDP : CEOD thinks this is incorrect
+!      IF( ln_sco ) THEN                   !==   s- or mixed s-zps-coordinate   ==!
+!         !
+!         IF( .NOT. l_istiled .OR. ntile == 1 )  THEN                       ! Do only on the first tile
+!            IF( kt == nit000 .AND. lwp )THEN
+!               WRITE(numout,*)
+!               WRITE(numout,*) 'dta_tsd: interpolates T & S data onto the s- or mixed s-z-coordinate mesh'
+!            ENDIF
+!         ENDIF
+!         !
+!         DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )                  ! vertical interpolation of T & S
+!            DO jk = 1, jpk                        ! determines the intepolated T-S profiles at each (i,j) points
+!               zl = gdept_0(ji,jj,jk)
+!               IF(     zl < gdept_1d(1  ) ) THEN          ! above the first level of data
+!                  ztp(jk) =  ptsd(ji,jj,1    ,jp_tem)
+!                  zsp(jk) =  ptsd(ji,jj,1    ,jp_sal)
+!               ELSEIF( zl > gdept_1d(jpk) ) THEN          ! below the last level of data
+!                  ztp(jk) =  ptsd(ji,jj,jpkm1,jp_tem)
+!                  zsp(jk) =  ptsd(ji,jj,jpkm1,jp_sal)
+!               ELSE                                      ! inbetween : vertical interpolation between jkk & jkk+1
+!                  DO jkk = 1, jpkm1                                  ! when  gdept(jkk) < zl < gdept(jkk+1)
+!                     IF( (zl-gdept_1d(jkk)) * (zl-gdept_1d(jkk+1)) <= 0._wp ) THEN
+!                        zi = ( zl - gdept_1d(jkk) ) / (gdept_1d(jkk+1)-gdept_1d(jkk))
+!                        ztp(jk) = ptsd(ji,jj,jkk,jp_tem) + ( ptsd(ji,jj,jkk+1,jp_tem) - ptsd(ji,jj,jkk,jp_tem) ) * zi
+!                        zsp(jk) = ptsd(ji,jj,jkk,jp_sal) + ( ptsd(ji,jj,jkk+1,jp_sal) - ptsd(ji,jj,jkk,jp_sal) ) * zi
+!                     ENDIF
+!                  END DO
+!               ENDIF
+!            END DO
+!            DO jk = 1, jpkm1
+!               ptsd(ji,jj,jk,jp_tem) = ztp(jk) * tmask(ji,jj,jk)     ! mask required for mixed zps-s-coord
+!               ptsd(ji,jj,jk,jp_sal) = zsp(jk) * tmask(ji,jj,jk)
+!            END DO
+!            ptsd(ji,jj,jpk,jp_tem) = 0._wp
+!            ptsd(ji,jj,jpk,jp_sal) = 0._wp
+!         END_2D
+!         !
+!      ELSE                                !==   z- or zps- coordinate   ==!
+! END RDP
          !
          ! We must keep this definition in a case different from the general case of s-coordinate as we don't
          ! want to use "underground" values (levels below ocean bottom) to be able to start the model from
@@ -263,7 +265,7 @@ CONTAINS
             END_2D
          ENDIF
          !
-      ENDIF
+!      ENDIF ! RDP
       !
       IF( .NOT.ln_tsd_dmp ) THEN                   !==   deallocate T & S structure   ==!
          !                                              (data used only for initialisation)

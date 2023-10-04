@@ -42,6 +42,9 @@ MODULE bdy_oce
    TYPE, PUBLIC ::   OBC_DATA     !: Storage for external data
       INTEGER          , DIMENSION(2)   ::  nread
       LOGICAL                           ::  lneed_ssh
+      !--- RDP
+      LOGICAL                           ::  lforced_ssh
+      !--- END RDP
       LOGICAL                           ::  lneed_dyn2d
       LOGICAL                           ::  lneed_dyn3d
       LOGICAL                           ::  lneed_tra
@@ -116,6 +119,12 @@ MODULE bdy_oce
    REAL(wp), DIMENSION(jp_bdy) ::   rice_apnd               !: pond conc.  of incoming sea ice
    REAL(wp), DIMENSION(jp_bdy) ::   rice_hpnd               !: pond thick. of incoming sea ice
    REAL(wp), DIMENSION(jp_bdy) ::   rice_hlid               !: pond lid thick. of incoming sea ice
+   !
+   !  RDP
+   LOGICAL, DIMENSION(jp_bdy) ::   ln_ssh_bdy               !: =T USE SSH BDY - name list switch
+   REAL(wp), DIMENSION(jp_bdy) ::  rn_ssh_shift             !: =F SHIFT SSH AT A BORDER BY rn_ssh_shift m_
+   !  END RDP
+
    !
    !!----------------------------------------------------------------------
    !! Global variables

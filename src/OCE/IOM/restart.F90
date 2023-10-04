@@ -39,6 +39,7 @@ MODULE restart
    !
    USE in_out_manager ! I/O manager
    USE iom            ! I/O module
+   USE ioipsl, ONLY : ju2ymds    ! for calendar (RDP)
    USE lib_mpp        ! distribued memory computing library
 
    IMPLICIT NONE
@@ -72,6 +73,11 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER, INTENT(in) ::   kt     ! ocean time-step
       !!
+      ! RDP
+      INTEGER             ::   iyear, imonth, iday
+      REAL (wp)           ::   zsec
+      REAL (wp)           ::   zfjulday
+      ! END RDP
       CHARACTER(LEN=20)   ::   clkt     ! ocean time-step deine as a character
       CHARACTER(LEN=50)   ::   clname   ! ocean output restart file name
       CHARACTER(lc)       ::   clpath   ! full path to ocean output restart file
@@ -102,10 +108,19 @@ CONTAINS
       ! except if we write ocean restart files every time step or if an ocean restart file was writen at nitend - 1
       IF( kt == nitrst - 1 .OR. nn_stock == 1 .OR. ( kt == nitend .AND. .NOT. lrst_oce ) ) THEN
          IF( nitrst <= nitend .AND. nitrst > 0 ) THEN
-            ! beware of the format used to write kt (default is i8.8, that should be large enough...)
-            IF( nitrst > 999999999 ) THEN   ;   WRITE(clkt, *       ) nitrst
-            ELSE                            ;   WRITE(clkt, '(i8.8)') nitrst
+            ! RDP write restart date to ocean.output
+            IF ( ln_rstdate ) THEN
+               zfjulday = fjulday + rdt / rday
+               IF( ABS(zfjulday - REAL(NINT(zfjulday),wp)) < 0.1 / rday )   zfjulday = REAL(NINT(zfjulday),wp)   ! avoid truncation error
+               CALL ju2ymds( zfjulday, iyear, imonth, iday, zsec )
+               WRITE(clkt, '(i4.4,2i2.2)') iyear, imonth, iday
+            ELSE
+               ! beware of the format used to write kt (default is i8.8, that should be large enough...)
+               IF( nitrst > 999999999 ) THEN   ;   WRITE(clkt, *       ) nitrst
+               ELSE                            ;   WRITE(clkt, '(i8.8)') nitrst
+               ENDIF
             ENDIF
+            ! END RDP
             ! create the file
             clname = TRIM(cexper)//"_"//TRIM(ADJUSTL(clkt))//"_"//TRIM(cn_ocerst_out)
             clpath = TRIM(cn_ocerst_outdir)
