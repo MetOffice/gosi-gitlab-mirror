@@ -206,10 +206,10 @@ CONTAINS
          scaled_e3t_0_ip1k(ji,jj) = sum_e3t_0_min_ip1k(ji,jj)/( ht_0(ji+1,jj  ) + 1._wp - ssmask(ji+1,jj))
          scaled_e3t_0_jp1k(ji,jj) = sum_e3t_0_min_jp1k(ji,jj)/( ht_0(ji  ,jj+1) + 1._wp - ssmask(ji,jj+1))
       END_2D
-      !CALL lbc_lnk( 'domain',  scaled_e3t_0_ik,   'T', 1.0_wp, &
-      !                       & scaled_e3t_0_ip1k, 'T', 1.0_wp, &
-      !                       & scaled_e3t_0_jk,   'T', 1.0_wp, &
-      !                       & scaled_e3t_0_jp1k, 'T', 1.0_wp )
+      CALL lbc_lnk( 'domain',  scaled_e3t_0_ik,   'T', 1.0_wp) 
+      CALL lbc_lnk( 'domain',  scaled_e3t_0_ip1k, 'T', 1.0_wp)
+      CALL lbc_lnk( 'domain',  scaled_e3t_0_jk,   'T', 1.0_wp)
+      CALL lbc_lnk( 'domain',  scaled_e3t_0_jp1k, 'T', 1.0_wp)
       !WRITE(numout,*)'           scaled_e3t_0_ik(10,10)       = ', scaled_e3t_0_ik(10,10)
       !WRITE(numout,*)'           scaled_e3t_0_jk(10,10)       = ', scaled_e3t_0_jk(10,10)
       !WRITE(numout,*)'           scaled_e3t_0_ip1k(10,10)       = ', scaled_e3t_0_ip1k(10,10)
