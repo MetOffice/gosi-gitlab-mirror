@@ -22,6 +22,7 @@ MODULE zdfmxl
    USE phycst         ! physical constants
    USE iom            ! I/O library
    USE lib_mpp        ! MPP library
+   USE lib_fortran    ! glob_sum
 
    IMPLICIT NONE
    PRIVATE
@@ -131,7 +132,15 @@ CONTAINS
             END IF
          ENDIF
       ENDIF
+
+      ! Vertically-interpolated mixed-layer depth diagnostic
+      CALL zdf_mxl_zint( kt, Kmm )
       !
+      !
+      WRITE(numout,*) 'glob_sum_hmlp', glob_sum('zdf_mxl',hmlp)
+      WRITE(numout,*) 'glob_sum_hmlpt', glob_sum('zdf_mxl',hmlpt)
+      WRITE(numout,*) 'glob_sum_gdept', glob_sum('zdf_mxl',gdept(:,:,:,Kmm))
+      WRITE(numout,*) 'glob_sum_gdepw', glob_sum('zdf_mxl',gdepw(:,:,:,Kmm))
       IF(sn_cfctl%l_prtctl)   CALL prt_ctl( tab2d_1=REAL(nmln,dp), clinfo1=' nmln : ', tab2d_2=CASTDP(hmlp), clinfo2=' hmlp : ' )
       !
    END SUBROUTINE zdf_mxl

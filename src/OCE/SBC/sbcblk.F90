@@ -566,7 +566,8 @@ CONTAINS
             ! temperature read into file is ABSOLUTE temperature (that's the case for ECMWF products for example...)
             IF((kt==nit000).AND.lwp) WRITE(numout,*) ' *** sbc_blk() => air temperature converted from ABSOLUTE to POTENTIAL!'
             zpre(:,:)         = pres_temp( q_air_zt(:,:), sf(jp_slp)%fnow(:,:,1), rn_zu, pta=sf(jp_tair)%fnow(:,:,1) )
-            theta_air_zt(:,:) = theta_exner( sf(jp_tair)%fnow(:,:,1), zpre(:,:) )
+            theta_air_zt(:,:) = sf(jp_tair)%fnow(:,:,1) + gamma_moist( sf(jp_tair)%fnow(:,:,1), sf(jp_humi)%fnow(:,:,1) ) * rn_zqt
+
          ENDIF
          !
          CALL blk_oce_1( kt, sf(jp_wndi )%fnow(:,:,1), sf(jp_wndj )%fnow(:,:,1),   &   !   <<= in
@@ -670,10 +671,11 @@ CONTAINS
       !
       ! local scalars ( place there for vector optimisation purposes)
       !                           ! Temporary conversion from Celcius to Kelvin (and set minimum value far above 0 K)
-      ptsk(:,:) = pst(:,:) + rt0  ! by default: skin temperature = "bulk SST" (will remain this way if NCAR algorithm used!)
+      ptsk(:,:) =  pst(:,:) + rt0 ! by default: skin temperature = "bulk SST" (will remain this way if NCAR algorithm used!)
 
       ! sea surface potential temperature [K]
       zsspt(:,:) = theta_exner( ptsk(:,:), pslp(:,:) )
+      !WRITE(numout,*) 'glob_sum_zsspt', glob_sum('blk_oce_2',zsspt)
 
       ! --- cloud cover --- !
       cloud_fra(:,:) = sf(jp_cc)%fnow(:,:,1)
@@ -737,7 +739,7 @@ CONTAINS
       SELECT CASE( nblk )
 
       CASE( np_NCAR      )
-         CALL turb_ncar    (     rn_zqt, rn_zu, zsspt, ptair, pssq, pqair, wndm, &
+         CALL turb_ncar    (     rn_zqt, rn_zu, ptsk, ptair, pssq, pqair, wndm, &
             &                zcd_oce, zch_oce, zce_oce, theta_zu, q_zu, zU_zu , &
             &                nb_iter=nn_iter_algo )
          !
@@ -813,10 +815,10 @@ CONTAINS
 
          DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
             zpre(ji,jj) = pres_temp( q_zu(ji,jj), pslp(ji,jj), rn_zu, ptpot=theta_zu(ji,jj), pta=ztabs(ji,jj) )
-            rhoa(ji,jj) = rho_air( ztabs(ji,jj), q_zu(ji,jj), zpre(ji,jj) )
+            rhoa(ji,jj) = rho_air_old(sf(jp_tair)%fnow(ji,jj,1), sf(jp_humi)%fnow(ji,jj,1), sf(jp_slp)%fnow(ji,jj,1))
          END_2D
 
-         CALL bulk_formula( rn_zu, zsspt(:,:), pssq(:,:), theta_zu(:,:), q_zu(:,:), &
+         CALL bulk_formula( rn_zu, ptsk(:,:), pssq(:,:), ptair(:,:), q_zu(:,:), &
             &               zcd_oce(:,:), zch_oce(:,:), zce_oce(:,:),          &
             &               wndm(:,:), zU_zu(:,:), pslp(:,:), rhoa(:,:),       &
             &               taum(:,:), psen(:,:), plat(:,:),                   &
@@ -921,10 +923,12 @@ CONTAINS
       REAL(wp), INTENT(in), DIMENSION(:,:) ::   pdqlw   ! downwelling longwave radiation at surface [W/m^2]
       REAL(wp), INTENT(in), DIMENSION(:,:) ::   pprec
       REAL(dp), INTENT(in), DIMENSION(:,:) ::   psnow
-      REAL(wp), INTENT(in), DIMENSION(:,:) ::   ptsk   ! SKIN surface temperature   [Celsius]
+      REAL(wp), INTENT(in), DIMENSION(:,:) ::   ptsk  ! SKIN surface temperature   [Celsius]
       REAL(wp), INTENT(in), DIMENSION(:,:) ::   psen
       REAL(wp), INTENT(in), DIMENSION(:,:) ::   plat
       REAL(wp), INTENT(in), DIMENSION(:,:) ::   pevp
+      REAL(wp), DIMENSION(jpi,jpj)  ::   zqlw_zst 
+      REAL(wp), PARAMETER ::   Stef   =    5.67e-8     ! Stefan Boltzmann constant
       !
       INTEGER  ::   ji, jj               ! dummy loop indices
       REAL(wp) ::   zztmp,zz1,zz2,zz3    ! local variable
@@ -933,16 +937,19 @@ CONTAINS
       !!---------------------------------------------------------------------
       !
       ! Heat content per unit mass (J/kg)
-      zcptrain(:,:) = (      ptair        - rt0 ) * rcp  * tmask(:,:,1)
-      zcptsnw (:,:) = ( MIN( ptair, rt0 ) - rt0 ) * rcpi * tmask(:,:,1)
+      zcptrain(:,:) = (      sf(jp_tair)%fnow(:,:,1)        - rt0 ) * rcp  * tmask(:,:,1)
+      zcptsnw (:,:) = ( MIN( sf(jp_tair)%fnow(:,:,1), rt0 ) - rt0 ) * rcpi * tmask(:,:,1)
       zcptn   (:,:) =        ptsk                 * rcp  * tmask(:,:,1)
+      zqlw_zst(:,:) = 0._wp
+      zqlw_zst(:,:) = ptsk(:,:) + rt0  
       !
       ! ----------------------------------------------------------------------------- !
       !     III    Net longwave radiative FLUX                                        !
       ! ----------------------------------------------------------------------------- !
       !! #LB: now moved after Turbulent fluxes because must use the skin temperature rather than bulk SST
       !! (ptsk is skin temperature if ln_skin_cs==.TRUE. .OR. ln_skin_wl==.TRUE.)
-      zqlw(:,:) = qlw_net( pdqlw(:,:), ptsk(:,:)+rt0 )
+      !!zqlw(:,:) = qlw_net( pdqlw(:,:), ptsk(:,:)+rt0 ) * tmask(:,:,1) 
+      zqlw(:,:) = (  sf(jp_qlw)%fnow(:,:,1) - Stef * zqlw_zst(:,:)*zqlw_zst(:,:)*zqlw_zst(:,:)*zqlw_zst(:,:)  ) * tmask(:,:,1)   ! Long  Wave
 
       ! ----------------------------------------------------------------------------- !
       !     IV    Total FLUXES                                                       !
@@ -950,13 +957,26 @@ CONTAINS
       !
       emp (:,:) = ( pevp(:,:) - pprec(:,:) * rn_pfac ) * tmask(:,:,1)      ! mass flux (evap. - precip.)
       !
-      qns(:,:) = zqlw(:,:) + psen(:,:) + plat(:,:)                     &   ! Downward Non Solar
+      qns(:,:) = zqlw(:,:) - psen(:,:) - plat(:,:)                     &   ! Downward Non Solar
          &     - psnow(:,:) * rn_pfac * rLfus                          &   ! remove latent melting heat for solid precip
          &     - pevp(:,:) * zcptn(:,:)                                &   ! remove evap heat content at SST
          &     + ( pprec(:,:) - psnow(:,:) ) * rn_pfac * zcptrain(:,:) &   ! add liquid precip heat content at Tair
          &     + psnow(:,:) * rn_pfac * zcptsnw(:,:)                       ! add solid  precip heat content at min(Tair,Tsnow)
       qns(:,:) = qns(:,:) * tmask(:,:,1)
       !
+      
+       !WRITE(numout,*) 'glob_sum_emp', glob_sum('blk_oce_2',emp)
+      ! WRITE(numout,*) 'glob_sum_qns', glob_sum('blk_oce_2',qns)
+      ! WRITE(numout,*) 'glob_sum_pevp', glob_sum('blk_oce_2',pevp)
+      ! WRITE(numout,*) 'glob_sum_plat', glob_sum('blk_oce_2',plat)
+      ! WRITE(numout,*) 'glob_sum_psen', glob_sum('blk_oce_2',psen)
+      ! WRITE(numout,*) 'glob_sum_psnow', glob_sum('blk_oce_2',psnow)
+     !  WRITE(numout,*) 'glob_sum_pprec', glob_sum('blk_oce_2',pprec)
+     !  WRITE(numout,*) 'glob_sum_zcptrain', glob_sum('blk_oce_2',zcptrain)
+      ! WRITE(numout,*) 'glob_sum_zqlw', glob_sum('blk_oce_2',zqlw)
+      ! WRITE(numout,*) 'glob_sum_zcptn', glob_sum('blk_oce_2',zcptn)
+      ! WRITE(numout,*) 'glob_sum_ptair', glob_sum('blk_oce_2',ptair)
+      ! WRITE(numout,*) 'glob_sum_ptsk', glob_sum('blk_oce_2',(ptsk+rt0)*tmask(:,:,1))
 #if defined key_si3
       IF ( nn_ice == 2 ) THEN
          qns_oce(:,:) = zqlw(:,:) + psen(:,:) + plat(:,:)                  ! non solar without emp (only needed by SI3)

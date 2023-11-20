@@ -134,6 +134,10 @@ MODULE sbc_phy
    INTERFACE rho_air
       MODULE PROCEDURE rho_air_vctr, rho_air_sclr
    END INTERFACE rho_air
+   
+   INTERFACE rho_air_old
+      MODULE PROCEDURE rho_air_vctr_old, rho_air_sclr_old
+   END INTERFACE rho_air_old
 
    INTERFACE cp_air
       MODULE PROCEDURE cp_air_vctr, cp_air_sclr
@@ -373,6 +377,24 @@ CONTAINS
       rho_air_vctr = MAX( ppa / (R_dry*ptak * ( 1._wp + rctv0*pqa )) , 0.8_wp )
 
    END FUNCTION rho_air_vctr
+   
+   FUNCTION rho_air_vctr_old( ptak, pqa, ppa )
+      !!-------------------------------------------------------------------------------
+      !!                           ***  FUNCTION rho_air_vctr  ***
+      !!
+      !! ** Purpose : compute density of (moist) air using the eq. of state of the atmosphere
+      !!
+      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!-------------------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ptak      ! air temperature             [K]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   pqa       ! air specific humidity   [kg/kg]
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in) ::   ppa      ! pressure in                [Pa]
+      REAL(wp), DIMENSION(jpi,jpj)             ::   rho_air_vctr_old   ! density of moist air   [kg/m^3]
+      !!-------------------------------------------------------------------------------
+
+      rho_air_vctr_old = ppa / (R_dry*ptak * ( 1._wp + rctv0*pqa ))  
+
+   END FUNCTION rho_air_vctr_old
 
    FUNCTION rho_air_sclr( ptak, pqa, ppa )
       !!-------------------------------------------------------------------------------
@@ -390,6 +412,23 @@ CONTAINS
       rho_air_sclr = MAX( ppa / (R_dry*ptak * ( 1._wp + rctv0*pqa )) , 0.8_wp )
 
    END FUNCTION rho_air_sclr
+   
+      FUNCTION rho_air_sclr_old( ptak, pqa, ppa )
+      !!-------------------------------------------------------------------------------
+      !!                           ***  FUNCTION rho_air_sclr  ***
+      !!
+      !! ** Purpose : compute density of (moist) air using the eq. of state of the atmosphere
+      !!
+      !! ** Author: L. Brodeau, June 2016 / AeroBulk (https://github.com/brodeau/aerobulk/)
+      !!-------------------------------------------------------------------------------
+      REAL(wp), INTENT(in) :: ptak           ! air temperature             [K]
+      REAL(wp), INTENT(in) :: pqa            ! air specific humidity   [kg/kg]
+      REAL(wp), INTENT(in) :: ppa           ! pressure in                [Pa]
+      REAL(wp)             :: rho_air_sclr_old   ! density of moist air   [kg/m^3]
+      !!-------------------------------------------------------------------------------
+      rho_air_sclr_old = ppa / (R_dry*ptak * ( 1._wp + rctv0*pqa ))
+
+   END FUNCTION rho_air_sclr_old
 
 
    FUNCTION visc_air_sclr(ptak)
@@ -915,11 +954,11 @@ CONTAINS
 
       pTau = zUrho * pCd * pwnd ! Wind stress module
 
-      zevap = zUrho * pCe * (pqa - pqs)
-      pQsen = zUrho * pCh * (pTa - pTs) * cp_air(pqa)
+      zevap = MAX(0._wp, zUrho * pCe * (pqs - pqa))
+      pQsen = zUrho * pCh * (pTs-pTa ) * cp_air(pqa)
       pQlat = L_vap(pTs) * zevap
 
-      IF( PRESENT(pEvap) ) pEvap = - zfact_evap * zevap
+      IF( PRESENT(pEvap) ) pEvap =  zfact_evap * zevap
 
    END SUBROUTINE bulk_formula_sclr
 
