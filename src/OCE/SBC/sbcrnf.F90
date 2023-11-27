@@ -122,8 +122,8 @@ CONTAINS
       !
       IF( .NOT. l_rnfcpl )  THEN
                             CALL fld_read ( kt, nn_fsbc, sf_rnf   )    ! Read Runoffs data and provide it at kt ( runoffs + iceberg )
-         IF( ln_rnf_icb )   CALL fld_read ( kt, nn_fsbc, sf_i_rnf )    ! idem for iceberg flux if required
       ENDIF
+      IF(   ln_rnf_icb   )   CALL fld_read ( kt, nn_fsbc, sf_i_rnf )    ! idem for iceberg flux        if required
       IF(   ln_rnf_tem   )   CALL fld_read ( kt, nn_fsbc, sf_t_rnf )    ! idem for runoffs temperature if required
       IF(   ln_rnf_sal   )   CALL fld_read ( kt, nn_fsbc, sf_s_rnf )    ! idem for runoffs salinity    if required
       !
@@ -170,7 +170,7 @@ CONTAINS
                 ELSE IF( rn_antarctica_calving_fraction < rsmall ) THEN
                     WHERE( antarctica_icesheet_mask(:,:) == 1.0 ) fwficb(:,:) = 0.0
                 ELSE
-                    CALL CTL_STOP('STOP', 'No iceberg runoff data read in for Greenland. Check input file or set rn_antarctica_calving_fraction=0.0')
+                    CALL CTL_STOP('STOP', 'No iceberg runoff data read in for Antarctica. Check input file or set rn_antarctica_calving_fraction=0.0')
                 ENDIF
             ENDIF
             CALL lbc_lnk('sbcrnf',rnf,'T',1._wp,fwficb,'T',1._wp)

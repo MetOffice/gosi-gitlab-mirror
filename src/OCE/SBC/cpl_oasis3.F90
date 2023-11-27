@@ -106,9 +106,9 @@ MODULE cpl_oasis3
    TYPE(FLD_CPL), DIMENSION(nmaxfld), PUBLIC ::   srcv, ssnd   !: Coupling fields
 
    REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   exfld   ! Temporary buffer for receiving
-   REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   exflde  ! Temporary buffer for receiving with halos
+   REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   exfld_ext  ! Temporary buffer for receiving with wrap points
 
-   INTEGER :: ishape_ext(4)      ! shape of 2D arrays passed to PSMILe extended
+   INTEGER :: ishape_ext(4)  ! shape of 2D arrays passed to PSMILe extended for wrap points in weights data
    INTEGER :: ishape(4)      ! shape of 2D arrays passed to PSMILe 
 
    !!----------------------------------------------------------------------
@@ -169,7 +169,7 @@ CONTAINS
       INTEGER :: id_part_0d     ! Partition for 0d fields
       INTEGER :: id_part_rnf_1d ! Partition for 1d river outflow fields
       INTEGER :: id_part_2d     ! Partition for 2d fields
-      INTEGER :: id_part_2d_ext    ! Partition for 2d fields extended for old style halos!
+      INTEGER :: id_part_2d_ext ! Partition for 2d fields extended for old (pre vn4.2) style remapping weights!
       INTEGER :: id_part_temp   ! Temperary partition used to choose either 0d or 1d partitions
       INTEGER :: paral(5)       ! OASIS3 box partition
 
@@ -221,7 +221,6 @@ CONTAINS
       ! ... Allocate memory for data exchange
       !
       ALLOCATE(exfld(Ni_0, Nj_0), stat = nerror)                 ! allocate full domain (without halos)
-      ALLOCATE(exflde(Ni_0_ext, Nj_0_ext), stat = nerror)        ! allocate full domain (with halos)
       IF( nerror > 0 ) THEN
          CALL oasis_abort ( ncomp_id, 'cpl_define', 'Failure in allocating exfld')   ;   RETURN
       ENDIF
@@ -243,6 +242,11 @@ CONTAINS
          WRITE(numout,*) ' multiexchg: Njs0, Nje0, njmpp =', Njs0, Nje0, njmpp
       ENDIF
 
+
+      ! We still set up the new vn4.2 style box partition for reference, though it doesn't actually get used,
+      ! we can easily swap back to it if we ever manage to successfully generate vn4.2 compatible weights, or introduce 
+      ! RTL controls to distinguish between onl and new style weights.  
+
       CALL oasis_def_partition ( id_part_2d, paral, nerror, Ni0glo*Nj0glo )   ! global number of points, excluding halos
 
       ! RSRH Set up 2D box partition for compatibility with existing weights files
@@ -262,11 +266,6 @@ CONTAINS
          ishape_ext(2) = ishape_ext(2) + 1
       ENDIF
 
-      IF (mjg(jpj) == jpjglo ) THEN
-         ! Extra row in PEs dealing with top row/N-fold
-         ishape_ext(4) = ishape_ext(4) + 1
-      ENDIF
-
       ! Workout any extra offset in the i dimension
       IF (mig(1) == 1 ) THEN
          i_offset = mig0(nn_hls)
@@ -274,15 +273,18 @@ CONTAINS
          i_offset = mig(nn_hls)
       ENDIF
        
+      ALLOCATE(exfld_ext(ishape_ext(2), ishape_ext(4)), stat = nerror)        ! allocate full domain (with wrap pts)
+      IF( nerror > 0 ) THEN
+         CALL oasis_abort ( ncomp_id, 'cpl_define', 'Failure in allocating exfld_ext')   ;   RETURN
+      ENDIF
 
 
       ! Now we have the appropriate dimensions, we can set up the partition array for the old-style extended grid
       paral_ext(1) = 2                                      ! box partitioning
-      paral_ext(2) = (Ni0glo_ext * mjg0(nn_hls)) + i_offset ! NEMO lower left corner global offset, with halos
+      paral_ext(2) = (Ni0glo_ext * mjg0(nn_hls)) + i_offset ! NEMO lower left corner global offset, with wrap pts
       paral_ext(3) = Ni_0_ext                               ! local extent in i, including halos
       paral_ext(4) = Nj_0_ext                               ! local extent in j, including halos
       paral_ext(5) = Ni0glo_ext                             ! global extent in x, including halos
-
 
       IF( sn_cfctl%l_oasout ) THEN
          WRITE(numout,*) ' multiexchg: paral_ext (1:5)', paral_ext, jpiglo, jpjglo, Ni0glo_ext, Nj0glo_ext
@@ -292,7 +294,8 @@ CONTAINS
       ENDIF
 
       ! Define our extended grid
-      CALL oasis_def_partition ( id_part_2d_ext, paral_ext, nerror, Ni0glo_ext*Nj0glo_ext )   
+      CALL oasis_def_partition ( id_part_2d_ext, paral_ext, nerror, Ni0glo_ext*Nj0glo_ext ) 
+  
       ! OK so now we should have a usable 2d partition for fields defined WITH redundant points. 
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -367,8 +370,9 @@ CONTAINS
 
 
                   IF( sn_cfctl%l_oasout ) WRITE(numout,*) "Define", ji, jc, jm, " "//TRIM(zclname), " for ", OASIS_Out
-                  CALL oasis_def_var (ssnd(ji)%nid(jc,jm), zclname, id_part_2d_ext   , (/ 2, 1 /),   &
+                     CALL oasis_def_var (ssnd(ji)%nid(jc,jm), zclname, id_part_2d_ext   , (/ 2, 1 /),   &
                      &                OASIS_Out           , ishape_ext , OASIS_REAL, nerror )
+
                   IF( nerror /= OASIS_Ok ) THEN
                      WRITE(numout,*) 'Failed to define transient ', ji, jc, jm, " "//TRIM(zclname)
                      CALL oasis_abort ( ssnd(ji)%nid(jc,jm), 'cpl_define', 'Failure in oasis_def_var' )
@@ -511,6 +515,7 @@ CONTAINS
       INTEGER                                   ::   jc,jm     ! local loop index
       !!--------------------------------------------------------------------
       !
+      integer:: i,j, k
       INTEGER ict, jct
       ! snd data to OASIS3
       !
@@ -543,11 +548,12 @@ CONTAINS
 
          ENDDO
       ENDDO
+                     CALL FLUSH(numout)
       !
     END SUBROUTINE cpl_snd
 
 
-   SUBROUTINE cpl_rcv( kid, kstep, pdata, pmask, kinfo )
+   SUBROUTINE cpl_rcv( kid, kstep, pdata, pmask, kinfo, idim,jdim,kdim )
       !!---------------------------------------------------------------------
       !!              ***  ROUTINE cpl_rcv  ***
       !!
@@ -556,12 +562,17 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER                   , INTENT(in   ) ::   kid       ! variable index in the array
       INTEGER                   , INTENT(in   ) ::   kstep     ! ocean time-step in seconds
+      INTEGER                   , INTENT(in   ) ::   idim,jdim,kdim 
       REAL(wp), DIMENSION(:,:,:), INTENT(inout) ::   pdata     ! IN to keep the value if nothing is done
       REAL(wp), DIMENSION(:,:,:), INTENT(in   ) ::   pmask     ! coupling mask
       INTEGER                   , INTENT(  out) ::   kinfo     ! OASIS3 info argument
       !!
-      INTEGER                                   ::   jc,jm     ! local loop index
+      
+      INTEGER                                   ::   i,j,jc,jm,ji,jj,ie,je    ! local loop index
       LOGICAL                                   ::   llaction, ll_1st
+
+      REAL(wp) temp(jpi,jpj)
+
       !!--------------------------------------------------------------------
       !
       ! receive local data from OASIS3 on every process
@@ -569,6 +580,7 @@ CONTAINS
       kinfo = OASIS_idle
       !
 
+         ll_1st = .TRUE.
       DO jc = 1, srcv(kid)%nct
          ll_1st = .TRUE.
 
@@ -576,7 +588,7 @@ CONTAINS
 
             IF( srcv(kid)%nid(jc,jm) /= -1 ) THEN
 
-               CALL oasis_get ( srcv(kid)%nid(jc,jm), kstep, exflde, kinfo )
+               CALL oasis_get ( srcv(kid)%nid(jc,jm), kstep, exfld_ext, kinfo )
 
                llaction =  kinfo == OASIS_Recvd   .OR. kinfo == OASIS_FromRest .OR.   &
                   &        kinfo == OASIS_RecvOut .OR. kinfo == OASIS_FromRestOut
@@ -585,14 +597,17 @@ CONTAINS
                   &  WRITE(numout,*) "llaction, kinfo, kstep, ivarid: " , llaction, kinfo, kstep, srcv(kid)%nid(jc,jm)
 
                IF( llaction ) THEN   ! data received from oasis do not include halos
+                                     ! RSRH, but DO cater for wrap columns when using pre vn 4.2 format remapping weights. 
 
                   kinfo = OASIS_Rcv
                   IF( ll_1st ) THEN
-                     pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc) =   exflde(:,:) * pmask(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jm)
+                     pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc) =   exfld_ext(:,:) * pmask(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jm)
+
                      ll_1st = .FALSE.
                   ELSE
+
                      pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc) = pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc)   &
-                        &                                + exflde(:,:) * pmask(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jm)
+                        &                                + exfld_ext(:,:) * pmask(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jm)
                   ENDIF
 
                   IF ( sn_cfctl%l_oasout ) THEN
@@ -616,7 +631,9 @@ CONTAINS
 
          !--- we must call lbc_lnk to fill the halos that where not received.
          IF( .NOT. ll_1st ) THEN
-            CALL lbc_lnk( 'cpl_oasis3', pdata(:,:,jc), srcv(kid)%clgrid, srcv(kid)%nsgn )
+
+            CALL lbc_lnk( 'cpl_oasis3_b', pdata(:,:,jc), srcv(kid)%clgrid, srcv(kid)%nsgn )
+
          ENDIF
 
       ENDDO
@@ -798,6 +815,7 @@ END SUBROUTINE cpl_rcv_1d
       !!----------------------------------------------------------------------
       !
       DEALLOCATE( exfld )
+      DEALLOCATE( exfld_ext )
       IF(nstop == 0) THEN
          CALL oasis_terminate( nerror )
       ELSE

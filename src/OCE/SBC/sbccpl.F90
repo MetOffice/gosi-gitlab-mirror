@@ -931,24 +931,6 @@ CONTAINS
          ENDIF
       ENDIF
 
-      ! =================================================== !
-      ! Allocate all parts of frcv used for received fields !
-      ! =================================================== !
-      DO jn = 1, jprcv
-         IF( srcv(jn)%laction ) ALLOCATE( frcv(jn)%z3(jpi,jpj,srcv(jn)%nct) )
-      END DO
-      ! Allocate taum part of frcv which is used even when not received as coupling field
-      IF( .NOT. srcv(jpr_taum)%laction ) ALLOCATE( frcv(jpr_taum)%z3(jpi,jpj,srcv(jpr_taum)%nct) )
-      ! Allocate w10m part of frcv which is used even when not received as coupling field
-      IF( .NOT. srcv(jpr_w10m)%laction ) ALLOCATE( frcv(jpr_w10m)%z3(jpi,jpj,srcv(jpr_w10m)%nct) )
-      ! Allocate jpr_otx1 part of frcv which is used even when not received as coupling field
-      IF( .NOT. srcv(jpr_otx1)%laction ) ALLOCATE( frcv(jpr_otx1)%z3(jpi,jpj,srcv(jpr_otx1)%nct) )
-      IF( .NOT. srcv(jpr_oty1)%laction ) ALLOCATE( frcv(jpr_oty1)%z3(jpi,jpj,srcv(jpr_oty1)%nct) )
-      ! Allocate itx1 and ity1 as they are used in sbc_cpl_ice_tau even if srcv(jpr_itx1)%laction = .FALSE.
-      IF( k_ice /= 0 ) THEN
-         IF( .NOT. srcv(jpr_itx1)%laction ) ALLOCATE( frcv(jpr_itx1)%z3(jpi,jpj,srcv(jpr_itx1)%nct) )
-         IF( .NOT. srcv(jpr_ity1)%laction ) ALLOCATE( frcv(jpr_ity1)%z3(jpi,jpj,srcv(jpr_ity1)%nct) )
-      ENDIF
 
       ! ================================ !
       !     Define the send interface    !
@@ -1280,7 +1262,6 @@ CONTAINS
                
             CASE DEFAULT  ! 2D (or pseudo 3D) field.
                ALLOCATE( frcv(jn)%z3(jpi,jpj,srcv(jn)%nct) )
-               
             END SELECT
          END IF
 
@@ -1441,7 +1422,8 @@ CONTAINS
           IF ( srcv(jn)%dimensions <= 1 ) THEN 
             CALL cpl_rcv_1d( jn, isec, frcv(jn)%z3, SIZE(frcv(jn)%z3), nrcvinfo(jn) ) 
           ELSE 
-            CALL cpl_rcv( jn, isec, frcv(jn)%z3, xcplmask(:,:,1:nn_cplmodel), nrcvinfo(jn) ) 
+
+            CALL cpl_rcv( jn, isec, frcv(jn)%z3, xcplmask(:,:,1:nn_cplmodel), nrcvinfo(jn), size(frcv(jn)%z3, DIM=1), size(frcv(jn)%z3, DIM=2),size(frcv(jn)%z3, DIM=3) ) 
           END IF 
 
         END IF 
@@ -1794,8 +1776,10 @@ CONTAINS
          !
          IF( srcv(jpr_icb)%laction )  zqns(:,:) = zqns(:,:) - frcv(jpr_icb)%z3(:,:,1) * rLfus ! remove heat content associated to iceberg melting
          !
-         IF( ln_mixcpl ) THEN   ;   qns(:,:) = qns(:,:) * xcplmask(:,:,0) + zqns(:,:) * zmsk(:,:)
-         ELSE                   ;   qns(:,:) =                              zqns(:,:)
+         IF( ln_mixcpl ) THEN   
+            qns(:,:) = qns(:,:) * xcplmask(:,:,0) + zqns(:,:) * zmsk(:,:)
+         ELSE                   
+            qns(:,:) =                              zqns(:,:)
          ENDIF
 
          !                                                       ! solar flux over the ocean          (qsr)
@@ -2300,8 +2284,10 @@ CONTAINS
       ! --- non solar flux over ocean --- !
       !         note: ziceld cannot be = 0 since we limit the ice concentration to amax
       zqns_oce = 0._wp
-      WHERE( ziceld /= 0._wp )   zqns_oce(:,:) = ( zqns_tot(:,:) - SUM( a_i * zqns_ice, dim=3 ) ) / ziceld(:,:)
 
+
+
+      WHERE( ziceld /= 0._wp )   zqns_oce(:,:) = ( zqns_tot(:,:) - SUM( a_i * zqns_ice, dim=3 ) ) / ziceld(:,:)
       ! Heat content per unit mass of snow (J/kg)
       WHERE( SUM( a_i, dim=3 ) > 1.e-10 )   ;   zcptsnw(:,:) = rcpi * SUM( (tn_ice - rt0) * a_i, dim=3 ) / SUM( a_i, dim=3 )
       ELSEWHERE                             ;   zcptsnw(:,:) = zcptn(:,:)
@@ -2337,6 +2323,7 @@ CONTAINS
       IF( ln_mixcpl ) THEN
          qns_tot(:,:) = qns_tot(:,:) * xcplmask(:,:,0) + zqns_tot(:,:)* zmsk(:,:)
          qns_oce(:,:) = qns_oce(:,:) * xcplmask(:,:,0) + zqns_oce(:,:)* zmsk(:,:)
+
          DO jl=1,jpl
             qns_ice  (:,:,jl) = qns_ice  (:,:,jl) * xcplmask(:,:,0) +  zqns_ice  (:,:,jl)* zmsk(:,:)
             qevap_ice(:,:,jl) = qevap_ice(:,:,jl) * xcplmask(:,:,0) +  zqevap_ice(:,:,jl)* zmsk(:,:)
@@ -2658,12 +2645,15 @@ CONTAINS
             ztmp1(:,:) = ts(:,:,1,jp_tem,Kmm)   ! send temperature as it is (potential or conservative) -> use of l_useCT on the received part
          ELSE
             ! we must send the surface potential temperature
-            IF( l_useCT )  THEN    ;   ztmp1(:,:) =eos_pt_from_ct( CASTSP(ts(:,:,1,jp_tem,Kmm)), CASTSP(ts(:,:,1,jp_sal,Kmm)) )
-            ELSE                   ;   ztmp1(:,:) = ts(:,:,1,jp_tem,Kmm)
+            IF( l_useCT )  THEN    
+                ztmp1(:,:) =eos_pt_from_ct( CASTSP(ts(:,:,1,jp_tem,Kmm)), CASTSP(ts(:,:,1,jp_sal,Kmm)) )
+            ELSE                   
+                ztmp1(:,:) = ts(:,:,1,jp_tem,Kmm)
             ENDIF
             !
             SELECT CASE( sn_snd_temp%cldes)
-            CASE( 'oce only'             )   ;   ztmp1(:,:) =   ztmp1(:,:) + rt0
+            CASE( 'oce only'             )   
+                ztmp1(:,:) =   ztmp1(:,:) + rt0
             CASE( 'oce and ice'          )   ;   ztmp1(:,:) =   ztmp1(:,:) + rt0
                SELECT CASE( sn_snd_temp%clcat )
                CASE( 'yes' )
@@ -2975,6 +2965,7 @@ CONTAINS
                      &         + 0.5 * ( v_ice(ji,jj  )     + v_ice(ji  ,jj-1  )     ) *  fr_i(ji,jj)
                END_2D
             END SELECT
+               
             CALL lbc_lnk( 'sbccpl', zotx1, ssnd(jps_ocx1)%clgrid, -1.0_wp,  zoty1, ssnd(jps_ocy1)%clgrid, -1.0_wp )
             !
          ENDIF

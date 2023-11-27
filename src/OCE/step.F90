@@ -90,7 +90,7 @@ CONTAINS
 #if defined key_agrif
       IF( nstop > 0 ) RETURN   ! avoid to go further if an error was detected during previous time step (child grid)
       kstp = nit000 + Agrif_Nb_Step()
-      Kbb_a = Nbb; Kmm_a = Nnn; Krhs_a = Nrhs   ! agrif_oce module copies of time level indices
+      Kbb_a = Nbb; Nnn_a = Nnn; Krhs_a = Nrhs   ! agrif_oce module copies of time level indices
       IF( lk_agrif_debug ) THEN
          IF( Agrif_Root() .and. lwp)   WRITE(*,*) '---'
          IF(lwp)   WRITE(*,*) 'Grid Number', Agrif_Fixed(),' time step ', kstp, 'int tstep', Agrif_NbStepint()
@@ -171,6 +171,7 @@ CONTAINS
                          CALL eos_rab( ts(:,:,:,:,Nnn), rab_n, Nnn )       ! now    local thermal/haline expension ratio at T-points
                          CALL bn2    ( ts(:,:,:,:,Nbb), rab_b, rn2b, Nnn ) ! before Brunt-Vaisala frequency
                          CALL bn2    ( ts(:,:,:,:,Nnn), rab_n, rn2, Nnn  ) ! now    Brunt-Vaisala frequency
+
 
       !  VERTICAL PHYSICS
       ! lbc_lnk needed for zdf_sh2 when using nn_hls = 2, moved here to allow tiling in zdf_phy
@@ -397,7 +398,7 @@ CONTAINS
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       ! AGRIF recursive integration
       !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                         Kbb_a = Nbb; Kmm_a = Nnn; Krhs_a = Nrhs      ! agrif_oce module copies of time level indices
+                         Kbb_a = Nbb; Nnn_a = Nnn; Krhs_a = Nrhs      ! agrif_oce module copies of time level indices
                          CALL Agrif_Integrate_ChildGrids( stp )       ! allows to finish all the Child Grids before updating
 
 #endif

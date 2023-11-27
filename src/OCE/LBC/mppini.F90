@@ -1429,10 +1429,15 @@ ENDIF
          Nie0_ext=Nie0_ext+1
       ENDIF
 
-      IF (mjg(jpj) == jpjglo ) THEN
-         ! Drag end row 1 place to the top/north
-         Nje0_ext=Nje0_ext+1
-      ENDIF
+
+     ! RSRH we don't adjust anything in the N-S (j) direction
+     ! since the content of the N-fold is catared for by populating values 
+     ! using lbc_lnk rather than relying on getting them from the coupler. 
+     ! This is rather confused by the fact that jpjglo has a value BIGGER
+     ! than it did at pre 4.2... e.g. for ORCA1 it's set to 333 instead of 332
+     ! which is rather baffling and confuses some dimensioning calculations
+     ! if we're not very very careful 
+
 
       ! Set up dimensions for old style coupling exchanges on extended grid
       Ni_0_ext = Ni_0
@@ -1443,11 +1448,6 @@ ENDIF
          Ni_0_ext = Ni_0_ext + 1
       ENDIF
 
-      IF (mjg(jpj) == jpjglo ) THEN
-         ! We're at the extreme top of the grid so need to cater 
-         ! for an extra row
-         Nj_0_ext = Nj_0_ext + 1
-      ENDIF
      
       !
       jpkm1 = jpk-1                             !   "           "
