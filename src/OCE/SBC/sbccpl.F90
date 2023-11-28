@@ -1384,6 +1384,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj) ::   ztx2, zty2
       REAL(wp) ::   zcumulneg, zcumulpos   ! temporary scalars
       REAL(wp) ::   zcoef                  ! temporary scalar
+      LOGICAL  ::   ll_wrtstp              ! write diagnostics?
       REAL(wp) ::   zrhoa  = 1.22          ! Air density kg/m3
       REAL(wp) ::   zcdrag = 1.5e-3        ! drag coefficient
       REAL(wp) ::   zgreenland_icesheet_mass_in, zantarctica_icesheet_mass_in 
@@ -1397,6 +1398,7 @@ CONTAINS
       !
       IF (ln_timing) CALL timing_start('sbc_cpl_rcv')
       !
+      ll_wrtstp  = ( MOD( kt, sn_cfctl%ptimincr ) == 0 ) .OR. ( kt == nitend )
             !
       IF( kt == nit000 ) THEN
       !   cannot be done in the init phase when we use agrif as cpl_freq requires that oasis_enddef is done
@@ -1797,6 +1799,76 @@ CONTAINS
          ! Ice cover  (received by opa in case of opa <-> sas coupling)
          IF( srcv(jpr_fice )%laction )   fr_i(:,:) = frcv(jpr_fice )%z3(:,:,1)
          !
+      ENDIF
+
+      zepsilon = rn_iceshelf_fluxes_tolerance
+
+      IF( srcv(jpr_grnm)%laction .AND. nn_coupled_iceshelf_fluxes == 1 ) THEN
+     
+         ! This is a zero dimensional, single value field.
+         zgreenland_icesheet_mass_in =  frcv(jpr_grnm)%z3(1,1,1)
+           
+         greenland_icesheet_timelapsed = greenland_icesheet_timelapsed + rdt         
+         IF( ln_iceshelf_init_atmos .AND. kt == 1 ) THEN
+            ! On the first timestep (of an NRUN) force the ocean to ignore the icesheet masses in the ocean restart
+            ! and take them from the atmosphere to avoid problems with using inconsistent ocean and atmosphere restarts.
+            zgreenland_icesheet_mass_b = zgreenland_icesheet_mass_in
+            greenland_icesheet_mass = zgreenland_icesheet_mass_in
+         ENDIF
+         IF( ABS( zgreenland_icesheet_mass_in - greenland_icesheet_mass ) > zepsilon ) THEN
+            zgreenland_icesheet_mass_b = greenland_icesheet_mass
+           
+            ! Only update the mass if it has increased.
+            IF ( (zgreenland_icesheet_mass_in - greenland_icesheet_mass) > 0.0 ) THEN
+               greenland_icesheet_mass = zgreenland_icesheet_mass_in
+            ENDIF
+           
+            IF( zgreenland_icesheet_mass_b /= 0.0 ) &
+           &     greenland_icesheet_mass_rate_of_change = ( greenland_icesheet_mass - zgreenland_icesheet_mass_b ) / greenland_icesheet_timelapsed 
+            greenland_icesheet_timelapsed = 0.0_wp       
+         ENDIF
+         IF(lwp .AND. ll_wrtstp) THEN
+            WRITE(numout,*) 'Greenland icesheet mass (kg) read in is ', zgreenland_icesheet_mass_in
+            WRITE(numout,*) 'Greenland icesheet mass (kg) used is    ', greenland_icesheet_mass
+            WRITE(numout,*) 'Greenland icesheet mass rate of change (kg/s) is ', greenland_icesheet_mass_rate_of_change
+            WRITE(numout,*) 'Greenland icesheet seconds lapsed since last change is ', greenland_icesheet_timelapsed
+         ENDIF
+      ELSE IF ( nn_coupled_iceshelf_fluxes == 2 ) THEN
+         greenland_icesheet_mass_rate_of_change = rn_greenland_total_fw_flux
+      ENDIF
+      !                                                        ! land ice masses : Antarctica
+      IF( srcv(jpr_antm)%laction .AND. nn_coupled_iceshelf_fluxes == 1 ) THEN
+         
+         ! This is a zero dimensional, single value field.
+         zantarctica_icesheet_mass_in = frcv(jpr_antm)%z3(1,1,1)
+           
+         antarctica_icesheet_timelapsed = antarctica_icesheet_timelapsed + rdt         
+         IF( ln_iceshelf_init_atmos .AND. kt == 1 ) THEN
+            ! On the first timestep (of an NRUN) force the ocean to ignore the icesheet masses in the ocean restart
+            ! and take them from the atmosphere to avoid problems with using inconsistent ocean and atmosphere restarts.
+            zantarctica_icesheet_mass_b = zantarctica_icesheet_mass_in
+            antarctica_icesheet_mass = zantarctica_icesheet_mass_in
+         ENDIF
+         IF( ABS( zantarctica_icesheet_mass_in - antarctica_icesheet_mass ) > zepsilon ) THEN
+            zantarctica_icesheet_mass_b = antarctica_icesheet_mass
+           
+            ! Only update the mass if it has increased.
+            IF ( (zantarctica_icesheet_mass_in - antarctica_icesheet_mass) > 0.0 ) THEN
+               antarctica_icesheet_mass = zantarctica_icesheet_mass_in
+            END IF
+           
+            IF( zantarctica_icesheet_mass_b /= 0.0 ) &
+          &      antarctica_icesheet_mass_rate_of_change = ( antarctica_icesheet_mass - zantarctica_icesheet_mass_b ) / antarctica_icesheet_timelapsed 
+            antarctica_icesheet_timelapsed = 0.0_wp       
+         ENDIF
+         IF(lwp .AND. ll_wrtstp) THEN
+            WRITE(numout,*) 'Antarctica icesheet mass (kg) read in is ', zantarctica_icesheet_mass_in
+            WRITE(numout,*) 'Antarctica icesheet mass (kg) used is    ', antarctica_icesheet_mass
+            WRITE(numout,*) 'Antarctica icesheet mass rate of change (kg/s) is ', antarctica_icesheet_mass_rate_of_change
+            WRITE(numout,*) 'Antarctica icesheet seconds lapsed since last change is ', antarctica_icesheet_timelapsed
+         ENDIF
+      ELSE IF ( nn_coupled_iceshelf_fluxes == 2 ) THEN
+         antarctica_icesheet_mass_rate_of_change = rn_antarctica_total_fw_flux
       ENDIF
       !
    END SUBROUTINE sbc_cpl_rcv

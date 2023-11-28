@@ -580,9 +580,8 @@ CONTAINS
       kinfo = OASIS_idle
       !
 
-         ll_1st = .TRUE.
+      ll_1st = .TRUE.
       DO jc = 1, srcv(kid)%nct
-         ll_1st = .TRUE.
 
          DO jm = 1, srcv(kid)%ncplmodel
 
@@ -629,10 +628,10 @@ CONTAINS
 
          ENDDO
 
-         !--- we must call lbc_lnk to fill the halos that where not received.
+         !--- Call lbc_lnk to populate halos of received fields.
          IF( .NOT. ll_1st ) THEN
 
-            CALL lbc_lnk( 'cpl_oasis3_b', pdata(:,:,jc), srcv(kid)%clgrid, srcv(kid)%nsgn )
+            CALL lbc_lnk( 'cpl_oasis3', pdata(:,:,jc), srcv(kid)%clgrid, srcv(kid)%nsgn )
 
          ENDIF
 
