@@ -1425,7 +1425,7 @@ CONTAINS
             CALL cpl_rcv_1d( jn, isec, frcv(jn)%z3, SIZE(frcv(jn)%z3), nrcvinfo(jn) ) 
           ELSE 
 
-            CALL cpl_rcv( jn, isec, frcv(jn)%z3, xcplmask(:,:,1:nn_cplmodel), nrcvinfo(jn), size(frcv(jn)%z3, DIM=1), size(frcv(jn)%z3, DIM=2),size(frcv(jn)%z3, DIM=3) ) 
+            CALL cpl_rcv( jn, isec, frcv(jn)%z3, xcplmask(:,:,1:nn_cplmodel), nrcvinfo(jn) ) 
           END IF 
 
         END IF 

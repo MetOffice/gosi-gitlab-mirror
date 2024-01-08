@@ -515,8 +515,7 @@ CONTAINS
       INTEGER                                   ::   jc,jm     ! local loop index
       !!--------------------------------------------------------------------
       !
-      integer:: i,j, k
-      INTEGER ict, jct
+
       ! snd data to OASIS3
       !
       DO jc = 1, ssnd(kid)%nct
@@ -548,12 +547,12 @@ CONTAINS
 
          ENDDO
       ENDDO
-                     CALL FLUSH(numout)
+
       !
     END SUBROUTINE cpl_snd
 
 
-   SUBROUTINE cpl_rcv( kid, kstep, pdata, pmask, kinfo, idim,jdim,kdim )
+   SUBROUTINE cpl_rcv( kid, kstep, pdata, pmask, kinfo )
       !!---------------------------------------------------------------------
       !!              ***  ROUTINE cpl_rcv  ***
       !!
@@ -562,16 +561,12 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER                   , INTENT(in   ) ::   kid       ! variable index in the array
       INTEGER                   , INTENT(in   ) ::   kstep     ! ocean time-step in seconds
-      INTEGER                   , INTENT(in   ) ::   idim,jdim,kdim 
       REAL(wp), DIMENSION(:,:,:), INTENT(inout) ::   pdata     ! IN to keep the value if nothing is done
       REAL(wp), DIMENSION(:,:,:), INTENT(in   ) ::   pmask     ! coupling mask
       INTEGER                   , INTENT(  out) ::   kinfo     ! OASIS3 info argument
       !!
-      
-      INTEGER                                   ::   i,j,jc,jm,ji,jj,ie,je    ! local loop index
+      INTEGER                                   ::   jc,jm     ! local loop index
       LOGICAL                                   ::   llaction, ll_1st
-
-      REAL(wp) temp(jpi,jpj)
 
       !!--------------------------------------------------------------------
       !
@@ -580,8 +575,8 @@ CONTAINS
       kinfo = OASIS_idle
       !
 
-      ll_1st = .TRUE.
       DO jc = 1, srcv(kid)%nct
+         ll_1st = .TRUE.
 
          DO jm = 1, srcv(kid)%ncplmodel
 
