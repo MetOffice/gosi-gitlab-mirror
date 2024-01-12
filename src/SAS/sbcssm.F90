@@ -79,9 +79,19 @@ CONTAINS
       INTEGER  ::   ji, jj     ! dummy loop indices
       REAL(wp) ::   ztinta     ! ratio applied to after  records when doing time interpolation
       REAL(wp) ::   ztintb     ! ratio applied to before records when doing time interpolation
+      CHARACTER(len=4),SAVE :: stype
       !!----------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start( 'sbc_ssm')
+      IF( kt == nit000 ) THEN
+         IF( ln_TEOS10 ) THEN
+            stype='abs'   ! teos-10: using absolute salinity (sst is converted to potential temperature for the surface module)
+         ELSE IF( ln_EOS80  ) THEN
+            stype='pra'   ! eos-80: using practical salinity
+         ELSE IF ( ln_SEOS) THEN
+            stype='seos' ! seos using Simplified Equation of state (sst is converted to potential temperature for the surface module)
+         ENDIF
+      ENDIF
 
       IF ( l_sasread ) THEN
          IF( nfld_3d > 0 ) CALL fld_read( kt, 1, sf_ssm_3d )      !==   read data at kt time step   ==!
@@ -156,8 +166,8 @@ CONTAINS
       IF( l_initdone ) THEN          !   Mean value at each nn_fsbc time-step   !
          CALL iom_put( 'ssu_m', ssu_m )
          CALL iom_put( 'ssv_m', ssv_m )
-         CALL iom_put( 'sst_m', sst_m )
-         CALL iom_put( 'sss_m', sss_m )
+         CALL iom_put( 'sst_m_pot', sst_m )
+         CALL iom_put( 'sss_m_'//stype, sss_m )
          CALL iom_put( 'ssh_m', ssh_m )
          CALL iom_put( 'e3t_m', e3t_m )
          IF( ln_read_frq    )   CALL iom_put( 'frq_m', frq_m )

@@ -73,6 +73,7 @@ MODULE nemogcm
    USE lib_mpp        ! distributed memory computing
    USE mppini         ! shared/distributed memory setting (mpp_init routine)
    USE lib_fortran    ! Fortran utilities (allows no signed zero when 'key_nosignedzero' defined)
+   USE sbccpl 
    USE halo_mng       ! halo manager
 
    IMPLICIT NONE
@@ -176,6 +177,9 @@ CONTAINS
 #  if defined key_qco   ||   defined key_linssh
             CALL stp_MLF( istp )
 #  else
+	    IF (lk_oasis) THEN
+               CALL sbc_cpl_snd( istp, Nbb, Nnn )  ! Coupling to atmos
+            ENDIF
             CALL stp    ( istp )
 #  endif
             istp = istp + 1
@@ -262,7 +266,7 @@ CONTAINS
 #if defined key_xios
       IF( Agrif_Root() ) THEN
          IF( lk_oasis ) THEN
-            CALL cpl_init( "oceanx", ilocal_comm )                               ! nemo local communicator given by oasis
+            CALL cpl_init( "toyoce", ilocal_comm )                               ! nemo local communicator given by oasis
             CALL xios_initialize( "not used"       , local_comm =ilocal_comm )   ! send nemo communicator to xios
          ELSE
             CALL xios_initialize( "for_xios_mpi_id", return_comm=ilocal_comm )   ! nemo local communicator given by xios
@@ -272,7 +276,7 @@ CONTAINS
 #else
       IF( lk_oasis ) THEN
          IF( Agrif_Root() ) THEN
-            CALL cpl_init( "oceanx", ilocal_comm )          ! nemo local communicator given by oasis
+            CALL cpl_init( "toyoce", ilocal_comm )          ! nemo local communicator given by oasis
          ENDIF
          CALL mpp_start( ilocal_comm )
       ELSE
@@ -496,6 +500,11 @@ CONTAINS
       !
       IF(lwp) WRITE(numout,cform_aaa)           ! Flag AAAAAAA
       !
+
+      IF (nstop > 0) THEN
+         CALL CTL_STOP('STOP','Critical errors in NEMO initialisation')
+      END IF
+
       IF( ln_timing    )   CALL timing_stop( 'nemo_init')
       !
    END SUBROUTINE nemo_init

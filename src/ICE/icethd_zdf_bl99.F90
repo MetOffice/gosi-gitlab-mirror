@@ -939,7 +939,7 @@ CONTAINS
          ELSE
             cnd_ice_1d(ji) = 2._wp * ztcond_i(ji,0) / zhi_ssl ! cnd_ice is capped by: cond_i/zhi_ssl
          ENDIF
-         t1_ice_1d(ji) = isnow(ji) * t_s_1d(ji,1) + ( 1._wp - isnow(ji) ) * t_i_1d(ji,1)
+         t1_ice_1d(ji) = isnow_comb(ji) * t_s_1d(ji,1) + ( 1._wp - isnow_comb(ji) ) * t_i_1d(ji,1)
       END DO
       !
       IF( k_cnd == np_cnd_EMU ) THEN

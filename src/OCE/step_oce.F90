@@ -85,6 +85,7 @@ MODULE step_oce
    USE diahsb          ! heat, salt and volume budgets    (dia_hsb routine)
    USE diacfl          ! CFL diagnostics                  (dia_cfl routine)
    USE diaobs          ! Observation operator             (dia_obs routine)
+   USE diaprod
    USE diadetide       ! Weights computation for daily detiding of model diagnostics
    USE diamlr          ! IOM context management for multiple-linear-regression analysis
    USE flo_oce         ! floats variables

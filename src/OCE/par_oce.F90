@@ -99,6 +99,12 @@ MODULE par_oce
    INTEGER, PUBLIC ::   Ni_0, Nj_0       !: local domain size without halo
    INTEGER, PUBLIC ::   Ni0glo, Nj0glo   !: global domain size without halo
 
+   INTEGER, PUBLIC ::   Nis0_ext             !: start I-index with wrap/N-fold
+   INTEGER, PUBLIC ::   Nie0_ext             !: end   I-index with wrap/N-fold
+   INTEGER, PUBLIC ::   Njs0_ext             !: start J-index with wrap/N-fold
+   INTEGER, PUBLIC ::   Nje0_ext             !: end   J-index with wrap/N-fold
+   INTEGER, PUBLIC ::   Ni_0_ext, Nj_0_ext       !: local domain size with wrap/N-fold
+   INTEGER, PUBLIC ::   Ni0glo_ext, Nj0glo_ext   !: global domain size with wrap/N-fold
    !!----------------------------------------------------------------------
    !! NEMO/OCE 4.0 , NEMO Consortium (2018)
    !! $Id: par_oce.F90 15119 2021-07-13 14:43:22Z jchanut $

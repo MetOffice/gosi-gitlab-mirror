@@ -59,13 +59,28 @@ CONTAINS
       INTEGER  ::   ji, jj               ! loop index
       REAL(wp) ::   zcoef, zf_sbc       ! local scalar
       REAL(wp), DIMENSION(jpi,jpj,jpts) :: zts
-      !!---------------------------------------------------------------------
+      CHARACTER(len=4),SAVE :: stype 
+      !!--------------------------------------------------------------------- 
+      IF( kt == nit000 ) THEN 
+         IF( ln_TEOS10 ) THEN 
+            stype='abs'   ! teos-10: using absolute salinity (sst is converted to potential temperature for the surface module) 
+         ELSE IF( ln_EOS80  ) THEN 
+            stype='pra'   ! eos-80: using practical salinity 
+         ELSE IF ( ln_SEOS) THEN 
+            stype='seos' ! seos using Simplified Equation of state (sst is converted to potential temperature for the surface module) 
+         ENDIF 
+      ENDIF 
       !
       !                                        !* surface T-, U-, V- ocean level variables (T, S, depth, velocity)
       zts(:,:,jp_tem) = ts(:,:,1,jp_tem,Kmm)
       zts(:,:,jp_sal) = ts(:,:,1,jp_sal,Kmm)
       !
-         !                                                ! ---------------------------------------- !
+      !                                       !===>>> CAUTION: lbc_lnk is required on fraqsr_lev since sea ice computes on the full domain
+      !                                       !                otherwise restartability and reproducibility are broken 
+      !                                       !                computed in traqsr only on the inner domain 
+      CALL lbc_lnk( 'sbc_ssm', fraqsr_1lev(:,:), 'T', 1._wp )
+      !
+      !                                                   ! ---------------------------------------- !
       IF( nn_fsbc == 1 ) THEN                             !      Instantaneous surface fields        !
          !                                                ! ---------------------------------------- !
          ssu_m(:,:) = uu(:,:,1,Kbb)
@@ -171,8 +186,8 @@ CONTAINS
       IF( MOD( kt - 1 , nn_fsbc ) == 0 ) THEN          !   Mean value at each nn_fsbc time-step   !
          CALL iom_put( 'ssu_m', ssu_m )
          CALL iom_put( 'ssv_m', ssv_m )
-         CALL iom_put( 'sst_m', sst_m )
-         CALL iom_put( 'sss_m', sss_m )
+         CALL iom_put( 'sst_m_pot', sst_m ) 
+         CALL iom_put( 'sss_m_'//stype, sss_m ) 
          CALL iom_put( 'ssh_m', ssh_m )
          CALL iom_put( 'e3t_m', e3t_m )
          CALL iom_put( 'frq_m', frq_m )
