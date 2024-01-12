@@ -140,10 +140,10 @@ CONTAINS
       !------------------------------------
       !  Diagnostics
       !------------------------------------
-      CALL iom_put( 'dvpn_mlt', diag_dvpn_mlt ) ! input from melting
-      CALL iom_put( 'dvpn_lid', diag_dvpn_lid ) ! exchanges with lid
-      CALL iom_put( 'dvpn_drn', diag_dvpn_drn ) ! vertical drainage
-      CALL iom_put( 'dvpn_rnf', diag_dvpn_rnf ) ! runoff + overflow
+      IF( iom_use('dvpn_mlt'  ) ) CALL iom_put( 'dvpn_mlt', diag_dvpn_mlt ) ! input from melting
+      IF( iom_use('dvpn_lid'  ) ) CALL iom_put( 'dvpn_lid', diag_dvpn_lid ) ! exchanges with lid
+      IF( iom_use('dvpn_drn'  ) ) CALL iom_put( 'dvpn_drn', diag_dvpn_drn ) ! vertical drainage
+      IF( iom_use('dvpn_rnf'  ) ) CALL iom_put( 'dvpn_rnf', diag_dvpn_rnf ) ! runoff + overflow
       !
       DEALLOCATE( diag_dvpn_mlt   , diag_dvpn_lid   , diag_dvpn_drn   , diag_dvpn_rnf    )
       DEALLOCATE( diag_dvpn_mlt_1d, diag_dvpn_lid_1d, diag_dvpn_drn_1d, diag_dvpn_rnf_1d )
@@ -544,7 +544,7 @@ CONTAINS
       ! a_ip      -> apond
       ! a_ip_frac -> apnd
 
-      CALL ctl_stop( 'STOP', 'icethd_pnd : topographic melt ponds are still an ongoing work' )
+      !CALL ctl_stop( 'STOP', 'icethd_pnd : topographic melt ponds are still an ongoing work' )
 
       !---------------------------------------------------------------
       ! Initialise
@@ -644,12 +644,6 @@ CONTAINS
                !--------------------------
                ! Pond lid growth and melt
                !--------------------------
-               ! Mean surface temperature
-               zTavg = 0._wp
-               DO jl = 1, jpl
-                  zTavg = zTavg + t_su(ji,jj,jl)*a_i(ji,jj,jl)
-               END DO
-               zTavg = zTavg / a_i(ji,jj,jl) !!! could get a division by zero here
 
                DO jl = 1, jpl-1
 
@@ -1319,7 +1313,9 @@ CONTAINS
        !-----------------------------------------------------------------
        ! brine salinity and liquid fraction
        !-----------------------------------------------------------------
-
+       
+      SELECT CASE( nn_pnd_brsal )
+      CASE( 0 )
        DO k = 1, nlay_i
 
           Sbr    = - Tin(k) / rTmlt ! Consistent expression with SI3 (linear liquidus)
@@ -1328,6 +1324,16 @@ CONTAINS
           phi(k) = salin(k) / Sbr
 
        END DO
+       
+      CASE( 1 )
+       DO k = 1, nlay_i
+       
+          Sbr  = - 18.7 * Tin(k) - 0.519 * Tin(k)**2 - 0.00535 * Tin(k) **3
+          phi(k) = salin(k) / Sbr
+
+       END DO
+       
+      END SELECT
 
        !-----------------------------------------------------------------
        ! permeability
@@ -1354,7 +1360,7 @@ CONTAINS
       NAMELIST/namthd_pnd/  ln_pnd, ln_pnd_LEV , rn_apnd_min, rn_apnd_max, rn_pnd_flush, &
          &                          ln_pnd_CST , rn_apnd, rn_hpnd,         &
          &                          ln_pnd_TOPO,                           &
-         &                          ln_pnd_lids, ln_pnd_alb
+         &                          ln_pnd_lids, ln_pnd_alb, nn_pnd_brsal
       !!-------------------------------------------------------------------
       !
       READ  ( numnam_ice_ref, namthd_pnd, IOSTAT = ios, ERR = 901)
@@ -1379,6 +1385,7 @@ CONTAINS
          WRITE(numout,*) '            Prescribed pond depth                                 rn_hpnd      = ', rn_hpnd
          WRITE(numout,*) '         Frozen lids on top of melt ponds                         ln_pnd_lids  = ', ln_pnd_lids
          WRITE(numout,*) '         Melt ponds affect albedo or not                          ln_pnd_alb   = ', ln_pnd_alb
+         WRITE(numout,*) '         Brine salinity formulation                               nn_pnd_brsal = ', nn_pnd_brsal
       ENDIF
       !
       !                             !== set the choice of ice pond scheme ==!
