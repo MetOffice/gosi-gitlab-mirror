@@ -14,7 +14,7 @@
       <!-- <file_group src="./file_def_nemo-ice-1h.xml"/>     -->
       <!-- <file_group src="./file_def_nemo-ice-1d.xml"/>     -->
       <!-- <file_group src="./file_def_nemo-ice-1mo.xml"/>     -->
-      <file_group src="./file_def_nemo-ice-BASIC-1d.xml"/>
+      <file_group src="./file_def_nemo-ice-1d.xml"/>
  
  </file_definition>
  
