@@ -633,14 +633,6 @@ CONTAINS
          tilde_e3t_n(:,:,:) = tilde_e3t_a(:,:,:)
       ENDIF
 
-      ! RSRH Why is the following code missing from the base code?
-      gdept(:,:,:,Kbb) = gdept(:,:,:,Kmm)
-      gdepw(:,:,:,Kbb) = gdepw(:,:,:,Kmm)
-
-      e3t(:,:,:,Kmm) = e3t(:,:,:,Kaa)
-      e3u(:,:,:,Kmm) = e3u(:,:,:,Kaa)
-      e3v(:,:,:,Kmm) = e3v(:,:,:,Kaa)
-
       ! Compute all missing vertical scale factor and depths
       ! ====================================================
       ! Horizontal scale factor interpolations
