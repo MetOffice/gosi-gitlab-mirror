@@ -633,6 +633,14 @@ CONTAINS
          tilde_e3t_n(:,:,:) = tilde_e3t_a(:,:,:)
       ENDIF
 
+      ! RSRH Why is the following code missing from the base code?
+      gdept(:,:,:,Kbb) = gdept(:,:,:,Kmm)
+      gdepw(:,:,:,Kbb) = gdepw(:,:,:,Kmm)
+
+      e3t(:,:,:,Kmm) = e3t(:,:,:,Kaa)
+      e3u(:,:,:,Kmm) = e3u(:,:,:,Kaa)
+      e3v(:,:,:,Kmm) = e3v(:,:,:,Kaa)
+
       ! Compute all missing vertical scale factor and depths
       ! ====================================================
       ! Horizontal scale factor interpolations
@@ -692,7 +700,7 @@ CONTAINS
       !!                - vertical interpolation: simple averaging
       !!----------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(in   ) ::  pe3_in    ! input e3 to be interpolated
-      REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(inout) ::  pe3_out   ! output interpolated e3
+      REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(out)   ::  pe3_out   ! output interpolated e3
       CHARACTER(LEN=*)                , INTENT(in   ) ::  pout      ! grid point of out scale factors
       !                                                             !   =  'U', 'V', 'W, 'F', 'UW' or 'VW'
       !

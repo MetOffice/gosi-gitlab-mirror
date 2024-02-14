@@ -174,14 +174,15 @@ CONTAINS
                IF ( istp ==         nitend ) elapsed_time = zstptiming - elapsed_time
             ENDIF
             !
+            IF (lk_oasis) THEN
+               CALL sbc_cpl_snd( istp, Nbb, Nnn )  ! Coupling to atmos
+            ENDIF
 #  if defined key_qco   ||   defined key_linssh
             CALL stp_MLF( istp )
 #  else
-	    IF (lk_oasis) THEN
-               CALL sbc_cpl_snd( istp, Nbb, Nnn )  ! Coupling to atmos
-            ENDIF
             CALL stp    ( istp )
 #  endif
+           !RSRH not needed?CALL lbc_lnk( 'rsrh_ice_halo', ssh,'T',1._dp )
             istp = istp + 1
             !
             IF( lwp .AND. ln_timing )   WRITE(numtime,*) 'timing step ', istp-1, ' : ', MPI_Wtime() - zstptiming

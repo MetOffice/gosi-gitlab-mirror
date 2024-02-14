@@ -569,13 +569,14 @@ CONTAINS
       INTEGER                   , INTENT(  out) ::   kinfo     ! OASIS3 info argument
       !!
       INTEGER                                   ::   jc,jm     ! local loop index
-      LOGICAL                                   ::   llaction, ll_1st
+      LOGICAL                                   ::   llaction, ll_1st, lrcv
 
       !!--------------------------------------------------------------------
       !
       ! receive local data from OASIS3 on every process
       !
       kinfo = OASIS_idle
+      lrcv=.FALSE.
       !
 
       DO jc = 1, srcv(kid)%nct
@@ -597,6 +598,7 @@ CONTAINS
                                      ! RSRH, but DO cater for wrap columns when using pre vn 4.2 format remapping weights. 
 
                   kinfo = OASIS_Rcv
+                  lrcv=.TRUE. 
                   IF( ll_1st ) THEN
                      pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc) =   exfld_ext(:,:) * pmask(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jm)
 
@@ -626,14 +628,15 @@ CONTAINS
 
          ENDDO
 
-         !--- Call lbc_lnk to populate halos of received fields.
-         IF( .NOT. ll_1st ) THEN
-
-            CALL lbc_lnk( 'cpl_oasis3', pdata(:,:,jc), srcv(kid)%clgrid, srcv(kid)%nsgn )
-
-         ENDIF
-
       ENDDO
+
+      ! RSRH I've changed this since it seems multi cat fields may not be properly updated in halos
+      ! when called on a per category basis (?) and from a perfromance point of view, it's more efficient
+      ! (and simpler to understand) to update ALL categories at the same time!
+      !--- Call lbc_lnk to populate halos of received fields.
+      IF (lrcv) then
+         CALL lbc_lnk( 'cpl_oasis3', pdata(:,:,:), srcv(kid)%clgrid, srcv(kid)%nsgn )
+      endif
       !
    END SUBROUTINE cpl_rcv
 
