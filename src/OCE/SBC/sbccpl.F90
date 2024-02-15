@@ -1877,6 +1877,7 @@ CONTAINS
          antarctica_icesheet_mass_rate_of_change = rn_antarctica_total_fw_flux
       ENDIF
       !
+      IF (ln_timing) CALL timing_stop('sbc_cpl_rcv')
    END SUBROUTINE sbc_cpl_rcv
 
 
@@ -2690,6 +2691,8 @@ CONTAINS
                                                          ! to avoid intent conflicts in repcmo calls
       !!----------------------------------------------------------------------
       !
+      IF (ln_timing) CALL timing_start('sbc_cpl_snd')
+
       isec = ( kt - nit000 ) * NINT( rn_Dt )        ! date of exchanges
       info = OASIS_idle
 
