@@ -1462,7 +1462,7 @@ CONTAINS
                   !RSRH these MUST be initialised because the halos are not explicitly set 
                   ! but they're passed to repcmo and used directly in calculations, so if 
                   ! they point at junk in memory then bad things will happen!
-                  ! Tests indicate this is essential for debugging with preset NaNs. 
+                  ! (You can prove this by running with preset NaNs). 
                   ztx(:,:)=0.0
                   zty(:,:)=0.0
 
@@ -1580,6 +1580,12 @@ CONTAINS
          !
       ENDIF
 
+#if defined key_medusa
+      IF (ln_medusa) THEN
+        IF( srcv(jpr_atm_pco2)%laction) PCO2a_in_cpl(:,:) = frcv(jpr_atm_pco2)%z3(:,:,1)
+        IF( srcv(jpr_atm_dust)%laction) Dust_in_cpl(:,:) = frcv(jpr_atm_dust)%z3(:,:,1)
+      ENDIF
+#endif
       !                                                      ! ================== !
       !                                                      ! atmosph. CO2 (ppm) !
       !                                                      ! ================== !
@@ -3058,13 +3064,13 @@ CONTAINS
                           *(zoty1(ji,jj)+zoty1(ji+1,jj)    &
                           +zoty1(ji,jj-1)+zoty1(ji+1,jj-1))
                END_2D
-              
-               ! Ensure any N fold and wrap columns are updated
-               !CALL lbc_lnk('zotx1', ztmp1, ssnd(jps_ocx1)%clgrid, -1.0_wp)
-               !CALL lbc_lnk('zoty1', ztmp2, ssnd(jps_ocy1)%clgrid, -1.0_wp)
-	               
+              	               
                ikchoix = -1
-               ! RSRH fix this to avoid intent conflicts!
+               ! zotx1 and zoty1 are input only to repcmo while ztmp5 and ztmp6
+               ! are the newly calculated (output) values.
+               ! Don't make the mistake of using zotx1 and zoty1 twice in this
+               ! call for both input and output fields since it creates INTENT
+               ! conflicts. 
                CALL repcmo (zotx1,ztmp2,ztmp1,zoty1,ztmp5,ztmp6,ikchoix)
                zotx1(:,:)=ztmp5(:,:)
                zoty1(:,:)=ztmp6(:,:)

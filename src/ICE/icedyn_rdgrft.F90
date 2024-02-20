@@ -1012,12 +1012,6 @@ CONTAINS
          ! fields used but not modified
          CALL tab_2d_1d( npti, nptidx(1:npti), sss_1d(1:npti), sss_m(:,:) )
          CALL tab_2d_1d( npti, nptidx(1:npti), sst_1d(1:npti), sst_m(:,:) )
-         ! the following fields are modified in this routine
-         ! RSRH. No they're not! All this routine does is move arrays 2D to/from 1D arrays
-         !       and 3D arrays to/from 2D arrays!
-         !!CALL tab_2d_1d( npti, nptidx(1:npti), ato_i_1d(1:npti), ato_i(:,:) )
-         !!CALL tab_3d_2d( npti, nptidx(1:npti), a_i_2d(1:npti,1:jpl), a_i(:,:,:) )
-         !!CALL tab_3d_2d( npti, nptidx(1:npti), v_i_2d  (1:npti,1:jpl), v_i  (:,:,:) )
          CALL tab_3d_2d( npti, nptidx(1:npti), v_s_2d (1:npti,1:jpl), v_s (:,:,:) )
          CALL tab_3d_2d( npti, nptidx(1:npti), sv_i_2d(1:npti,1:jpl), sv_i(:,:,:) )
          CALL tab_3d_2d( npti, nptidx(1:npti), oa_i_2d(1:npti,1:jpl), oa_i(:,:,:) )

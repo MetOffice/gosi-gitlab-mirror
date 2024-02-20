@@ -375,8 +375,6 @@ CONTAINS
             zptry(:,:,:) = zptry(:,:,:) + zwy(:,:,:)  ! <<< add anti-diffusive fluxes
             CALL dia_ptr_hst( jn, 'adv', zptry(:,:,:) )
          ENDIF
-! RSRHA surely?
-!CALL lbc_lnk('traadv_fct', pt(:,:,:,jn,Krhs), 'T', 1.0_dp)
          !
       END DO                     ! end of tracer loop
       !
@@ -732,7 +730,8 @@ CONTAINS
       REAL(wp) ::   zwy_jm1, zfm_ui, zfm_ui_m1, zfm_vj, zfm_vj_m1, zfm_wk, zC2t_v, zC4t_v   !   -      -
       REAL(wp) ::   ztu, ztv, ztu_im1, ztu_ip1, ztv_jm1, ztv_jp1
       REAL(wp), DIMENSION(jpi,jpj,jpk)        ::   zwi, zwx_3d, zwy_3d, zwz, ztw, zltu_3d, zltv_3d
-      REAL(wp), DIMENSION(jpi,jpj,jpk)        ::   zwi_in, ztw_in ! RSRH read only copies to avoid INTENT cockups
+      REAL(wp), DIMENSION(jpi,jpj,jpk)        ::   zwi_in, ztw_in ! Read-only copies to avoid INTENT conflicts
+                                                                  ! in calls to tridia_solver
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   ztrdx, ztrdy, ztrdz, zptry
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   zwinf, zwdia, zwsup
       LOGICAL  ::   ll_zAimp                                 ! flag to apply adaptive implicit vertical advection

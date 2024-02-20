@@ -45,7 +45,6 @@ MODULE cpl_oasis3
    PRIVATE
 #if ! defined key_oasis3
    ! Dummy interface to oasis_get if not using oasis
-   ! RSRH Is this really needed
    INTERFACE oasis_get
       MODULE PROCEDURE oasis_get_1d, oasis_get_2d
    END INTERFACE
@@ -253,8 +252,8 @@ CONTAINS
       CALL oasis_def_partition ( id_part_2d, paral, nerror, Ni0glo*Nj0glo )   ! global number of points, excluding halos
 
       ! RSRH Set up 2D box partition for compatibility with existing weights files
-      ! so we DONT HAVE TO GENERATE AND MANAGE MULTIPLE SETS OF WEIGHTS PURLEY BECAUSE OF AN
-      ! ARBITRARY CHANGE IN THE SOURCE CODE!
+      ! so we don't have to generate and manage multiple sets of weights purely because of 
+      ! the changes to nemo 4.2+ code!
 
       ! This is just a hack for global cyclic models for the time being
       Ni0glo_ext = jpiglo
@@ -595,7 +594,7 @@ CONTAINS
                   &  WRITE(numout,*) "llaction, kinfo, kstep, ivarid: " , llaction, kinfo, kstep, srcv(kid)%nid(jc,jm)
 
                IF( llaction ) THEN   ! data received from oasis do not include halos
-                                     ! RSRH, but DO cater for wrap columns when using pre vn 4.2 format remapping weights. 
+                                     ! but DO still cater for wrap columns when using pre vn4.2 compatible remapping weights. 
 
                   kinfo = OASIS_Rcv
                   lrcv=.TRUE. 
@@ -630,9 +629,11 @@ CONTAINS
 
       ENDDO
 
-      ! RSRH I've changed this since it seems multi cat fields may not be properly updated in halos
-      ! when called on a per category basis (?) and from a perfromance point of view, it's more efficient
-      ! (and simpler to understand) to update ALL categories at the same time!
+      ! RSRH I've changed this since:
+      ! 1) it seems multi cat fields may not be properly updated in halos when called on a per 
+      !    category basis(?) 
+      ! 2) it's more efficient to have a single call (and simpler to understand) to update ALL 
+      !    categories at the same time!
       !--- Call lbc_lnk to populate halos of received fields.
       IF (lrcv) then
          CALL lbc_lnk( 'cpl_oasis3', pdata(:,:,:), srcv(kid)%clgrid, srcv(kid)%nsgn )
