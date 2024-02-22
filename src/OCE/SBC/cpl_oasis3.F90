@@ -37,6 +37,9 @@ MODULE cpl_oasis3
    USE in_out_manager               ! I/O manager
    USE lbclnk                       ! ocean lateral boundary conditions (or mpp link)
    USE lib_mpp
+#if defined key_agrif
+   USE MPI
+#endif
 
    IMPLICIT NONE
    PRIVATE

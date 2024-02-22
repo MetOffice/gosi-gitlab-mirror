@@ -34,8 +34,13 @@ MODULE cpl_rnf_1d
       COMPLEX(wp), ALLOCATABLE, DIMENSION(:)  ::   river_area_c       ! Comlex version of river_area for use in bit reproducible sums (m2)
    END TYPE RIVERS_DATA
    
+   ! DB: see https://forge.ipsl.jussieu.fr/nemo/ticket/1865
+#if defined key_agrif
+   TYPE(RIVERS_DATA), PUBLIC         :: rivers  !: River data
+#else
    TYPE(RIVERS_DATA), PUBLIC, TARGET :: rivers  !: River data
-   
+#endif
+
    INTEGER, PUBLIC            :: nn_cpl_river   ! Maximum number of rivers being passed through the coupler
    INTEGER, PUBLIC            :: runoff_id      ! OASIS coupling id used in oasis_get command
    LOGICAL                    :: ln_print_river_info  ! Diagnostic prints of river coupling information
