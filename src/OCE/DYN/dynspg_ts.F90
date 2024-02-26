@@ -167,7 +167,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj) :: zsshv_a, zhvp2_e, zsshp2_e
       REAL(wp), DIMENSION(jpi,jpj) :: zCdU_u, zCdU_v   ! top/bottom stress at u- & v-points
       REAL(wp), DIMENSION(jpi,jpj)  :: zhV! fluxes
-      REAL(dp), DIMENSION(jpi,jpj)  :: zhU! fluxes
+      REAL(wp), DIMENSION(jpi,jpj)  :: zhU! fluxes
 !!st#if defined key_qco 
 !!st      REAL(wp), DIMENSION(jpi, jpj, jpk) :: ze3u, ze3v
 !!st#endif
@@ -270,6 +270,11 @@ CONTAINS
             zu_frc(ji,jj) = zu_frc(ji,jj) - zu_trd(ji,jj) * ssumask(ji,jj)
             zv_frc(ji,jj) = zv_frc(ji,jj) - zv_trd(ji,jj) * ssvmask(ji,jj)
          END_2D
+      ELSE
+         ! Ensure zhU and zhV are initialised to SOMETHING at all points to avoid referencing
+         ! uninitialsed values in halos later on!
+         zhU(:,:) = 0._wp
+         zhV(:,:) = 0._wp
       ENDIF
       !
       !                                   !=  Add bottom stress contribution from baroclinic velocities  =!
@@ -509,11 +514,6 @@ CONTAINS
          DO_2D( 1, 1, 1, 0 )   ! not jpj-row
             zhV(ji,jj) = e1v(ji,jj) * va_e(ji,jj) * zhvp2_e(ji,jj)
          END_2D
-         !! RSRH.... dont these have to go here... before the ssha_e calc, not after it?
-         !!          otherwise you're involving uninitialised zhU and zhV points in the
-         !!          ensuing zhdiv/ssha_e calculation!
-         CALL lbc_lnk( 'dynspg_ts',  zhU, 'U', -1._dp)
-         CALL lbc_lnk( 'dynspg_ts',  zhV, 'V', -1._dp )
 #if defined key_agrif
          ! Set fluxes during predictor step to ensure volume conservation
          IF( ln_bt_fw )   CALL agrif_dyn_ts_flux( jn, zhU, zhV )
@@ -524,6 +524,12 @@ CONTAINS
             CALL wad_Umsk( ztwdmask, zhU, zhV, un_e, vn_e, zuwdmask, zvwdmask )   ! not jpi colomn for U, not jpj row for V
             !
          ENDIF    
+
+         ! It seems safest to do this here since zhU and zhV are not initially calculated in halos
+         ! by this code or by wad_Umsk, but halo values (ji-1 and jj-1) ARE required in the zhdiv 
+         ! sea level calculation. The current trunk (Feb 2024) has resolved all these issues by rewriting.
+         CALL lbc_lnk( 'dynspg_ts',  zhU, 'U', -1._wp)
+         CALL lbc_lnk( 'dynspg_ts',  zhV, 'V', -1._wp)
          !
          !
          !     Compute Sea Level at step jit+1
@@ -535,9 +541,7 @@ CONTAINS
             ssha_e(ji,jj) = (  sshn_e(ji,jj) - rDt_e * ( ssh_frc(ji,jj) + zhdiv )  ) * ssmask(ji,jj)
          END_2D
 
-         CALL lbc_lnk( 'dynspg_tse', ssha_e, 'T', 1._dp)
-         CALL lbc_lnk( 'dynspg_tsu', zhU, 'U', -1._dp)
-         CALL lbc_lnk( 'dynspg_tsv', zhV, 'V', -1._dp )
+         CALL lbc_lnk( 'dynspg_ts', ssha_e, 'T', 1._dp)
 
          !
          ! Duplicate sea level across open boundaries (this is only cosmetic if linssh=T)
@@ -1180,8 +1184,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER  ::   ji ,jj                             ! dummy loop indices
       REAL(wp) ::   zx1, zx2, zy1, zy2, z1_hu, z1_hv   !   -      -
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in   )  :: pht, phu, phv, punb, pvnb, zhV
-      REAL(dp), DIMENSION(jpi,jpj), INTENT(in   )  :: zhU
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in   )  :: pht, phu, phv, punb, pvnb, zhU, zhV
       REAL(wp), DIMENSION(jpi,jpj), INTENT(  out) :: zu_trd, zv_trd
       !!----------------------------------------------------------------------
       SELECT CASE( nvor_scheme )
@@ -1287,8 +1290,7 @@ CONTAINS
       !! ** Action  :  ptmsk : wetting & drying t-mask
       !!----------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in   ) ::   pTmsk              ! W & D t-mask
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout)  :: phV, pu, pv! ocean velocities and transports
-      REAL(dp), DIMENSION(jpi,jpj), INTENT(inout)  :: phU! ocean velocities and transports
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) ::   phU, phV, pu, pv   ! ocean velocities and transports
       REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) ::   pUmsk, pVmsk       ! W & D u- and v-mask
       !
       INTEGER  ::   ji, jj   ! dummy loop indices

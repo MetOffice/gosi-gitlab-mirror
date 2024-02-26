@@ -182,7 +182,6 @@ CONTAINS
 #  else
             CALL stp    ( istp )
 #  endif
-           !RSRH not needed?CALL lbc_lnk( 'rsrh_ice_halo', ssh,'T',1._dp )
             istp = istp + 1
             !
             IF( lwp .AND. ln_timing )   WRITE(numtime,*) 'timing step ', istp-1, ' : ', MPI_Wtime() - zstptiming
