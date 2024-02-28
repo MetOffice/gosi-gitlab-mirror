@@ -174,12 +174,12 @@ CONTAINS
                IF ( istp ==         nitend ) elapsed_time = zstptiming - elapsed_time
             ENDIF
             !
+            IF (lk_oasis) THEN
+               CALL sbc_cpl_snd( istp, Nbb, Nnn )  ! Coupling to atmos
+            ENDIF
 #  if defined key_qco   ||   defined key_linssh
             CALL stp_MLF( istp )
 #  else
-	    IF (lk_oasis) THEN
-               CALL sbc_cpl_snd( istp, Nbb, Nnn )  ! Coupling to atmos
-            ENDIF
             CALL stp    ( istp )
 #  endif
             istp = istp + 1

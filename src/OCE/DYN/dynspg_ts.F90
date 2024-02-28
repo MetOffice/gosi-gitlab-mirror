@@ -167,7 +167,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj) :: zsshv_a, zhvp2_e, zsshp2_e
       REAL(wp), DIMENSION(jpi,jpj) :: zCdU_u, zCdU_v   ! top/bottom stress at u- & v-points
       REAL(wp), DIMENSION(jpi,jpj)  :: zhV! fluxes
-      REAL(dp), DIMENSION(jpi,jpj)  :: zhU! fluxes
+      REAL(wp), DIMENSION(jpi,jpj)  :: zhU! fluxes
 !!st#if defined key_qco 
 !!st      REAL(wp), DIMENSION(jpi, jpj, jpk) :: ze3u, ze3v
 !!st#endif
@@ -270,6 +270,11 @@ CONTAINS
             zu_frc(ji,jj) = zu_frc(ji,jj) - zu_trd(ji,jj) * ssumask(ji,jj)
             zv_frc(ji,jj) = zv_frc(ji,jj) - zv_trd(ji,jj) * ssvmask(ji,jj)
          END_2D
+      ELSE
+         ! Ensure zhU and zhV are initialised to SOMETHING at all points to avoid referencing
+         ! uninitialsed values in halos later on!
+         zhU(:,:) = 0._wp
+         zhV(:,:) = 0._wp
       ENDIF
       !
       !                                   !=  Add bottom stress contribution from baroclinic velocities  =!
@@ -502,13 +507,13 @@ CONTAINS
          IF( ln_bdy .AND. ln_vol ) CALL bdy_vol2d( kt, jn, ua_e, va_e, zhup2_e, zhvp2_e )
          !      
          !                             ! resulting flux at mid-step (not over the full domain)
+
          DO_2D( 1, 0, 1, 1 )   ! not jpi-column
             zhU(ji,jj) = e2u(ji,jj) * ua_e(ji,jj) * zhup2_e(ji,jj)
          END_2D
          DO_2D( 1, 1, 1, 0 )   ! not jpj-row
             zhV(ji,jj) = e1v(ji,jj) * va_e(ji,jj) * zhvp2_e(ji,jj)
          END_2D
-         !
 #if defined key_agrif
          ! Set fluxes during predictor step to ensure volume conservation
          IF( ln_bt_fw )   CALL agrif_dyn_ts_flux( jn, zhU, zhV )
@@ -519,6 +524,12 @@ CONTAINS
             CALL wad_Umsk( ztwdmask, zhU, zhV, un_e, vn_e, zuwdmask, zvwdmask )   ! not jpi colomn for U, not jpj row for V
             !
          ENDIF    
+
+         ! It seems safest to do this here since zhU and zhV are not initially calculated in halos
+         ! by this code or by wad_Umsk, but halo values (ji-1 and jj-1) ARE required in the zhdiv 
+         ! sea level calculation. The current trunk (Feb 2024) has resolved all these issues by rewriting.
+         CALL lbc_lnk( 'dynspg_ts',  zhU, 'U', -1._wp)
+         CALL lbc_lnk( 'dynspg_ts',  zhV, 'V', -1._wp)
          !
          !
          !     Compute Sea Level at step jit+1
@@ -529,15 +540,16 @@ CONTAINS
             zhdiv = (   zhU(ji,jj) - zhU(ji-1,jj) + zhV(ji,jj) - zhV(ji,jj-1)   ) * r1_e1e2t(ji,jj)
             ssha_e(ji,jj) = (  sshn_e(ji,jj) - rDt_e * ( ssh_frc(ji,jj) + zhdiv )  ) * ssmask(ji,jj)
          END_2D
-         !
-         CALL lbc_lnk( 'dynspg_ts', ssha_e, 'T', 1._dp,  zhU, 'U', -1._dp)
-         CALL lbc_lnk( 'dynspg_ts',  zhV, 'V', -1._wp )
+
+         CALL lbc_lnk( 'dynspg_ts', ssha_e, 'T', 1._dp)
+
          !
          ! Duplicate sea level across open boundaries (this is only cosmetic if linssh=T)
          IF( ln_bdy )   CALL bdy_ssh( ssha_e )
 #if defined key_agrif
          CALL agrif_ssh_ts( jn )
 #endif
+
          !
          !                             ! Sum over sub-time-steps to compute advective velocities
          za2 = wgtbtp2(jn)             ! zhU, zhV hold fluxes extrapolated at jn+0.5
@@ -556,6 +568,7 @@ CONTAINS
          !  
          ! Sea Surface Height at u-,v-points (vvl case only)
          IF( .NOT.ln_linssh ) THEN
+
 #if defined key_qcoTest_FluxForm
             !                                ! 'key_qcoTest_FluxForm' : simple ssh average
             DO_2D( 1, 0, 1, 1 )
@@ -623,6 +636,7 @@ CONTAINS
          !-- u    =   m+1 |  h  * u   + delta_t' * \ h     * (1-r)*g * grad_x( ssh') - h     * f * k vect u      + h * frc /  | --!
          !--         h     \                                                                                                 /  --!
          !------------------------------------------------------------------------------------------------------------------------!
+
          IF( ln_dynadv_vec .OR. ln_linssh ) THEN      !* Vector form
             DO_2D( 0, 0, 0, 0 )
                ua_e(ji,jj) = (                                 un_e(ji,jj)   & 
@@ -676,7 +690,7 @@ CONTAINS
          ENDIF
        
          IF( .NOT.ln_linssh ) THEN !* Update ocean depth (variable volume case only)
-            DO_2D( 0, 0, 0, 0 )
+           DO_2D( 0, 0, 0, 0 )
                hu_e (ji,jj) =    hu_0(ji,jj) + zsshu_a(ji,jj)
                hur_e(ji,jj) = ssumask(ji,jj) / (  hu_e(ji,jj) + 1._wp - ssumask(ji,jj)  )
                hv_e (ji,jj) =    hv_0(ji,jj) + zsshv_a(ji,jj)
@@ -686,10 +700,10 @@ CONTAINS
          !
          IF( .NOT.ln_linssh ) THEN   !* Update ocean depth (variable volume case only)
             CALL lbc_lnk( 'dynspg_ts', ua_e , 'U', -1._wp, va_e , 'V', -1._wp  &
-                 &                   , hu_e , 'U',  1._wp, hv_e , 'V',  1._wp  &
-                 &                   , hur_e, 'U',  1._wp, hvr_e, 'V',  1._wp  )
+                                     , hu_e , 'U',  1._wp, hv_e , 'V',  1._wp  &
+                                     , hur_e, 'U',  1._wp, hvr_e, 'V',  1._wp  )
          ELSE
-            CALL lbc_lnk( 'dynspg_ts', ua_e , 'U', -1._wp, va_e , 'V', -1._wp  )
+            CALL lbc_lnk( 'dynspg_ts', ua_e , 'U', -1._wp, va_e , 'V', -1._wp )
          ENDIF
          !                                                 ! open boundaries
          IF( ln_bdy )   CALL bdy_dyn2d( jn, ua_e, va_e, un_e, vn_e, hur_e, hvr_e, ssha_e )
@@ -728,7 +742,6 @@ CONTAINS
          !                                          ! Sum sea level
          pssh(:,:,Kaa) = pssh(:,:,Kaa) + za1 * ssha_e(:,:)
 
-         !                                                 ! ==================== !
       END DO                                               !        end loop      !
       !                                                    ! ==================== !
       ! -----------------------------------------------------------------------------
@@ -1085,7 +1098,13 @@ CONTAINS
       !                             ! Allocate time-splitting arrays
       IF( dyn_spg_ts_alloc() /= 0    )   CALL ctl_stop('STOP', 'dyn_spg_init: failed to allocate dynspg_ts  arrays' )
       !
-      !                             ! read restart when needed
+
+      ! RSRH. I've just copied the following from the current NEMO main. It shouldnt affect evolution (!) but 
+      ! does help with debugging and testing!
+      ! init some arrays for debug sette
+      ssha_e(:,:) = 0._wp
+      !
+      !                      !: restart/initialise
       CALL ts_rst( nit000, 'READ' )
       !
    END SUBROUTINE dyn_spg_ts_init
@@ -1165,8 +1184,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER  ::   ji ,jj                             ! dummy loop indices
       REAL(wp) ::   zx1, zx2, zy1, zy2, z1_hu, z1_hv   !   -      -
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(in   )  :: pht, phu, phv, punb, pvnb, zhV
-      REAL(dp), DIMENSION(jpi,jpj), INTENT(in   )  :: zhU
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in   )  :: pht, phu, phv, punb, pvnb, zhU, zhV
       REAL(wp), DIMENSION(jpi,jpj), INTENT(  out) :: zu_trd, zv_trd
       !!----------------------------------------------------------------------
       SELECT CASE( nvor_scheme )
@@ -1272,8 +1290,7 @@ CONTAINS
       !! ** Action  :  ptmsk : wetting & drying t-mask
       !!----------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj), INTENT(in   ) ::   pTmsk              ! W & D t-mask
-      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout)  :: phV, pu, pv! ocean velocities and transports
-      REAL(dp), DIMENSION(jpi,jpj), INTENT(inout)  :: phU! ocean velocities and transports
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) ::   phU, phV, pu, pv   ! ocean velocities and transports
       REAL(wp), DIMENSION(jpi,jpj), INTENT(inout) ::   pUmsk, pVmsk       ! W & D u- and v-mask
       !
       INTEGER  ::   ji, jj   ! dummy loop indices

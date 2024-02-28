@@ -33,7 +33,7 @@ MODULE sbccpl
 #endif
    USE cpl_oasis3     ! OASIS3 coupling
    USE geo2ocean      !
-   USE oce     , ONLY : ts, uu, vv, ssh, fraqsr_1lev
+   USE oce   
 #if defined key_medusa
    USE oce , ONLY: CO2Flux_out_cpl, DMS_out_cpl, chloro_out_cpl,  &
                         PCO2a_in_cpl, Dust_in_cpl
@@ -254,9 +254,7 @@ MODULE sbccpl
    TYPE( DYNARR ), SAVE, DIMENSION(jprcv) ::   frcv                ! all fields recieved from the atmosphere
 
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:) ::   alb_oce_mix    ! ocean albedo sent to atmosphere (mix clear/overcast sky)
-#if defined key_si3 || defined key_cice
-   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   a_i_last_couple !: Ice fractional area at last coupling time
-#endif
+
 
    INTEGER , ALLOCATABLE, SAVE, DIMENSION(:) ::   nrcvinfo           ! OASIS info argument
 
@@ -1460,6 +1458,14 @@ CONTAINS
                IF( srcv(jpr_otx1)%clgrid == 'U' .AND. (.NOT. srcv(jpr_otx2)%laction) ) THEN
                   ! Temporary code for HadGEM3 - will be removed eventually.
                   ! Only applies when we have only taux on U grid and tauy on V grid
+
+                  !RSRH these MUST be initialised because the halos are not explicitly set 
+                  ! but they're passed to repcmo and used directly in calculations, so if 
+                  ! they point at junk in memory then bad things will happen!
+                  ! (You can prove this by running with preset NaNs). 
+                  ztx(:,:)=0.0
+                  zty(:,:)=0.0
+
                   DO_2D( 0, 0, 0, 0 )                                       
                           ztx(ji,jj)=0.25*vmask(ji,jj,1)                &
                              *(frcv(jpr_otx1)%z3(ji,jj,1)+frcv(jpr_otx1)%z3(ji-1,jj,1)    &
@@ -1574,6 +1580,12 @@ CONTAINS
          !
       ENDIF
 
+#if defined key_medusa
+      IF (ln_medusa) THEN
+        IF( srcv(jpr_atm_pco2)%laction) PCO2a_in_cpl(:,:) = frcv(jpr_atm_pco2)%z3(:,:,1)
+        IF( srcv(jpr_atm_dust)%laction) Dust_in_cpl(:,:) = frcv(jpr_atm_dust)%z3(:,:,1)
+      ENDIF
+#endif
       !                                                      ! ================== !
       !                                                      ! atmosph. CO2 (ppm) !
       !                                                      ! ================== !
@@ -1871,6 +1883,7 @@ CONTAINS
          antarctica_icesheet_mass_rate_of_change = rn_antarctica_total_fw_flux
       ENDIF
       !
+      IF (ln_timing) CALL timing_stop('sbc_cpl_rcv')
    END SUBROUTINE sbc_cpl_rcv
 
 
@@ -2070,13 +2083,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       !
 #if defined key_si3 || defined key_cice
-      !
-      IF( kt == nit000 ) THEN
-         ! allocate ice fractions from last coupling time here and not in sbc_cpl_init because of jpl
-         IF( .NOT.ALLOCATED(a_i_last_couple) )   ALLOCATE( a_i_last_couple(jpi,jpj,jpl) )
-         ! initialize to a_i for the 1st time step
-         a_i_last_couple(:,:,:) = a_i(:,:,:)
-      ENDIF
+
       !
       IF( ln_mixcpl )   zmsk(:,:) = 1. - xcplmask(:,:,0)
       ziceld(:,:) = 1._wp - picefr(:,:)
@@ -2276,23 +2283,7 @@ CONTAINS
 !!      IF( srcv(jpr_rnf)%laction )   CALL iom_put( 'runoffs' , rnf(:,:) * tmask(:,:,1)                                 )  ! runoff
 !!      IF( srcv(jpr_isf)%laction )   CALL iom_put( 'iceshelf_cea', fwfisf(:,:) * tmask(:,:,1)                         )  ! iceshelf
       !
-      !                                                      ! ========================= !
-      SELECT CASE( TRIM( sn_rcv_iceflx%cldes ) )             !  ice topmelt and botmelt  !
-      !                                                      ! ========================= !
-      CASE ('coupled')
-         IF (ln_scale_ice_flux) THEN
-            WHERE( a_i(:,:,:) > 1.e-10_wp )
-               qml_ice(:,:,:) = frcv(jpr_topm)%z3(:,:,:) * a_i_last_couple(:,:,:) / a_i(:,:,:)
-               qcn_ice(:,:,:) = frcv(jpr_botm)%z3(:,:,:) * a_i_last_couple(:,:,:) / a_i(:,:,:)
-            ELSEWHERE
-               qml_ice(:,:,:) = 0.0_wp
-               qcn_ice(:,:,:) = 0.0_wp
-            END WHERE
-         ELSE
-            qml_ice(:,:,:) = frcv(jpr_topm)%z3(:,:,:)
-            qcn_ice(:,:,:) = frcv(jpr_botm)%z3(:,:,:)
-         ENDIF
-      END SELECT
+
       !
       !                                                      ! ========================= !
       SELECT CASE( TRIM( sn_rcv_qns%cldes ) )                !   non solar heat fluxes   !   (qns)
@@ -2702,8 +2693,12 @@ CONTAINS
       REAL(wp) ::   zumax, zvmax
       REAL(wp), DIMENSION(jpi,jpj)     ::   zfr_l, ztmp1, ztmp2, zotx1, zoty1, zotz1, zitx1, zity1, zitz1
       REAL(wp), DIMENSION(jpi,jpj,jpl) ::   ztmp3, ztmp4
+      REAL(wp), DIMENSION(jpi,jpj)     ::   ztmp5, ztmp6 ! RSRH temporary work arrays 
+                                                         ! to avoid intent conflicts in repcmo calls
       !!----------------------------------------------------------------------
       !
+      IF (ln_timing) CALL timing_start('sbc_cpl_snd')
+
       isec = ( kt - nit000 ) * NINT( rn_Dt )        ! date of exchanges
       info = OASIS_idle
 
@@ -3069,13 +3064,20 @@ CONTAINS
                           *(zoty1(ji,jj)+zoty1(ji+1,jj)    &
                           +zoty1(ji,jj-1)+zoty1(ji+1,jj-1))
                END_2D
-              
-               ! Ensure any N fold and wrap columns are updated
-               CALL lbc_lnk('zotx1', ztmp1, 'V', -1.0)
-               CALL lbc_lnk('zoty1', ztmp2, 'U', -1.0)
-	               
+              	               
                ikchoix = -1
-               CALL repcmo (zotx1,ztmp2,ztmp1,zoty1,zotx1,zoty1,ikchoix)
+               ! zotx1 and zoty1 are input only to repcmo while ztmp5 and ztmp6
+               ! are the newly calculated (output) values.
+               ! Don't make the mistake of using zotx1 and zoty1 twice in this
+               ! call for both input and output fields since it creates INTENT
+               ! conflicts. 
+               CALL repcmo (zotx1,ztmp2,ztmp1,zoty1,ztmp5,ztmp6,ikchoix)
+               zotx1(:,:)=ztmp5(:,:)
+               zoty1(:,:)=ztmp6(:,:)
+
+               ! Ensure any N fold and wrap columns are updated. 
+               CALL lbc_lnk( 'sbccpl', zotx1, ssnd(jps_ocx1)%clgrid, -1.0_wp,  zoty1, ssnd(jps_ocy1)%clgrid, -1.0_wp )
+
             ENDIF
          ENDIF
          !

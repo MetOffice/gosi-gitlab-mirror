@@ -32,14 +32,15 @@ MODULE icetab
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE tab_3d_2d( ndim1d, tab_ind, tab1d, tab2d )
+   SUBROUTINE tab_3d_2d( ndim1d, tab_ind, tab2d, tab3d )
       !!----------------------------------------------------------------------
-      !!                  ***  ROUTINE tab_2d_1d  ***
+      !!                  ***  ROUTINE tab_3d_2d  ***
       !!----------------------------------------------------------------------
       INTEGER                         , INTENT(in   ) ::   ndim1d   ! 1d size
       INTEGER , DIMENSION(ndim1d)     , INTENT(in   ) ::   tab_ind  ! input index
-      REAL(wp), DIMENSION(jpi,jpj,jpl), INTENT(in   ) ::   tab2d    ! input 2D field
-      REAL(wp), DIMENSION(ndim1d,jpl) , INTENT(inout) ::   tab1d    ! output 1D field
+
+      REAL(wp), DIMENSION(jpi,jpj,jpl), INTENT(in   ) ::   tab3d    ! input 3D field
+      REAL(wp), DIMENSION(ndim1d,jpl) , INTENT(inout) ::   tab2d    ! output 2D field
       !
       INTEGER ::   jl, jn, jid, jjd
       !!----------------------------------------------------------------------
@@ -47,7 +48,7 @@ CONTAINS
          DO jn = 1, ndim1d
             jid          = MOD( tab_ind(jn) - 1 , jpi ) + 1
             jjd          =    ( tab_ind(jn) - 1 ) / jpi + 1
-            tab1d(jn,jl) = tab2d(jid,jjd,jl)
+            tab2d(jn,jl) = tab3d(jid,jjd,jl)
          END DO
       END DO
    END SUBROUTINE tab_3d_2d
@@ -72,14 +73,14 @@ CONTAINS
    END SUBROUTINE tab_2d_1d
 
 
-   SUBROUTINE tab_2d_3d( ndim1d, tab_ind, tab1d, tab2d )
+   SUBROUTINE tab_2d_3d( ndim1d, tab_ind, tab2d, tab3d )
       !!----------------------------------------------------------------------
-      !!                  ***  ROUTINE tab_2d_1d  ***
+      !!                  ***  ROUTINE tab_2d_3d  ***
       !!----------------------------------------------------------------------
       INTEGER                         , INTENT(in   ) ::   ndim1d    ! 1D size
       INTEGER , DIMENSION(ndim1d)     , INTENT(in   ) ::   tab_ind   ! input index
-      REAL(wp), DIMENSION(ndim1d,jpl) , INTENT(in   ) ::   tab1d     ! input 1D field
-      REAL(wp), DIMENSION(jpi,jpj,jpl), INTENT(inout) ::   tab2d     ! output 2D field
+      REAL(wp), DIMENSION(ndim1d,jpl) , INTENT(in   ) ::   tab2d     ! input 2D field
+      REAL(wp), DIMENSION(jpi,jpj,jpl), INTENT(inout) ::   tab3d     ! output 3D field
       !
       INTEGER ::   jl, jn, jid, jjd
       !!----------------------------------------------------------------------
@@ -87,7 +88,7 @@ CONTAINS
          DO jn = 1, ndim1d
             jid               = MOD( tab_ind(jn) - 1 ,  jpi ) + 1
             jjd               =    ( tab_ind(jn) - 1 ) / jpi  + 1
-            tab2d(jid,jjd,jl) = tab1d(jn,jl)
+            tab3d(jid,jjd,jl) = tab2d(jn,jl)
          END DO
       END DO
    END SUBROUTINE tab_2d_3d

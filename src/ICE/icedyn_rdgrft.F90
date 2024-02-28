@@ -996,24 +996,22 @@ CONTAINS
       !!-----------------------------------------------------------------------
       !!                   ***  ROUTINE ice_dyn_1d2d ***
       !!
-      !! ** Purpose :   move arrays from 1d to 2d and the reverse
+      !! ** Purpose :   move arrays between 1d <=> 2d forms and
+      !!                            between 2d <=> 3d forms
       !!-----------------------------------------------------------------------
-      INTEGER, INTENT(in) ::   kn   ! 1= from 2D to 1D   ;   2= from 1D to 2D
+      INTEGER, INTENT(in) ::   kn   ! 1= from 2D/3D to 1D/2D   
+      !                               2= from 1D/2D to 2D/3D
       !
       INTEGER ::   jl, jk   ! dummy loop indices
       !!-----------------------------------------------------------------------
       !
       SELECT CASE( kn )
-      !                    !---------------------!
-      CASE( 1 )            !==  from 2D to 1D  ==!
-         !                 !---------------------!
+      !                    !---------------------------!
+      CASE( 1 )            !==  from 2D/3D to 1D/2D  ==!
+         !                 !---------------------------!
          ! fields used but not modified
          CALL tab_2d_1d( npti, nptidx(1:npti), sss_1d(1:npti), sss_m(:,:) )
          CALL tab_2d_1d( npti, nptidx(1:npti), sst_1d(1:npti), sst_m(:,:) )
-         ! the following fields are modified in this routine
-         !!CALL tab_2d_1d( npti, nptidx(1:npti), ato_i_1d(1:npti), ato_i(:,:) )
-         !!CALL tab_3d_2d( npti, nptidx(1:npti), a_i_2d(1:npti,1:jpl), a_i(:,:,:) )
-         !!CALL tab_3d_2d( npti, nptidx(1:npti), v_i_2d  (1:npti,1:jpl), v_i  (:,:,:) )
          CALL tab_3d_2d( npti, nptidx(1:npti), v_s_2d (1:npti,1:jpl), v_s (:,:,:) )
          CALL tab_3d_2d( npti, nptidx(1:npti), sv_i_2d(1:npti,1:jpl), sv_i(:,:,:) )
          CALL tab_3d_2d( npti, nptidx(1:npti), oa_i_2d(1:npti,1:jpl), oa_i(:,:,:) )
@@ -1035,9 +1033,9 @@ CONTAINS
          CALL tab_2d_1d( npti, nptidx(1:npti), wfx_snw_dyn_1d(1:npti), wfx_snw_dyn(:,:) )
          CALL tab_2d_1d( npti, nptidx(1:npti), wfx_pnd_1d    (1:npti), wfx_pnd    (:,:) )
          !
-         !                 !---------------------!
-      CASE( 2 )            !==  from 1D to 2D  ==!
-         !                 !---------------------!
+         !                 !---------------------------!
+      CASE( 2 )            !==  from 1D/2D to 2D/3D  ==!
+         !                 !---------------------------!
          CALL tab_1d_2d( npti, nptidx(1:npti), ato_i_1d(1:npti), ato_i(:,:) )
          CALL tab_2d_3d( npti, nptidx(1:npti), a_i_2d (1:npti,1:jpl), a_i (:,:,:) )
          CALL tab_2d_3d( npti, nptidx(1:npti), v_i_2d (1:npti,1:jpl), v_i (:,:,:) )

@@ -453,6 +453,11 @@ MODULE ice
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   qcn_ice_top     !: Surface conduction flux (W/m2)
    !
    !!----------------------------------------------------------------------
+   !! * Only for atmospheric coupling
+   !!----------------------------------------------------------------------
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   a_i_last_couple !: Ice fractional area at last coupling time
+   !
+   !!----------------------------------------------------------------------
    !! NEMO/ICE 4.0 , NEMO Consortium (2018)
    !! $Id: ice.F90 15388 2021-10-17 11:33:47Z clem $
    !! Software governed by the CeCILL license (see ./LICENSE)
@@ -550,6 +555,10 @@ CONTAINS
       ! * SIMIP diagnostics
       ii = ii + 1
       ALLOCATE( t_si(jpi,jpj,jpl) , tm_si(jpi,jpj) , qcn_ice_bot(jpi,jpj,jpl) , qcn_ice_top(jpi,jpj,jpl) , STAT = ierr(ii) )
+
+      ! * For atmospheric coupling
+      ii = ii + 1
+      ALLOCATE( a_i_last_couple(jpi,jpj,jpl) , STAT=ierr(ii) )
 
       ice_alloc = MAXVAL( ierr(:) )
       IF( ice_alloc /= 0 )   CALL ctl_stop( 'STOP', 'ice_alloc: failed to allocate arrays.' )

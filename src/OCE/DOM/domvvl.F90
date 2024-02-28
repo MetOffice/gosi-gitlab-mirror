@@ -692,7 +692,7 @@ CONTAINS
       !!                - vertical interpolation: simple averaging
       !!----------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(in   ) ::  pe3_in    ! input e3 to be interpolated
-      REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(inout) ::  pe3_out   ! output interpolated e3
+      REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(out)   ::  pe3_out   ! output interpolated e3
       CHARACTER(LEN=*)                , INTENT(in   ) ::  pout      ! grid point of out scale factors
       !                                                             !   =  'U', 'V', 'W, 'F', 'UW' or 'VW'
       !
