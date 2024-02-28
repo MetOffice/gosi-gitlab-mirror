@@ -324,6 +324,11 @@ CONTAINS
             ENDIF
          ENDIF
 
+         ! If this is a coupled model we need to pick up a_i for use as a_i_last_couple
+         IF (ln_cpl) then
+            a_i_last_couple = a_i
+         ENDIF
+         
          IF(.NOT.lrxios) CALL iom_delay_rst( 'READ', 'ICE', numrir )   ! read only ice delayed global communication variables
          !                 ! ---------------------------------- !
       ELSE                 ! == case of a simplified restart == !

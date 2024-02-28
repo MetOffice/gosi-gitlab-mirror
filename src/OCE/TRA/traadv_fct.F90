@@ -87,6 +87,7 @@ CONTAINS
       REAL(wp) ::   zfp_ui, zfp_vj, zfp_wk, zC2t_u, zC4t_u   !   -      -
       REAL(wp) ::   zfm_ui, zfm_vj, zfm_wk, zC2t_v, zC4t_v   !   -      -
       REAL(wp), DIMENSION(A2D(nn_hls),jpk)         :: zwi, zwz, ztu, ztv, zltu, zltv, ztw
+      REAL(wp), DIMENSION(A2D(nn_hls),jpk)         :: zwi_in, ztw_in !temp arrays to avoid intent conflicts
       REAL(dp), DIMENSION(A2D(nn_hls),jpk)         :: zwx, zwy
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   ztrdx, ztrdy, ztrdz, zptry
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   zwinf, zwdia, zwsup
@@ -194,7 +195,9 @@ CONTAINS
          END_3D
 
          IF ( ll_zAimp ) THEN
-            CALL tridia_solver( zwdia, zwsup, zwinf, zwi, zwi , 0 )
+            ! We need to use separate copies of zwi to avoid intent conflicts!
+            zwi_in(:,:,:) = zwi(:,:,:)
+            CALL tridia_solver( zwdia, zwsup, zwinf, zwi_in, zwi , 0 )
             !
             ztw(:,:,1) = 0._wp ; ztw(:,:,jpk) = 0._wp ;
             DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 2, jpkm1 )       ! Interior value ( multiplied by wmask)
@@ -314,7 +317,10 @@ CONTAINS
                ztw(ji,jj,jk) = zwi(ji,jj,jk) + p2dt * ztra / e3t(ji,jj,jk,Krhs) * tmask(ji,jj,jk)
             END_3D
             !
-            CALL tridia_solver( zwdia, zwsup, zwinf, ztw, ztw , 0 )
+
+            ! We need to use separate copies of ztw to avoid intent conflicts!
+            ztw_in(:,:,:) = ztw(:,:,:)
+            CALL tridia_solver( zwdia, zwsup, zwinf, ztw_in, ztw , 0 )
             !
             DO_3D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 2, jpkm1 )       ! Interior value ( multiplied by wmask)
                zfp_wk = wi(ji,jj,jk) + ABS( wi(ji,jj,jk) )
@@ -724,6 +730,8 @@ CONTAINS
       REAL(wp) ::   zwy_jm1, zfm_ui, zfm_ui_m1, zfm_vj, zfm_vj_m1, zfm_wk, zC2t_v, zC4t_v   !   -      -
       REAL(wp) ::   ztu, ztv, ztu_im1, ztu_ip1, ztv_jm1, ztv_jp1
       REAL(wp), DIMENSION(jpi,jpj,jpk)        ::   zwi, zwx_3d, zwy_3d, zwz, ztw, zltu_3d, zltv_3d
+      REAL(wp), DIMENSION(jpi,jpj,jpk)        ::   zwi_in, ztw_in ! Read-only copies to avoid INTENT conflicts
+                                                                  ! in calls to tridia_solver
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   ztrdx, ztrdy, ztrdz, zptry
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   zwinf, zwdia, zwsup
       LOGICAL  ::   ll_zAimp                                 ! flag to apply adaptive implicit vertical advection
@@ -739,6 +747,8 @@ CONTAINS
       zwy_3d(:,:,:) = 0._wp
       zwz(:,:,:) = 0._wp
       zwi(:,:,:) = 0._wp
+
+      zwt(:,:,:) = 0._wp
       !
       l_trd = .FALSE.            ! set local switches
       l_hst = .FALSE.
@@ -820,7 +830,10 @@ CONTAINS
          END DO
 
          IF ( ll_zAimp ) THEN
-            CALL tridia_solver( zwdia, zwsup, zwinf, zwi, zwi , 0 )
+
+            ! We need to use separate copies of zwi to avoid intent conflicts!
+            zwi_in(:,:,:) = zwi(:,:,:)
+            CALL tridia_solver( zwdia, zwsup, zwinf, zwi_in, zwi , 0 )
             !
             ztw(:,:,1) = 0._wp ; ztw(:,:,jpk) = 0._wp ;
             DO_3D( 1, 1, 1, 1, 2, jpkm1 )       ! Interior value ( multiplied by wmask)
@@ -934,7 +947,9 @@ CONTAINS
                ztw(ji,jj,jk) = zwi(ji,jj,jk) + p2dt * ztra / e3t(ji,jj,jk,Krhs) * tmask(ji,jj,jk)
             END_3D
             !
-            CALL tridia_solver( zwdia, zwsup, zwinf, ztw, ztw , 0 )
+            ! We need to use separate copies of ztw to avoid intent conflicts!
+            ztw_in(:,:,:) = ztw(:,:,:)
+            CALL tridia_solver( zwdia, zwsup, zwinf, ztw_in, ztw , 0 )
             !
             DO_3D( 1, 1, 1, 1, 2, jpkm1 )       ! Interior value ( multiplied by wmask)
                zfp_wk = wi(ji,jj,jk) + ABS( wi(ji,jj,jk) )

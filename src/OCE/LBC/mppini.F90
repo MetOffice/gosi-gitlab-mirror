@@ -1436,7 +1436,7 @@ ENDIF
      ! This is rather confused by the fact that jpjglo has a value BIGGER
      ! than it did at pre 4.2... e.g. for ORCA1 it's set to 333 instead of 332
      ! which is rather baffling and confuses some dimensioning calculations
-     ! if we're not very very careful 
+     ! which previously worked fine pre 4.2. 
 
 
       ! Set up dimensions for old style coupling exchanges on extended grid
