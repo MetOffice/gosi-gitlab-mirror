@@ -148,7 +148,7 @@ CONTAINS
       !
       REAL(wp) ::   zintb, zintn                                        ! dummy argument
       REAL(wp) ::   zfac_x, zfac_y
-      REAL(wp) ::   zshear, zdum1, zdum2
+      REAL(wp) ::   zdum1, zdum2
       REAL(wp) ::   zstressptmp, zstressmtmp, zstress12tmpF             ! anisotropic stress tensor components
       REAL(wp) ::   zalphar, zalphas                                    ! for mechanical redistribution
       REAL(wp) ::   zmresult11, zmresult12, z1dtevpkth, zp5kth, z1_dtevp_A  ! for structure tensor evolution
@@ -156,7 +156,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj) ::   zstress12tmp                    ! anisotropic stress tensor component for regridding
       REAL(wp), DIMENSION(jpi,jpj) ::   zyield11, zyield22, zyield12    ! yield surface tensor for history
       REAL(wp), DIMENSION(jpi,jpj) ::   zdelta, zp_delt                 ! delta and P/delta at T points
-      REAL(wp), DIMENSION(jpi,jpj) ::   zten_i                          ! tension
+      REAL(wp), DIMENSION(jpi,jpj) ::   zten_i, zshear                  ! tension, shear
       REAL(wp), DIMENSION(jpi,jpj) ::   zbeta                           ! beta coef from Kimmritz 2017
       !
       REAL(wp), DIMENSION(jpi,jpj) ::   zdt_m                           ! (dt / ice-snow_mass) on T points
@@ -775,8 +775,11 @@ CONTAINS
             &   + zds(ji,jj-1) * zds(ji,jj-1) * e1e2f(ji,jj-1) + zds(ji-1,jj-1) * zds(ji-1,jj-1) * e1e2f(ji-1,jj-1)  &
             &   ) * 0.25_wp * r1_e1e2t(ji,jj)
 
-         ! shear at T points
+         ! maximum shear at T points
          pshear_i(ji,jj) = SQRT( zdt2 + zds2 )
+
+         ! shear at T points
+         zshear(ji,jj)   = SQRT( zds2 )
 
          ! divergence at T points
          pdivu_i(ji,jj) = ( e2u(ji,jj) * u_ice(ji,jj) - e2u(ji-1,jj) * u_ice(ji-1,jj)   &
@@ -791,7 +794,7 @@ CONTAINS
       END_2D
       CALL lbc_lnk( 'icedyn_rhg_eap', pshear_i, 'T', 1.0_wp, pdivu_i, 'T', 1.0_wp, pdelta_i, 'T', 1.0_wp, &
          &                              zten_i, 'T', 1.0_wp, zs1    , 'T', 1.0_wp, zs2     , 'T', 1.0_wp, &
-         &                                zs12, 'F', 1.0_wp )
+         &                              zshear, 'T', 1.0_wp, zs12, 'F', 1.0_wp )
 
       ! --- Store the stress tensor for the next time step --- !
       pstress1_i (:,:) = zs1 (:,:)
@@ -837,7 +840,7 @@ CONTAINS
             zfac             =   strength(ji,jj) / ( pdelta_i(ji,jj) + rn_creepl )
             zsig1            =   zfac * ( pdivu_i(ji,jj) - pdelta_i(ji,jj) )
             zsig2            =   zfac * z1_ecc2 * zten_i(ji,jj)
-            zsig12           =   zfac * z1_ecc2 * pshear_i(ji,jj)
+            zsig12           =   zfac * z1_ecc2 * zshear(ji,jj) * 0.5_wp
 
             ! Stress invariants (sigma_I, sigma_II, Coon 1974, Feltham 2008)
             zsig_I (ji,jj)   =   zsig1 * 0.5_wp                                      ! 1st stress invariant, aka average normal stress, aka negative pressure
@@ -866,10 +869,10 @@ CONTAINS
             ! Ice stresses computed with **viscosities** (delta, p/delta) at **previous** iterates
             !                        and **deformations** at current iterates
             !                        following Lemieux & Dupont (2020)
-            zfac             =   zp_delt(ji,jj)
-            zsig1            =   zfac * ( pdivu_i(ji,jj) - ( zdelta(ji,jj) + rn_creepl ) )
+            zfac             =   strength(ji,jj) / ( pdelta_i(ji,jj) + rn_creepl )
+            zsig1            =   zfac * ( pdivu_i(ji,jj) - zdelta(ji,jj) )
             zsig2            =   zfac * z1_ecc2 * zten_i(ji,jj)
-            zsig12           =   zfac * z1_ecc2 * pshear_i(ji,jj)
+            zsig12           =   zfac * z1_ecc2 * zshear(ji,jj) * 0.5_wp
 
             ! Stress invariants (sigma_I, sigma_II, Coon 1974, Feltham 2008), T-point
             zsig_I(ji,jj)    =   zsig1 * 0.5_wp                                      ! 1st stress invariant, aka average normal stress, aka negative pressure
