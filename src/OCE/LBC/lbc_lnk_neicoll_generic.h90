@@ -175,6 +175,7 @@ SUBROUTINE lbc_lnk_neicoll_/**/PRECISION( cdname, ptab, cd_nat, psgn, kfld, kfil
          ENDIF
       END DO
       !
+#if ! defined key_mpi_off
       ! ------------------------------------------------ !
       !     3. Do all MPI exchanges in 1 unique call     !
       ! ------------------------------------------------ !
@@ -182,6 +183,7 @@ SUBROUTINE lbc_lnk_neicoll_/**/PRECISION( cdname, ptab, cd_nat, psgn, kfld, kfil
       IF( ln_timing ) CALL tic_tac(.TRUE.)
       CALL mpi_neighbor_alltoallv (BUFFSND, iScnt, iSdpl, MPI_TYPE, BUFFRCV, iRcnt, iRdpl, MPI_TYPE, impi_nc, ierr)
       IF( ln_timing ) CALL tic_tac(.FALSE.)
+#endif
       !
       ! ------------------------- !
       !     4. Fill all halos     !
