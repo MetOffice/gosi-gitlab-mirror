@@ -78,6 +78,7 @@ CONTAINS
    !!----------------------------------------------------------------------
    !!   Default option                                         Empty module
    !!----------------------------------------------------------------------
+   IMPLICIT NONE
 CONTAINS
    SUBROUTINE trc_zdf( kt )
       INTEGER, INTENT(in) :: kt  

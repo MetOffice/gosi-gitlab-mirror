@@ -27,6 +27,8 @@ MODULE trcbbl
    USE trabbl         ! bottom boundary layer 
    USE prtctl         ! Print control for debbuging
 
+   IMPLICIT NONE
+
    PUBLIC   trc_bbl   !  routine called by trctrp.F90
 
    !!----------------------------------------------------------------------
@@ -94,6 +96,8 @@ CONTAINS
       !
    END SUBROUTINE trc_bbl
 
+#else
+   IMPLICIT NONE
 #endif
 
    !!======================================================================

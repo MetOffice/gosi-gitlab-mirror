@@ -109,6 +109,8 @@ CONTAINS
 
    USE par_kind
 
+   IMPLICIT NONE
+
    PUBLIC trd_trc
 
 CONTAINS

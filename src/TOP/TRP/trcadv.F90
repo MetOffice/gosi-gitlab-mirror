@@ -253,6 +253,8 @@ CONTAINS
       !
    END SUBROUTINE trc_adv_ini
    
+#else
+   IMPLICIT NONE
 #endif
 
   !!======================================================================

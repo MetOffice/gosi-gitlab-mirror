@@ -9,6 +9,8 @@ MODULE sedsfc
    USE sedarr
    USE seddta
 
+   IMPLICIT NONE
+
    PUBLIC sed_sfc
 
    !! * Substitutions
