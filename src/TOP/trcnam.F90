@@ -302,6 +302,7 @@ CONTAINS
    !!----------------------------------------------------------------------
    !!  Dummy module :                                     No passive tracer
    !!----------------------------------------------------------------------
+   IMPLICIT NONE
 CONTAINS
    SUBROUTINE trc_nam                      ! Empty routine   
    END SUBROUTINE trc_nam

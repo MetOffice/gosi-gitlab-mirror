@@ -17,6 +17,8 @@ MODULE par_sed
       jp_tem   =>   jp_tem,  & !: indice of temperature
       jp_sal   =>   jp_sal     !: indice of salintity
 
+   IMPLICIT NONE
+
    INTEGER, PARAMETER :: jpdta = 18
 
    ! Vertical sediment geometry
