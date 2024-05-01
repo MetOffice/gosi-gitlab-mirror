@@ -1,22 +1,37 @@
 <?xml version="1.0"?>
 
-      <file_group id="1h" output_freq="1h" split_freq="1d"  output_level="10" enabled=".TRUE."> <!-- 1h files -->
+      <file_group id="1d" output_freq="1d"   split_freq="1d"  output_level="10" enabled=".TRUE.">  <!-- 7d files -->   
 
-        <file id="file1" name_suffix="_gridT" description="ocean T grid variables" >
-         <!-- <field field_ref="sst"          name="tos"       />
-          <field field_ref="sss"          name="sos"       /> -->
-          <field field_ref="ssh"          name="sossheig"  />
-          <!-- <field field_ref="ssh_ib"       name="ssh_ib"    />
-          <field field_ref="botpres"      name="sodynhei" operation="average" />
-          <field field_ref="sshdyn"       name="sshdyn"   operation="average" /> -->
-        </file>
+        <file id="file21" name_suffix="_gridT" description="ocean T grid variables" gatherer="tgatherer" writer="twriter" using_server2="true" >
+          <field field_ref="e3t"      />
+          <field field_ref="toce"         name="thetao"    operation="average" freq_op="1d" cell_methods="time: mean (thickness weighted)" > @toce_e3t / @e3t </field>
+	</file>
 
-        <file id="file3" name_suffix="_gridU" description="ocean T grid variables" >
-          <field field_ref="ssu"          name="uos"       />
-        </file>
 
-        <file id="file4" name_suffix="_gridV" description="ocean T grid variables" >
-          <field field_ref="ssv"          name="vos"       />
-        </file>
+	<file id="file22" name_suffix="_gridU" description="ocean U grid variables" gatherer="ugatherer" writer="uwriter" using_server2="true">
+	  <field field_ref="e3u"                          />
+	  <field field_ref="uoce"         name="uo"       operation="average" freq_op="1d" cell_methods="time: mean (thickness weighted)" > @uoce_e3u / @e3u </field>
+	</file>
+	
+	<file id="file23" name_suffix="_gridV" description="ocean V grid variables" gatherer="ugatherer" writer="uwriter" using_server2="true">
+	  <field field_ref="e3v"                          />
+	  <field field_ref="voce"         name="vo"       operation="average" freq_op="1d" cell_methods="time: mean (thickness weighted)" > @voce_e3v / @e3v </field>
+	</file>
+	
+	<file id="file24" name_suffix="_gridW" description="ocean W grid variables" gatherer="tgatherer" writer="twriter" using_server2="true">
+	  <field field_ref="e3w" />
+          <field field_ref="woce"         name="wo"       />
+          <field field_ref="bn2"          name="bn2" long_name="squared Brunt-Vaisala frequency"                unit="s-2" />
+	</file>
 
-      </file_group>
+<!--	<file id="file25" name_suffix="_v_heattr" description="ocean V grid variables" >                        
+          <field field_ref="v_heattr"     name="v_heattr"  /> 
+	</file>
+
+	<file id="file26" name_suffix="_u_heattr" description="ocean U grid variables" >                        
+          <field field_ref="u_heattr"     name="u_heattr" /> 
+	</file> -->
+
+   
+
+      </file_group> 

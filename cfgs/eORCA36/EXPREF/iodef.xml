@@ -17,6 +17,7 @@
             <variable id="using_server"         type="bool">true</variable>
             <variable id="info_level"           type="int">10</variable>
             <variable id="print_file"           type="bool">false</variable>
+            <variable id="transport_protocol" type="string" >p2p</variable>
            <!-- > <variable id="using_server2"        type="bool">false</variable>
             <variable id="ratio_server2"        type="int">50</variable>
             <variable id="number_pools_server2" type="int">1</variable>
@@ -24,9 +25,20 @@
             <variable id="check_event_sync"     type="bool">true</variable> -->
         </variable_group>
 
+
       <variable id="activate_non_distributed_transformation" type="bool">false</variable>
 
       </variable_definition>
+
+    <pool_definition>
+     <pool name="Opool" nprocs="150">
+      <service name="tgatherer" nprocs="50" type="gatherer"/>
+      <service name="ugatherer" nprocs="50" type="gatherer"/>
+      <service name="twriter" nprocs="25" type="writer"/>
+      <service name="uwriter" nprocs="25" type="writer"/>
+     </pool>
+    </pool_definition>
+
   </context>
 
 
@@ -41,6 +53,6 @@
 <!-- NEMO  CONTEXT add and suppress the components you need                                       -->
 <!-- ============================================================================================ -->
 
-  <context id="nemo" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo" default_pool_writer="Opool" default_pool_gatherer="Opool" src="./context_nemo.xml"/>       <!--  NEMO       -->
 
 </simulation>
