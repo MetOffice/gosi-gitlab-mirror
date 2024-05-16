@@ -15,7 +15,7 @@
       <!-- <file_group src="./file_def_nemo-oce-2D-1h.xml"/> -->
       <!-- <file_group src="./file_def_nemo-oce-3D-1d.xml"/> -->
       <!-- <file_group src="./file_def_nemo-oce-3D-1mo.xml"/> -->
-      <file_group src="./file_def_nemo-oce-2D-1h.xml"/>
+      <file_group src="./file_def_nemo-oce-2D-1d.xml"/>
       <!-- <file_group src="./file_def_nemo-oce-3D-3h.xml"/>
       <file_group src="./file_def_nemo-oce-3D-1d.xml"/> -->
 

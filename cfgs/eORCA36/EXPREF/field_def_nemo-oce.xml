@@ -3,6 +3,7 @@
 
 <field_definition level="1" prec="4" operation="average" enabled=".TRUE." default_value="1.e20" > <!-- time step automaticaly defined -->
 
+ <field_group id="all_ocean" chunking_blocksize_target="3.0">
   <!--
       =====================================================================================================
       =                                   Configurable diagnostics                                        =
@@ -579,7 +580,7 @@ that are available in the tidal-forcing implementation (see
 
   <!-- U grid -->
 
-  <field_group id="grid_U"   grid_ref="grid_U_2D" chunking_blocksize_target="20.0">
+  <field_group id="grid_U"   grid_ref="grid_U_2D">
     <field id="hu"            long_name="water column height at U point"                         standard_name="water_column_height_U"       unit="m" />
     <field id="e2u"           long_name="U-cell width in meridional direction"                   standard_name="cell_width"                  unit="m"                               />
     <field id="e3u"           long_name="U-cell thickness"                                       standard_name="cell_thickness"              unit="m"          grid_ref="grid_U_3D" />
@@ -647,7 +648,7 @@ that are available in the tidal-forcing implementation (see
 
   <!-- V grid -->
 
-  <field_group id="grid_V"   grid_ref="grid_V_2D" chunking_blocksize_target="20.0">
+  <field_group id="grid_V"   grid_ref="grid_V_2D">
     <field id="e1v"          long_name="V-cell width in longitudinal direction"                 standard_name="cell_width"                  unit="m"                              />
     <field id="e3v"          long_name="V-cell thickness"                                       standard_name="cell_thickness"              unit="m"          grid_ref="grid_V_3D" />
     <field id="e3v_0"        long_name="Initial V-cell thickness"                               standard_name="ref_cell_thickness"          unit="m"          grid_ref="grid_V_3D" />
@@ -707,7 +708,7 @@ that are available in the tidal-forcing implementation (see
 
   <!-- W grid -->
 
-  <field_group id="grid_W" grid_ref="grid_W_3D" chunking_blocksize_target="20.0">
+  <field_group id="grid_W" grid_ref="grid_W_3D">
     <field id="e3w"          long_name="W-cell thickness"                              standard_name="cell_thickness"                         unit="m"    />
     <field id="woce"         long_name="ocean vertical velocity"                       standard_name="upward_sea_water_velocity"              unit="m/s"  />
     <field id="woce_e3w"     long_name="ocean vertical velocity * e3w"                                                                        unit="m2/s"  > woce * e3w </field>
@@ -767,7 +768,7 @@ that are available in the tidal-forcing implementation (see
   </field_group>
 
   <!-- F grid -->
-  <field_group id="grid_F" grid_ref="grid_F_2D" chunking_blocksize_target="20.0">
+  <field_group id="grid_F" grid_ref="grid_F_2D">
     <field id="e3f"          long_name="F-cell thickness"                      standard_name="cell_thickness"         unit="m"   grid_ref="grid_F_3D" />
     <field id="e3f_0"        long_name="F-cell thickness"                      standard_name="cell_thickness"         unit="m"   grid_ref="grid_F_3D" />
     <field id="hf"           long_name="water column height at F point"        standard_name="water_column_height_F"  unit="m"                     />
@@ -1348,4 +1349,5 @@ that are available in the tidal-forcing implementation (see
   </field_group>
 
   
+ </field_group>   <!-- close all_ocean group -->
 </field_definition>
