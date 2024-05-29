@@ -63,7 +63,7 @@ CONTAINS
 !!      CALL Agrif_Update_tke()                  ! Update tke 
 
 #if defined key_si3
-      CALL agrif_update_ice()                      ! Update sea ice
+      IF( nn_ice /= 0 )   CALL agrif_update_ice()  ! Update sea ice
 #endif
       !
       Agrif_UseSpecialValueInUpdate = .FALSE.
