@@ -35,7 +35,7 @@
       CALL Agrif_InitValues_cont_top
 # endif
 # if defined key_si3
-      CALL Agrif_InitValues_cont_ice
+      IF( nn_ice /= 0 )   CALL Agrif_InitValues_cont_ice
 # endif
       !    
    END SUBROUTINE Agrif_initvalues
