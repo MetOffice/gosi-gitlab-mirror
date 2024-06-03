@@ -163,6 +163,7 @@ CONTAINS
       REAL(wp)  :: zhu_bck, zhv_bck!   -      -
       REAL(dp)  :: zhdiv!   -      -
       REAL(wp) ::   zun_save, zvn_save              !   -      -
+      REAL(wp) ::  zmdi
       REAL(wp), DIMENSION(jpi,jpj) :: zu_trd, zu_frc, zu_spg
       REAL(wp), DIMENSION(jpi,jpj) :: zv_trd, zv_frc, zv_spg
       REAL(wp), DIMENSION(jpi,jpj) :: zsshu_a, zhup2_e, zhtp2_e
@@ -324,23 +325,17 @@ CONTAINS
       !
       !                                   !=  Add bottom stress contribution from baroclinic velocities  =!
       !                                   !  -----------------------------------------------------------  !
-      IF( PRESENT(k_only_ADV) ) THEN         !* only Advection in the RHS : provide the barotropic bottom drag coefficients
-         DO_2D( 0, 0, 0, 0 )
-            zCdU_u(ji,jj) = r1_2*( rCdU_bot(ji+1,jj)+rCdU_bot(ji,jj) )
-            zCdU_v(ji,jj) = r1_2*( rCdU_bot(ji,jj+1)+rCdU_bot(ji,jj) )
-         END_2D
-      ELSE				     !* remove baroclinic drag AND provide the barotropic drag coefficients
-         IF( l_trddyn ) THEN
-            !
-            ! Output constant forcing terms (excluding top and bottom stresses) as diagnostics.
-            CALL trd_dyn( zu_frc, zv_frc, jpdyn_frc2d, kt, Kmm)
-            !
-            CALL dyn_drg_init( Kbb, Kmm, puu, pvv, puu_b, pvv_b, &     ! also provide the barotropic drag coefficients
-                 &             zu_frc, zv_frc, zCdU_u, zCdU_v,   &
-                 &             ztfrtrdu, ztfrtrdv, zbfrtrdu, zbfrtrdv )
-            !
-         ELSE
-            CALL dyn_drg_init( Kbb, Kmm, puu, pvv, puu_b, pvv_b, zu_frc, zv_frc, zCdU_u, zCdU_v )
+      IF( l_trddyn ) THEN
+         !
+         ! Output constant forcing terms (excluding top and bottom stresses) as diagnostics.
+         CALL trd_dyn( zu_frc, zv_frc, jpdyn_frc2d, kt, Kmm)
+         !
+         CALL dyn_drg_init( Kbb, Kmm, puu, pvv, puu_b, pvv_b, &     ! also provide the barotropic drag coefficients
+              &             zu_frc, zv_frc, zCdU_u, zCdU_v,   &
+              &             ztfrtrdu, ztfrtrdv, zbfrtrdu, zbfrtrdv )
+         !
+      ELSE
+         CALL dyn_drg_init( Kbb, Kmm, puu, pvv, puu_b, pvv_b, zu_frc, zv_frc, zCdU_u, zCdU_v )
       ENDIF
       !
       !                                   !=  Add atmospheric pressure forcing  =!

@@ -83,7 +83,8 @@ CONTAINS
       REAL(wp) ::   zWui, zWvi         !   -      -
       REAL(wp) ::   zWus, zWvs         !   -      -
       REAL(wp), DIMENSION(A2D(nn_hls),jpk)        ::  zwi, zwd, zws   ! 3D workspace
-      REAL(dp), DIMENSION(:,:,:), ALLOCATABLE ::   ztrdu, ztrdv   !  -      -
+      REAL(dp), DIMENSION(:,:,:), ALLOCATABLE ::   ztrdu   , ztrdv    ! workspace for trends 
+      REAL(dp), DIMENSION(:,:,:), ALLOCATABLE ::   ztrdu_fr, ztrdv_fr ! workspace for trends
       !!---------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('dyn_zdf')

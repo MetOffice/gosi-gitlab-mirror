@@ -82,11 +82,6 @@ CONTAINS
       !
 
 !!gm NB : here a lbc_lnk should probably be added
-
-      !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-      !   3D output of momentum and/or tracers trends using IOM interface
-      !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-      IF( ln_dyn_trd )   CALL trd_dyn_iom( putrd, pvtrd, ktrd, kt, Kmm )
          
       SELECT CASE( ktrd )
       CASE( jpdyn_hpg_save ) 
@@ -326,14 +321,6 @@ CONTAINS
 !!gm NB : here a lbc_lnk should probably be added
 
       SELECT CASE(ktrd)
-
-      CASE ( jpdyn_hpg_corr )
-         !
-         ! Remove "first-guess" SPG trend from 3D HPG trend. 
-         DO jk = 1, jpkm1
-            zutrd_hpg(:,:,jk) = zutrd_hpg(:,:,jk) - putrd(:,:)
-            zvtrd_hpg(:,:,jk) = zvtrd_hpg(:,:,jk) - pvtrd(:,:)
-         ENDDO
 
       CASE( jpdyn_pvo_corr )
          !
