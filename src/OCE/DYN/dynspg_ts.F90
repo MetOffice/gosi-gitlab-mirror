@@ -185,9 +185,7 @@ CONTAINS
       REAL(wp), ALLOCATABLE, DIMENSION(:,:) :: zspgtrdu, zspgtrdv, zpvotrdu, zpvotrdv  ! SPG and PVO trends (if l_trddyn)
       REAL(wp), ALLOCATABLE, DIMENSION(:,:) :: ztautrdu, ztautrdv, zbfrtrdu, zbfrtrdv  ! TAU and BFR trends (if l_trddyn)
       REAL(wp), ALLOCATABLE, DIMENSION(:,:) :: ztfrtrdu, ztfrtrdv, ztottrdu, ztottrdv  ! TFR and TOT trends (if l_trddyn)
-!AW add in atmospheric pressure effect to mom trend output
       REAL(wp), ALLOCATABLE, DIMENSION(:,:) :: zatmtrdu, zatmtrdv  !ATM trends (if l_trddyn) 
-!AW end
       !!----------------------------------------------------------------------
       !
       !                                         !* Allocate temporary arrays
@@ -197,13 +195,6 @@ CONTAINS
           ALLOCATE( zspgtrdu(jpi,jpj), zspgtrdv(jpi,jpj), zpvotrdu(jpi,jpj), zpvotrdv(jpi,jpj), &
          &          ztautrdu(jpi,jpj), ztautrdv(jpi,jpj), zbfrtrdu(jpi,jpj), zbfrtrdv(jpi,jpj), &
          &          ztottrdu(jpi,jpj), ztottrdv(jpi,jpj) )
-!AW add atm pressure to trends
-          IF( ln_apr_dyn ) THEN
-             ALLOCATE( zatmtrdu(jpi,jpj), zatmtrdv(jpi,jpj) )
-             zatmtrdu(:,:) = 0._wp
-             zatmtrdv(:,:) = 0._wp
-          ENDIF
-!AW end
           zspgtrdu(:,:) = 0._wp
           zspgtrdv(:,:) = 0._wp
           zpvotrdu(:,:) = 0._wp
@@ -219,6 +210,11 @@ CONTAINS
              ztfrtrdu(:,:) = 0._wp
              ztfrtrdv(:,:) = 0._wp
           ENDIF            
+          IF( ln_apr_dyn ) THEN
+             ALLOCATE( zatmtrdu(jpi,jpj), zatmtrdv(jpi,jpj) )
+             zatmtrdu(:,:) = 0._wp
+             zatmtrdv(:,:) = 0._wp
+          ENDIF
       ENDIF
       !
       zu_trd(:,:) = 0._wp
@@ -350,11 +346,11 @@ CONTAINS
       !                                   !=  Add atmospheric pressure forcing  =!
       !                                   !  ----------------------------------  !
       IF( ln_apr_dyn ) THEN
-!AW add atm to mom trends
-         ! initialise fields for atmospheric pressure trends
-         zatmtrdu(:,:) = zu_frc(:,:)
-         zatmtrdv(:,:) = zv_frc(:,:)
-!AW end
+         IF( l_trddyn ) THEN
+            ! initialise fields for atmospheric pressure trends
+            zatmtrdu(:,:) = zu_frc(:,:)
+            zatmtrdv(:,:) = zv_frc(:,:)
+         ENDIF
          IF( ln_bt_fw ) THEN                          ! FORWARD integration: use kt+1/2 pressure (NOW+1/2)
             DO_2D( 0, 0, 0, 0 )
                zu_frc(ji,jj) = zu_frc(ji,jj) + grav * (  ssh_ib (ji+1,jj  ) - ssh_ib (ji,jj) ) * r1_e1u(ji,jj)
@@ -369,14 +365,12 @@ CONTAINS
                     &                                   + ssh_ibb(ji  ,jj+1) - ssh_ibb(ji,jj)  ) * r1_e2v(ji,jj)
             END_2D
          ENDIF
-!AW add atm to mom trends
-      IF( l_trddyn ) THEN
-         ! atmospheric pressure trend diagnostic
-         zatmtrdu(:,:) = zu_frc(:,:) - zatmtrdu(:,:)
-         zatmtrdv(:,:) = zv_frc(:,:) - zatmtrdv(:,:)
-         CALL trd_dyn( zatmtrdu, zatmtrdv, jpdyn_atm, kt, Kmm)
-      ENDIF
-!AW end
+         IF( l_trddyn ) THEN
+            ! atmospheric pressure trend diagnostic
+            zatmtrdu(:,:) = zu_frc(:,:) - zatmtrdu(:,:)
+            zatmtrdv(:,:) = zv_frc(:,:) - zatmtrdv(:,:)
+            CALL trd_dyn( zatmtrdu, zatmtrdv, jpdyn_atm, kt, Kmm)
+         ENDIF
       ENDIF
       !
       !                                   !=  Add wind forcing  =!
