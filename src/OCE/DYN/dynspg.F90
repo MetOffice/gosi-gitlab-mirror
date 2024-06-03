@@ -90,7 +90,7 @@ CONTAINS
       !
       IF( ln_timing )   CALL timing_start('dyn_spg')
       !
-      IF( l_trddyn )   THEN                      ! temporary save of ta and sa trends
+      IF( l_trddyn .AND. nspg == np_EXP )   THEN                      ! temporary save of ta and sa trends
          ALLOCATE( ztrdu(jpi,jpj,jpk) , ztrdv(jpi,jpj,jpk) )
          ztrdu(:,:,:) = puu(:,:,:,Krhs)
          ztrdv(:,:,:) = pvv(:,:,:,Krhs)
@@ -170,10 +170,14 @@ CONTAINS
       CASE ( np_TS  )   ;   CALL dyn_spg_ts ( kt, Kbb, Kmm, Krhs, puu, pvv, pssh, puu_b, pvv_b, Kaa, k_only_ADV ) ! time-splitting
       END SELECT
       !
-      IF( l_trddyn )   THEN                  ! save the surface pressure gradient trends for further diagnostics
+      IF( l_trddyn .AND. nspg == np_EXP )   THEN                  ! save the surface pressure gradient trends for further diagnostics
          ztrdu(:,:,:) = puu(:,:,:,Krhs) - ztrdu(:,:,:)
          ztrdv(:,:,:) = pvv(:,:,:,Krhs) - ztrdv(:,:,:)
          CALL trd_dyn( ztrdu, ztrdv, jpdyn_spg, kt, Kmm )
+         ! In this case we also need to finalise the write-out of the PVO 3D diagnostic with zero correction
+         ztrdu(:,:,1) = 0._wp
+         ztrdv(:,:,1) = 0._wp
+         CALL trd_dyn( ztrdu(:,:,1), ztrdv(:,:,1), jpdyn_pvo, kt, Kmm )
          DEALLOCATE( ztrdu , ztrdv )
       ENDIF
       !                                      ! print mean trends (used for debugging)

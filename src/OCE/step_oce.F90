@@ -90,6 +90,7 @@ MODULE step_oce
    USE diamlr          ! IOM context management for multiple-linear-regression analysis
    USE flo_oce         ! floats variables
    USE floats          ! floats computation               (flo_stp routine)
+   USE trd_oce, ONLY: l_trddyn
 
    USE crsfld          ! Standard output on coarse grid   (crs_fld routine)
 

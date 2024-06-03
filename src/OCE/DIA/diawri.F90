@@ -225,7 +225,7 @@ CONTAINS
 
       IF( iom_use("wetdep") )    CALL iom_put( "wetdep" , ht_0(:,:) + ssh(:,:,Kmm) )   ! wet depth
          
-#if defined key_qco
+#if ! defined key_linssh
       IF( iom_use("ht") )   CALL iom_put( "ht" , ht(:,:)     )   ! water column at t-point
       IF( iom_use("hu") )   CALL iom_put( "hu" , hu(:,:,Kmm) )   ! water column at u-point
       IF( iom_use("hv") )   CALL iom_put( "hv" , hv(:,:,Kmm) )   ! water column at v-point

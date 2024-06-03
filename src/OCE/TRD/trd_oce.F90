@@ -59,21 +59,40 @@ MODULE trd_oce
    INTEGER, PUBLIC, PARAMETER ::   jptra_radb = 20     !: corr. trb<0 in trcrad (like atf)
    !
    !                                                  !!!* Momentum trends indices
-   INTEGER, PUBLIC, PARAMETER ::   jptot_dyn  = 13     !: Total trend nb: change it when adding/removing one indice below
+   INTEGER, PUBLIC, PARAMETER ::   jptot_dyn  = 16     !: Total number of trends (excluding flags for internal processing) 
    !                               ===============     !  
-   INTEGER, PUBLIC, PARAMETER ::   jpdyn_hpg  =  1     !: hydrostatic pressure gradient 
-   INTEGER, PUBLIC, PARAMETER ::   jpdyn_spg  =  2     !: surface     pressure gradient
-   INTEGER, PUBLIC, PARAMETER ::   jpdyn_keg  =  3     !: kinetic energy gradient  or horizontal advection
-   INTEGER, PUBLIC, PARAMETER ::   jpdyn_rvo  =  4     !: relative  vorticity      or metric term
-   INTEGER, PUBLIC, PARAMETER ::   jpdyn_pvo  =  5     !: planetary vorticity
-   INTEGER, PUBLIC, PARAMETER ::   jpdyn_zad  =  6     !: vertical advection
-   INTEGER, PUBLIC, PARAMETER ::   jpdyn_ldf  =  7     !: horizontal diffusion   
-   INTEGER, PUBLIC, PARAMETER ::   jpdyn_zdf  =  8     !: vertical   diffusion
-   INTEGER, PUBLIC, PARAMETER ::   jpdyn_bfr  =  9     !: bottom  stress 
-   INTEGER, PUBLIC, PARAMETER ::   jpdyn_atf  = 10     !: Asselin time filter
-   INTEGER, PUBLIC, PARAMETER ::   jpdyn_tau  = 11     !: surface stress
-   INTEGER, PUBLIC, PARAMETER ::   jpdyn_bfri = 12     !: implicit bottom friction (ln_drgimp=.TRUE.)
-   INTEGER, PUBLIC, PARAMETER ::   jpdyn_ken  = 13     !: use for calculation of KE
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_hpg   =  1     !: hydrostatic pressure gradient 
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_spg   =  2     !: surface     pressure gradient
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_keg   =  3     !: kinetic energy gradient  or horizontal advection
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_rvo   =  4     !: relative  vorticity      or metric term
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_pvo   =  5     !: planetary vorticity
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_zad   =  6     !: vertical advection
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_ldf   =  7     !: horizontal diffusion   
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_zdf   =  8     !: vertical   diffusion
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_frc2d =  9     !: constant forcing terms in depth-mean calculation
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_tau   = 10     !: wind stress excluding ice-ocean drag: surface trend
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_tau2d = 11     !: wind stress excluding ice-ocean drag: barotropic trend
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_tfr   = 12     !: top friction (cavities and ice-ocean drag if ln_drgice_imp=T) 
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_bfr   = 13     !: bottom friction 
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_tot   = 14     !: Total trend excluding Asselin time filter
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_atf   = 15     !: Asselin time filter
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_ken   = 16     !: use for calculation of KE
+!AW add atm pressure trend
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_atm   = 0     !: atmospheic pressure
+!AW end
+   !                               ================     !: FLAGS BELOW FOR INTERNAL PROCESSING ONLY
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_hpg_save = 17  !: hydrostatic pressure gradient (saved value)
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_hpg_corr = 18  !: hydrostatic pressure gradient (initial correction)
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_pvo_save = 19  !: planetary vorticity (saved value)
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_pvo_corr = 20  !: planetary vorticity (initial correction)
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_iceoc    = 21  !: (partial) ice-ocean drag: surface trend
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_iceoc2d  = 22  !: (partial) ice-ocean drag: barotropic trend
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_tfre     = 21  !: explicit top friction for baroclinic trend (ln_drgimp=.FALSE.)
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_tfre_bt  = 22  !: top friction due to barotropic currents for baroclinic trend (ln_dynspg_ts=.TRUE.)
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_tfri     = 23  !: implicit top friction for baroclinic trend 
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_bfre     = 24  !: explicit bottom friction for baroclinic trend (ln_drgimp=.FALSE.)
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_bfre_bt  = 25  !: bottom friction due to barotropic currents for baroclinic trend (ln_dynspg_ts=.TRUE.)
+   INTEGER, PUBLIC, PARAMETER ::   jpdyn_bfri     = 26  !: implicit bottom friction for baroclinic trend (ln_drgimp=.TRUE.)
    !
    !!----------------------------------------------------------------------
    !! NEMO/OCE 4.0 , NEMO Consortium (2018)

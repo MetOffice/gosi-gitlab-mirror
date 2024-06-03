@@ -28,6 +28,7 @@ MODULE dynzdf
    USE trddyn         ! trend manager: dynamics
    !
    USE in_out_manager ! I/O manager
+   USE iom            ! IOM library
    USE lib_mpp        ! MPP library
    USE prtctl         ! Print control
    USE timing         ! Timing
@@ -101,13 +102,6 @@ CONTAINS
       !                             !* explicit top/bottom drag case
       IF( .NOT.ln_drgimp )   CALL zdf_drg_exp( kt, Kmm, puu(:,:,:,Kbb), pvv(:,:,:,Kbb), puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )  ! add top/bottom friction trend to (puu(Kaa),pvv(Kaa))
       !
-      !
-      IF( l_trddyn )   THEN         !* temporary save of ta and sa trends
-         ALLOCATE( ztrdu(jpi,jpj,jpk), ztrdv(jpi,jpj,jpk) ) 
-         ztrdu(:,:,:) = puu(:,:,:,Krhs)
-         ztrdv(:,:,:) = pvv(:,:,:,Krhs)
-      ENDIF
-      !
       !              !==  RHS: Leap-Frog time stepping on all trends but the vertical mixing  ==!   (put in puu(:,:,:,Kaa),pvv(:,:,:,Kaa))
       !
       !                    ! time stepping except vertical diffusion
@@ -126,6 +120,13 @@ CONTAINS
                &                        / e3v(ji,jj,jk,Kaa) * vmask(ji,jj,jk)
          END_3D
       ENDIF
+      !   
+      IF( l_trddyn )   THEN         !* temporary save of ta and sa trends
+         ALLOCATE( ztrdu(jpi,jpj,jpk), ztrdv(jpi,jpj,jpk), ztrdu_fr(jpi,jpj,jpk), ztrdv_fr(jpi,jpj,jpk) ) 
+         ztrdu(:,:,:) = puu(:,:,:,Krhs)
+         ztrdv(:,:,:) = pvv(:,:,:,Krhs)
+      ENDIF
+      ! 
       !                    ! add top/bottom friction 
       !     With split-explicit free surface, barotropic stress is treated explicitly Update velocities at the bottom.
       !     J. Chanut: The bottom stress is computed considering after barotropic velocities, which does 
@@ -136,6 +137,10 @@ CONTAINS
             puu(ji,jj,jk,Kaa) = ( puu(ji,jj,jk,Kaa) - uu_b(ji,jj,Kaa) ) * umask(ji,jj,jk)
             pvv(ji,jj,jk,Kaa) = ( pvv(ji,jj,jk,Kaa) - vv_b(ji,jj,Kaa) ) * vmask(ji,jj,jk)
          END_3D
+         IF( l_trddyn )   THEN         !* temporary save of ta and sa trends
+            ztrdu_fr(:,:,:) = puu(:,:,:,Kaa)
+            ztrdv_fr(:,:,:) = pvv(:,:,:,Kaa)
+         ENDIF
          DO_2D( 0, 0, 0, 0 )      ! Add bottom/top stress due to barotropic component only
             iku = mbku(ji,jj)         ! ocean bottom level at u- and v-points 
             ikv = mbkv(ji,jj)         ! (deepest ocean u- and v-points)
@@ -146,7 +151,16 @@ CONTAINS
             puu(ji,jj,iku,Kaa) = puu(ji,jj,iku,Kaa) + rDt * 0.5*( rCdU_bot(ji+1,jj)+rCdU_bot(ji,jj) ) * uu_b(ji,jj,Kaa) / ze3ua
             pvv(ji,jj,ikv,Kaa) = pvv(ji,jj,ikv,Kaa) + rDt * 0.5*( rCdU_bot(ji,jj+1)+rCdU_bot(ji,jj) ) * vv_b(ji,jj,Kaa) / ze3va
          END_2D
+         IF( l_trddyn )   THEN    ! save baroclinic bottom friction trends due to barotropic currents  
+            ztrdu_fr(:,:,:) = ( puu(:,:,:,Kaa) - ztrdu_fr(:,:,:) ) / rDt 
+            ztrdv_fr(:,:,:) = ( pvv(:,:,:,Kaa) - ztrdv_fr(:,:,:) ) / rDt 
+            CALL trd_dyn( ztrdu_fr, ztrdv_fr, jpdyn_bfre_bt, kt, Kmm )
+         ENDIF
          IF( ln_isfcav.OR.ln_drgice_imp ) THEN    ! Ocean cavities (ISF)
+            IF( l_trddyn )   THEN         !* temporary save of ta and sa trends
+               ztrdu_fr(:,:,:) = puu(:,:,:,Kaa)
+               ztrdv_fr(:,:,:) = pvv(:,:,:,Kaa)
+            ENDIF
             DO_2D( 0, 0, 0, 0 )
                iku = miku(ji,jj)         ! top ocean level at u- and v-points 
                ikv = mikv(ji,jj)         ! (first wet ocean u- and v-points)
@@ -157,6 +171,11 @@ CONTAINS
                puu(ji,jj,iku,Kaa) = puu(ji,jj,iku,Kaa) + rDt * 0.5*( rCdU_top(ji+1,jj)+rCdU_top(ji,jj) ) * uu_b(ji,jj,Kaa) / ze3ua
                pvv(ji,jj,ikv,Kaa) = pvv(ji,jj,ikv,Kaa) + rDt * 0.5*( rCdU_top(ji,jj+1)+rCdU_top(ji,jj) ) * vv_b(ji,jj,Kaa) / ze3va
             END_2D
+            IF( l_trddyn )   THEN   ! save baroclinic top friction trends due to barotropic currents
+               ztrdu_fr(:,:,:) = ( puu(:,:,:,Kaa) - ztrdu_fr(:,:,:) ) / rDt
+               ztrdv_fr(:,:,:) = ( pvv(:,:,:,Kaa) - ztrdv_fr(:,:,:) ) / rDt 
+               CALL trd_dyn( ztrdu_fr, ztrdv_fr, jpdyn_tfre_bt, kt, Kmm )
+            ENDIF
          END IF
       ENDIF
       !
@@ -436,11 +455,57 @@ CONTAINS
          pvv(ji,jj,jk,Kaa) = ( pvv(ji,jj,jk,Kaa) - zws(ji,jj,jk) * pvv(ji,jj,jk+1,Kaa) ) / zwd(ji,jj,jk)
       END_3D
       !
-      IF( l_trddyn )   THEN                      ! save the vertical diffusive trends for further diagnostics
-         ztrdu(:,:,:) = ( puu(:,:,:,Kaa) - puu(:,:,:,Kbb) ) / rDt - ztrdu(:,:,:)
-         ztrdv(:,:,:) = ( pvv(:,:,:,Kaa) - pvv(:,:,:,Kbb) ) / rDt - ztrdv(:,:,:)
+      IF( l_trddyn )   THEN                      
+         ! save the vertical diffusive trends for further diagnostics
+         ! then calculate implicit drag trends
+         ! (The order of operation is important here). 
+         !
+         ztrdu(:,:,:) = ( puu(:,:,:,Kaa) - ztrdu(:,:,:) ) / rDt 
+         ztrdv(:,:,:) = ( pvv(:,:,:,Kaa) - ztrdv(:,:,:) ) / rDt 
          CALL trd_dyn( ztrdu, ztrdv, jpdyn_zdf, kt, Kmm )
-         DEALLOCATE( ztrdu, ztrdv ) 
+         !
+         IF( nn_ice == 2 ) THEN
+            !                             ! trends due to ice-ocean drag in surface layer
+            ztrdu_fr(:,:,:) = 0._wp    ;   ztrdv_fr(:,:,:) = 0._wp
+            ztrdu_fr(:,:,1) = ( uiceoc_b(:,:) + uiceoc(:,:) ) / ( e3u(:,:,1,Kmm) * rho0 )
+            ztrdv_fr(:,:,1) = ( viceoc_b(:,:) + viceoc(:,:) ) / ( e3v(:,:,1,Kmm) * rho0 )
+            CALL trd_dyn( ztrdu_fr(:,:,1), ztrdv_fr(:,:,1), jpdyn_iceoc, kt, Kmm )
+         ENDIF
+         !
+         !                             ! wind stress trends in surface layer
+         ztrdu_fr(:,:,:) = 0._wp    ;   ztrdv_fr(:,:,:) = 0._wp
+         ztrdu_fr(:,:,1) = ( utau_b(:,:) + utau(:,:) ) / ( e3u(:,:,1,Kmm) * rho0 )
+         ztrdv_fr(:,:,1) = ( vtau_b(:,:) + vtau(:,:) ) / ( e3v(:,:,1,Kmm) * rho0 )
+         CALL trd_dyn( ztrdu_fr(:,:,1), ztrdv_fr(:,:,1), jpdyn_tau, kt, Kmm)
+         !
+         IF( ln_drgimp ) THEN
+            !                          ! trends due to implicit bottom friction
+            ztrdu_fr(:,:,:) = 0._wp    ;   ztrdv_fr(:,:,:) = 0._wp
+            DO_2D( 1, 1, 1, 1 ) 
+                  iku = mbku(ji,jj)          ! deepest ocean u- & v-levels
+                  ikv = mbkv(ji,jj)
+                  ztrdu_fr(ji,jj,iku) = 0.5 * ( rCdU_bot(ji+1,jj) + rCdU_bot(ji,jj) )  & 
+     &                                 * puu(ji,jj,iku,Kmm) / e3u(ji,jj,iku,Kmm)
+                  ztrdv_fr(ji,jj,ikv) = 0.5 * ( rCdU_bot(ji,jj+1) + rCdU_bot(ji,jj) )  &
+     &                                 * pvv(ji,jj,ikv,Kmm) / e3v(ji,jj,ikv,Kmm)
+            END_2D
+            CALL trd_dyn( ztrdu_fr, ztrdv_fr, jpdyn_bfri, kt, Kmm )
+            !                          ! trends due to implicit top friction
+            IF( ln_isfcav.OR.ln_drgice_imp ) THEN    ! Ocean cavities (ISF) or implicit ice-ocean drag
+               ztrdu_fr(:,:,:) = 0._wp    ;   ztrdv_fr(:,:,:) = 0._wp
+               DO_2D( 1, 1, 1, 1 ) 
+                     iku = miku(ji,jj)       ! ocean top level at u-points 
+                     ikv = mikv(ji,jj)       ! ocean top level at v-points 
+                     ztrdu_fr(ji,jj,iku) = 0.5 * ( rCdU_top(ji+1,jj) + rCdU_top(ji,jj) )  & 
+     &                                      * puu(ji,jj,iku,Kmm) / e3u(ji,jj,iku,Kmm)
+                     ztrdv_fr(ji,jj,ikv) = 0.5 * ( rCdU_top(ji,jj+1) + rCdU_top(ji,jj) )  &
+     &                                      * pvv(ji,jj,ikv,Kmm) / e3v(ji,jj,ikv,Kmm)
+            END_2D
+               CALL trd_dyn( ztrdu_fr, ztrdv_fr, jpdyn_tfri, kt, Kmm )
+            ENDIF
+         ENDIF
+         !
+         DEALLOCATE( ztrdu, ztrdv, ztrdu_fr, ztrdv_fr ) 
       ENDIF
       !                                          ! print mean trends (used for debugging)
       IF(sn_cfctl%l_prtctl)   CALL prt_ctl( tab3d_1=puu(:,:,:,Kaa), clinfo1=' zdf  - Ua: ', mask1=umask,               &
