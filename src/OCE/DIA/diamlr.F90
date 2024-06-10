@@ -45,6 +45,7 @@ CONTAINS
       !!
       !!----------------------------------------------------------------------
       !
+#if defined key_xios
       lk_diamlr = .TRUE.
       !
       IF(lwp) THEN
@@ -52,6 +53,9 @@ CONTAINS
          WRITE(numout, *) 'dia_mlr_init : initialisation of IOM context management for'
          WRITE(numout, *) '~~~~~~~~~~~~   multiple-linear-regression analysis'
       END IF
+#else
+      lk_diamlr = .FALSE.
+#endif
       !
    END SUBROUTINE dia_mlr_init
 
