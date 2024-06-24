@@ -15,6 +15,7 @@ MODULE diahth
    USE oce             ! ocean dynamics and tracers
    USE dom_oce         ! ocean space and time domain
    USE phycst          ! physical constants
+   USE zdfmxl, ONLY: zdf_mxl_zint
    !
    USE in_out_manager  ! I/O manager
    USE lib_mpp         ! MPP library
@@ -247,6 +248,10 @@ CONTAINS
       DEALLOCATE( z2d, zhth, zabs2, ztm2, zrho10_3, zpycn, ztinv, &
          &        zdepinv, zrho0_3, zrho0_1, zmaxdzT, zdelr )
       !
+      
+      ! Vertically-interpolated mixed-layer depth diagnostic
+      CALL zdf_mxl_zint( kt, Kmm )
+      
       IF( ln_timing )   CALL timing_stop('dia_hth')
       !
    END SUBROUTINE dia_hth

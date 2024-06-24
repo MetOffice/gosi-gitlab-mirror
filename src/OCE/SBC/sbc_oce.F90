@@ -136,6 +136,8 @@ MODULE sbc_oce
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   atm_co2            !: atmospheric pCO2                              [ppm]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) :: xcplmask           !: coupling mask for ln_mixcpl (warning: allocated in sbccpl)
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   cloud_fra          !: cloud cover (fraction of cloud in a gridcell) [-]
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   greenland_icesheet_mask
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   antarctica_icesheet_mask 
 
    !!---------------------------------------------------------------------
    !! ABL Vertical Domain size
@@ -158,6 +160,33 @@ MODULE sbc_oce
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   e3t_m     !: mean (nn_fsbc time-step) sea surface layer thickness       [m]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   frq_m     !: mean (nn_fsbc time-step) fraction of solar net radiation absorbed in the 1st T level [-]
 
+   !!----------------------------------------------------------------------
+   !!  Surface scalars of total ice sheet mass for Greenland and Antarctica,
+   !! passed from atmosphere to be converted to dvol and hence a freshwater
+   !! flux  by using old values. New values are saved in the dump, to become
+   !! old values next coupling timestep. Freshwater fluxes split between
+   !! sub iceshelf melting and iceberg calving, scalled to flux per second
+   !!----------------------------------------------------------------------
+   
+   REAL(wp), PUBLIC  :: greenland_icesheet_mass, greenland_icesheet_mass_rate_of_change, greenland_icesheet_timelapsed
+   REAL(wp), PUBLIC  :: antarctica_icesheet_mass, antarctica_icesheet_mass_rate_of_change, antarctica_icesheet_timelapsed
+
+   ! sbccpl namelist parameters associated with icesheet freshwater input code. Included here rather than in sbccpl.F90 to
+   ! avoid circular dependencies.
+   INTEGER, PUBLIC     ::   nn_coupled_iceshelf_fluxes     ! =0 : total freshwater input from iceberg calving and ice shelf basal melting
+                                                           ! taken from climatologies used (no action in coupling routines).
+                                                           ! =1 :  use rate of change of mass of Greenland and Antarctic icesheets to set the
+                                                           ! combined magnitude of the iceberg calving and iceshelf melting freshwater fluxes.
+                                                           ! =2 :  specify constant freshwater inputs in this namelist to set the combined
+                                                           ! magnitude of iceberg calving and iceshelf melting freshwater fluxes.
+   LOGICAL, PUBLIC     ::   ln_iceshelf_init_atmos         ! If true force ocean to initialise iceshelf masses from atmospheric values rather
+                                                           ! than values in ocean restart (applicable if nn_coupled_iceshelf_fluxes=1).
+   REAL(wp), PUBLIC    ::   rn_greenland_total_fw_flux    ! Constant total rate of freshwater input (kg/s) for Greenland (if nn_coupled_iceshelf_fluxes=2)
+   REAL(wp), PUBLIC    ::   rn_greenland_calving_fraction  ! Set fraction of total freshwater flux for iceberg calving - remainder goes to iceshelf melting.
+   REAL(wp), PUBLIC    ::   rn_antarctica_total_fw_flux   ! Constant total rate of freshwater input (kg/s) for Antarctica (if nn_coupled_iceshelf_fluxes=2)
+   REAL(wp), PUBLIC    ::   rn_antarctica_calving_fraction ! Set fraction of total freshwater flux for iceberg calving - remainder goes to iceshelf melting.
+   REAL(wp), PUBLIC    ::   rn_iceshelf_fluxes_tolerance   ! Absolute tolerance for detecting differences in icesheet masses.
+	
    !!----------------------------------------------------------------------
    !!                     Surface atmospheric fields
    !!----------------------------------------------------------------------
@@ -212,6 +241,8 @@ CONTAINS
       !
       ALLOCATE( tprecip(A2D(0)) , sprecip(A2D(0)) ,    &
          &      atm_co2(A2D(0)) , tsk_m  (A2D(0)) , cloud_fra(A2D(0)), STAT=ierr(7) )
+
+      ALLOCATE( greenland_icesheet_mask(A2D(0)) , antarctica_icesheet_mask(A2D(0)) ) 
 
       ALLOCATE( rhoa(A2D(0)) , q_air_zt(A2D(0)) , theta_air_zt(A2D(0)) , STAT=ierr(8) )
       !

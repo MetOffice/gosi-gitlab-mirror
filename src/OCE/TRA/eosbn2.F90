@@ -45,6 +45,7 @@ MODULE eosbn2
    !
    USE in_out_manager ! I/O manager
    USE lib_mpp        ! for ctl_stop
+   USE lib_fortran    ! Fortran utilities (allows no signed zero when 'key_nosignedzero' defined)
    USE prtctl         ! Print control
    USE timing         ! Timing
 
