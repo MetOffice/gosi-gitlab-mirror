@@ -85,7 +85,7 @@ CONTAINS
       IF( ipi == jpi .AND. ipj == jpj ) THEN   ! full arrays then no need to change index jid and jjd
          ji0 = 0 ; jj0 = 0
       ELSE                                     ! reduced arrays then need to shift index by nn_hls
-         ji0 = nn_hls ; jj0 = nn_hls           !         since tab2d is shifted by nn_hls
+         ji0 = nn_hls ; jj0 = nn_hls           !         since tab3d is shifted by nn_hls
       ENDIF                                    !           (i.e. from hls+1:jpi-hls  to  1:jpi-2*hls)
       !
       DO jl = 1, jpl

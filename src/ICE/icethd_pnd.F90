@@ -190,10 +190,10 @@ CONTAINS
       !  Diagnostics
       !------------------------------------
       IF( ll_diag_pnd ) THEN
-         CALL iom_put( 'dvpn_mlt', diag_dvpn_mlt ) ! input from melting
-         CALL iom_put( 'dvpn_lid', diag_dvpn_lid ) ! exchanges with lid
-         CALL iom_put( 'dvpn_drn', diag_dvpn_drn ) ! vertical drainage
-         CALL iom_put( 'dvpn_rnf', diag_dvpn_rnf ) ! runoff + overflow
+      IF( iom_use('dvpn_mlt'  ) ) CALL iom_put( 'dvpn_mlt', diag_dvpn_mlt ) ! input from melting
+      IF( iom_use('dvpn_lid'  ) ) CALL iom_put( 'dvpn_lid', diag_dvpn_lid ) ! exchanges with lid
+      IF( iom_use('dvpn_drn'  ) ) CALL iom_put( 'dvpn_drn', diag_dvpn_drn ) ! vertical drainage
+      IF( iom_use('dvpn_rnf'  ) ) CALL iom_put( 'dvpn_rnf', diag_dvpn_rnf ) ! runoff + overflow
       ENDIF
    
       IF( ln_icediachk )   CALL ice_cons_hsm(1, 'icethd_pnd', rdiag_v, rdiag_s, rdiag_t, rdiag_fv, rdiag_fs, rdiag_ft)

@@ -357,6 +357,11 @@ LOGICAL, SAVE :: ll_bt_av    ! =T : boxcard time averaging   =F : foreward backw
       IF( kt == nit000 .OR. .NOT. lk_linssh )   CALL dyn_cor_2D_init( Kmm )   ! Set zwz, the barotropic Coriolis force coefficient
       !                      ! recompute zwz = f/depth  at every time step for (.NOT.lk_linssh) as the water colomn height changes
       !
+      ! Ensure zhU and zhV are initialised to SOMETHING at all points to avoid referencing
+      ! uninitialsed values in halos later on!
+      zhU(:,:) = 0._wp
+      zhV(:,:) = 0._wp
+
       zhU(:,:) = puu_b(:,:,Kmm) * hu(:,:,Kmm) * e2u(:,:)        ! now fluxes 
       zhV(:,:) = pvv_b(:,:,Kmm) * hv(:,:,Kmm) * e1v(:,:)        ! NB: FULL domain : put a value in last row and column
       !
@@ -623,6 +628,12 @@ LOGICAL, SAVE :: ll_bt_av    ! =T : boxcard time averaging   =F : foreward backw
             CALL wad_Umsk( ztwdmask, zhU, zhV, un_e, vn_e, zuwdmask, zvwdmask )   ! not jpi colomn for U, not jpj row for V
             !
          ENDIF    
+
+         ! It seems safest to do this here since zhU and zhV are not initially calculated in halos
+         ! by this code or by wad_Umsk, but halo values (ji-1 and jj-1) ARE required in the zhdiv 
+         ! sea level calculation. The current trunk (Feb 2024) has resolved all these issues by rewriting.
+         CALL lbc_lnk( 'dynspg_ts',  zhU, 'U', -1._wp)
+         CALL lbc_lnk( 'dynspg_ts',  zhV, 'V', -1._wp)
          !
          !
          !     Compute Sea Level at step jit+1
@@ -633,6 +644,9 @@ LOGICAL, SAVE :: ll_bt_av    ! =T : boxcard time averaging   =F : foreward backw
             zhdiv = (   ( zhU(ji,jj) - zhU(ji-1,jj) ) + ( zhV(ji,jj) - zhV(ji,jj-1) )  ) * r1_e1e2t(ji,jj)
             ssha_e(ji,jj) = (  sshn_e(ji,jj) - rDt_e * ( ssh_frc(ji,jj) + zhdiv )  ) * ssmask(ji,jj)
          END_2D
+
+         CALL lbc_lnk( 'dynspg_ts', ssha_e, 'T', 1._dp)
+
          !
          ! Duplicate sea level across open boundaries (this is only cosmetic if linssh=T)
          IF( ln_bdy )   CALL bdy_ssh( ssha_e )

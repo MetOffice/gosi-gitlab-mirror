@@ -104,7 +104,7 @@ CONTAINS
       IF( iom_use('icethic' ) )   CALL iom_put( 'icethic', hm_i(:,:)           * zmsk00 )                                     ! ice thickness
       IF( iom_use('snwthic' ) )   CALL iom_put( 'snwthic', hm_s(:,:)           * zmsk00 )                                     ! snw thickness
       IF( iom_use('icebrv'  ) )   CALL iom_put( 'icebrv' , vm_ibr(:,:)* 100.   * zmsk00 )                                     ! brine volume
-      IF( iom_use('iceage'  ) )   CALL iom_put( 'iceage' , om_i(:,:) / rday    * zmsk15 + zmiss * ( 1._wp - zmsk15 ) )        ! ice age
+      IF( iom_use('iceage'  ) )   CALL iom_put( 'iceage' , om_i(:,:) / rday    * zmsk15 )                                     ! ice age
       IF( iom_use('icehnew' ) )   CALL iom_put( 'icehnew', ht_i_new(:,:)                )                                     ! new ice thickness formed in the leads
       IF( iom_use('snwvolu' ) )   CALL iom_put( 'snwvolu', vt_s(A2D(0))        * zmsksn )                                     ! snow volume
       IF( iom_use('icefrb'  ) ) THEN                                                                                          ! Ice freeboard
@@ -120,14 +120,15 @@ CONTAINS
       IF( iom_use('icehlid' ) )   CALL iom_put( 'icehlid' , hm_il(:,:)        * zmsk00 )                                      ! melt pond lid depth
       IF( iom_use('icevlid' ) )   CALL iom_put( 'icevlid' , vt_il(A2D(0))     * zmsk00 )                                      ! melt pond lid total volume per unit area
       ! salt
-      IF( iom_use('icesalt' ) )   CALL iom_put( 'icesalt', sm_i(:,:)                 * zmsk00 + zmiss * ( 1._wp - zmsk00 ) )  ! mean ice salinity
+      IF( iom_use('icesalt' ) )   CALL iom_put( 'icesalt', sm_i(:,:)                 * zmsk00 )                               ! mean ice salinity
       IF( iom_use('icesalm' ) )   CALL iom_put( 'icesalm', st_i(:,:) * rhoi * 1.0e-3 * zmsk00 )                               ! Mass of salt in sea ice per cell area
+      IF( iom_use('iceepnd' ) )   CALL iom_put( 'iceepnd', SUM( a_ip_eff * a_i, dim=3 ) * zmsk00  )   
       ! heat
-      IF( iom_use('icetemp' ) )   CALL iom_put( 'icetemp', ( tm_i (:,:) - rt0 ) * zmsk00 + zmiss * ( 1._wp - zmsk00 ) )       ! ice mean temperature
-      IF( iom_use('snwtemp' ) )   CALL iom_put( 'snwtemp', ( tm_s (:,:) - rt0 ) * zmsksn + zmiss * ( 1._wp - zmsksn ) )       ! snw mean temperature
-      IF( iom_use('icettop' ) )   CALL iom_put( 'icettop', ( tm_su(:,:) - rt0 ) * zmsk00 + zmiss * ( 1._wp - zmsk00 ) )       ! temperature at the ice surface
-      IF( iom_use('icetbot' ) )   CALL iom_put( 'icetbot', ( t_bo (:,:) - rt0 ) * zmsk00 + zmiss * ( 1._wp - zmsk00 ) )       ! temperature at the ice bottom
-      IF( iom_use('icetsni' ) )   CALL iom_put( 'icetsni', ( tm_si(:,:) - rt0 ) * zmsk00 + zmiss * ( 1._wp - zmsk00 ) )       ! temperature at the snow-ice interface
+      IF( iom_use('icetemp' ) )   CALL iom_put( 'icetemp', ( tm_i (:,:) - rt0 ) * zmsk00 )                                    ! ice mean temperature
+      IF( iom_use('snwtemp' ) )   CALL iom_put( 'snwtemp', ( tm_s (:,:) - rt0 ) * zmsksn )                                    ! snw mean temperature
+      IF( iom_use('icettop' ) )   CALL iom_put( 'icettop', ( tm_su(:,:) - rt0 ) * zmsk00 )                                    ! temperature at the ice surface
+      IF( iom_use('icetbot' ) )   CALL iom_put( 'icetbot', ( t_bo (:,:) - rt0 ) * zmsk00 )                                    ! temperature at the ice bottom
+      IF( iom_use('icetsni' ) )   CALL iom_put( 'icetsni', ( tm_si(:,:) - rt0 ) * zmsk00 )                                    ! temperature at the snow-ice interface
       IF( iom_use('icehc'   ) )   CALL iom_put( 'icehc'  ,  -et_i (:,:)         * zmsk00 )                                    ! ice heat content
       IF( iom_use('snwhc'   ) )   CALL iom_put( 'snwhc'  ,  -et_s (:,:)         * zmsksn )                                    ! snow heat content
       ! momentum
@@ -168,11 +169,11 @@ CONTAINS
       ! --- category-dependent fields --- !
       IF( iom_use('icemask_cat' ) )   CALL iom_put( 'icemask_cat' ,                        zmsk00c                               ) ! ice mask 0%
       IF( iom_use('iceconc_cat' ) )   CALL iom_put( 'iceconc_cat' , a_i(A2D(0),:)        * zmsk00c                               ) ! area for categories
-      IF( iom_use('icethic_cat' ) )   CALL iom_put( 'icethic_cat' , h_i(A2D(0),:)        * zmsk00c + zmiss * ( 1._wp - zmsk00c ) ) ! thickness for categories
-      IF( iom_use('snwthic_cat' ) )   CALL iom_put( 'snwthic_cat' , h_s(A2D(0),:)        * zmsksnc + zmiss * ( 1._wp - zmsksnc ) ) ! snow depth for categories
-      IF( iom_use('icesalt_cat' ) )   CALL iom_put( 'icesalt_cat' , s_i(A2D(0),:)        * zmsk00c + zmiss * ( 1._wp - zmsk00c ) ) ! salinity for categories
-      IF( iom_use('iceage_cat'  ) )   CALL iom_put( 'iceage_cat'  , o_i(A2D(0),:) / rday * zmsk00c + zmiss * ( 1._wp - zmsk00c ) ) ! ice age
-      IF( iom_use('icebrv_cat'  ) )   CALL iom_put( 'icebrv_cat'  , v_ibr(:,:,:) * 100.  * zmsk00c + zmiss * ( 1._wp - zmsk00c ) ) ! brine volume
+      IF( iom_use('icethic_cat' ) )   CALL iom_put( 'icethic_cat' , h_i(A2D(0),:)        * zmsk00c                               ) ! thickness for categories
+      IF( iom_use('snwthic_cat' ) )   CALL iom_put( 'snwthic_cat' , h_s(A2D(0),:)        * zmsksnc                               ) ! snow depth for categories
+      IF( iom_use('icesalt_cat' ) )   CALL iom_put( 'icesalt_cat' , s_i(A2D(0),:)        * zmsk00c                               ) ! salinity for categories
+      IF( iom_use('iceage_cat'  ) )   CALL iom_put( 'iceage_cat'  , o_i(A2D(0),:) / rday * zmsk00c                               ) ! ice age
+      IF( iom_use('icebrv_cat'  ) )   CALL iom_put( 'icebrv_cat'  , v_ibr(:,:,:) * 100.  * zmsk00c                               ) ! brine volume
       IF( iom_use('iceapnd_cat' ) )   CALL iom_put( 'iceapnd_cat' , a_ip(A2D(0),:)       * zmsk00c                               ) ! melt pond frac for categories
       IF( iom_use('icevpnd_cat' ) )   CALL iom_put( 'icevpnd_cat' , v_ip(A2D(0),:)       * zmsk00c                               ) ! melt pond volume for categories
       IF( iom_use('icehpnd_cat' ) )   CALL iom_put( 'icehpnd_cat' , h_ip(A2D(0),:)       * zmsk00c + zmiss * ( 1._wp - zmsk00c ) ) ! melt pond thickness for categories
@@ -181,11 +182,9 @@ CONTAINS
       IF( iom_use('iceafpnd_cat') )   CALL iom_put( 'iceafpnd_cat', a_ip_frac(:,:,:)     * zmsk00c                               ) ! melt pond frac per ice area for categories
       IF( iom_use('iceaepnd_cat') )   CALL iom_put( 'iceaepnd_cat', a_ip_eff(A2D(0),:)   * zmsk00c                               ) ! melt pond effective frac for categories
       IF( iom_use('icealb_cat'  ) )   CALL iom_put( 'icealb_cat'  , alb_ice(:,:,:)       * zmsk00c + zmiss * ( 1._wp - zmsk00c ) ) ! ice albedo for categories
-      IF( iom_use('icettop_cat' ) )   CALL iom_put( 'icettop_cat' , (t_su(A2D(0),:)-rt0) * zmsk00c + zmiss * ( 1._wp - zmsk00c ) ) ! surface temperature
-      IF( iom_use('icetemp_cat' ) )   CALL iom_put( 'icetemp_cat' , (SUM( t_i(A2D(0),:,:), dim=3 ) * r1_nlay_i - rt0) * zmsk00c  &
-         &                                                                                         + zmiss * ( 1._wp - zmsk00c ) ) ! ice temperature
-      IF( iom_use('snwtemp_cat' ) )   CALL iom_put( 'snwtemp_cat' , (SUM( t_s(A2D(0),:,:), dim=3 ) * r1_nlay_s - rt0) * zmsksnc  &
-         &                                                                                         + zmiss * ( 1._wp - zmsksnc ) ) ! snow temperature
+      IF( iom_use('icettop_cat' ) )   CALL iom_put( 'icettop_cat' , (t_su(A2D(0),:)-rt0) * zmsk00c                               ) ! surface temperature
+      IF( iom_use('icetemp_cat' ) )   CALL iom_put( 'icetemp_cat' , (SUM( t_i(A2D(0),:,:), dim=3 ) * r1_nlay_i - rt0) * zmsk00c  ) ! ice temperature
+      IF( iom_use('snwtemp_cat' ) )   CALL iom_put( 'snwtemp_cat' , (SUM( t_s(A2D(0),:,:), dim=3 ) * r1_nlay_s - rt0) * zmsksnc  ) ! snow temperature
 
       ! --- layer-dependent fields --- !
       IF( iom_use('icetemp_lay' ) .OR. iom_use('icesalt_lay' ) ) THEN

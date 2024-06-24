@@ -41,7 +41,7 @@ MODULE traadv_fct
    LOGICAL  ::   l_hst     ! flag to compute heat/salt transport
    REAL(wp) ::   r1_6 = 1._wp / 6._wp   ! =1/6
 
-   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   ztmp, zwdia, zwinf, zwsup
+   REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   ztmp, zwdia, zwinf, zwsup, ztmp_in
    !                                        ! tridiag solver associated indices:
    !! INTEGER, PARAMETER ::   np_NH   = 0   ! Neumann homogeneous boundary condition
    !! INTEGER, PARAMETER ::   np_CEN2 = 1   ! 2nd order centered  boundary condition
@@ -145,7 +145,7 @@ CONTAINS
          ENDIF
       END IF
       !
-      IF( ll_zAimp2 )   ALLOCATE( ztmp(T2D(2),jpk), zwdia(T2D(2),jpk), zwinf(T2D(2),jpk), zwsup(T2D(2),jpk) )
+      IF( ll_zAimp2 )   ALLOCATE( ztmp(T2D(2),jpk),ztmp_in(T2D(2),jpk), zwdia(T2D(2),jpk), zwinf(T2D(2),jpk), zwsup(T2D(2),jpk) )
       !
       DO jn = 1, kjpt            !==  loop over the tracers  ==!
          !
@@ -294,6 +294,7 @@ CONTAINS
             END_3D
             !
             CALL tridia_solver( zwdia, zwsup, zwinf, ztmp, ztmp, 0, kbnd=0 )
+
             !
             DO_3D( 0, 0, 0, 0, 2, jpkm1 )       ! Interior value ( multiplied by wmask)
                ztFw(ji,jj,jk) =  ztFw(ji,jj,jk) + ( MAX( wi(ji,jj,jk) , 0._wp ) * ztmp(ji,jj,jk) + &
@@ -368,7 +369,7 @@ CONTAINS
          !
       END DO                     !==  end loop over the tracers  ==!
       !
-      IF( ll_zAimp2 )          DEALLOCATE( ztmp, zwdia, zwinf, zwsup )
+      IF( ll_zAimp2 )          DEALLOCATE( ztmp, ztmp_in, zwdia, zwinf, zwsup )
       IF( l_trd .OR. l_hst )   DEALLOCATE( ztrdx, ztrdy, ztrdz )
       IF( l_ptr )              DEALLOCATE( zptry )
       !
@@ -392,6 +393,7 @@ CONTAINS
       INTEGER  ::   ji, jj, jk    ! dummy loop indices
       INTEGER  ::   ik            ! local integer
       REAL(wp) ::   ztra   ! local scalar
+      REAL(wp), DIMENSION(T2D(nn_hls),jpk)                ::   zwi_in 
       !!----------------------------------------------------------------------
 !!$      IF( .NOT. ll_upsxy ) THEN         !** no alternate directions **!
 !!$      ELSE                              !** alternate directions **!
@@ -481,6 +483,7 @@ CONTAINS
       REAL(wp), DIMENSION(T2D(nn_hls),jpk), INTENT(  out) ::   pt_up1           ! tracer or upstream guess of tracer
       REAL(wp), DIMENSION(:,:,:)          , INTENT(inout) ::   pt_rhs           ! RHS tendency
       !
+      REAL(wp), DIMENSION(T2D(nn_hls),jpk)                ::   zwi_in  
       INTEGER  ::   ji, jj, jk      ! dummy loop indices
       INTEGER  ::   ik              ! local integer
       REAL(wp) ::   zimp, zDt, ztra ! local scalar
