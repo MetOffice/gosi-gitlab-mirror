@@ -112,6 +112,8 @@ CONTAINS
       INTEGER  ::   ji, jj    ! dummy loop indices
       INTEGER  ::   z_err = 0 ! dummy integer for error handling
       !!----------------------------------------------------------------------
+      REAL(wp), DIMENSION(jpi,jpj) ::   ztfrz   ! freezing point used for temperature correction
+      !
       !
       !                                            !-------------------!
       !                                            !   Update runoff   !
@@ -181,12 +183,13 @@ CONTAINS
          !                                                           ! set temperature & salinity content of runoffs
          IF( ln_rnf_tem ) THEN                                       ! use runoffs temperature data
             rnf_tsc(:,:,jp_tem) = ( sf_t_rnf(1)%fnow(:,:,1) ) * rnf(A2D(0)) * r1_rho0
+            CALL eos_fzp( sss_m(:,:), ztfrz(:,:) )
             WHERE( sf_t_rnf(1)%fnow(:,:,1) == -999._wp )             ! if missing data value use SST as runoffs temperature
                rnf_tsc(:,:,jp_tem) = MAX(sst_m(A2D(0)),0.0_wp) * rnf(A2D(0)) * r1_rho0
             END WHERE
             WHERE( sf_t_rnf(1)%fnow(:,:,1) == -222._wp )
             ! where fwf comes from melting of ice shelves or iceberg
-                rnf_tsc(:,:,jp_tem) = ztfrz(:,:) * rnf(A2D(0)) * r1_rho0 - rnf(A2D(0))  * rLfusisf * r1_rho0_rcp
+                rnf_tsc(:,:,jp_tem) = ztfrz(A2D(0)) * rnf(A2D(0)) * r1_rho0 - rnf(A2D(0))  * rLfusisf * r1_rho0_rcp
             END WHERE
 
          ELSE                                                        ! use SST as runoffs temperature
