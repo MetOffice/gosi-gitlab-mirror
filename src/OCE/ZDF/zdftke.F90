@@ -872,7 +872,7 @@ CONTAINS
          CASE( 1 )                                 ! F(latitude) : 0.5m to 30m poleward of 40 degrees
             htau(:,:) = MAX(  0.5_wp, MIN( 30._wp, 45._wp* ABS( SIN( rpi/180._wp * gphit(A2D(0)) ) ) )   )
          CASE( 4 )                                 ! F(latitude) : 0.5m to 10m/30m poleward of 13/40 degrees north/south
-            DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
+            DO_2D( 0, 0, 0, 0 )
                   IF( gphit(ji,jj) <= 0._wp ) THEN
                      htau(ji,jj) = MAX(  0.5_wp, MIN( 30._wp, 45._wp* rn_htau_scaling*ABS( SIN( rpi/180._wp * gphit(ji,jj) ) ) )   )
                   ELSE
@@ -880,7 +880,7 @@ CONTAINS
                   ENDIF
             END_2D
          CASE( 5 )                                 ! Variation on case 4 with a steeper ramp further south in Southern Hemisphere
-            DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
+            DO_2D( 0, 0, 0, 0 )
                   htau(ji,jj) = MAX(  0.5_wp, MIN( 10._wp, 45._wp* rn_htau_scaling*ABS( SIN( rpi/180._wp * gphit(ji,jj) ) ) )   )
                   IF( gphit(ji,jj) <= -40._wp ) THEN
                       htau(ji,jj) = htau(ji,jj) + MIN( 20._wp, 135._wp * ABS( SIN( rpi/180._wp * (gphit(ji,jj) + 40.0) ) ) )
