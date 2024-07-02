@@ -130,6 +130,14 @@ CONTAINS
             IF( iom_use("uadv_heattr") .OR. iom_use("vadv_heattr") .OR.                   &
             &   iom_use("uadv_salttr") .OR. iom_use("vadv_salttr")  )   l_hst = .TRUE.
          ENDIF
+
+         IF( ln_ldfeiv ) THEN
+            CALL lbc_lnk( 'traldf_triad', triadi_g(:,:,:,1,:), 'U', -1.0_wp,  &
+               &                          triadj_g(:,:,:,1,:), 'V', -1.0_wp, ldfull=.TRUE.   )
+         ENDIF
+         CALL lbc_lnk( 'traldf_triad', triadi(:,:,:,1,:), 'U', -1.0_wp,  &
+            &                          triadj(:,:,:,1,:), 'V', -1.0_wp, ldfull=.TRUE.   )
+
       ENDIF
       !
       ! Define pt_rhs halo points for multi-point haloes in bilaplacian case
