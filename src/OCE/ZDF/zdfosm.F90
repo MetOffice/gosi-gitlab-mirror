@@ -2350,6 +2350,9 @@ CONTAINS
                   &                     zdelta_pyc**2 / pdh(ji,jj)
                zzeta_pyc(ji,jj)    = 0.15_wp - 0.175_wp / ( 1.0_wp + EXP( -3.5_wp * LOG10( -1.0_wp * shol(ji,jj) ) ) )
             END IF
+         ELSE
+            zwth_ent(ji,jj) = 0.0_wp
+            zws_ent(ji,jj)  = 0.0_wp
          END IF
       END_2D
       DO_3D_OVR( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 2, jkm_bld )
@@ -2492,7 +2495,9 @@ CONTAINS
       !
       WHERE ( l_conv(A2D(nn_hls-1)) )
          zsc_uw_1(:,:) = sustar(A2D(nn_hls-1))**2
+         zsc_uw_2(:,:) = 0.0_wp
          zsc_vw_1(:,:) = ff_t(A2D(nn_hls-1)) * sustke(A2D(nn_hls-1)) * phml(A2D(nn_hls-1))
+         zsc_vw_2(:,:) = 0.0_wp
       ELSEWHERE
          zsc_uw_1(:,:) = sustar(A2D(nn_hls-1))**2
          zsc_uw_2(:,:) = ( 2.25_wp - 3.0_wp * ( 1.0_wp - EXP( -1.25_wp * 2.0_wp ) ) ) * ( 1.0_wp - EXP( -4.0_wp * 2.0_wp ) ) *   &
