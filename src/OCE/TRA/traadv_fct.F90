@@ -294,7 +294,6 @@ CONTAINS
             END_3D
             !
             CALL tridia_solver( zwdia, zwsup, zwinf, ztmp, ztmp, 0, kbnd=0 )
-
             !
             DO_3D( 0, 0, 0, 0, 2, jpkm1 )       ! Interior value ( multiplied by wmask)
                ztFw(ji,jj,jk) =  ztFw(ji,jj,jk) + ( MAX( wi(ji,jj,jk) , 0._wp ) * ztmp(ji,jj,jk) + &
