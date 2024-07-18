@@ -140,16 +140,16 @@ CONTAINS
             ELSE
                ttype='con' ; stype='abs'   ! teos-10 using conservative temperature and absolute salinity
             ENDIF 
-         ELSE IF( ln_EOS80  ) THEN
+         ELSE IF ( ln_SEOS) THEN
+            ttype='seos' ; stype='seos' ! seos using Simplified Equation of state
+         ELSE
             IF ( iom_use("toce_con") .OR. iom_use("soce_abs") .OR. iom_use("sst_con") .OR. iom_use("sss_abs") &
                   & .OR. iom_use("sbt_con") .OR. iom_use("sbs_abs") .OR. iom_use("sstgrad_con") .OR. iom_use("sstgrad2_con") &
-                  & .OR. iom_use("tosmint_con") .OR. iom_use("somint_abs"))  THEN 
+                  & .OR. iom_use("tosmint_con") .OR. iom_use("somint_abs"))  THEN
                CALL ctl_stop( 'diawri: conservative temperature and absolute salinity not available with ln_EOS80' )
             ELSE
                ttype='pot' ; stype='pra'   ! eos-80 using potential temperature and practical salinity
             ENDIF
-         ELSE IF ( ln_SEOS) THEN
-            ttype='seos' ; stype='seos' ! seos using Simplified Equation of state
          ENDIF
       ENDIF
 
