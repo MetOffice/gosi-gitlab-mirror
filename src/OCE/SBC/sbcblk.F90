@@ -696,7 +696,7 @@ CONTAINS
       END_2D
 #else
       ! ... scalar wind module at T-point (not masked)
-      DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
+      DO_2D( 0, 0, 0, 0 )
          zwnd_i(ji,jj) = (  pwndi(ji,jj) - rn_vfac * 0.5 * ( pu(ji-1,jj  ) + pu(ji,jj) )  )
          zwnd_j(ji,jj) = (  pwndj(ji,jj) - rn_vfac * 0.5 * ( pv(ji  ,jj-1) + pv(ji,jj) )  )
       END_2D
@@ -1038,7 +1038,7 @@ CONTAINS
       !    Wind module relative to the moving ice ( U10m - U_ice )   !
       ! ------------------------------------------------------------ !
       ! C-grid ice dynamics :   U & V-points (same as ocean)
-      DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
+      DO_2D( 0, 0, 0, 0 )
          zwndi_t = (  pwndi(ji,jj) - rn_vfac * 0.5 * ( puice(ji-1,jj  ) + puice(ji,jj) )  )
          zwndj_t = (  pwndj(ji,jj) - rn_vfac * 0.5 * ( pvice(ji  ,jj-1) + pvice(ji,jj) )  )
          wndm_ice(ji,jj) = SQRT( zwndi_t * zwndi_t + zwndj_t * zwndj_t )* tmask(ji,jj,1)

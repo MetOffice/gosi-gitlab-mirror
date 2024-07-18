@@ -63,12 +63,12 @@ CONTAINS
       !!--------------------------------------------------------------------- 
       IF( kt == nit000 ) THEN 
          IF( ln_TEOS10 ) THEN 
-            stype='abs'   ! teos-10: using absolute salinity (sst is converted to potential temperature for the surface module) 
-         ELSE IF( ln_EOS80  ) THEN 
-            stype='pra'   ! eos-80: using practical salinity 
-         ELSE IF ( ln_SEOS) THEN 
-            stype='seos' ! seos using Simplified Equation of state (sst is converted to potential temperature for the surface module) 
-         ENDIF 
+            stype='abs'    ! teos-10: using absolute salinity (sst is converted to potential temperature for the surface module)
+         ELSE IF( ln_SEOS ) THEN
+            stype='seos'   ! seos: using Simplified Equation of state (sst is converted to potential temperature for the surface module)
+         ELSE
+            stype='pra'    ! eos-80: using practical salinity
+         ENDIF
       ENDIF 
       !
       !                                        !* surface T-, U-, V- ocean level variables (T, S, depth, velocity)
