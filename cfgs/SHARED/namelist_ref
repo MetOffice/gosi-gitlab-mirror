@@ -40,6 +40,7 @@
    nn_time0    =       0   !  initial time of day in hhmm
    nn_leapy    =       0   !  Leap year calendar (1) or not (0)
    ln_rstart   = .false.,   !  start from rest (F) or from a restart file (T)
+      ln_rstdate   = .false.,  !  restart file name contains timestep number (F) or date (T)
       ln_1st_euler = .false.,  !  =T force a start with forward time step (ln_rstart=T)
       nn_rstctl    =    0     !  restart control ==> activated only if ln_rstart=T
       !                          !    = 0 nn_date0 read in namelist ; nn_it000 : read in namelist
@@ -65,7 +66,7 @@
    ln_xios_read = .false.,  !  use XIOS to read restart file (only for a single file restart)
    nn_wxios = 0      !  use XIOS to write restart file 0 - no, 1 - single file output, 2 - multiple file output
    ln_top      = .true.,    !  Consider (T) or bypass (F) the TOP routines when the key_top is activated
-   ln_rst_eos = .TRUE.,     ! check if the equation of state used to produce the restart is consistent with model
+   ln_rst_eos = .false.,     ! check if the equation of state used to produce the restart is consistent with model
 /
 !-----------------------------------------------------------------------
 &namdom        !   time and space domain
@@ -975,6 +976,7 @@
       !
       ln_eke_equ    =.false.,   ! switch on update of GEOMETRIC eddy energy equation        (=> fill namldf_eke)
                                ! forced to be true if nn_aei_ijk_t = 32
+      nn_ldfeiv_shape = 0
 /
 !----------------------------------------------------------------------------------
 &namldf_eke !   GEOMETRIC param. (total EKE equation)                           (nn_aei_ijk_t = 32)

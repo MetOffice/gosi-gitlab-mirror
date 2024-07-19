@@ -227,7 +227,7 @@ CONTAINS
             ELSE                        ;   WRITE(cl_kt, '(i8.8)') kt
             ENDIF
          ENDIF
-         cl_filename = TRIM(cexper)//"_"//cl_kt//"_"//TRIM(cn_icbrst_out)
+         cl_filename = TRIM(cexper)//"_"//TRIM(cl_kt)//"_"//TRIM(cn_icbrst_out)
          IF( lk_mpp ) THEN
             idg = MAX( INT(LOG10(REAL(MAX(1,jpnij-1),wp))) + 1, 4 )          ! how many digits to we need to write? min=4, max=9
             WRITE(clfmt, "('(a,a,i', i1, '.', i1, ',a)')") idg, idg          ! '(a,a,ix.x,a)'
