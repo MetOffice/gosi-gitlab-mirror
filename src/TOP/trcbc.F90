@@ -391,7 +391,7 @@ CONTAINS
             DO_2D( 0, 0, 0, 1 )
                DO jk = 1, nk_rnf(ji,jj)
                   zrnf = (rnf(ji,jj) + rnf_b(ji,jj)) * 0.5_wp * r1_rho0 / h_rnf(ji,jj)
-                  ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,jk,jn,Krhs)  + (ptr(ji,jj,jk,jn,Kmm) * zrnf)
+                  ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,jk,jn,Krhs)  + (ptr(ji,jj,jk,jn,Kmm) * zrnf) * rDt_trc
                END DO
             END_2D
          ENDIF
@@ -404,7 +404,7 @@ CONTAINS
             sf_trcsbc(jl)%fnow(:,:,1) = MAX( rtrn, sf_trcsbc(jl)%fnow(:,:,1) ) ! avoid nedgative value due to interpolation
             DO_2D( 0, 0, 0, 1 )
                zfact = 1. / ( e3t(ji,jj,1,Kmm) * rn_sbc_time )
-               ptr(ji,jj,1,jn,Krhs) = ptr(ji,jj,1,jn,Krhs) + rf_trsfac(jl) * sf_trcsbc(jl)%fnow(ji,jj,1) * zfact
+               ptr(ji,jj,1,jn,Krhs) = ptr(ji,jj,1,jn,Krhs) + rf_trsfac(jl) * sf_trcsbc(jl)%fnow(ji,jj,1) * zfact * rDt_trc
             END_2D
          ENDIF
          !
@@ -416,7 +416,7 @@ CONTAINS
             DO_2D( 0, 0, 0, 1 )
                DO jk = 1, nk_rnf(ji,jj)
                   zfact = rn_rfact / ( e1e2t(ji,jj) * h_rnf(ji,jj) * rn_cbc_time ) 
-                  ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,jk,jn,Krhs) + rf_trcfac(jl) * sf_trccbc(jl)%fnow(ji,jj,1) * zfact
+                  ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,jk,jn,Krhs) + rf_trcfac(jl) * sf_trccbc(jl)%fnow(ji,jj,1) * zfact * rDt_trc
                END DO
             END_2D
          ENDIF
