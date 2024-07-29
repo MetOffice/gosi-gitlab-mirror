@@ -351,7 +351,7 @@ CONTAINS
          CALL lbc_lnk( 'p4zbc', zcmask , 'T', 1.0_wp )      ! lateral boundary conditions on cmask   (sign unchanged)
          !
          DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpk )
-            zexpide   = MIN( 8.,( gdept_0(ji,jj,jk,Kmm) / 500. )**(-1.5) )
+            zexpide   = MIN( 8.,( gdept_0(ji,jj,jk) / 500. )**(-1.5) )
             zdenitide = -0.9543 + 0.7662 * LOG( zexpide ) - 0.235 * LOG( zexpide )**2
             zcmask(ji,jj,jk) = zcmask(ji,jj,jk) * MIN( 1., EXP( zdenitide ) / 0.5 )
          END_3D
