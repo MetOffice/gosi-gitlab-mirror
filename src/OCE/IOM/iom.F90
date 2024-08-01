@@ -1921,6 +1921,7 @@ CONTAINS
       INTEGER :: idvar
       INTEGER, DIMENSION(2) :: isz   ! need 2 dimensions as restart have a time dimension in the restart...
       REAL(dp), ALLOCATABLE, DIMENSION(:) ::   zdpreal, zdpimag
+      REAL(dp), DIMENSION(1) :: ztmp
       !!---------------------------------------------------------------------
       !
       !                                      ===================================
@@ -1982,8 +1983,10 @@ CONTAINS
             ELSEIF( ALLOCATED(todelay(ji)%zdpbuffout) ) THEN
                CALL iom_rstput( kt, nitrst, kncid, 'DELAY__r8_'//c_delaylist(ji), todelay(ji)%zdpbuffout   , jp_r8 )
             ELSEIF( ALLOCATED(todelay(ji)%ydpbuffout) ) THEN
-               CALL iom_rstput( kt, nitrst, kncid, 'DELAY_re8_'//c_delaylist(ji), REAL( todelay(ji)%ydpbuffout   ,dp), jp_r8 )
-               CALL iom_rstput( kt, nitrst, kncid, 'DELAY_im8_'//c_delaylist(ji), AIMAG(todelay(ji)%ydpbuffout      ), jp_r8 )
+               ztmp = REAL( todelay(ji)%ydpbuffout, dp )
+               CALL iom_rstput( kt, nitrst, kncid, 'DELAY_re8_'//c_delaylist(ji), ztmp, jp_r8 )
+               ztmp = AIMAG( todelay(ji)%ydpbuffout )
+               CALL iom_rstput( kt, nitrst, kncid, 'DELAY_im8_'//c_delaylist(ji), ztmp, jp_r8 )
             ENDIF
          END DO
          !
