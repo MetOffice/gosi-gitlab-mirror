@@ -381,11 +381,17 @@
    xklig       =  1.E-9    ! 1/2 saturation constant of photolysis
 /
 !-----------------------------------------------------------------------
-&nampissed     !   Namelist parameters for sediment mobilisation
+&nampissed       !   Namelist parameters for sediment mobilisation
 !-----------------------------------------------------------------------
-   nitrfix     =  2.e-7    ! Nitrogen fixation rate
-   diazolight  =  30.      ! Diazotrophs sensitivity to light (W/m2)
-   concfediaz  =  1.e-10   ! Diazotrophs half-saturation Cste for Iron
+   nitrfix       =  2.e-7    ! Nitrogen fixation rate
+   diazolight    =  30.      ! Diazotrophs sensitivity to light (W/m2)
+   concfediaz    =  1.e-10   ! Diazotrophs half-saturation Cste for Iron
+   bureffmin     =  0.02     ! Minimum burial efficiency
+   bureffvar     =  0.08     ! Variable coef. for burial efficiency
+   sedsilfrac    = 0.03      ! percentage of silica loss in the sediments
+   sedcalfrac    = 0.99      ! percentage of calcite loss in the sediments
+   sedfactcalmin = 0.3       ! Minimum value for dissolving calcite at the bottom
+   sedfactcalvar = 0.7       ! Variable  value for dissolving calcite at the bottom
 /
 !-----------------------------------------------------------------------
 &nampisice     !   Prescribed sea ice tracers
