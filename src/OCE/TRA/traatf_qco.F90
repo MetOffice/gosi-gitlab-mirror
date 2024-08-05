@@ -104,8 +104,8 @@ CONTAINS
       ! trends computation initialisation
       IF( l_trdtra )   THEN
          ALLOCATE( ztrdt(jpi,jpj,jpk) , ztrds(jpi,jpj,jpk) )
-         ztrdt(:,:,jpk) = 0._wp
-         ztrds(:,:,jpk) = 0._wp
+         ztrdt(:,:,:) = 0._wp
+         ztrds(:,:,:) = 0._wp
          IF( ln_traldf_iso ) THEN              ! diagnose the "pure" Kz diffusive trend
             CALL trd_tra( kt, Kmm, Kaa, 'TRA', jp_tem, jptra_zdfp, ztrdt )
             CALL trd_tra( kt, Kmm, Kaa, 'TRA', jp_sal, jptra_zdfp, ztrds )

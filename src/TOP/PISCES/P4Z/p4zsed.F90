@@ -26,15 +26,22 @@ MODULE p4zsed
    PUBLIC   p4z_sed_init
    PUBLIC   p4z_sed_alloc
  
-   REAL(wp), PUBLIC ::   nitrfix      !: Nitrogen fixation rate
-   REAL(wp), PUBLIC ::   diazolight   !: Nitrogen fixation sensitivty to light
-   REAL(wp), PUBLIC ::   concfediaz   !: Fe half-saturation Cste for diazotrophs
-
+   REAL(wp), PUBLIC ::   nitrfix        !: Nitrogen fixation rate
+   REAL(wp), PUBLIC ::   diazolight     !: Nitrogen fixation sensitivty to light
+   REAL(wp), PUBLIC ::   concfediaz     !: Fe half-saturation Cste for diazotrophs
+   !
+   REAL(wp)         ::   bureffmin      !: Minimum burial efficiency
+   REAL(wp)         ::   bureffvar      !: Variable coef. for burial efficiency
+   !
+   REAL(wp)         ::   sedsilfrac     !: percentage of silica loss in the sediments
+   REAL(wp)         ::   sedcalfrac     !: percentage of calcite loss in the sediments
+   REAL(wp)         ::   sedfactcalmin  !: Minimum value for dissolving calcite at the bottom
+   REAL(wp)         ::   sedfactcalvar  !: Variable  value for dissolving calcite at the bottom
+   !
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) :: nitrpot    !: Nitrogen fixation 
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:  ) :: sdenit     !: Nitrate reduction in the sediments
    !
    REAL(wp), SAVE :: r1_rday          
-   REAL(wp), SAVE :: sedsilfrac, sedcalfrac
 
    !! * Substitutions
 #  include "do_loop_substitute.h90"
@@ -118,7 +125,7 @@ CONTAINS
                 !
               zflx = (  tr(ji,jj,ikt,jpgoc,Kbb) * zwsbio4(ji,jj)   &
                 &     + tr(ji,jj,ikt,jppoc,Kbb) * zwsbio3(ji,jj) ) * 1E6
-              zbureff(ji,jj) = 0.013 + 0.53 * zflx**2 / ( 7.0 + zflx )**2 * MIN(gdepw(ji,jj,ikt+1,Kmm) / 1000.00, 1.0)
+              zbureff(ji,jj) = bureffmin + bureffvar * zflx**2 / ( 7.0 + zflx )**2 * MIN(gdepw(ji,jj,ikt+1,Kmm) / 1000.00, 1.0)
            ENDIF
          END_2D
          !
@@ -150,7 +157,7 @@ CONTAINS
             tr(ji,jj,ikt,jpsil,Krhs) = tr(ji,jj,ikt,jpsil,Krhs) + zsiloss * zrivsil 
             !
             zfactcal = MAX(-0.1, MIN( excess(ji,jj,ikt), 0.2 ) )
-            zfactcal = 0.3 + 0.7 * MIN( 1., (0.1 + zfactcal) / ( 0.5 - zfactcal ) )
+            zfactcal = sedfactcalmin + sedfactcalvar * MIN( 1., (0.1 + zfactcal) / ( 0.5 - zfactcal ) )
             zrivalk  = sedcalfrac * zfactcal
             tr(ji,jj,ikt,jptal,Krhs) =  tr(ji,jj,ikt,jptal,Krhs) + zcaloss * zrivalk * 2.0
             tr(ji,jj,ikt,jpdic,Krhs) =  tr(ji,jj,ikt,jpdic,Krhs) + zcaloss * zrivalk
@@ -338,7 +345,8 @@ CONTAINS
       INTEGER  :: ios                 ! Local integer output status for namelist read
       !
       !!
-      NAMELIST/nampissed/ nitrfix, diazolight, concfediaz
+      NAMELIST/nampissed/ nitrfix, diazolight, concfediaz, bureffmin, bureffvar, &
+           &              sedsilfrac, sedcalfrac, sedfactcalmin, sedfactcalvar
       !!----------------------------------------------------------------------
       !
       IF(lwp) THEN
@@ -355,15 +363,18 @@ CONTAINS
 
       IF(lwp) THEN
          WRITE(numout,*) '   Namelist : nampissed '
-         WRITE(numout,*) '      nitrogen fixation rate                       nitrfix = ', nitrfix
-         WRITE(numout,*) '      nitrogen fixation sensitivty to light    diazolight  = ', diazolight
-         WRITE(numout,*) '      Fe half-saturation cste for diazotrophs  concfediaz  = ', concfediaz
+         WRITE(numout,*) '      nitrogen fixation rate                              nitrfix        = ', nitrfix
+         WRITE(numout,*) '      nitrogen fixation sensitivty to light               diazolight     = ', diazolight
+         WRITE(numout,*) '      Fe half-saturation cste for diazotrophs             concfediaz     = ', concfediaz
+         WRITE(numout,*) '      Minimum burial efficiency                           bureffmin      = ', bureffmin
+         WRITE(numout,*) '      Variable coef. for burial efficiency                bureffvar      = ', bureffvar
+         WRITE(numout,*) '      percentage of silica loss in the sediments          sedsilfrac     = ', sedsilfrac
+         WRITE(numout,*) '      percentage of calcite loss in the sediments         sedcalfrac     = ', sedcalfrac
+         WRITE(numout,*) '      Minimum value for dissolving calcite at the bottom  sedfactcalmin  = ', sedfactcalmin
+         WRITE(numout,*) '      variable value for dissolving calcite at the bottom sedfactcalvar  = ', sedfactcalvar
       ENDIF
       !
       r1_rday  = 1. / rday
-      !
-      sedsilfrac = 0.03     ! percentage of silica loss in the sediments
-      sedcalfrac = 0.99     ! percentage of calcite loss in the sediments
       !
       lk_sed = ln_sediment .AND. ln_sed_2way 
       !
