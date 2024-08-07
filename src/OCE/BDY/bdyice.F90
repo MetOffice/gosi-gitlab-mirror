@@ -251,7 +251,11 @@ CONTAINS
                   s_i (ji,jj  ,jl) = rn_icesal
                   sz_i(ji,jj,:,jl) = rn_icesal
                ENDIF
-               IF( nn_icesal == 2 .OR. nn_icesal == 4 ) THEN
+               IF( nn_icesal == 2 ) THEN
+                  s_i (ji,jj  ,jl) = MAX( rn_simin, MIN( s_i (ji,jj  ,jl), rn_simax ) )
+                  sz_i(ji,jj,:,jl) = MAX( rn_simin, MIN( sz_i(ji,jj,:,jl), rn_simax ) )
+               ENDIF
+               IF( nn_icesal == 4 ) THEN
                   s_i (ji,jj  ,jl) = MAX( rn_simin, MIN( s_i (ji,jj  ,jl), rn_sinew*sss_m(ji,jj) ) )
                   sz_i(ji,jj,:,jl) = MAX( rn_simin, MIN( sz_i(ji,jj,:,jl), rn_sinew*sss_m(ji,jj) ) )
                ENDIF

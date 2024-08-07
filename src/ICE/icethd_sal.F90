@@ -46,7 +46,6 @@ MODULE icethd_sal
    REAL(wp) ::   rn_alpha_GN   ! Brine flow for GN2013 (kg/m3/s)
    REAL(wp) ::   rn_Rc_RJW     ! critical Rayleigh number for RJW
    REAL(wp) ::   rn_Rc_GN      !                          for GN 
-   REAL(wp) ::   rn_sal_himin  ! min ice thickness for gravity drainage and flushing calculation
    REAL(wp) ::   rn_vbrc       ! critical brines volume above which flushing can occur
    
    !! * Substitutions
@@ -231,7 +230,7 @@ CONTAINS
                ! --- salinity must stay inbounds --- !
                IF( ln_drainage .OR. ln_flushing ) THEN
                   zds(1) =          MAX( 0._wp, rn_simin            - s_i_1d(ji) ) ! > 0 if s_i < simin
-                  zds(1) = zds(1) + MIN( 0._wp, rn_sinew*sss_1d(ji) - s_i_1d(ji) ) ! < 0 if s_i > simax
+                  zds(1) = zds(1) + MIN( 0._wp, rn_simax - s_i_1d(ji) ) ! < 0 if s_i > simax
                   ! update salinity
                   s_i_1d(ji) = s_i_1d(ji) + zds(1)
                   ! salt flux
@@ -637,7 +636,7 @@ CONTAINS
       !!-------------------------------------------------------------------
       INTEGER  ::   ios   ! Local integer
       !!
-      NAMELIST/namthd_sal/ nn_icesal, ln_flushing, ln_drainage, rn_sinew, rn_simin, &
+      NAMELIST/namthd_sal/ nn_icesal, ln_flushing, ln_drainage, rn_sinew, rn_simin, rn_simax, &
          &                 rn_icesal, rn_sal_gd, rn_time_gd, rn_sal_fl, rn_time_fl, &
          &                 rn_sal_himin, nn_liquidus, nn_drainage, nn_flushing, rn_flushrate, rn_vbrc, &
          &                 nn_sal_scheme, rn_alpha_RJW, rn_Rc_RJW, rn_alpha_GN, rn_Rc_GN, rn_alpha_CW, ln_sal_chk
@@ -660,6 +659,7 @@ CONTAINS
                    ! -- nn_icesal=1 -- !
          WRITE(numout,*) '      bulk salinity value if nn_icesal = 1                    rn_icesal     = ', rn_icesal
                   ! -- nn_icesal=2 -- !
+         WRITE(numout,*) '      Maximum tolerated ice salinity (only nn_icesal=2)       rn_simax      = ', rn_simax
          WRITE(numout,*) '      restoring salinity for gravity drainage                 rn_sal_gd     = ', rn_sal_gd
          WRITE(numout,*) '      restoring time for for gravity drainage                 rn_time_gd    = ', rn_time_gd
          WRITE(numout,*) '      restoring salinity for flushing                         rn_sal_fl     = ', rn_sal_fl

@@ -434,10 +434,18 @@ CONTAINS
       DO jl = 1, jpl
          DO_2D( 0, 0, 0, 0 )
             IF( v_i(ji,jj,jl) > epsi10  ) THEN
-               IF( zsv_i(ji,jj,jl) / v_i(ji,jj,jl) > rn_sinew * sss_m(ji,jj) ) THEN
-                  WRITE(numout,*) ' ALERTE :   Very high salinity ',zsv_i(ji,jj,jl)/v_i(ji,jj,jl)
-                  WRITE(numout,*) ' at i,j,l = ',ji,jj,jl
-                  inb_alp(ialert_id) = inb_alp(ialert_id) + 1
+               IF ( nn_icesal == 2 ) THEN
+                  IF( zsv_i(ji,jj,jl) / v_i(ji,jj,jl) > rn_simax ) THEN
+                    WRITE(numout,*) ' ALERTE :   Very high salinity ',zsv_i(ji,jj,jl)/v_i(ji,jj,jl)
+                    WRITE(numout,*) ' at i,j,l = ',ji,jj,jl
+                    inb_alp(ialert_id) = inb_alp(ialert_id) + 1
+                  ENDIF
+               ELSE
+                  IF( zsv_i(ji,jj,jl) / v_i(ji,jj,jl) > rn_sinew * sss_m(ji,jj) ) THEN
+                    WRITE(numout,*) ' ALERTE :   Very high salinity ',zsv_i(ji,jj,jl)/v_i(ji,jj,jl)
+                    WRITE(numout,*) ' at i,j,l = ',ji,jj,jl
+                    inb_alp(ialert_id) = inb_alp(ialert_id) + 1
+                  ENDIF
                ENDIF
             ENDIF
          END_2D

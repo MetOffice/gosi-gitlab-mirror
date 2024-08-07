@@ -172,7 +172,11 @@ CONTAINS
          SELECT CASE ( nn_icesal )
          CASE ( 1 )                    ! Sice = constant 
             zs_newice(1:npti) = rn_icesal
-         CASE ( 2 , 4 )                ! Sice = F(z,t) [Griewank and Notz 2013 ; Rees Jones and Worster 2014]
+         CASE ( 2 )                    ! Sice = F(z,t) [Vancoppenolle et al (2005)]
+            DO ji = 1, npti
+            zs_newice(ji) = MIN(  4.606 + 0.91 / zh_newice(ji) , rn_simax , 0.5 * sss_1d(ji) )
+            END DO
+         CASE ( 4 )                ! Sice = F(z,t) [Griewank and Notz 2013 ; Rees Jones and Worster 2014]
             zs_newice(1:npti) = rn_sinew * sss_1d(1:npti)
          CASE ( 3 )                    ! Sice = F(z) [multiyear ice]
             zs_newice(1:npti) =   2.3
