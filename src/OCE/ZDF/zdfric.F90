@@ -48,6 +48,7 @@ MODULE zdfric
 
    !! * Substitutions
 #  include "do_loop_substitute.h90"
+#  include "read_nml_substitute.h90"
 #  include "domzgr_substitute.h90"
    !!----------------------------------------------------------------------
    !! NEMO/OCE 5.0, NEMO Consortium (2024)
@@ -75,11 +76,8 @@ CONTAINS
          &                rn_mldmin, rn_mldmax, rn_wtmix, rn_wvmix, ln_mldw
       !!----------------------------------------------------------------------
       !
-      READ  ( numnam_ref, namzdf_ric, IOSTAT = ios, ERR = 901)
-901   IF( ios /= 0 ) CALL ctl_nam ( ios , 'namzdf_ric in reference namelist' )
-
-      READ  ( numnam_cfg, namzdf_ric, IOSTAT = ios, ERR = 902 )
-902   IF( ios >  0 ) CALL ctl_nam ( ios , 'namzdf_ric in configuration namelist' )
+      READ_NML_REF(numnam,namzdf_ric)
+      READ_NML_CFG(numnam,namzdf_ric)
       IF(lwm) WRITE ( numond, namzdf_ric )
       !
       IF(lwp) THEN                   ! Control print

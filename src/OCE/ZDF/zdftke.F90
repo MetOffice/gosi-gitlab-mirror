@@ -98,6 +98,7 @@ MODULE zdftke
 
    !! * Substitutions
 #  include "do_loop_substitute.h90"
+#  include "read_nml_substitute.h90"
 #  include "domzgr_substitute.h90"
    !!----------------------------------------------------------------------
    !! NEMO/OCE 5.0, NEMO Consortium (2024)
@@ -762,11 +763,8 @@ CONTAINS
          &                 nn_bc_surf, nn_bc_bot, ln_mxhsw
       !!----------------------------------------------------------------------
       !
-      READ  ( numnam_ref, namzdf_tke, IOSTAT = ios, ERR = 901)
-901   IF( ios /= 0 ) CALL ctl_nam ( ios , 'namzdf_tke in reference namelist' )
-
-      READ  ( numnam_cfg, namzdf_tke, IOSTAT = ios, ERR = 902 )
-902   IF( ios >  0 ) CALL ctl_nam ( ios , 'namzdf_tke in configuration namelist' )
+      READ_NML_REF(numnam,namzdf_tke)
+      READ_NML_CFG(numnam,namzdf_tke)
       IF(lwm) WRITE ( numond, namzdf_tke )
       !
       ri_cri   = 2._wp    / ( 2._wp + rn_ediss / rn_ediff )   ! resulting critical Richardson number
