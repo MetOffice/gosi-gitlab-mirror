@@ -58,10 +58,6 @@ MODULE sms_pisces
    REAL(wp) ::  t_oce_co2_flx_cum !: Cumulative Total ocean carbon flux
    REAL(wp) ::  t_atm_co2_flx     !: global mean of atmospheric pco2
 
-   !!* restoring
-   LOGICAL  ::  ln_pisdmp         !: restoring or not of nutrients to a mean value
-   INTEGER  ::  nn_pisdmp         !: frequency of relaxation or not of nutrients to a mean value
-
    !!* Mass conservation
    LOGICAL  ::  ln_check_mass     !: Flag to check mass conservation
    LOGICAL, PUBLIC ::   ln_ironice   !: boolean for Fe input from sea ice

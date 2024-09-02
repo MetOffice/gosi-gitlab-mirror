@@ -38,6 +38,11 @@ MODULE p4zsms
 
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   xnegtr     ! Array used to indicate negative tracer values
 
+   !!* restoring
+   LOGICAL  ::  ln_pisdmp     !: restoring or not of nutrients to a mean value
+   LOGICAL  ::  ln_pisdmp_alk !: restoring or not of alkalinity to a mean value
+   INTEGER  ::  nn_pisdmp     !: frequency of relaxation or not of nutrients to a mean value   
+
    !! * Substitutions
 #  include "do_loop_substitute.h90"
 #  include "domzgr_substitute.h90"
@@ -89,7 +94,7 @@ CONTAINS
         !
       ENDIF
       !
-      IF( ln_pisdmp .AND. MOD( kt - 1, nn_pisdmp ) == 0 )   CALL p4z_dmp( kt, Kbb, Kmm )      ! Relaxation of some tracers
+      IF( ( ln_pisdmp .OR. ln_pisdmp_alk ) .AND. MOD( kt - 1, nn_pisdmp ) == 0 )   CALL p4z_dmp( kt, Kbb, Kmm )
       !
       rfact = rDt_trc  ! time step of PISCES
       !
@@ -104,7 +109,7 @@ CONTAINS
          IF(lwp) write(numout,*) '    PISCES  Biology time step    rfact2 = ', rfact2
          IF(lwp) WRITE(numout,*)
       ENDIF
-      !
+
       DO jn = jp_pcs0, jp_pcs1              !   Store the tracer concentrations before entering PISCES
          ztrbbio(:,:,:,jn) = tr(:,:,:,jn,Kbb)
       END DO
@@ -124,6 +129,7 @@ CONTAINS
          CALL p4z_lys( kt, jnt, Kbb,      Krhs )   ! Compute CaCO3 saturation
          CALL p4z_sed( kt, jnt, Kbb, Kmm, Krhs )   ! Surface and Bottom boundary conditions
          CALL p4z_flx( kt, jnt, Kbb, Kmm, Krhs )   ! Compute surface fluxes
+         !
          !
          ! Handling of the negative concentrations
          ! The biological SMS may generate negative concentrations
@@ -251,7 +257,7 @@ CONTAINS
       NAMELIST/nampisbio/ nrdttrc, wsbio, xkmort, feratz, feratm, wsbio2, wsbio2max,    &
          &                wsbio2scale, ldocp, ldocz, lthet, no3rat3, po4rat3
          !
-      NAMELIST/nampisdmp/ ln_pisdmp, nn_pisdmp
+      NAMELIST/nampisdmp/ ln_pisdmp, ln_pisdmp_alk, nn_pisdmp
       NAMELIST/nampismass/ ln_check_mass
       !!----------------------------------------------------------------------
       !
@@ -289,8 +295,7 @@ CONTAINS
             ENDIF
          ENDIF
       ENDIF
-
-
+      !
       READ  ( numnatp_ref, nampisdmp, IOSTAT = ios, ERR = 905)
 905   IF( ios /= 0 )   CALL ctl_nam ( ios , 'nampisdmp in reference namelist' )
       READ  ( numnatp_cfg, nampisdmp, IOSTAT = ios, ERR = 906 )
@@ -300,10 +305,11 @@ CONTAINS
       IF(lwp) THEN                         ! control print
          WRITE(numout,*)
          WRITE(numout,*) '   Namelist : nampisdmp --- relaxation to GLODAP'
-         WRITE(numout,*) '      Relaxation of tracer to glodap mean value   ln_pisdmp =', ln_pisdmp
-         WRITE(numout,*) '      Frequency of Relaxation                     nn_pisdmp =', nn_pisdmp
-      ENDIF
-
+         WRITE(numout,*) '      Relaxation of nutrients to glodap mean value    ln_pisdmp      =', ln_pisdmp
+         WRITE(numout,*) '      Relaxation of alkalinity to glodap mean value   ln_pisdmp_alk  =', ln_pisdmp_alk
+         WRITE(numout,*) '      Frequency of Relaxation                         nn_pisdmp      =', nn_pisdmp
+      ENDIF      
+      !
       READ  ( numnatp_ref, nampismass, IOSTAT = ios, ERR = 907)
 907   IF( ios /= 0 )   CALL ctl_nam ( ios , 'nampismass in reference namelist' )
       READ  ( numnatp_cfg, nampismass, IOSTAT = ios, ERR = 908 )
@@ -453,51 +459,59 @@ CONTAINS
             ! set total alkalinity, phosphate, nitrate & silicate
             zarea          = 1._wp / glob_sum( 'p4zsms', cvol(:,:,:) ) * 1e6              
 
-            zalksumn = glob_sum( 'p4zsms', tr(:,:,:,jptal,Kmm) * cvol(:,:,:)  ) * zarea
-            zpo4sumn = glob_sum( 'p4zsms', tr(:,:,:,jppo4,Kmm) * cvol(:,:,:)  ) * zarea * po4r
-            zno3sumn = glob_sum( 'p4zsms', tr(:,:,:,jpno3,Kmm) * cvol(:,:,:)  ) * zarea * rno3
-            zsilsumn = glob_sum( 'p4zsms', tr(:,:,:,jpsil,Kmm) * cvol(:,:,:)  ) * zarea
+            IF( ln_pisdmp ) THEN
+               zpo4sumn = glob_sum( 'p4zsms', tr(:,:,:,jppo4,Kmm) * cvol(:,:,:)  ) * zarea * po4r
+               zno3sumn = glob_sum( 'p4zsms', tr(:,:,:,jpno3,Kmm) * cvol(:,:,:)  ) * zarea * rno3
+               zsilsumn = glob_sum( 'p4zsms', tr(:,:,:,jpsil,Kmm) * cvol(:,:,:)  ) * zarea
  
-            ! Correct the trn mean content of alkalinity
-            IF(lwp) WRITE(numout,*) '       TALKN mean : ', zalksumn
-            tr(:,:,:,jptal,Kmm) = tr(:,:,:,jptal,Kmm) * alkmean / zalksumn
+               ! Correct the trn mean content of PO4
+               IF(lwp) WRITE(numout,*) '       PO4N  mean : ', zpo4sumn
+               tr(:,:,:,jppo4,Kmm) = tr(:,:,:,jppo4,Kmm) * po4mean / zpo4sumn
 
-            ! Correct the trn mean content of PO4
-            IF(lwp) WRITE(numout,*) '       PO4N  mean : ', zpo4sumn
-            tr(:,:,:,jppo4,Kmm) = tr(:,:,:,jppo4,Kmm) * po4mean / zpo4sumn
+               ! Correct the trn mean content of NO3
+               IF(lwp) WRITE(numout,*) '       NO3N  mean : ', zno3sumn
+               tr(:,:,:,jpno3,Kmm) = tr(:,:,:,jpno3,Kmm) * no3mean / zno3sumn
 
-            ! Correct the trn mean content of NO3
-            IF(lwp) WRITE(numout,*) '       NO3N  mean : ', zno3sumn
-            tr(:,:,:,jpno3,Kmm) = tr(:,:,:,jpno3,Kmm) * no3mean / zno3sumn
-
-            ! Correct the trn mean content of SiO3
-            IF(lwp) WRITE(numout,*) '       SiO3N mean : ', zsilsumn
-            tr(:,:,:,jpsil,Kmm) = MIN( 400.e-6,tr(:,:,:,jpsil,Kmm) * silmean / zsilsumn )
-            !
-            !
-            IF( .NOT. ln_top_euler ) THEN
-               zalksumb = glob_sum( 'p4zsms', tr(:,:,:,jptal,Kbb) * cvol(:,:,:)  ) * zarea
-               zpo4sumb = glob_sum( 'p4zsms', tr(:,:,:,jppo4,Kbb) * cvol(:,:,:)  ) * zarea * po4r
-               zno3sumb = glob_sum( 'p4zsms', tr(:,:,:,jpno3,Kbb) * cvol(:,:,:)  ) * zarea * rno3
-               zsilsumb = glob_sum( 'p4zsms', tr(:,:,:,jpsil,Kbb) * cvol(:,:,:)  ) * zarea
+               ! Correct the trn mean content of SiO3
+               IF(lwp) WRITE(numout,*) '       SiO3N mean : ', zsilsumn
+               tr(:,:,:,jpsil,Kmm) = MIN( 400.e-6,tr(:,:,:,jpsil,Kmm) * silmean / zsilsumn )
+               !
+               IF( .NOT. ln_top_euler ) THEN
+                  zpo4sumb = glob_sum( 'p4zsms', tr(:,:,:,jppo4,Kbb) * cvol(:,:,:)  ) * zarea * po4r
+                  zno3sumb = glob_sum( 'p4zsms', tr(:,:,:,jpno3,Kbb) * cvol(:,:,:)  ) * zarea * rno3
+                  zsilsumb = glob_sum( 'p4zsms', tr(:,:,:,jpsil,Kbb) * cvol(:,:,:)  ) * zarea
  
-               IF(lwp) WRITE(numout,*) ' '
-               ! Correct the trb mean content of alkalinity
-               IF(lwp) WRITE(numout,*) '       TALKB mean : ', zalksumb
-               tr(:,:,:,jptal,Kbb) = tr(:,:,:,jptal,Kbb) * alkmean / zalksumb
+                  IF(lwp) WRITE(numout,*) ' '
+                  ! Correct the trb mean content of PO4
+                  IF(lwp) WRITE(numout,*) '       PO4B  mean : ', zpo4sumb
+                  tr(:,:,:,jppo4,Kbb) = tr(:,:,:,jppo4,Kbb) * po4mean / zpo4sumb
 
-               ! Correct the trb mean content of PO4
-               IF(lwp) WRITE(numout,*) '       PO4B  mean : ', zpo4sumb
-               tr(:,:,:,jppo4,Kbb) = tr(:,:,:,jppo4,Kbb) * po4mean / zpo4sumb
-
-               ! Correct the trb mean content of NO3
-               IF(lwp) WRITE(numout,*) '       NO3B  mean : ', zno3sumb
-               tr(:,:,:,jpno3,Kbb) = tr(:,:,:,jpno3,Kbb) * no3mean / zno3sumb
-
-               ! Correct the trb mean content of SiO3
-               IF(lwp) WRITE(numout,*) '       SiO3B mean : ', zsilsumb
-               tr(:,:,:,jpsil,Kbb) = MIN( 400.e-6,tr(:,:,:,jpsil,Kbb) * silmean / zsilsumb )
-           ENDIF
+                  ! Correct the trb mean content of NO3
+                  IF(lwp) WRITE(numout,*) '       NO3B  mean : ', zno3sumb
+                  tr(:,:,:,jpno3,Kbb) = tr(:,:,:,jpno3,Kbb) * no3mean / zno3sumb
+   
+                  ! Correct the trb mean content of SiO3
+                  IF(lwp) WRITE(numout,*) '       SiO3B mean : ', zsilsumb
+                  tr(:,:,:,jpsil,Kbb) = MIN( 400.e-6,tr(:,:,:,jpsil,Kbb) * silmean / zsilsumb )
+               ENDIF
+            ENDIF
+            !
+            IF( ln_pisdmp_alk ) THEN
+               !     
+               zalksumn = glob_sum( 'p4zsms', tr(:,:,:,jptal,Kmm) * cvol(:,:,:)  ) * zarea
+               ! Correct the trn mean content of alkalinity
+               IF(lwp) WRITE(numout,*) '       TALKN mean : ', zalksumn
+               tr(:,:,:,jptal,Kmm) = tr(:,:,:,jptal,Kmm) * alkmean / zalksumn
+               !
+               IF( .NOT. ln_top_euler ) THEN
+                  zalksumb = glob_sum( 'p4zsms', tr(:,:,:,jptal,Kbb) * cvol(:,:,:)  ) * zarea
+                  ! Correct the trb mean content of alkalinity
+                  IF(lwp) WRITE(numout,*) '       TALKB mean : ', zalksumb
+                  tr(:,:,:,jptal,Kbb) = tr(:,:,:,jptal,Kbb) * alkmean / zalksumb
+               ENDIF
+               !
+            ENDIF        
+            !
         ENDIF
         !
       ENDIF
