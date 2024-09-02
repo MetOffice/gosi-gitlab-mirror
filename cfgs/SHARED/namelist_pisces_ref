@@ -80,7 +80,7 @@
    xkdoc      =  417.E-6  ! half-saturation constant of DOC remineralization
    qnfelim    =  10.E-6   ! Optimal quota of phyto
    qdfelim    =  10.E-6   ! Optimal quota of diatoms
-   caco3r     =  0.2      ! mean rain ratio
+   caco3r     =  0.15     ! mean rain ratio
    oxymin     =  1.E-6    ! Half-saturation constant for anoxia
 /
 !-----------------------------------------------------------------------
@@ -441,6 +441,7 @@
 &nampisdmp     !   Damping 
 !-----------------------------------------------------------------------
    ln_pisdmp    =  .true.     !  Relaxation for some tracers to a mean value
+   ln_pisdmp_alk = .false.    !  Relaxation of alkalinity to a mean value
    nn_pisdmp    =  5475       !  Frequency of Relaxation 
 /
 !-----------------------------------------------------------------------
