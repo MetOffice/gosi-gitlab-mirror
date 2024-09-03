@@ -177,6 +177,7 @@ that are available in the tidal-forcing implementation (see
     <field id="mldr10_1max"  long_name="Max of Mixed Layer Depth (dsigma = 0.01 wrt 10m)"   field_ref="mldr10_1"   operation="maximum"                                                                          />
     <field id="mldr10_1min"  long_name="Min of Mixed Layer Depth (dsigma = 0.01 wrt 10m)"   field_ref="mldr10_1"   operation="minimum"                                                                          />
     <field id="heatc"        long_name="Heat content vertically integrated"                 standard_name="integral_of_sea_water_potential_temperature_wrt_depth_expressed_as_heat_content"   unit="J/m2"      grid_ref="grid_T_2D_inner" />
+    <field id="heatc_2"      long_name="Heat content vertically integrated"  field_ref="toce_e3t"   grid_ref="grid_T_vsum"  standard_name="integral_of_sea_water_potential_temperature_wrt_depth_expressed_as_heat_content"   unit="J/m2"     detect_missing_value="true" > this * $rho0 * $cpocean  </field >
     <field id="saltc"        long_name="Salt content vertically integrated"                                                                                                                   unit="PSU*kg/m2"    grid_ref="grid_T_2D_inner" />
     <field id="salt2c"       long_name="square of Salt content vertically integrated"                                                                                                         unit="PSU2*kg/m2"   grid_ref="grid_T_2D_inner" />
 
@@ -200,6 +201,7 @@ that are available in the tidal-forcing implementation (see
 
     <!-- next variables available with key_diahth -->
     <field id="mlddzt"       long_name="Thermocline Depth (depth of max dT/dz)"         standard_name="depth_at_maximum_upward_derivative_of_sea_water_potential_temperature"             unit="m"                         />
+    <field id="maxdzT"       long_name="Maximum of dT/dz)"                              standard_name="maximum_upward_derivative_of_sea_water_potential_temperature"                      unit="degC/m"                    />
     <field id="mldr10_3"     long_name="Mixed Layer Depth (dsigma = 0.03 wrt 10m)"      standard_name="ocean_mixed_layer_thickness_defined_by_sigma_theta"                                unit="m"                         />
     <field id="mldr0_1"      long_name="Mixed Layer Depth (dsigma = 0.01 wrt sfc)"      standard_name="ocean_mixed_layer_thickness_defined_by_sigma_theta"                                unit="m"                         />
     <field id="mldr0_3"      long_name="Mixed Layer Depth (dsigma = 0.03 wrt sfc)"      standard_name="ocean_mixed_layer_thickness_defined_by_sigma_theta"                                unit="m"                         />
@@ -209,9 +211,9 @@ that are available in the tidal-forcing implementation (see
     <field id="BLT"          long_name="Barrier Layer Thickness"                                                                                                                          unit="m"   > topthdep - pycndep </field>
     <field id="tinv"         long_name="Max of vertical invertion of temperature"                                                                                                         unit="degC"                      />
     <field id="depti"        long_name="Depth of max. vert. inv. of temperature"                                                                                                          unit="m"                         />
-    <field id="20d"          long_name="Depth of 20C isotherm"                          standard_name="depth_of_isosurface_of_sea_water_potential_temperature"                            unit="m"   axis_ref="iax_20C" />
-    <field id="26d"          long_name="Depth of 26C isotherm"                          standard_name="depth_of_isosurface_of_sea_water_potential_temperature"                            unit="m"   axis_ref="iax_26C"   />
-    <field id="28d"          long_name="Depth of 28C isotherm"                          standard_name="depth_of_isosurface_of_sea_water_potential_temperature"                            unit="m"   axis_ref="iax_28C" />
+    <field id="20d"          long_name="Depth of 20C isotherm"                          standard_name="depth_of_isosurface_of_sea_water_potential_temperature"                            unit="m"    />
+    <field id="26d"          long_name="Depth of 26C isotherm"                          standard_name="depth_of_isosurface_of_sea_water_potential_temperature"                            unit="m"    />
+    <field id="28d"          long_name="Depth of 28C isotherm"                          standard_name="depth_of_isosurface_of_sea_water_potential_temperature"                            unit="m"    />
     <field id="hc300"        long_name="Heat content 0-300m"                            standard_name="integral_of_sea_water_potential_temperature_wrt_depth_expressed_as_heat_content"   unit="J/m2"                      />
     <field id="hc700"        long_name="Heat content 0-700m"                            standard_name="integral_of_sea_water_potential_temperature_wrt_depth_expressed_as_heat_content"   unit="J/m2"                      />
     <field id="hc2000"       long_name="Heat content 0-2000m"                           standard_name="integral_of_sea_water_potential_temperature_wrt_depth_expressed_as_heat_content"   unit="J/m2"                      />

@@ -111,7 +111,8 @@ CONTAINS
             &    iom_use( 'mld_dt02' ) .OR. iom_use( 'topthdep' ) .OR. iom_use( 'mldr10_3' )    .OR.  &    
             &    iom_use( '20d'      ) .OR. iom_use( '26d'      ) .OR. iom_use( '28d'      )    .OR.  &    
             &    iom_use( 'hc300'    ) .OR. iom_use( 'hc700'    ) .OR. iom_use( 'hc2000'   )    .OR.  &    
-            &    iom_use( 'pycndep'  ) .OR. iom_use( 'tinv'     ) .OR. iom_use( 'depti'    )
+            &    iom_use( 'pycndep'  ) .OR. iom_use( 'tinv'     ) .OR. iom_use( 'depti'    )    .OR.  &
+            &    iom_use( 'maxdzT'   ) 
          !
          !                                      ! allocate dia_hth array
          IF( l_hth ) THEN 
@@ -128,9 +129,9 @@ CONTAINS
          ! initialization
          IF( iom_use( 'tinv'   ) )   ztinv  (:,:) = 0._wp  
          IF( iom_use( 'depti'  ) )   zdepinv(:,:) = 0._wp  
-         IF( iom_use( 'mlddzt' ) )   zmaxdzT(:,:) = 0._wp  
-         IF( iom_use( 'mlddzt' ) .OR. iom_use( 'mld_dt02' ) .OR. iom_use( 'topthdep' )   &
-            &                    .OR. iom_use( 'mldr10_3' ) .OR. iom_use( 'pycndep'  ) ) THEN
+         IF( iom_use( 'mlddzt' ) .OR. iom_use( 'maxdzT' ) )   zmaxdzT(:,:) = 0._wp  
+         IF( iom_use( 'mlddzt' ) .OR. iom_use( 'mld_dt02' ) .OR. iom_use( 'topthdep' ) .OR.   &
+           & iom_use( 'maxdzT' ) .OR. iom_use( 'mldr10_3' ) .OR. iom_use( 'pycndep'  ) ) THEN
             DO_2D( 1, 1, 1, 1 )
                zztmp = gdepw(ji,jj,mbkt(ji,jj)+1,Kmm) 
                hth     (ji,jj) = zztmp
@@ -150,7 +151,7 @@ CONTAINS
             ENDIF
          ENDIF
      
-         IF( iom_use( 'mlddzt' ) .OR. iom_use( 'mldr0_3' ) .OR. iom_use( 'mldr0_1' ) ) THEN
+         IF( iom_use( 'mlddzt' ) .OR. iom_use( 'maxdzT' ) .OR. iom_use( 'mldr0_3' ) .OR. iom_use( 'mldr0_1' ) ) THEN
             ! ------------------------------------------------------------- !
             ! thermocline depth: strongest vertical gradient of temperature !
             ! turbocline depth (mixing layer depth): avt = zavt5            !
@@ -175,7 +176,8 @@ CONTAINS
                   IF( zztmp > zrho1 )   zrho0_1(ji,jj) = zzdep                ! > 0.01
                ENDIF
             END_3D
-         
+
+            CALL iom_put( 'maxdzT', zmaxdzT )        ! max of dT/dz 
             CALL iom_put( 'mlddzt', hth )            ! depth of the thermocline
             IF( nla10 > 1 ) THEN 
                CALL iom_put( 'mldr0_3', zrho0_3 )   ! MLD delta rho(surf) = 0.03
