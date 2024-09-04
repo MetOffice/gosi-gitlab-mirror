@@ -73,8 +73,8 @@ CONTAINS
             IF(lwp) WRITE(numout,*)
          ENDIF
 
-                            ALLOCATE( zavt_evd(jpi,jpj,jpk) )  ;   zavt_evd(:,:,:) = 0._wp
-         IF( nn_evdm == 1 ) ALLOCATE( zavm_evd(jpi,jpj,jpk) )   ;  zavm_evd(:,:,:) = 0._wp
+         ALLOCATE( zavt_evd(jpi,jpj,jpk) )  ;  zavt_evd(:,:,:) = 0._wp
+         IF( nn_evdm == 1 ) THEN   ;   ALLOCATE( zavm_evd(jpi,jpj,jpk) )   ;   zavm_evd(:,:,:) = 0._wp   ;   ENDIF
       ENDIF
       !
       !
