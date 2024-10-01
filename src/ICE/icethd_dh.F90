@@ -58,15 +58,9 @@ CONTAINS
       !!              Vancoppenolle et al.,2009, Ocean Modelling
       !!------------------------------------------------------------------
       INTEGER  ::   ji, jk       ! dummy loop indices
-      INTEGER  ::   iter         ! local integer
-
+      !
       REAL(wp) ::   ztmelts      ! local scalar
       REAL(wp) ::   zdum
-      REAL(wp) ::   zfracs       ! fractionation coefficient for bottom salt entrapment
-      REAL(wp) ::   zswi1        ! switch for computation of bottom salinity
-      REAL(wp) ::   zswi12       ! switch for computation of bottom salinity
-      REAL(wp) ::   zswi2        ! switch for computation of bottom salinity
-      REAL(wp) ::   zgrr         ! bottom growth rate
       REAL(wp) ::   zt_i_new     ! bottom formation temperature
       REAL(wp) ::   z1_rho       ! 1/(rhos+rho0-rhoi)
       !
@@ -92,7 +86,6 @@ CONTAINS
       REAL(wp), DIMENSION(0:nlay_i+1) ::   zh_i_old  ! old thickness
       REAL(wp), DIMENSION(0:nlay_i+1) ::   ze_i_old  ! old enthalpy
       REAL(wp), DIMENSION(0:nlay_i+1) ::   zs_i_old  ! old salt content
-      INTEGER  ::   num_iter_max      ! Heat conservation
       !!------------------------------------------------------------------
 
       ! Discriminate between time varying salinity and constant
@@ -333,60 +326,21 @@ CONTAINS
          !
          IF(  zf_tt < 0._wp  ) THEN
 
-            num_iter_max = 1
-
-            IF(  nn_icesal == 2  ) THEN
- 
-            num_iter_max = 5  ! salinity varying in time
-
-               DO iter = 1, num_iter_max   ! iterations
-
-               ! New bottom ice salinity (Cox & Weeks, JGR88 )
-               !--- zswi1  if dh/dt < 2.0e-8
-               !--- zswi12 if 2.0e-8 < dh/dt < 3.6e-7
-               !--- zswi2  if dh/dt > 3.6e-7
-               zgrr     = MIN( 1.0e-3, MAX ( dh_i_bog(ji) * r1_Dt_ice , epsi10 ) )
-               zswi2    = MAX( 0._wp , SIGN( 1._wp , zgrr - 3.6e-7 ) )
-               zswi12   = MAX( 0._wp , SIGN( 1._wp , zgrr - 2.0e-8 ) ) * ( 1.0 - zswi2 )
-               zswi1    = 1. - zswi2 * zswi12
-               zfracs   = MIN( zswi1  * 0.12 + zswi12 * ( 0.8925 + 0.0568 * LOG( 100.0 * zgrr ) )   &
-                  &          + zswi2  * 0.26 / ( 0.26 + 0.74 * EXP ( - 724300.0 * zgrr ) )  , 0.5 )
-
-               zs_i_new    = zswitch_sal * zfracs * sss_1d(ji) + ( 1. - zswitch_sal ) * zs_i(1)   ! New ice salinity
-
-               ztmelts        = - rTmlt * zs_i_new                                                  ! New ice melting point (C)
-
-               zt_i_new       = zswitch_sal * t_bo_1d(ji) + ( 1. - zswitch_sal) * t_i_1d(ji, nlay_i)
-
-               zEi            = rcpi * ( zt_i_new - (ztmelts+rt0) ) &                                  ! Specific enthalpy of forming ice (J/kg, <0)
-                  &             - rLfus * ( 1.0 - ztmelts / ( MIN( zt_i_new - rt0, -epsi10 ) ) ) + rcp * ztmelts
-
-               zEw            = rcp  * ( t_bo_1d(ji) - rt0 )                                           ! Specific enthalpy of seawater (J/kg, < 0)
-
-               zdE            = zEi - zEw                                                              ! Specific enthalpy difference (J/kg, <0)
-
-               dh_i_bog(ji)   = rDt_ice * MAX( 0._wp , zf_tt / ( zdE * rhoi ) )
-
-               END DO
-
-            ELSE
-                 zs_i_new       = zswitch_sal * rn_sinew * sss_1d(ji) + ( 1. - zswitch_sal ) * zs_i(1)          ! New ice salinity
+            zs_i_new       = zswitch_sal * rn_sinew * sss_1d(ji) + ( 1. - zswitch_sal ) * zs_i(1)          ! New ice salinity
             
-                 ztmelts        = - rTmlt * zs_i_new                                                            ! New ice melting point (C)
+            ztmelts        = - rTmlt * zs_i_new                                                            ! New ice melting point (C)
             
-                 zt_i_new       = zswitch_sal * t_bo_1d(ji) + ( 1. - zswitch_sal) * t_i_1d(ji, nlay_i)
+            zt_i_new       = zswitch_sal * t_bo_1d(ji) + ( 1. - zswitch_sal) * t_i_1d(ji, nlay_i)
             
-                 zEi            = rcpi * ( zt_i_new - (ztmelts+rt0) ) &                                         ! Specific enthalpy of forming ice (J/kg, <0)
-                  &             - rLfus * ( 1.0 - ztmelts / ( MIN( zt_i_new - rt0, -epsi10 ) ) ) + rcp * ztmelts
+            zEi            = rcpi * ( zt_i_new - (ztmelts+rt0) ) &                                         ! Specific enthalpy of forming ice (J/kg, <0)
+               &             - rLfus * ( 1.0 - ztmelts / ( MIN( zt_i_new - rt0, -epsi10 ) ) ) + rcp * ztmelts
             
-                 zEw            = rcp  * ( t_bo_1d(ji) - rt0 )                                                  ! Specific enthalpy of seawater (J/kg, < 0)
+            zEw            = rcp  * ( t_bo_1d(ji) - rt0 )                                                  ! Specific enthalpy of seawater (J/kg, < 0)
             
-                 zdE            = zEi - zEw                                                                     ! Specific enthalpy difference (J/kg, <0)
+            zdE            = zEi - zEw                                                                     ! Specific enthalpy difference (J/kg, <0)
             
-                 dh_i_bog(ji)   = rDt_ice * MAX( 0._wp , zf_tt / ( zdE * rhoi ) )
+            dh_i_bog(ji)   = rDt_ice * MAX( 0._wp , zf_tt / ( zdE * rhoi ) )
 
-            ENDIF
-            
             ! Contribution to Energy and Salt Fluxes
             zfmdt = - rhoi * dh_i_bog(ji)                                                                  ! Mass flux x time step (kg/m2, < 0)
 
@@ -554,13 +508,11 @@ CONTAINS
                                 CALL ice_var_vremap( zh_i_old, ze_i_old, e_i_1d (ji,:) )
          IF( nn_icesal == 4 )   CALL ice_var_vremap( zh_i_old, zs_i_old, sz_i_1d(ji,:) )
          IF( nn_icesal == 2 )   THEN ! Update ice salinity from snow-ice and bottom growth
-           IF( h_i_1d(ji) >  rn_sal_himin ) THEN
             zs_sni = sss_1d(ji) * ( rhoi - rhos ) * r1_rhoi                                       ! salinity of snow ice
             zds    =       ( zs_sni   - s_i_1d(ji) ) * dh_snowice(ji) / MAX( epsi10, h_i_1d(ji) ) ! snow-ice    
             zds    = zds + ( zs_i_new - s_i_1d(ji) ) * dh_i_bog  (ji) / MAX( epsi10, h_i_1d(ji) ) ! bottom growth
             !
             s_i_1d(ji) = s_i_1d(ji) + zds
-           ENDIF
          ENDIF
          
       END DO ! npti

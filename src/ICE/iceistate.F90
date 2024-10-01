@@ -332,19 +332,11 @@ CONTAINS
             END WHERE
             
             ! calculate extensive and intensive variables
-            IF ( nn_icesal == 2 ) THEN
-               DO jl = 1, jpl
-                  DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
-                     s_i(ji,jj,jl) = MIN( MAX( rn_simin , s_i(ji,jj,jl) ) , rn_simax )
-                  END_2D
-               END DO
-            ELSE
-               DO jl = 1, jpl
-                  DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
-                     s_i(ji,jj,jl) = MIN( MAX( rn_simin , s_i(ji,jj,jl) ) , rn_sinew * sss_m(ji,jj) )
-                  END_2D
-               END DO
-            ENDIF
+            DO jl = 1, jpl
+               DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
+                  s_i(ji,jj,jl) = MIN( MAX( rn_simin , s_i(ji,jj,jl) ) , rn_sinew * sss_m(ji,jj) )
+               END_2D
+            END DO
             CALL ice_var_salprof ! for sz_i
 
             DO jl = 1, jpl

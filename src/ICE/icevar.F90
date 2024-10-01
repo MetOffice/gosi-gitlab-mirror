@@ -351,7 +351,7 @@ CONTAINS
             DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
                IF( v_i(ji,jj,jl) > epsi20 ) THEN
 !!clem test                  s_i(ji,jj,jl) = MAX( rn_simin , MIN( rn_sinew * sss_m(ji,jj), sv_i(ji,jj,jl) / v_i(ji,jj,jl) ) )
-                  s_i(ji,jj,jl) = MAX( rn_simin , MIN( rn_simax, sv_i(ji,jj,jl) / v_i(ji,jj,jl) ) )
+                  s_i(ji,jj,jl) = sv_i(ji,jj,jl) / v_i(ji,jj,jl)
                ELSE
                   s_i(ji,jj,jl) = rn_simin
                ENDIF
@@ -467,10 +467,9 @@ CONTAINS
       !! ** References : Vancoppenolle et al., 2007
       !!-------------------------------------------------------------------
       INTEGER  ::   ji, jj, jk, jl   ! dummy loop index
-      REAL(wp) ::   z1_dS, ztmp1, ztmp2, zs0, zs, zalpha
+      REAL(wp) ::   z1_dS, ztmp1, ztmp2, zalpha
       REAL(wp), PARAMETER ::   zsi0 = 3.5_wp
       REAL(wp), PARAMETER ::   zsi1 = 4.5_wp
-      REAL(wp), ALLOCATABLE, DIMENSION(:,:) ::   z_slope_s, zalpha2d    ! case nn_icesal 2 only
       !!-------------------------------------------------------------------
 
 !!gm Question: Remove the option 3 ?  How many years since it last use ?
@@ -483,40 +482,8 @@ CONTAINS
          sz_i(:,:,:,:) = rn_icesal
          s_i (:,:,:)   = rn_icesal
          !
-      CASE( 2 )
-
-       z1_dS = 1._wp / ( zsi1 - zsi0 )
-         !
-         ALLOCATE( z_slope_s(jpi,jpj) , zalpha2d(jpi,jpj) )
-         !
-         DO jl = 1, jpl
-
-            DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
-               !                                      ! Slope of the linear profile
-               IF( h_i(ji,jj,jl) > epsi20 ) THEN
-                  z_slope_s(ji,jj) = 2._wp * s_i(ji,jj,jl) / h_i(ji,jj,jl)
-               ELSE
-                  z_slope_s(ji,jj) = 0._wp
-               ENDIF
-               !
-               zalpha2d(ji,jj) = MAX(  0._wp , MIN( ( zsi1 - s_i(ji,jj,jl) ) * z1_dS , 1._wp )  )
-               !                             ! force a constant profile when SSS too low (Baltic Sea)
-               IF( 2._wp * s_i(ji,jj,jl) >= sss_m(ji,jj) )   zalpha2d(ji,jj) = 0._wp
-            END_2D
-            !
-            ! Computation of the profile
-            DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nlay_i )
-               !                          ! linear profile with 0 surface value
-               zs0 = z_slope_s(ji,jj) * ( REAL(jk,wp) - 0.5_wp ) * h_i(ji,jj,jl) * r1_nlay_i
-               zs  = zalpha2d(ji,jj) * zs0 + ( 1._wp - zalpha2d(ji,jj) ) * s_i(ji,jj,jl)     ! weighting the profile
-               sz_i(ji,jj,jk,jl) = MIN( 20.0_wp, MAX( zs, rn_simin ) )
-            END_3D
-         END DO
-
-         DEALLOCATE( z_slope_s , zalpha2d )
-      
          !            !---------------------------------------------!
-      CASE( 4 )   !  time varying salinity with linear profile  !
+      CASE( 2 , 4 )   !  time varying salinity with linear profile  !
          !            !---------------------------------------------!
          z1_dS = 1._wp / ( zsi1 - zsi0 )
          !
@@ -575,10 +542,9 @@ CONTAINS
       !!                Works with 1d vectors and is used by thermodynamic modules
       !!-------------------------------------------------------------------
       INTEGER  ::   ji, jk    ! dummy loop indices
-      REAL(wp) ::   z1_dS, ztmp1, ztmp2, zalpha, zs, zs0
+      REAL(wp) ::   z1_dS, ztmp1, ztmp2, zalpha
       REAL(wp), PARAMETER ::   zsi0 = 3.5_wp
       REAL(wp), PARAMETER ::   zsi1 = 4.5_wp
-      REAL(wp), ALLOCATABLE, DIMENSION(:) ::   z_slope_s, zalpha2   !
       !!-------------------------------------------------------------------
       !
       SELECT CASE ( nn_icesal )
@@ -588,39 +554,8 @@ CONTAINS
          !            !---------------------------------------!
          sz_i_1d(1:npti,:) = rn_icesal
          !
-         CASE( 2 )       !  time varying salinity with linear profile  !
          !            !---------------------------------------------!
-         z1_dS = 1._wp / ( zsi1 - zsi0 )
-         !
-         ALLOCATE( z_slope_s(jpij), zalpha2(jpij) )
-         !
-         DO ji = 1, npti
-            !                                      ! Slope of the linear profile
-            IF( h_i_1d(ji) > epsi20 ) THEN
-               z_slope_s(ji) = 2._wp * s_i_1d(ji) / h_i_1d(ji)
-            ELSE
-               z_slope_s(ji) = 0._wp
-            ENDIF
-            !
-            zalpha2(ji) = MAX(  0._wp , MIN(  ( zsi1 - s_i_1d(ji) ) * z1_dS , 1._wp  )  )
-            !                             ! force a constant profile when SSS too low (Baltic Sea)
-            IF( 2._wp * s_i_1d(ji) >= sss_1d(ji) )   zalpha2(ji) = 0._wp
-            !
-         END DO
-         !
-         ! Computation of the profile
-         DO jk = 1, nlay_i
-            DO ji = 1, npti
-               !                          ! linear profile with 0 surface value
-               zs0 = z_slope_s(ji) * ( REAL(jk,wp) - 0.5_wp ) * h_i_1d(ji) * r1_nlay_i
-               zs  = zalpha2(ji) * zs0 + ( 1._wp - zalpha2(ji) ) * s_i_1d(ji)
-               sz_i_1d(ji,jk) = MIN( rn_simax , MAX( zs , rn_simin ) )
-            END DO
-         END DO
-         !
-         DEALLOCATE( z_slope_s, zalpha2 )
-         !            !---------------------------------------------!
-      CASE( 4 )   !  time varying salinity with linear profile  !
+      CASE( 2 , 4 )   !  time varying salinity with linear profile  !
          !            !---------------------------------------------!
          z1_dS = 1._wp / ( zsi1 - zsi0 )
          !

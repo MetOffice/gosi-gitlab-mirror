@@ -91,7 +91,7 @@ CONTAINS
          DO jl = 1, jpl
             DO_2D( 0, 0, 0, 0 )
                zsal = sv_i(ji,jj,jl)
-               sv_i(ji,jj,jl) = MIN( MAX( rn_simin*v_i(ji,jj,jl) , sv_i(ji,jj,jl) ) , rn_simax*v_i(ji,jj,jl)  )
+               sv_i(ji,jj,jl) = MIN( MAX( rn_simin*v_i(ji,jj,jl) , sv_i(ji,jj,jl) ) , rn_sinew*sss_m(ji,jj)*v_i(ji,jj,jl)  )
                IF( kn /= 0 ) & ! no ice-ocean exchanges if kn=0 (for bdy for instance) otherwise conservation diags will fail
                   &   sfx_res(ji,jj) = sfx_res(ji,jj) - ( sv_i(ji,jj,jl) - zsal ) * rhoi * r1_Dt_ice   ! associated salt flux
             END_2D

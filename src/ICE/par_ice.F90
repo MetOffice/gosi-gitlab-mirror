@@ -86,8 +86,6 @@ MODULE par_ice
    REAL(wp), PUBLIC ::   rn_icesal        !: bulk salinity (ppt) in case of constant salinity
    REAL(wp), PUBLIC ::   rn_sinew         !: fraction of sss that is kept in new ice
    REAL(wp), PUBLIC ::   rn_simin         !: minimum ice salinity [PSU]
-   REAL(wp), PUBLIC ::   rn_simax         !: maximum ice salinity [PSU]
-   REAL(wp), PUBLIC ::   rn_sal_himin     ! min ice thickness for gravity drainage and flushing calculation 
    LOGICAL , PUBLIC ::   ln_sal_chk       !: sanity checks for salt drainage and flushing
    INTEGER , PUBLIC ::   nn_liquidus      !: formulation of liquidus
    !                                        1 = linear liquidus
