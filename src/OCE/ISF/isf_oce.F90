@@ -17,6 +17,9 @@ MODULE isf_oce
    USE in_out_manager, ONLY: wp, jpts ! I/O manager
    USE lib_mpp       , ONLY: ctl_stop, mpp_sum      ! MPP library
    USE fldread        ! read input fields
+#if defined key_top
+   USE par_trc , ONLY : jptra
+#endif
 
    IMPLICIT NONE
 
@@ -105,6 +108,9 @@ MODULE isf_oce
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   risfcpl_ssh, risfcpl_cons_ssh, risfcpl_cons_ssh_b               !:
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::   risfcpl_vol, risfcpl_cons_vol, risfcpl_cons_vol_b  !:
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:,:) ::   risfcpl_tsc, risfcpl_cons_tsc, risfcpl_cons_tsc_b  !:
+#if defined key_top
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:,:) ::   risfcpl_trc, risfcpl_cons_trc  !:
+#endif
    !
    !!----------------------------------------------------------------------
    !! NEMO/OCE 4.0 , NEMO Consortium (2018)
@@ -190,6 +196,15 @@ CONTAINS
       ierr = ierr + ialloc
       !
       risfcpl_tsc(:,:,:,:) = 0._wp ; risfcpl_vol(:,:,:) = 0._wp ; risfcpl_ssh(:,:) = 0._wp
+      !
+#if defined key_top
+      ALLOCATE( risfcpl_trc(jpi,jpj,jpk,jptra) , &
+         &      risfcpl_cons_trc(jpi,jpj,jpk,jptra) , STAT=ialloc )
+      ierr = ierr + ialloc
+      !
+      risfcpl_trc(:,:,:,:) = 0._wp ; risfcpl_cons_trc(:,:,:) = 0._wp
+      !
+#endif
 
       IF ( ln_isfcpl_cons ) THEN
          ALLOCATE( risfcpl_cons_tsc(jpi,jpj,jpk,jpts) , risfcpl_cons_vol(jpi,jpj,jpk) , risfcpl_cons_ssh(jpi,jpj) , STAT=ialloc )
