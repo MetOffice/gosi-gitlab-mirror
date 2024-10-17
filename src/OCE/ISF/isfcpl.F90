@@ -36,7 +36,7 @@ MODULE isfcpl
    PRIVATE
 
    PUBLIC isfcpl_rst_write, isfcpl_init                    ! iceshelf restart read and write
-   PUBLIC isfcpl_ssh, isfcpl_tra, isfcpl_vol, isfcpl_cons  ! iceshelf correction for ssh, tra, dyn and conservation
+   PUBLIC isfcpl_ssh, isfcpl_tr, isfcpl_vol, isfcpl_cons  ! iceshelf correction for ssh, tra, dyn and conservation
 
    TYPE isfcons
       INTEGER                ::   ii     ! i global
@@ -53,7 +53,7 @@ MODULE isfcpl
       INTEGER                    ::   ii     ! i global
       INTEGER                    ::   jj     ! j global
       INTEGER                    ::   kk     ! k level
-      REAL(wp), DIMENSION(jptra) ::   dpt    ! passive tracers increment
+      REAL(wp), DIMENSION(100)   ::   dpt    ! passive tracers increment !! jptra cannot be used there so set to 100
       REAL(wp)                   ::   lon    ! lon
       REAL(wp)                   ::   lat    ! lat
       INTEGER                    ::   ngb    ! 0/1 (valid location or not (ie on halo or no neigbourg))
@@ -276,7 +276,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj)          :: zdmask
       REAL(wp), DIMENSION(jpi,jpj,jpk)      :: ztmask0, zwmaskn
       REAL(wp), DIMENSION(jpi,jpj,jpk)      :: ztmask1, zwmaskb, ztmp3d
-      REAL(wp), DIMENSION(jpi,jpj,jpk,kpts) :: zpt0
+      REAL(wp), DIMENSION(jpi,jpj,jpk,kjpt) :: zpt0
       !!----------------------------------------------------------------------
       !
       CALL iom_get( numror, jpdom_auto, 'tmask'  , ztmask_b   ) ! need to extrapolate T/S
@@ -500,7 +500,7 @@ CONTAINS
    END SUBROUTINE isfcpl_vol
 
 
-   SUBROUTINE isfcpl_cons(Kmm,cdtype,kjpt)
+   SUBROUTINE isfcpl_cons(Kmm,cdtype,pt,kjpt)
       !!----------------------------------------------------------------------
       !!                   ***  ROUTINE iscpl_cons  ***
       !!
@@ -514,7 +514,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       !
 #if defined key_top
-      USE trc, ONLY : tr
+      USE trc, ONLY : tr, ctrcnm
 #endif
       !!----------------------------------------------------------------------
       TYPE(isfcons)  , DIMENSION(:),ALLOCATABLE :: zisfpts ! list of point receiving a correction
@@ -539,7 +539,7 @@ CONTAINS
       !
       REAL(wp) ::   z1_sum, z1_rdtiscpl
       REAL(wp) ::   zdvol, zratio                     ! vol increment
-      REAL(wp), DIMENSION(kjpt)        :: zdpt        ! 1-heat increment; 2-salt (TRA)
+      REAL(wp), ALLOCATABLE, DIMENSION(:) :: zdpt     ! 1-heat increment; 2-salt (TRA)
                                                       ! Or pass trc (TRC) increment
       REAL(wp) ::   zlon , zlat                       ! target location
       REAL(wp), DIMENSION(jpi,jpj,jpk) :: ztmask_b    ! mask before
@@ -553,10 +553,18 @@ CONTAINS
       !==============================================================================
 
       !
-      ALLOCATE( ztmtp(jpi,jpj,jpk,kjpt))
+      ALLOCATE( ztmpt(jpi,jpj,jpk,kjpt))
+      IF( cdtype == 'TRA' ) THEN
+         ALLOCATE( zdpt(kjpt))
+#if defined key_top
+      ELSEIF( cdtype == 'TRC' ) THEN
+         ALLOCATE( zdpt(100))
+      ENDIF
+#endif
+
       !
       ! get restart variable
-      CALL iom_get( numror:, jpdom_auto, 'tmask'  , ztmask_b(:,:,:) ) ! need to extrapolate T/S
+      CALL iom_get( numror, jpdom_auto, 'tmask'  , ztmask_b(:,:,:) ) ! need to extrapolate T/S
       CALL iom_get( numror, jpdom_auto, 'e3t_n'  , ze3t_b(:,:,:)   )
       !
 
@@ -665,7 +673,7 @@ CONTAINS
          !! re-use zdpt. was use for risfcpl_cons_tsc calc - but is not needed anymore and has the correct dim
          zdpt(:) = -HUGE(1.0)
          !! now init zisfpts
-         zisfpts(:) = isfcons(0,0,0,-HUGE(1.0), zdpt, -HUGE(1.0), -HUGE(1.0), -HUGE(1.0), 0)
+         zisfpts(:) = isfcons(0,0,0,-HUGE(1.0), zdpt, -HUGE(1.0), -HUGE(1.0), 0)
 #if defined key_top
       ELSEIF( cdtype == 'TRC' ) THEN
          ALLOCATE(zisfptr(nisfl(narea)))
@@ -673,7 +681,7 @@ CONTAINS
          !! re-use zdpt. was use for risfcpl_cons_tsc calc - but is not needed anymore and has the correct dim
          zdpt(:) = -HUGE(1.0)
          !! now init zisfptr
-         zisfptr(:) = isfconspt(0,0,0, zdpt, -HUGE(1.0), -HUGE(1.0), -HUGE(1.0), 0)
+         zisfptr(:) = isfconspt(0,0,0, zdpt, -HUGE(1.0), -HUGE(1.0), 0)
 #endif
       ENDIF
       !
@@ -897,14 +905,15 @@ CONTAINS
       TYPE(isfcons), DIMENSION(:), INTENT(inout) :: sisfpts
       INTEGER,                     INTENT(inout) :: kpts
       !!----------------------------------------------------------------------
-      INTEGER,      INTENT(in   )           :: ki, kj, kk                  !    target location (kfind=0)
-      !                                                                    ! or source location (kfind=1)
-      INTEGER,      INTENT(in   ), OPTIONAL :: kfind                       ! 0  target cell already found
-      !                                                                    ! 1  target to be determined
-      REAL(wp),     INTENT(in   )           :: pdvol, pdts, pratio ! vol/sal/tem increment
-      !                                                                    ! and ratio in case increment span over multiple cells.
+      INTEGER                , INTENT(in   )           :: ki, kj, kk      !    target location (kfind=0)
+      !                                                                   ! or source location (kfind=1)
+      INTEGER                , INTENT(in   ), OPTIONAL :: kfind           ! 0  target cell already found
+      !                                                                   ! 1  target to be determined
+      REAL(wp), DIMENSION(2) , INTENT(in   )           :: pdts            ! vol/sal/tem increment
+      REAL(wp)               , INTENT(in   )           :: pdvol, pratio   ! vol/sal/tem increment
+      !                                                                   ! and ratio in case increment span over multiple cells.
       !!----------------------------------------------------------------------
-      INTEGER :: ifind
+      INTEGER :: ifind, jn
       !!----------------------------------------------------------------------
       !
       ! increment position
@@ -917,16 +926,16 @@ CONTAINS
          ifind = ( 1 - tmask_i(ki,kj) ) * tmask(ki,kj,kk)
       END IF
       ! update T - S values
-      DO jn = 1,2
-         pdts(jn) = pratio * pdts(jn)
-      ENDDO
+      !DO jn = 1,2
+      !   pdts(jn) = pratio * pdts(jn)
+      !ENDDO
       !
       ! update isfpts structure
-      sisfpts(kpts) = isfcons(mig(ki), mjg(kj), kk, pratio * pdvol, pdts, glamt(ki,kj), gphit(ki,kj), ifind )
+      sisfpts(kpts) = isfcons(mig(ki), mjg(kj), kk, pratio * pdvol, pratio * pdts, glamt(ki,kj), gphit(ki,kj), ifind )
       !
    END SUBROUTINE update_isfpts
    !
-   SUBROUTINE get_correction( ki, kj, kk, plon, plat, pvolinc, psalinc, pteminc, kfind)
+   SUBROUTINE get_correction( ki, kj, kk, plon, plat, pvolinc, ptslinc, kfind)
       !!---------------------------------------------------------------------
       !!                  ***  ROUTINE get_correction  ***
       !!
@@ -935,11 +944,12 @@ CONTAINS
       !!             - Fill the correction array
       !!
       !!----------------------------------------------------------------------
-      INTEGER , INTENT(in) :: ki, kj, kk, kfind        ! target point indices
-      REAL(wp), INTENT(in) :: plon, plat               ! target point lon/lat
-      REAL(wp), INTENT(in) :: pvolinc, pteminc,psalinc ! correction increment for vol/temp/salt
+      INTEGER                 , INTENT(in) :: ki, kj, kk, kfind ! target point indices
+      REAL(wp)                , INTENT(in) :: plon, plat        ! target point lon/lat
+      REAL(wp)                , INTENT(in) :: pvolinc           ! correction increment for vol/temp/salt
+      REAL(wp), DIMENSION(2)  , INTENT(in) :: ptslinc           ! correction increment for vol/temp/salt
       !!----------------------------------------------------------------------
-      INTEGER :: jj, ji, iig, ijg
+      INTEGER :: jj, ji, jn, iig, ijg
       !!----------------------------------------------------------------------
       !
       ! define global indice of correction location
@@ -951,8 +961,9 @@ CONTAINS
          DO ji = mi0(iig),mi1(iig)
             ! correct the vol_flx and corresponding heat/salt flx in the closest cell
             risfcpl_cons_vol(ji,jj,kk)        =  risfcpl_cons_vol(ji,jj,kk       ) + pvolinc
-            risfcpl_cons_tsc(ji,jj,kk,jp_sal) =  risfcpl_cons_tsc(ji,jj,kk,jp_sal) + psalinc
-            risfcpl_cons_tsc(ji,jj,kk,jp_tem) =  risfcpl_cons_tsc(ji,jj,kk,jp_tem) + pteminc
+            DO jn = 1,2
+               risfcpl_cons_tsc(ji,jj,kk,jn) =  risfcpl_cons_tsc(ji,jj,kk,jn) + ptslinc(jn)
+            END DO
          END DO
       END DO
 
@@ -976,7 +987,7 @@ CONTAINS
       !                                                                 ! or source location (kfind=1)
       INTEGER                   , INTENT(in   ), OPTIONAL :: kfind      ! 0  target cell already found
       !                                                                 ! 1  target to be determined
-      REAL(wp), DIMENSION(jptra), INTENT(in   )           :: pdtr       ! vol/sal/tem increment
+      REAL(wp), DIMENSION(100)  , INTENT(in   )           :: pdtr       ! vol/sal/tem increment
       REAL(wp),                   INTENT(in   )           :: pratio     ! and ratio in case increment span over multiple cells.
       !!----------------------------------------------------------------------
       INTEGER :: ifind, jn
@@ -993,16 +1004,16 @@ CONTAINS
       END IF
       !
       ! update pass tracers values
-      DO jn = 1,jptra
-         pdtr(jn) = pratio * pdtr(jn)
-      ENDDO
+      !DO jn = 1,jptra
+      !   pdtr(jn) = pratio * pdtr(jn)
+      !ENDDO
       !
       ! update isfpts structure
-      sisfpts(kpts) = isfcons(mig(ki), mjg(kj), kk, pdtr, glamt(ki,kj), gphit(ki,kj), ifind )
+      sisfpts(kpts) = isfconspt(mig(ki), mjg(kj), kk, pratio * pdtr, glamt(ki,kj), gphit(ki,kj), ifind )
       !
    END SUBROUTINE update_isfptr
    !
-   SUBROUTINE get_correction_pt( ki, kj, kk, plon, plat, ptrinc, kfind)
+   SUBROUTINE get_correction_pt( ki, kj, kk, plon, plat, ptrlinc, kfind)
       !!---------------------------------------------------------------------
       !!                  ***  ROUTINE get_correction  ***
       !!
@@ -1013,9 +1024,9 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER                   , INTENT(in) :: ki, kj, kk, kfind        ! target point indices
       REAL(wp)                  , INTENT(in) :: plon, plat               ! target point lon/lat
-      REAL(wp), DIMENSION(jptra), INTENT(in) :: ptrlinc                  ! correction increment for vol/temp/salt
+      REAL(wp), DIMENSION(100)  , INTENT(in) :: ptrlinc                  ! correction increment for vol/temp/salt
       !!----------------------------------------------------------------------
-      INTEGER :: jj, ji, iig, ijg
+      INTEGER :: jj, ji, jn, iig, ijg
       !!----------------------------------------------------------------------
       !
       ! define global indice of correction location

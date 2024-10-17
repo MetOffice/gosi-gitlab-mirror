@@ -202,7 +202,7 @@ CONTAINS
          &      risfcpl_cons_trc(jpi,jpj,jpk,jptra) , STAT=ialloc )
       ierr = ierr + ialloc
       !
-      risfcpl_trc(:,:,:,:) = 0._wp ; risfcpl_cons_trc(:,:,:) = 0._wp
+      risfcpl_trc(:,:,:,:) = 0._wp ; risfcpl_cons_trc(:,:,:,:) = 0._wp
       !
 #endif
 

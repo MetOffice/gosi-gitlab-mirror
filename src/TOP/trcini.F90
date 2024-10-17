@@ -235,10 +235,10 @@ CONTAINS
       !!                     ***  ROUTINE trc_ini_state ***
       !! ** Purpose :          Initialisation of passive tracer concentration 
       !!----------------------------------------------------------------------
-      USE trcrst                                   ! passive tracers restart
-      USE trcdta                                   ! initialisation from files
+      USE trcrst          ! passive tracers restart
+      USE trcdta          ! initialisation from files
       USE isfcpl                                   ! extend into new opened cells.
-      USE isf_oce, ONLY: ln_iscpl, ln_isfcpl_cons  ! ice-shelves module switch
+      USE isf_oce, ONLY: ln_isfcpl, ln_isfcpl_cons  ! ice-shelves module switch
       !
       INTEGER, INTENT(in) :: Kbb, Kmm, Kaa   ! time level index
       INTEGER             :: jn, jl          ! dummy loop indices
@@ -250,7 +250,7 @@ CONTAINS
         !
         CALL trc_rst_read( Kbb, Kmm )
         !
-        IF( ln_iscpl ) CALL isfcpl_tr(Kmm, 'TRC', tr, jptra)
+        IF( ln_isfcpl ) CALL isfcpl_tr(Kmm, 'TRC', tr, jptra)
         !         !
         ! apply the 'conservation' method
         IF ( ln_isfcpl_cons ) CALL isfcpl_cons(Kmm,'TRC', tr, jptra)
