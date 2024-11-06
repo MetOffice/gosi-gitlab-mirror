@@ -260,47 +260,37 @@ CONTAINS
       zdepmoy(:,:)   = 0.e0             
       zetmp1 (:,:)   = 0.e0
       zetmp2 (:,:)   = 0.e0
+      zetmp3 (:,:)   = 0.e0
+      zetmp4 (:,:)   = 0.e0
 
       DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nksr)
          IF( gdepw(ji,jj,jk+1,Kmm) <= hmld(ji,jj) ) THEN
             zetmp1 (ji,jj) = zetmp1 (ji,jj) + etot     (ji,jj,jk) * e3t(ji,jj,jk,Kmm) ! Actual PAR for remineralisation
-            zetmp2 (ji,jj) = zetmp2 (ji,jj) + etot_ndcy(ji,jj,jk) * e3t(ji,jj,jk,Kmm) ! Par averaged over 24h for production
+            zetmp2 (ji,jj) = zetmp2 (ji,jj) + etot_ndcy(ji,jj,jk) * e3t(ji,jj,jk,Kmm) ! Diatoms
+            zetmp3 (ji,jj) = zetmp3 (ji,jj) + enano    (ji,jj,jk) * e3t(ji,jj,jk,Kmm) ! Nanophytoplankton            
+            zetmp4 (ji,jj) = zetmp4 (ji,jj) + ediat    (ji,jj,jk) * e3t(ji,jj,jk,Kmm) ! Diatoms
             zdepmoy(ji,jj) = zdepmoy(ji,jj) +                       e3t(ji,jj,jk,Kmm)
-         ENDIF
+         ENDIF 
       END_3D
       !
       emoy(:,:,:) = etot(:,:,:)       ! remineralisation
       zpar(:,:,:) = etot_ndcy(:,:,:)  ! diagnostic : PAR with no diurnal cycle 
       !
-      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nksr)
-         IF( gdepw(ji,jj,jk+1,Kmm) <= hmld(ji,jj) ) THEN
-            z1_dep = 1. / ( zdepmoy(ji,jj) + rtrn )
-            emoy (ji,jj,jk) = zetmp1(ji,jj) * z1_dep
-            zpar (ji,jj,jk) = zetmp2(ji,jj) * z1_dep
-         ENDIF
-      END_3D
-
       ! Computation of the mean usable light for the different phytoplankton
       ! groups based on their absorption characteristics.
-      zdepmoy(:,:)   = 0.e0
-      zetmp3 (:,:)   = 0.e0
-      zetmp4 (:,:)   = 0.e0
-      !
-      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nksr)
-         IF( gdepw(ji,jj,jk+1,Kmm) <= MIN(hmld(ji,jj), heup_01(ji,jj)) ) THEN
-            zetmp3 (ji,jj) = zetmp3 (ji,jj) + enano    (ji,jj,jk) * e3t(ji,jj,jk,Kmm) ! Nanophytoplankton
-            zetmp4 (ji,jj) = zetmp4 (ji,jj) + ediat    (ji,jj,jk) * e3t(ji,jj,jk,Kmm) ! Diatoms
-            zdepmoy(ji,jj) = zdepmoy(ji,jj) +                       e3t(ji,jj,jk,Kmm)
-         ENDIF
-      END_3D
-      enanom(:,:,:) = enano(:,:,:)
-      ediatm(:,:,:) = ediat(:,:,:)
-      !
+
       DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nksr)
          IF( gdepw(ji,jj,jk+1,Kmm) <= hmld(ji,jj) ) THEN
             z1_dep = 1. / ( zdepmoy(ji,jj) + rtrn )
+            emoy (ji,jj,jk)  = zetmp1(ji,jj) * z1_dep
+            zpar (ji,jj,jk)  = zetmp2(ji,jj) * z1_dep
             enanom(ji,jj,jk) = zetmp3(ji,jj) * z1_dep
             ediatm(ji,jj,jk) = zetmp4(ji,jj) * z1_dep
+         ELSE
+            emoy  (ji,jj,jk) = etot     (ji,jj,jk)
+            zpar  (ji,jj,jk) = etot_ndcy(ji,jj,jk)
+            enanom(ji,jj,jk) = enano    (ji,jj,jk)
+            ediatm(ji,jj,jk) = ediat    (ji,jj,jk)
          ENDIF
       END_3D
       !
@@ -313,12 +303,12 @@ CONTAINS
             ENDIF
          END_3D
          !
-         epicom(:,:,:) = epico(:,:,:)
-         !
          DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nksr)
             IF( gdepw(ji,jj,jk+1,Kmm) <= hmld(ji,jj) ) THEN
                z1_dep = 1. / ( zdepmoy(ji,jj) + rtrn )
                epicom(ji,jj,jk) = zetmp5(ji,jj) * z1_dep
+            ELSE
+               epicom(ji,jj,jk) = epico(ji,jj,jk)
             ENDIF
          END_3D
          DEALLOCATE( zetmp5 )

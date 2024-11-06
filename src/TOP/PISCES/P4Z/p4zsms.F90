@@ -19,6 +19,7 @@ MODULE p4zsms
    USE p4zsed          ! Sedimentation
    USE p4zint          ! time interpolation
    USE p4zrem          ! remineralisation
+   USE p4zpoc          !  POC remin   
    USE iom             ! I/O manager
    USE trd_oce         ! Ocean trends variables
    USE trdtrc          ! TOP trends variables
@@ -219,9 +220,11 @@ CONTAINS
       ENDIF
       !
       DO jn = jp_pcs0, jp_pcs1
-         tr(:,:,:,jn,Krhs) = ( tr(:,:,:,jn,Kbb) - ztrbbio(:,:,:,jn) ) * rfactr
-         tr(:,:,:,jn,Kbb ) = ztrbbio(:,:,:,jn)
-         ztrbbio(:,:,:,jn) = 0._wp
+         DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpk)
+            tr(ji,jj,jk,jn,Krhs) = ( tr(ji,jj,jk,jn,Kbb) - ztrbbio(ji,jj,jk,jn) ) * rfactr
+            tr(ji,jj,jk,jn,Kbb ) = ztrbbio(ji,jj,jk,jn)
+            ztrbbio(ji,jj,jk,jn) = 0._wp
+         END_3D
       END DO
       !
       !
@@ -371,6 +374,16 @@ CONTAINS
             consfe3(:,:,:) = 0._wp
          ENDIF
 
+        ! Read mean remineralisation rate
+         ll_poc_lab = .FALSE.
+         IF( iom_varid( numrtr, 'remintpoc', ldstop = .FALSE. ) > 0 ) THEN
+            CALL iom_get( numrtr, jpdom_auto, 'remintpoc' , remintpoc(:,:,:)  )
+            CALL iom_get( numrtr, jpdom_auto, 'remintgoc' , remintgoc(:,:,:)  )
+         ELSE
+            remintpoc(:,:,:) = 0.03_wp
+            remintgoc(:,:,:) = 0.03_wp
+         ENDIF
+
 
          ! Read the cumulative total flux. If not in the restart file, it is set to 0          
          IF( iom_varid( numrtr, 'tcflxcum', ldstop = .FALSE. ) > 0 ) THEN  ! cumulative total flux of carbon
@@ -418,6 +431,8 @@ CONTAINS
          CALL iom_rstput( kt, nitrst, numrtw, 'Silicamax', xksimax(:,:) )
          CALL iom_rstput( kt, nitrst, numrtw, 'tcflxcum', t_oce_co2_flx_cum )
          CALL iom_rstput( kt, nitrst, numrtw, 'Consfe3', consfe3(:,:,:) ) ! Si max concentration
+         CALL iom_rstput( kt, nitrst, numrtw, 'remintpoc', remintpoc(:,:,:) ) ! Mean remineralisation rate of POC         
+         CALL iom_rstput( kt, nitrst, numrtw, 'remintgoc', remintgoc(:,:,:) ) ! Mean remineralisation rate of GOC         
          CALL iom_rstput( kt, nitrst, numrtw, 'tcflxcum', t_oce_co2_flx_cum ) ! Cumulative CO2 flux
          CALL iom_rstput( kt, nitrst, numrtw, 'sizen', sizen(:,:,:) )  ! Size of nanophytoplankton
          CALL iom_rstput( kt, nitrst, numrtw, 'sized', sized(:,:,:) )  ! Size of diatoms

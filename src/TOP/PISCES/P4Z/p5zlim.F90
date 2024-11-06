@@ -143,6 +143,8 @@ CONTAINS
       !
       zratchl = 6.0
       sizena(:,:,:) = 0.0  ;  sizepa(:,:,:) = 0.0  ;  sizeda(:,:,:) = 0.0
+      logsizen(:,:,:) = LOG( sizen(:,:,:) )  ;  logsizep(:,:,:) = LOG(sizep(:,:,:) )
+      logsized(:,:,:) = LOG( sized(:,:,:) )      
       !
       DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
          ! Computation of the Chl/C ratio of each phytoplankton group
@@ -160,21 +162,21 @@ CONTAINS
          !------------------------------------------------
 
          ! diatoms
-         zsized            = sized(ji,jj,jk)**0.81
+         zsized            = EXP(logsized(ji,jj,jk)*0.81)
          zconcdfe          = concdfer * zsized
          zconc1d           = concdno3 * zsized
          zconc1dnh4        = concdnh4 * zsized
          zconc0dpo4        = concdpo4 * zsized
 
          ! picophytoplankton
-         zsizep            = sizep(ji,jj,jk)**0.81
+         zsizep            = EXP(logsizep(ji,jj,jk)*0.81)
          zconcpfe          = concpfer * zsizep
          zconc0p           = concpno3 * zsizep
          zconc0pnh4        = concpnh4 * zsizep
          zconc0ppo4        = concppo4 * zsizep
 
          ! nanophytoplankton
-         zsizen            = sizen(ji,jj,jk)**0.81
+         zsizen            = EXP(logsizen(ji,jj,jk)*0.81)
          zconcnfe          = concnfer * zsizen
          zconc0n           = concnno3 * zsizen
          zconc0nnh4        = concnnh4 * zsizen
@@ -183,11 +185,11 @@ CONTAINS
          ! Allometric variations of the minimum and maximum quotas
          ! From Talmy et al. (2014) and Maranon et al. (2013)
          ! -------------------------------------------------------
-         xqnnmin(ji,jj,jk) = qnnmin * sizen(ji,jj,jk)**(-0.36)
+         xqnnmin(ji,jj,jk) = qnnmin * EXP(-0.18 * logsizen(ji,jj,jk) )
          xqnnmax(ji,jj,jk) = qnnmax
-         xqndmin(ji,jj,jk) = qndmin * sized(ji,jj,jk)**(-0.36)
+         xqndmin(ji,jj,jk) = qndmin * EXP(-0.18 * logsized(ji,jj,jk) )
          xqndmax(ji,jj,jk) = qndmax
-         xqnpmin(ji,jj,jk) = qnpmin * sizep(ji,jj,jk)**(-0.36)
+         xqnpmin(ji,jj,jk) = qnpmin * EXP(-0.18 * logsizep(ji,jj,jk) )
          xqnpmax(ji,jj,jk) = qnpmax
 
          ! Computation of the optimal allocation parameters

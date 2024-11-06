@@ -57,7 +57,7 @@ CONTAINS
       REAL(wp) ::   zaggpoc , zaggfe, zaggdoc, zaggdoc2, zaggdoc3
       REAL(wp) ::   zaggpon , zaggdon, zaggdon2, zaggdon3
       REAL(wp) ::   zaggpop, zaggdop, zaggdop2, zaggdop3
-      REAL(wp) ::   zaggtmp, zfact, zmax
+      REAL(wp) ::   zaggtmp, zfact, zmax, ztrdoc, ztrdon, ztrdop
       CHARACTER (len=25) :: charout
       !!---------------------------------------------------------------------
       !
@@ -93,15 +93,16 @@ CONTAINS
             ! 2nd term is shear aggregation of DOC-POC
             ! 3rd term is differential settling of DOC-POC
             ! 1/3 of DOC is supposed to experience aggregation (HMW)
-            zaggdoc  = ( ( 12.0 * 0.3 * tr(ji,jj,jk,jpdoc,Kbb) + 9.05 * tr(ji,jj,jk,jppoc,Kbb) ) * zfact       &
-            &            + 2.49 * xstep * tr(ji,jj,jk,jppoc,Kbb) ) * 0.3 * tr(ji,jj,jk,jpdoc,Kbb)
+            ztrdoc   = 0.3 * tr(ji,jj,jk,jpdoc,Kbb)            
+            zaggdoc  = ( ( 12.0 * ztrdoc + 9.05 * tr(ji,jj,jk,jppoc,Kbb) ) * zfact       &
+            &            + 2.49 * xstep * tr(ji,jj,jk,jppoc,Kbb) ) * ztrdoc
             ! transfer of DOC to GOC : 
             ! 1st term is shear aggregation
             ! 1/3 of DOC is supposed to experience aggregation (HMW)
-            zaggdoc2 = ( 1.94 * zfact + 1.37 * xstep ) * tr(ji,jj,jk,jpgoc,Kbb) * 0.3 * tr(ji,jj,jk,jpdoc,Kbb)
+            zaggdoc2 = ( 1.94 * zfact + 1.37 * xstep ) * tr(ji,jj,jk,jpgoc,Kbb) * ztrdoc
             ! tranfer of DOC to POC due to brownian motion
             ! The temperature dependency has been omitted.
-            zaggdoc3 =  ( 127.8 * 0.3 * tr(ji,jj,jk,jpdoc,Kbb) + 725.7 * tr(ji,jj,jk,jppoc,Kbb) ) * xstep * 0.3 * tr(ji,jj,jk,jpdoc,Kbb)
+            zaggdoc3 =  ( 127.8 * ztrdoc + 725.7 * tr(ji,jj,jk,jppoc,Kbb) ) * xstep * ztrdoc
 
             !  Update the trends
             tr(ji,jj,jk,jppoc,Krhs) = tr(ji,jj,jk,jppoc,Krhs) - zagg + zaggdoc + zaggdoc3
@@ -146,27 +147,31 @@ CONTAINS
             ! 2nd term is shear aggregation of DOC-POC
             ! 3rd term is differential settling of DOC-POC
             ! 1/3 of DOC is supposed to experience aggregation (HMW)
-            zaggtmp = ( ( 0.37 * 0.3 * tr(ji,jj,jk,jpdoc,Kbb) + 20.5 * tr(ji,jj,jk,jppoc,Kbb) ) * zfact       &
+            ztrdoc   = 0.3 * tr(ji,jj,jk,jpdoc,Kbb)
+            ztrdon   = 0.3 * tr(ji,jj,jk,jpdon,Kbb)
+            ztrdop   = 0.3 * tr(ji,jj,jk,jpdop,Kbb)
+            !            
+            zaggtmp = ( ( 0.37 * ztrdoc + 20.5 * tr(ji,jj,jk,jppoc,Kbb) ) * zfact       &
             &            + 0.15 * xstep * tr(ji,jj,jk,jppoc,Kbb) )
-            zaggdoc  = zaggtmp * 0.3 * tr(ji,jj,jk,jpdoc,Kbb)
-            zaggdon  = zaggtmp * 0.3 * tr(ji,jj,jk,jpdon,Kbb)
-            zaggdop  = zaggtmp * 0.3 * tr(ji,jj,jk,jpdop,Kbb)
+            zaggdoc  = zaggtmp * ztrdoc
+            zaggdon  = zaggtmp * ztrdon
+            zaggdop  = zaggtmp * ztrdop
 
             ! transfer of DOC to GOC : 
             ! 1st term is shear aggregation
             ! 2nd term is differential settling 
             ! 1/3 of DOC is supposed to experience aggregation (HMW)
             zaggtmp = 655.4 * zfact * tr(ji,jj,jk,jpgoc,Kbb)
-            zaggdoc2 = zaggtmp * 0.3 * tr(ji,jj,jk,jpdoc,Kbb)
-            zaggdon2 = zaggtmp * 0.3 * tr(ji,jj,jk,jpdon,Kbb)
-            zaggdop2 = zaggtmp * 0.3 * tr(ji,jj,jk,jpdop,Kbb)
+            zaggdoc2 = zaggtmp * ztrdoc
+            zaggdon2 = zaggtmp * ztrdon
+            zaggdop2 = zaggtmp * ztrdop
 
             ! tranfer of DOC to POC due to brownian motion
             ! 1/3 of DOC is supposed to experience aggregation (HMW)
-            zaggtmp = ( 260.2 * 0.3 * tr(ji,jj,jk,jpdoc,Kbb) +  418.5 * tr(ji,jj,jk,jppoc,Kbb) ) * xstep
-            zaggdoc3 =  zaggtmp * 0.3 * tr(ji,jj,jk,jpdoc,Kbb)
-            zaggdon3 =  zaggtmp * 0.3 * tr(ji,jj,jk,jpdon,Kbb)
-            zaggdop3 =  zaggtmp * 0.3 * tr(ji,jj,jk,jpdop,Kbb)
+            zaggtmp = ( 260.2 * ztrdoc +  418.5 * tr(ji,jj,jk,jppoc,Kbb) ) * xstep
+            zaggdoc3 =  zaggtmp * ztrdoc
+            zaggdon3 =  zaggtmp * ztrdon
+            zaggdop3 =  zaggtmp * ztrdop
 
 
             !  Update the trends

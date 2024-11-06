@@ -149,7 +149,7 @@ CONTAINS
       !!---------------------------------------------------------------------
       INTEGER, INTENT(in) ::   Kbb, Kmm  ! time level indices
       INTEGER  ::   ji, jj, jk
-      REAL(wp) ::   ztkel, ztkel1, zt , zsal  , zsal2 , zbuf1 , zbuf2
+      REAL(wp) ::   ztkel, ztkel1, ztkel2, ztkel3, zt, zsal, zsal2, zlogsal, zbuf1 , zbuf2
       REAL(wp) ::   ztgg , ztgg2, ztgg3 , ztgg4 , ztgg5
       REAL(wp) ::   zpres, ztc  , zcl   , zcpexp, zoxy  , zcpexp2
       REAL(wp) ::   zsqrt, ztr  , zlogt , zcek1, zc1, zplat
@@ -182,7 +182,7 @@ CONTAINS
          zpres = gdept(ji,jj,jk,Kmm) / 1000.
          za1 = 0.04 * ( 1.0 + 0.185 * ts(ji,jj,jk,jp_tem,Kmm) + 0.035 * (salinprac(ji,jj,jk) - 35.0) )
          za2 = 0.0075 * ( 1.0 - ts(ji,jj,jk,jp_tem,Kmm) / 30.0 )
-         tempis(ji,jj,jk) = ts(ji,jj,jk,jp_tem,Kmm) - za1 * zpres + za2 * zpres**2
+         tempis(ji,jj,jk) = ts(ji,jj,jk,jp_tem,Kmm) - zpres * ( za1 - za2 * zpres )
       END_3D
       !
       ! CHEMICAL CONSTANTS - SURFACE LAYER
@@ -190,14 +190,16 @@ CONTAINS
       DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
          !                             ! SET ABSOLUTE TEMPERATURE
          ztkel = tempis(ji,jj,1) + 273.15
+         ztkel2 = ztkel * ztkel
+         ztkel3 = ztkel2 * ztkel         
          zt    = ztkel * 0.01
          zsal  = salinprac(ji,jj,1) + ( 1.- tmask(ji,jj,1) ) * 35.
          !                             ! LN(K0) OF SOLUBILITY OF CO2 (EQ. 12, WEISS, 1980)
          !                             !     AND FOR THE ATMOSPHERE FOR NON IDEAL GAS
          zcek1 = 9050.69/ztkel - 58.0931 + 22.2940 * LOG(zt) + zsal*(0.027766 - 0.00025888*ztkel    &
-         &       + 0.0050578e-4*ztkel**2)
+         &       + 0.0050578e-4*ztkel2)
          chemc(ji,jj,1) = EXP( zcek1 ) * 1E-6    ! mol/(L atm)
-         chemc(ji,jj,2) = -1636.75 + 12.0408*ztkel - 0.0327957*ztkel**2 + 0.0000316528*ztkel**3
+         chemc(ji,jj,2) = -1636.75 + 12.0408*ztkel - 0.0327957*ztkel2 + 0.0000316528*ztkel3
          chemc(ji,jj,3) = 57.7 - 0.118*ztkel
       END_2D
 
@@ -240,6 +242,7 @@ CONTAINS
           zis2   = zis * zis
           zisqrt = SQRT( zis )
           ztc     = tempis(ji,jj,jk) + ( 1.- tmask(ji,jj,jk) ) * 20.
+          zlogsal = LOG(1.0 - 0.001005 * zsal)          
 
           ! CHLORINITY (WOOSTER ET AL., 1969)
           zcl     = zsal / 1.80655
@@ -255,12 +258,11 @@ CONTAINS
           &         + (-13856. * ztr + 324.57 - 47.986 * zlogt) * zisqrt &
           &         + (35474. * ztr - 771.54 + 114.723 * zlogt) * zis    &
           &         - 2698. * ztr * zis**1.5 + 1776.* ztr * zis2         &
-          &         + LOG(1.0 - 0.001005 * zsal))
+          &         + zlogsal)
 
           ! DISSOCIATION CONSTANT FOR FLUORIDES on free H scale (Dickson and Riley 79)
           zckf    = EXP( 1590.2*ztr - 12.641 + 1.525*zisqrt   &
-          &         + LOG(1.0d0 - 0.001005d0*zsal)            &
-          &         + LOG(1.0d0 + zst/zcks))
+          &         + zlogsal + LOG(1.0d0 + zst/zcks))
 
           ! DISSOCIATION CONSTANT FOR CARBONATE AND BORATE
           zckb=  (-8966.90 - 2890.53*zsqrt - 77.942*zsal        &
@@ -298,7 +300,7 @@ CONTAINS
          &          + (-458.79*ztr + 3.5913) * zisqrt       &
          &          + (188.74*ztr - 1.5998) * zis           &
          &          + (-12.1652*ztr + 0.07871) * zis2       &
-         &          + LOG(1.0 - 0.001005*zsal)
+         &          + zlogsal
 
           ! APPARENT SOLUBILITY PRODUCT K'SP OF CALCITE IN SEAWATER
           !       (S=27-43, T=2-25 DEG C) at pres =0 (atmos. pressure) (MUCCI 1983)
@@ -444,45 +446,46 @@ CONTAINS
       INTEGER  ::   ji, jj, jk
       REAL(wp)  ::  zca1, zba1
       REAL(wp)  ::  zd, zsqrtd, zhmin
-      REAL(wp)  ::  za2, za1, za0
+      REAL(wp)  ::  za2, za1, za0, zdens
       REAL(wp)  ::  p_dictot, p_bortot, p_alkcb 
       !!---------------------------------------------------------------------
 
       IF( ln_timing )  CALL timing_start('ahini_for_at')
       !
       DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpk )
-      p_alkcb  = tr(ji,jj,jk,jptal,Kbb) * 1000. / (rhop(ji,jj,jk) + rtrn)
-      p_dictot = tr(ji,jj,jk,jpdic,Kbb) * 1000. / (rhop(ji,jj,jk) + rtrn)
-      p_bortot = borat(ji,jj,jk)
-      IF (p_alkcb <= 0.) THEN
-          p_hini(ji,jj,jk) = 1.e-3
-      ELSEIF (p_alkcb >= (2.*p_dictot + p_bortot)) THEN
-          p_hini(ji,jj,jk) = 1.e-10_wp
-      ELSE
-          zca1 = p_dictot/( p_alkcb + rtrn )
-          zba1 = p_bortot/ (p_alkcb + rtrn )
-     ! Coefficients of the cubic polynomial
-          za2 = aKb3(ji,jj,jk)*(1. - zba1) + ak13(ji,jj,jk)*(1.-zca1)
-          za1 = ak13(ji,jj,jk)*akb3(ji,jj,jk)*(1. - zba1 - zca1)    &
-          &     + ak13(ji,jj,jk)*ak23(ji,jj,jk)*(1. - (zca1+zca1))
-          za0 = ak13(ji,jj,jk)*ak23(ji,jj,jk)*akb3(ji,jj,jk)*(1. - zba1 - (zca1+zca1))
+         zdens    = rhop(ji,jj,jk) / 1000.
+         p_alkcb  = tr(ji,jj,jk,jptal,Kbb) / ( zdens + rtrn )
+         p_dictot = tr(ji,jj,jk,jpdic,Kbb) / ( zdens + rtrn )
+         p_bortot = borat(ji,jj,jk)
+         IF (p_alkcb <= 0.) THEN
+             p_hini(ji,jj,jk) = 1.e-3
+         ELSEIF (p_alkcb >= (2.*p_dictot + p_bortot)) THEN
+             p_hini(ji,jj,jk) = 1.e-10_wp
+         ELSE
+            zca1 = p_dictot/( p_alkcb + rtrn )
+            zba1 = p_bortot/ (p_alkcb + rtrn )
+            ! Coefficients of the cubic polynomial
+            za2 = aKb3(ji,jj,jk)*(1. - zba1) + ak13(ji,jj,jk)*(1.-zca1)
+            za1 = ak13(ji,jj,jk)*akb3(ji,jj,jk)*(1. - zba1 - zca1)    &
+            &     + ak13(ji,jj,jk)*ak23(ji,jj,jk)*(1. - (zca1+zca1))
+            za0 = ak13(ji,jj,jk)*ak23(ji,jj,jk)*akb3(ji,jj,jk)*(1. - zba1 - (zca1+zca1))
                                   ! Taylor expansion around the minimum
-          zd = za2*za2 - 3.*za1   ! Discriminant of the quadratic equation
+            zd = za2*za2 - 3.*za1   ! Discriminant of the quadratic equation
                                   ! for the minimum close to the root
 
-          IF(zd > 0.) THEN        ! If the discriminant is positive
-            zsqrtd = SQRT(zd)
-            IF(za2 < 0) THEN
-              zhmin = (-za2 + zsqrtd)/3.
-            ELSE
-              zhmin = -za1/(za2 + zsqrtd)
-            ENDIF
-            p_hini(ji,jj,jk) = zhmin + SQRT(-(za0 + zhmin*(za1 + zhmin*(za2 + zhmin)))/zsqrtd)
-          ELSE
-            p_hini(ji,jj,jk) = 1.e-7
-          ENDIF
-       !
-       ENDIF
+           IF(zd > 0.) THEN        ! If the discriminant is positive
+              zsqrtd = SQRT(zd)
+              IF(za2 < 0) THEN
+                zhmin = (-za2 + zsqrtd)/3.
+              ELSE
+                zhmin = -za1/(za2 + zsqrtd)
+              ENDIF
+              p_hini(ji,jj,jk) = zhmin + SQRT(-(za0 + zhmin*(za1 + zhmin*(za2 + zhmin)))/zsqrtd)
+           ELSE
+              p_hini(ji,jj,jk) = 1.e-7
+           ENDIF
+           !
+         ENDIF
       END_3D
       !
       IF( ln_timing )  CALL timing_stop('ahini_for_at')
@@ -501,11 +504,16 @@ CONTAINS
    REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(OUT) :: p_alknw_inf
    REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(OUT) :: p_alknw_sup
    INTEGER,                          INTENT(in)  ::  Kbb      ! time level indices
+   INTEGER  ::   ji, jj, jk
+   REAL(wp)  ::  zdens
 
-   p_alknw_inf(:,:,:) =  -tr(:,:,:,jppo4,Kbb) * 1000. / (rhop(:,:,:) + rtrn) - sulfat(:,:,:)  &
-   &              - fluorid(:,:,:)
-   p_alknw_sup(:,:,:) =   (2. * tr(:,:,:,jpdic,Kbb) + 2. * tr(:,:,:,jppo4,Kbb) + tr(:,:,:,jpsil,Kbb) )    &
-   &               * 1000. / (rhop(:,:,:) + rtrn) + borat(:,:,:) 
+   DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpk )
+      zdens = rhop(ji,jj,jk) / 1000.
+      p_alknw_inf(ji,jj,jk) =  -tr(ji,jj,jk,jppo4,Kbb) / ( zdens + rtrn ) * po4r - sulfat(ji,jj,jk) &
+        &              - fluorid(ji,jj,jk)
+      p_alknw_sup(ji,jj,jk) =   (2. * tr(ji,jj,jk,jpdic,Kbb) + 2. * tr(ji,jj,jk,jppo4,Kbb) * po4r    &
+        &               + tr(ji,jj,jk,jpsil,Kbb) ) / ( zdens + rtrn ) + borat(ji,jj,jk)
+   END_3D
 
    END SUBROUTINE anw_infsup
 
@@ -535,7 +543,7 @@ CONTAINS
    REAL(wp)  ::  znumer_so4, zdnumer_so4, zdenom_so4, zalk_so4, zdalk_so4
    REAL(wp)  ::  znumer_flu, zdnumer_flu, zdenom_flu, zalk_flu, zdalk_flu
    REAL(wp)  ::  zalk_wat, zdalk_wat
-   REAL(wp)  ::  zfact, p_alktot, zdic, zbot, zpt, zst, zft, zsit
+   REAL(wp)  ::  zdens, p_alktot, zdic, zbot, zpt, zst, zft, zsit
    LOGICAL   ::  l_exitnow
    REAL(wp), PARAMETER :: pz_exp_threshold = 1.0
    REAL(wp), DIMENSION(jpi,jpj,jpk) :: zalknw_inf, zalknw_sup, rmask, zh_min, zh_max, zeqn_absmin
@@ -550,7 +558,8 @@ CONTAINS
    ! TOTAL H+ scale: conversion factor for Htot = aphscale * Hfree
    DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpk )
       IF (rmask(ji,jj,jk) == 1.) THEN
-         p_alktot = tr(ji,jj,jk,jptal,Kbb) * 1000. / (rhop(ji,jj,jk) + rtrn)
+         zdens = rhop(ji,jj,jk) / 1000.
+         p_alktot = tr(ji,jj,jk,jptal,Kbb) / ( zdens + rtrn )              
          aphscale = 1. + sulfat(ji,jj,jk)/aks3(ji,jj,jk)
          zh_ini = p_hini(ji,jj,jk)
 
@@ -579,12 +588,12 @@ CONTAINS
    DO jn = 1, jp_maxniter_atgen 
       DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpk )
       IF (rmask(ji,jj,jk) == 1.) THEN
-         zfact = rhop(ji,jj,jk) / 1000. + rtrn
-         p_alktot = tr(ji,jj,jk,jptal,Kbb) / zfact
-         zdic  = tr(ji,jj,jk,jpdic,Kbb) / zfact
+         zdens = rhop(ji,jj,jk) / 1000. + rtrn
+         p_alktot = tr(ji,jj,jk,jptal,Kbb) / zdens
+         zdic  = tr(ji,jj,jk,jpdic,Kbb) / zdens
          zbot  = borat(ji,jj,jk)
-         zpt = tr(ji,jj,jk,jppo4,Kbb) / zfact * po4r
-         zsit = tr(ji,jj,jk,jpsil,Kbb) / zfact
+         zpt = tr(ji,jj,jk,jppo4,Kbb) / zdens * po4r
+         zsit = tr(ji,jj,jk,jpsil,Kbb) / zdens
          zst = sulfat (ji,jj,jk)
          zft = fluorid(ji,jj,jk)
          aphscale = 1. + sulfat(ji,jj,jk)/aks3(ji,jj,jk)

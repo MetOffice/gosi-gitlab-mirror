@@ -109,7 +109,7 @@ CONTAINS
       ! ------------------------------------------------------------------------- 
       IF ( ln_p4z_dcyc ) THEN    ! Diurnal cycle in PISCES
 
-         DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+         DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nksr )
             IF( etot_ndcy(ji,jj,jk) > 1.E-3 ) THEN
                zval = 24.0
                IF( gdepw(ji,jj,jk+1,Kmm) <= hmld(ji,jj) ) THEN
@@ -121,7 +121,7 @@ CONTAINS
          END_3D
  
       ELSE ! No diurnal cycle in PISCES
-         DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+         DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nksr )
             IF( etot_ndcy(ji,jj,jk) > 1.E-3 ) THEN
                zval = MAX( 1., strn(ji,jj) )
                IF( gdepw(ji,jj,jk+1,Kmm) <= hmld(ji,jj) ) THEN
@@ -141,7 +141,7 @@ CONTAINS
       ! to exclude the effect of nutrient limitation and temperature in the PI
       ! curve following Vichi et al. (2007)
       ! -----------------------------------------------------------------------
-      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nksr )
          IF( etot_ndcy(ji,jj,jk) > 1.E-3 ) THEN
             !
             ! The initial slope of the PI curve can be increased for nano
@@ -159,7 +159,7 @@ CONTAINS
          ENDIF
       END_3D
 
-      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nksr )
          IF( etot_ndcy(ji,jj,jk) > 1.E-3 ) THEN
              ! Computation of production function for Carbon
              ! Actual light levels are used here 
@@ -196,7 +196,7 @@ CONTAINS
       END_3D
 
 
-      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nksr )
 
           IF( etot_ndcy(ji,jj,jk) > 1.E-3 ) THEN
              ! Si/C of diatoms
@@ -230,14 +230,14 @@ CONTAINS
       ! Sea-ice effect on production
       ! No production is assumed below sea ice
       ! -------------------------------------- 
-      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nksr )
          zprbio(ji,jj,jk) = zprbio(ji,jj,jk) * ( 1. - fr_i(ji,jj) )
          zprdia(ji,jj,jk) = zprdia(ji,jj,jk) * ( 1. - fr_i(ji,jj) )
       END_3D
 
       ! Computation of the various production  and nutrient uptake terms
       ! ---------------------------------------------------------------
-      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nksr )
          IF( etot_ndcy(ji,jj,jk) > 1.E-3 ) THEN
             !  production terms for nanophyto. (C)
             zprorcan(ji,jj,jk) = zprbio(ji,jj,jk)  * xlimphy(ji,jj,jk) * tr(ji,jj,jk,jpphy,Kbb) * rfact2
@@ -299,7 +299,7 @@ CONTAINS
       ! Computation of the chlorophyll production terms
       ! The parameterization is taken from Geider et al. (1997)
       ! -------------------------------------------------------
-      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nksr )
          IF( etot_ndcy(ji,jj,jk) > 1.E-3 ) THEN
             !  production terms for nanophyto. ( chlorophyll )
             znanotot = enanom(ji,jj,jk) / ( zmxl_chl(ji,jj,jk) + rtrn )
@@ -322,7 +322,7 @@ CONTAINS
       END_3D
 
       !   Update the arrays TRA which contain the biological sources and sinks
-      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nksr )
         IF( etot_ndcy(ji,jj,jk) > 1.E-3 ) THEN
            zpptot   = zprorcan(ji,jj,jk) + zprorcad(ji,jj,jk)
            zpnewtot = zpronewn(ji,jj,jk) + zpronewd(ji,jj,jk)
@@ -358,7 +358,7 @@ CONTAINS
      ! Shaked et al. (2020)
      ! -------------------------------------------------------------------------
      IF( ln_ligand ) THEN
-         DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+         DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, nksr )
            IF( etot_ndcy(ji,jj,jk) > 1.E-3 ) THEN
               zproddoc = excretd * zprorcad(ji,jj,jk) + excretn * zprorcan(ji,jj,jk)
               zprodfer = texcretn * zprofen(ji,jj,jk) + texcretd * zprofed(ji,jj,jk)
