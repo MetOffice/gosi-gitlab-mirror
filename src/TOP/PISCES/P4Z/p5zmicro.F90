@@ -53,6 +53,8 @@ MODULE p5zmicro
    REAL(wp), PUBLIC ::  xsigmadel   !: Maximum additional width of the grazing window at low food density
    LOGICAL,  PUBLIC ::  bmetexc     !: Use of excess carbon for respiration
 
+   REAL(wp)         :: rlogfactdn, rlogfactpn, rlogfactdp   
+
    !! * Substitutions
 #  include "do_loop_substitute.h90"
    !!----------------------------------------------------------------------
@@ -77,7 +79,7 @@ CONTAINS
       !
       INTEGER  :: ji, jj, jk
       REAL(wp) :: zcompadi, zcompaz , zcompaph, zcompapoc, zcompapon, zcompapop
-      REAL(wp) :: zcompapi, zgraze  , zdenom, zfact, zfood, zfoodlim
+      REAL(wp) :: zcompapi, zgraze  , zdenom, zdenom2, zfact, zfood, zfoodlim
       REAL(wp) :: ztmp1, ztmp2, ztmp3, ztmp4, ztmp5, ztmptot
       REAL(wp) :: zepsherf, zepshert, zepsherq, zepsherv, zrespirc, zrespirn, zrespirp, zbasresb, zbasresi
       REAL(wp) :: zgraztotc, zgraztotn, zgraztotp, zgraztotf, zbasresn, zbasresp, zbasresf
@@ -88,8 +90,11 @@ CONTAINS
       REAL(wp) :: zgraznc, zgraznn, zgraznp, zgrazpoc, zgrazpon, zgrazpop, zgrazpof
       REAL(wp) :: zgrazdc, zgrazdn, zgrazdp, zgrazdf, zgraznf, zgrazz
       REAL(wp) :: zgrazpc, zgrazpn, zgrazpp, zgrazpf, zbeta, zrfact2, zmetexcess
+      REAL(wp) :: zsizepn, zsizedn, zsizedp, zdiffdn, zdiffpn, zdiffdp
+      REAL(wp) :: zpexpod, zmaxsi
+      REAL(wp) :: zsigma , zsigma2, zr_poc, zr_pic, zr_phy, zr_dia
+      REAL(wp), DIMENSION(jpi,jpj,jpk) :: zproport, zproport2
       REAL(wp), DIMENSION(jpi,jpj,jpk) :: zgrazing, zfezoo, zzligprod
-      REAL(wp) :: zsigma, zdiffdn, zdiffpn, zdiffdp, zproport, zproport2
       CHARACTER (len=25) :: charout
       !!---------------------------------------------------------------------
       !
@@ -99,14 +104,29 @@ CONTAINS
       zmetexcess = 0.0
       IF ( bmetexc ) zmetexcess = 1.0
       !
+      ! Variables used to compute the preferences
       DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+         ! Proportion of nano and diatoms that are within the size range
+         ! accessible to microzooplankton.
+         zpexpod   = (0.53 * ( sized(ji,jj,jk) - 3.0 )**2 - 3.25 ) / ( sized(ji,jj,jk) -1.0 + rtrn )
+         zpexpod   = MAX( -25.0, zpexpod ) + 1.0
+         zmaxsi    = 10.0**zpexpod
+         zproport(ji,jj,jk)  = EXP( -0.48 * logsized(ji,jj,jk)) * (1.0 - ( zmaxsi - 2.0**zpexpod ) / ( zmaxsi - 1.0 ) )
+         zpexpod   = (0.75 * ( sizen(ji,jj,jk) - 2.05 )**2 - 2.175 ) / ( sizen(ji,jj,jk) - 0.66 )
+         zpexpod   = MAX( -6.0, zpexpod ) + 1.0
+         zmaxsi    = 10.0**zpexpod
+         zproport2(ji,jj,jk) = EXP( -0.48 * logsizen(ji,jj,jk)) * (1.0 - ( zmaxsi - 5.0**zpexpod ) / ( zmaxsi - 1.0 ) )
+      END_3D
+
+      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+         !
+         zr_phy    = 1.0 / (tr(ji,jj,jk,jpphy,Kbb) + rtrn)
+         zr_pic    = 1.0 / (tr(ji,jj,jk,jppic,Kbb) + rtrn)
+         zr_dia    = 1.0 / (tr(ji,jj,jk,jpdia,Kbb) + rtrn)
+         zr_poc    = 1.0 / (tr(ji,jj,jk,jppoc,Kbb) + rtrn)
+         !
          zcompaz = MAX( ( tr(ji,jj,jk,jpzoo,Kbb) - 1.e-9 ), 0.e0 )
          zfact   = xstep * tgfunc2(ji,jj,jk) * zcompaz
-         ! Proportion of nano and diatoms that are within the size range
-         ! accessible to microzooplankton. 
-         zproport  = min(sized(ji,jj,jk),1.8)**(-0.48)*min(1.0, exp(-1.1 * MAX(0., ( sized(ji,jj,jk) - 1.8 ))**0.8 ))
-         zproport2 = sizen(ji,jj,jk)**(-0.48)
-         zproport2 = 1.0
          !  linear mortality of mesozooplankton
          !  A michaelis menten modulation term is used to avoid extinction of 
          !  microzooplankton at very low food concentrations. Mortality is 
@@ -129,8 +149,8 @@ CONTAINS
          !   Nanophyto and diatoms have a specific treatment with 
          !   teir preference decreasing with size.
          !   --------------------------------------------------------
-         zcompadi  = zproport  * MAX( ( tr(ji,jj,jk,jpdia,Kbb) - xthreshdia ), 0.e0 )
-         zcompaph  = zproport2 * MAX( ( tr(ji,jj,jk,jpphy,Kbb) - xthreshphy ), 0.e0 )
+         zcompadi  = zproport(ji,jj,jk)  * MAX( ( tr(ji,jj,jk,jpdia,Kbb) - xthreshdia ), 0.e0 )
+         zcompaph  = zproport2(ji,jj,jk) * MAX( ( tr(ji,jj,jk,jpphy,Kbb) - xthreshphy ), 0.e0 )
          zcompaz   = MAX( ( tr(ji,jj,jk,jpzoo,Kbb) - xthreshzoo ), 0.e0 )
          zcompapi  = MAX( ( tr(ji,jj,jk,jppic,Kbb) - xthreshpic ), 0.e0 )
          zcompapoc = MAX( ( tr(ji,jj,jk,jppoc,Kbb) - xthreshpoc ), 0.e0 )
@@ -160,51 +180,58 @@ CONTAINS
          ! have low abundance, .i.e. zooplankton become less specific 
          ! to avoid starvation.
          ! ----------------------------------------------------------
-         zsigma = 1.0 - zdenom**3/(0.1**3+zdenom**3)
-         zsigma = xsigma + xsigmadel * zsigma
-         zdiffpn = exp( -ABS(log(0.7 * sizep(ji,jj,jk) / (3.0 * sizen(ji,jj,jk) + rtrn )) )**2 / zsigma**2 )
-         zdiffdn = exp( -ABS(log(3.0 * sizen(ji,jj,jk) / (5.0 * sized(ji,jj,jk) + rtrn )) )**2 / zsigma**2)
-         zdiffdp = exp( -ABS(log(0.7 * sizep(ji,jj,jk) / (5.0 * sized(ji,jj,jk) + rtrn )) )**2 / zsigma**2)
-         ztmp1 = xprefn * zcompaph * ( zcompaph + zdiffdn * zcompadi + zdiffpn * zcompapi ) / ( 1.0 + zdiffdn + zdiffpn )
-         ztmp2 = xprefp * zcompapi * ( zcompapi + zdiffpn * zcompaph + zdiffdp * zcompadi ) / ( 1.0 + zdiffpn + zdiffdp )
-         ztmp3 = xprefc * zcompapoc**2
-         ztmp4 = xprefd * zcompadi * ( zdiffdp * zcompapi + zdiffdn * zcompaph + zcompadi ) / ( 1.0 + zdiffdn + zdiffdp )
-         ztmp5 = xprefz * zcompaz**2
-         ztmptot = ztmp1 + ztmp2 + ztmp3 + ztmp4 + ztmp5 + rtrn
-         ztmp1 = ztmp1 / ztmptot
-         ztmp2 = ztmp2 / ztmptot
-         ztmp3 = ztmp3 / ztmptot
-         ztmp4 = ztmp4 / ztmptot
-         ztmp5 = ztmp5 / ztmptot
+         zdenom2   = zdenom * zdenom
+         zsigma    = 1.0 - zdenom2/( 0.05 * 0.05 + zdenom2 )
+         zsigma    = xsigma + xsigmadel * zsigma
+         zsigma2   = zsigma * zsigma
+         !
+         zsizepn   = rlogfactpn + ( logsizep(ji,jj,jk) - logsizen(ji,jj,jk) )
+         zsizedn   = rlogfactdn + ( logsizen(ji,jj,jk) - logsized(ji,jj,jk) )
+         zsizedp   = rlogfactdp + ( logsizep(ji,jj,jk) - logsized(ji,jj,jk) )
+         zdiffpn   = EXP( -zsizepn * zsizepn / zsigma2 )
+         zdiffdn   = EXP( -zsizedn * zsizedn / zsigma2 )
+         zdiffdp   = EXP( -zsizedp * zsizedp / zsigma2 )
+         !
+         ztmp1     = xprefn * zcompaph * ( zcompaph + zdiffdn * zcompadi + zdiffpn * zcompapi )
+         ztmp2     = xprefp * zcompapi * ( zcompapi + zdiffpn * zcompaph + zdiffdp * zcompadi )
+         ztmp3     = xprefc * zcompapoc * zcompapoc
+         ztmp4     = xprefd * zcompadi * ( zdiffdp * zcompapi + zdiffdn * zcompaph + zcompadi )
+         ztmp5     = xprefz * zcompaz * zcompaz
+         ztmptot   = ztmp1 + ztmp2 + ztmp3 + ztmp4 + ztmp5 + rtrn
+         ztmp1     = ztmp1 / ztmptot
+         ztmp2     = ztmp2 / ztmptot
+         ztmp3     = ztmp3 / ztmptot
+         ztmp4     = ztmp4 / ztmptot
+         ztmp5     = ztmp5 / ztmptot
 
          !   Microzooplankton regular grazing on the different preys
          !   -------------------------------------------------------
                !   Nanophytoplankton
          zgraznc   = zgraze  * ztmp1  * zdenom
-         zgraznn   = zgraznc * tr(ji,jj,jk,jpnph,Kbb) / (tr(ji,jj,jk,jpphy,Kbb) + rtrn)
-         zgraznp   = zgraznc * tr(ji,jj,jk,jppph,Kbb) / (tr(ji,jj,jk,jpphy,Kbb) + rtrn)
-         zgraznf   = zgraznc * tr(ji,jj,jk,jpnfe,Kbb) / (tr(ji,jj,jk,jpphy,Kbb) + rtrn)
+         zgraznn   = zgraznc * tr(ji,jj,jk,jpnph,Kbb) * zr_phy
+         zgraznp   = zgraznc * tr(ji,jj,jk,jppph,Kbb) * zr_phy
+         zgraznf   = zgraznc * tr(ji,jj,jk,jpnfe,Kbb) * zr_phy
 
                ! Picophytoplankton
          zgrazpc   = zgraze  * ztmp2  * zdenom
-         zgrazpn   = zgrazpc * tr(ji,jj,jk,jpnpi,Kbb) / (tr(ji,jj,jk,jppic,Kbb) + rtrn)
-         zgrazpp   = zgrazpc * tr(ji,jj,jk,jpppi,Kbb) / (tr(ji,jj,jk,jppic,Kbb) + rtrn)
-         zgrazpf   = zgrazpc * tr(ji,jj,jk,jppfe,Kbb) / (tr(ji,jj,jk,jppic,Kbb) + rtrn)
+         zgrazpn   = zgrazpc * tr(ji,jj,jk,jpnpi,Kbb) * zr_pic
+         zgrazpp   = zgrazpc * tr(ji,jj,jk,jpppi,Kbb) * zr_pic
+         zgrazpf   = zgrazpc * tr(ji,jj,jk,jppfe,Kbb) * zr_pic
 
                ! Microzooplankton
          zgrazz    = zgraze  * ztmp5   * zdenom
 
                ! small POC
          zgrazpoc  = zgraze  * ztmp3   * zdenom
-         zgrazpon  = zgrazpoc * tr(ji,jj,jk,jppon,Kbb) / ( tr(ji,jj,jk,jppoc,Kbb) + rtrn )
-         zgrazpop  = zgrazpoc * tr(ji,jj,jk,jppop,Kbb) / ( tr(ji,jj,jk,jppoc,Kbb) + rtrn )
-         zgrazpof  = zgrazpoc* tr(ji,jj,jk,jpsfe,Kbb) / (tr(ji,jj,jk,jppoc,Kbb) + rtrn)
+         zgrazpon  = zgrazpoc * tr(ji,jj,jk,jppon,Kbb) * zr_poc
+         zgrazpop  = zgrazpoc * tr(ji,jj,jk,jppop,Kbb) * zr_poc
+         zgrazpof  = zgrazpoc* tr(ji,jj,jk,jpsfe,Kbb) * zr_poc
 
                ! Diatoms
          zgrazdc   = zgraze  * ztmp4  * zdenom
-         zgrazdn   = zgrazdc * tr(ji,jj,jk,jpndi,Kbb) / (tr(ji,jj,jk,jpdia,Kbb) + rtrn)
-         zgrazdp   = zgrazdc * tr(ji,jj,jk,jppdi,Kbb) / (tr(ji,jj,jk,jpdia,Kbb) + rtrn)
-         zgrazdf   = zgrazdc * tr(ji,jj,jk,jpdfe,Kbb) / (tr(ji,jj,jk,jpdia,Kbb) + rtrn)
+         zgrazdn   = zgrazdc * tr(ji,jj,jk,jpndi,Kbb) * zr_dia
+         zgrazdp   = zgrazdc * tr(ji,jj,jk,jppdi,Kbb) * zr_dia
+         zgrazdf   = zgrazdc * tr(ji,jj,jk,jpdfe,Kbb) * zr_dia
          !
                ! Total ingestion rates in C, P, Fe, N
          zgraztotc = zgraznc + zgrazpoc + zgrazdc + zgrazz + zgrazpc
@@ -316,11 +343,11 @@ CONTAINS
          tr(ji,jj,jk,jpdia,Krhs) = tr(ji,jj,jk,jpdia,Krhs) - zgrazdc
          tr(ji,jj,jk,jpndi,Krhs) = tr(ji,jj,jk,jpndi,Krhs) - zgrazdn
          tr(ji,jj,jk,jppdi,Krhs) = tr(ji,jj,jk,jppdi,Krhs) - zgrazdp
-         tr(ji,jj,jk,jpnch,Krhs) = tr(ji,jj,jk,jpnch,Krhs) - zgraznc * tr(ji,jj,jk,jpnch,Kbb)/(tr(ji,jj,jk,jpphy,Kbb)+rtrn)
-         tr(ji,jj,jk,jppch,Krhs) = tr(ji,jj,jk,jppch,Krhs) - zgrazpc * tr(ji,jj,jk,jppch,Kbb)/(tr(ji,jj,jk,jppic,Kbb)+rtrn)
-         tr(ji,jj,jk,jpdch,Krhs) = tr(ji,jj,jk,jpdch,Krhs) - zgrazdc * tr(ji,jj,jk,jpdch,Kbb)/(tr(ji,jj,jk,jpdia,Kbb)+rtrn)
-         tr(ji,jj,jk,jpdsi,Krhs) = tr(ji,jj,jk,jpdsi,Krhs) - zgrazdc * tr(ji,jj,jk,jpdsi,Kbb)/(tr(ji,jj,jk,jpdia,Kbb)+rtrn)
-         tr(ji,jj,jk,jpgsi,Krhs) = tr(ji,jj,jk,jpgsi,Krhs) + zgrazdc * tr(ji,jj,jk,jpdsi,Kbb)/(tr(ji,jj,jk,jpdia,Kbb)+rtrn)
+         tr(ji,jj,jk,jpnch,Krhs) = tr(ji,jj,jk,jpnch,Krhs) - zgraznc * tr(ji,jj,jk,jpnch,Kbb) * zr_phy
+         tr(ji,jj,jk,jppch,Krhs) = tr(ji,jj,jk,jppch,Krhs) - zgrazpc * tr(ji,jj,jk,jppch,Kbb) * zr_pic
+         tr(ji,jj,jk,jpdch,Krhs) = tr(ji,jj,jk,jpdch,Krhs) - zgrazdc * tr(ji,jj,jk,jpdch,Kbb) * zr_dia
+         tr(ji,jj,jk,jpdsi,Krhs) = tr(ji,jj,jk,jpdsi,Krhs) - zgrazdc * tr(ji,jj,jk,jpdsi,Kbb) * zr_dia
+         tr(ji,jj,jk,jpgsi,Krhs) = tr(ji,jj,jk,jpgsi,Krhs) + zgrazdc * tr(ji,jj,jk,jpdsi,Kbb) * zr_dia
          tr(ji,jj,jk,jpnfe,Krhs) = tr(ji,jj,jk,jpnfe,Krhs) - zgraznf
          tr(ji,jj,jk,jppfe,Krhs) = tr(ji,jj,jk,jppfe,Krhs) - zgrazpf
          tr(ji,jj,jk,jpdfe,Krhs) = tr(ji,jj,jk,jpdfe,Krhs) - zgrazdf
@@ -424,6 +451,10 @@ CONTAINS
          WRITE(numout,*) '      Maximum additional width of the grazing window  xsigmadel   =', xsigmadel
       ENDIF
       !
+      rlogfactpn = LOG(0.7 / 3.0)
+      rlogfactdn = LOG(3.0 / 5.0)
+      rlogfactdp = LOG(0.7 / 5.0)
+      !      
    END SUBROUTINE p5z_micro_init
 
    !!======================================================================

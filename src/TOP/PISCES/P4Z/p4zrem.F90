@@ -71,23 +71,21 @@ CONTAINS
       INTEGER, INTENT(in) ::   Kbb, Kmm, Krhs  ! time level indices
       !
       INTEGER  ::   ji, jj, jk
-      REAL(wp) ::   zremik, zremikc, zremikn, zremikp, zsiremin, zfact 
+      REAL(wp) ::   zremik, zremikc, zremikn, zremikp, zsiremin
       REAL(wp) ::   zsatur, zsatur2, znusil, znusil2, zdep, zdepmin, zfactdep
       REAL(wp) ::   zbactfer, zonitr, zrfact2
-      REAL(wp) ::   zammonic, zoxyremc, zosil, ztem, zdenitnh4, zolimic
+      REAL(wp) ::   zammonic, zoxyremc, zosil, zdenitnh4, zolimic
+      REAL(wp) ::   zfacsi, ztemp
       CHARACTER (len=25) :: charout
-      REAL(wp), DIMENSION(jpi,jpj,jpk) :: zdepbac, zolimi, zfacsi, zfacsib, zdepeff, zfebact
+      REAL(wp), DIMENSION(jpi,jpj,jpk) :: zdepeff, zfacsib, zfebact
+      REAL(wp), DIMENSION(jpi,jpj,jpk) :: zdepbac, zolimi
       REAL(wp), DIMENSION(jpi,jpj    ) :: ztempbac
       !!---------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('p4z_rem')
       !
       ! Initialisation of arrays
-      zdepeff (:,:,:) = 0.3_wp
       zfacsib(:,:,:)  = xsilab / ( 1.0 - xsilab )
-      zfebact(:,:,:)  = 0._wp
-      zfacsi(:,:,:)   = xsilab
-
       ! Computation of the mean bacterial concentration
       ! this parameterization has been deduced from a model version
       ! that was modeling explicitely bacteria. This is a very old param 
@@ -97,12 +95,13 @@ CONTAINS
       DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
          zdep = MAX( hmld(ji,jj), heup_01(ji,jj), gdept(ji,jj,1,Kmm) )
          IF ( gdept(ji,jj,jk,Kmm) < zdep ) THEN
-            zdepbac(ji,jj,jk) = 0.6 * ( MAX(0.0, tr(ji,jj,jk,jpzoo,Kbb) + tr(ji,jj,jk,jpmes,Kbb) ) * 1.0E6 )**0.6 * 1.E-6
+            zdepbac(ji,jj,jk) = 0.6 * ( ( tr(ji,jj,jk,jpzoo,Kbb) + tr(ji,jj,jk,jpmes,Kbb) ) * 1.0E6 )**0.6 * 1.E-6
             ztempbac(ji,jj)   = zdepbac(ji,jj,jk)
+            zdepeff(ji,jj,jk) = 0.3
          ELSE
-            zdepmin = MIN( 1., zdep / gdept(ji,jj,jk,Kmm) )
-            zdepbac (ji,jj,jk) = zdepmin**0.683 * ztempbac(ji,jj)
-            zdepeff(ji,jj,jk) = zdepeff(ji,jj,jk) * zdepmin**0.6
+            zdepmin           = zdep / gdept(ji,jj,jk,Kmm)
+            zdepbac(ji,jj,jk) = zdepmin**0.683 * ztempbac(ji,jj)
+            zdepeff(ji,jj,jk) = 0.3 * zdepmin**0.6
          ENDIF
       END_3D
 
@@ -131,22 +130,23 @@ CONTAINS
          zoxyremc          = MAX(0., zammonic - denitr(ji,jj,jk) )
 
          ! Update of the the trends arrays
+         ztemp    = zolimic + denitr(ji,jj,jk) + zoxyremc
          tr(ji,jj,jk,jpno3,Krhs) = tr(ji,jj,jk,jpno3,Krhs) - denitr (ji,jj,jk) * rdenit
-         tr(ji,jj,jk,jpdoc,Krhs) = tr(ji,jj,jk,jpdoc,Krhs) - ( zolimic + denitr(ji,jj,jk) + zoxyremc )
+         tr(ji,jj,jk,jpdoc,Krhs) = tr(ji,jj,jk,jpdoc,Krhs) - ztemp
          tr(ji,jj,jk,jpoxy,Krhs) = tr(ji,jj,jk,jpoxy,Krhs) - zolimic * o2ut
-         tr(ji,jj,jk,jpdic,Krhs) = tr(ji,jj,jk,jpdic,Krhs) + zolimic + denitr(ji,jj,jk) + zoxyremc
+         tr(ji,jj,jk,jpdic,Krhs) = tr(ji,jj,jk,jpdic,Krhs) + ztemp
          IF( ln_p4z ) THEN ! PISCES-std
-            tr(ji,jj,jk,jppo4,Krhs) = tr(ji,jj,jk,jppo4,Krhs) + zolimic + denitr(ji,jj,jk) + zoxyremc
-            tr(ji,jj,jk,jpnh4,Krhs) = tr(ji,jj,jk,jpnh4,Krhs) + zolimic + denitr(ji,jj,jk) + zoxyremc
-            tr(ji,jj,jk,jptal,Krhs) = tr(ji,jj,jk,jptal,Krhs) + rno3 * ( zolimic + zoxyremc + ( rdenit + 1.) * denitr(ji,jj,jk) )
+            tr(ji,jj,jk,jppo4,Krhs) = tr(ji,jj,jk,jppo4,Krhs) + ztemp
+            tr(ji,jj,jk,jpnh4,Krhs) = tr(ji,jj,jk,jpnh4,Krhs) + ztemp
+            tr(ji,jj,jk,jptal,Krhs) = tr(ji,jj,jk,jptal,Krhs) + rno3 * ( ztemp + rdenit * denitr(ji,jj,jk) )
          ELSE  ! PISCES-QUOTA (p5z)
             zremikn = xremikn / xremikc * tr(ji,jj,jk,jpdon,kbb) / ( tr(ji,jj,jk,jpdoc,Kbb) + rtrn )
             zremikp = xremikp / xremikc * tr(ji,jj,jk,jpdop,Kbb) / ( tr(ji,jj,jk,jpdoc,Kbb) + rtrn )
-            tr(ji,jj,jk,jppo4,Krhs) = tr(ji,jj,jk,jppo4,Krhs) + zremikp * ( zolimic + denitr(ji,jj,jk) + zoxyremc )
-            tr(ji,jj,jk,jpnh4,Krhs) = tr(ji,jj,jk,jpnh4,Krhs) + zremikn * ( zolimic + denitr(ji,jj,jk) + zoxyremc )
-            tr(ji,jj,jk,jpdon,Krhs) = tr(ji,jj,jk,jpdon,Krhs) - zremikn * ( zolimic + denitr(ji,jj,jk) + zoxyremc )
-            tr(ji,jj,jk,jpdop,Krhs) = tr(ji,jj,jk,jpdop,Krhs) - zremikp * ( zolimic + denitr(ji,jj,jk) + zoxyremc )
-            tr(ji,jj,jk,jptal,Krhs) = tr(ji,jj,jk,jptal,Krhs) + rno3 * zremikn * ( zolimic + zoxyremc + ( rdenit + 1.) * denitr(ji,jj,jk) )
+            tr(ji,jj,jk,jppo4,Krhs) = tr(ji,jj,jk,jppo4,Krhs) + zremikp * ztemp
+            tr(ji,jj,jk,jpnh4,Krhs) = tr(ji,jj,jk,jpnh4,Krhs) + zremikn * ztemp
+            tr(ji,jj,jk,jpdon,Krhs) = tr(ji,jj,jk,jpdon,Krhs) - zremikn * ztemp
+            tr(ji,jj,jk,jpdop,Krhs) = tr(ji,jj,jk,jpdop,Krhs) - zremikp * ztemp
+            tr(ji,jj,jk,jptal,Krhs) = tr(ji,jj,jk,jptal,Krhs) + rno3 * zremikn * ( ztemp + rdenit * denitr(ji,jj,jk) )            
          ENDIF
       END_3D
 
@@ -216,18 +216,18 @@ CONTAINS
          ! Computation of the vertical evolution of the labile fraction
          ! of bSi. This is computed assuming steady state.
          ! --------------------------------------------------------------
-         IF ( gdept(ji,jj,jk,Kmm) > zdep ) THEN
-            zfacsib(ji,jj,jk) = zfacsib(ji,jj,jk-1) * EXP( -0.5 * ( xsiremlab - xsirem )  &
-            &                   * znusil * e3t(ji,jj,jk,Kmm) / wsbio4(ji,jj,jk) )
-            zfacsi(ji,jj,jk)  = zfacsib(ji,jj,jk) / ( 1.0 + zfacsib(ji,jj,jk) )
-            zfacsib(ji,jj,jk) = zfacsib(ji,jj,jk) * EXP( -0.5 * ( xsiremlab - xsirem )    &
-            &                   * znusil * e3t(ji,jj,jk,Kmm) / wsbio4(ji,jj,jk) )
+          zfacsi = xsilab
+         IF ( gdept(ji,jj,jk,Kmm) >= zdep ) THEN
+            zfactdep = EXP( -0.5 * ( xsiremlab - xsirem ) * znusil * e3t(ji,jj,jk,Kmm) / wsbio4(ji,jj,jk) )
+            zfacsib(ji,jj,jk) = zfacsib(ji,jj,jk-1) * zfactdep
+            zfacsi            = zfacsib(ji,jj,jk) / ( 1.0 + zfacsib(ji,jj,jk) )
+            zfacsib(ji,jj,jk) = zfacsib(ji,jj,jk) * zfactdep
          ENDIF
-         zsiremin = ( xsiremlab * zfacsi(ji,jj,jk) + xsirem * ( 1. - zfacsi(ji,jj,jk) ) ) * xstep * znusil
+         zsiremin = ( xsiremlab * zfacsi + xsirem * ( 1. - zfacsi ) ) * xstep * znusil
          zosil    = zsiremin * tr(ji,jj,jk,jpgsi,Kbb)
          !
          tr(ji,jj,jk,jpgsi,Krhs) = tr(ji,jj,jk,jpgsi,Krhs) - zosil
-         tr(ji,jj,jk,jpsil,Krhs) = tr(ji,jj,jk,jpsil,Krhs) + zosil
+         tr(ji,jj,jk,jpsil,Krhs) = tr(ji,jj,jk,jpsil,Krhs) + zosil        
       END_3D
 
       IF(sn_cfctl%l_prttrc)   THEN  ! print mean trends (used for debugging)
@@ -246,7 +246,9 @@ CONTAINS
           IF( iom_use( "BACT" ) )  THEN ! Bacterial biomass
              zdepbac(:,:,jpk) = 0.  ;   CALL iom_put( "BACT", zdepbac(:,:,:) * 1.E6 * tmask(:,:,:) )
           ENDIF
-          CALL iom_put( "FEBACT" , zfebact(:,:,:) * 1E9 * tmask(:,:,:) * zrfact2  )
+          IF( iom_use( "FEBACT" ) )  THEN ! Bacterial biomass
+             zfebact(:,:,jpk) = 0.  ;   CALL iom_put( "FEBACT" , zfebact(:,:,:) * 1E9 * tmask(:,:,:) * zrfact2  )
+          ENDIF
        ENDIF
       !
       IF( ln_timing )   CALL timing_stop('p4z_rem')

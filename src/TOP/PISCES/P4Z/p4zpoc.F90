@@ -35,9 +35,13 @@ MODULE p4zpoc
    INTEGER , PUBLIC ::   jcpoc      !: number of lability classes
    REAL(wp), PUBLIC ::   rshape     !: shape factor of the gamma distribution
 
-   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:)       ::   alphan, reminp   !: variable lability of POC and initial distribution
-   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:,:) ::   alphap           !: lability distribution of small particles
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:)       ::  alphan, reminp   !: variable lability of POC and initial distribution
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:,:) ::  alphap, alphag    !: lability distribution of small particles
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::  orem3    !: lability distribution of small particles
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::  pdep
 
+   REAL(wp ) :: solgoc, rbound, xremipbound
+   LOGICAL, PUBLIC :: ll_poc_lab   
 
    !! * Substitutions
 #  include "do_loop_substitute.h90"
@@ -68,193 +72,98 @@ CONTAINS
       INTEGER, INTENT(in) ::   Kbb, Kmm, Krhs  ! time level indices
       !
       INTEGER  ::   ji, jj, jk, jn
-      REAL(wp) ::   zremip, zremig, zdep, zorem, zorem2, zofer
-      REAL(wp) ::   zopon, zopop, zopoc, zopoc2, zopon2, zopop2
-      REAL(wp) ::   zsizek, zsizek1, alphat, remint, solgoc, zpoc
-      REAL(wp) ::   zofer2, zofer3
-      REAL(wp) ::   zrfact2
+      REAL(wp) ::   zremip, zremig, zorem, zorem2, zofer, zfact, zrfact2
+      REAL(wp) ::   zopon, zopop, zopon2, zopop2
+      REAL(wp) ::   zofer2, zofer3, zreminp1, zreminp2
       CHARACTER (len=25) :: charout
-      REAL(wp), DIMENSION(jpi,jpj  )   :: totprod, totthick, totcons 
-      REAL(wp), DIMENSION(jpi,jpj,jpk)   :: zremipoc, zremigoc, zorem3, ztremint, zfolimi
-      REAL(wp), DIMENSION(jpi,jpj,jpk,jcpoc) :: alphag
-      !!---------------------------------------------------------------------
+      LOGICAL  :: ll_newday
+      REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) :: zremipoc, zremigoc, zfolimi
+
       !
       IF( ln_timing )  CALL timing_start('p4z_poc')
       !
-      ! Initialization of local variables
+      IF( kt == nittrc000 .AND. knt == 1 ) ALLOCATE( pdep(jpi,jpj) )
+
+      ! Initialization of local variables and arrays
       ! ---------------------------------
-
-      ! Here we compute the GOC -> POC rate due to the shrinking
-      ! of the fecal pellets/aggregates as a result of bacterial
-      ! solubilization
-      ! This is based on a fractal dimension of 2.56 and a spectral
-      ! slope of -3.6 (identical to what is used in p4zsink to compute
-      ! aggregation
-      solgoc = 0.04/ 2.56 * 1./ ( 1.-50**(-0.04) )
-
-      ! Initialisation of temporary arrays
-      IF( ln_p4z ) THEN
-         zremipoc(:,:,:) = xremip
-         zremigoc(:,:,:) = xremip
-      ELSE    ! ln_p5z
-         zremipoc(:,:,:) = xremipc
-         zremigoc(:,:,:) = xremipc
+      orem(:,:,jpk) = 0._wp
+      pdep(:,:) = MAX( hmld(:,:), gdept(:,:,1,Kmm) )
+      !
+      ll_newday  = nsec_day == NINT(0.5_wp * rn_Dt)  ! New day
+      IF( ll_newday ) THEN   ;  ll_poc_lab = .TRUE.
+      ELSE                   ;  ll_poc_lab = .FALSE.
       ENDIF
-      zorem3(:,:,:)   = 0.
-      orem  (:,:,:)   = 0.
-      ztremint(:,:,:) = 0.
-      zfolimi (:,:,:) = 0.
+      !
+      IF( kt == nittrc000 .AND. .NOT. ln_rsttr )   ll_poc_lab = .TRUE.
+      !
+      ll_poc_lab = ll_poc_lab .AND. knt == 1
 
-      ! Initialisation of the lability distributions that are set to 
-      ! the distribution of newly produced organic particles
-      DO jn = 1, jcpoc
-        alphag(:,:,:,jn) = alphan(jn)
-        alphap(:,:,:,jn) = alphan(jn)
-      END DO
-
-     ! Lability parameterization. This is the big particles part (GOC)
-     ! This lability parameterization is always active. However, if only one
-     ! lability class is specified in the namelist, this is equivalent to 
-     ! a standard parameterisation with a constant lability
-     ! -----------------------------------------------------------------------
-     ztremint(:,:,:) = zremigoc(:,:,:)
-     DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 2, jpkm1)
-        IF (tmask(ji,jj,jk) == 1.) THEN
-          zdep = hmld(ji,jj)
+      IF( ll_poc_lab ) THEN
+         ! Initialisation of the lability distributions that are set to the distribution of newly produced organic particles
+         IF(lwp) write(numout,*)
+         IF(lwp) write(numout,*) ' Compute variable lability for biogeochemistry at kt =  ',  kt, '  day = ', nday_year
+         IF(lwp) write(numout,*) '~~~~~~'
           !
-          ! In the case of GOC, lability is constant in the mixed layer 
-          ! It is computed only below the mixed layer depth
-          ! ------------------------------------------------------------
+          CALL p4z_goc_lab( kt, Kbb, Kmm )
           !
-          IF( gdept(ji,jj,jk,Kmm) > zdep ) THEN
-            alphat = 0.
-            remint = 0.
-            !
-            zsizek1  = e3t(ji,jj,jk-1,Kmm) / 2. / (wsbio4(ji,jj,jk-1) + rtrn) * tgfunc(ji,jj,jk-1)
-            zsizek = e3t(ji,jj,jk,Kmm) / 2. / (wsbio4(ji,jj,jk) + rtrn) * tgfunc(ji,jj,jk)
-            !
-            IF ( gdept(ji,jj,jk-1,Kmm) <= zdep ) THEN
-              ! 
-              ! The first level just below the mixed layer needs a 
-              ! specific treatment because lability is supposed constant
-              ! everywhere within the mixed layer. This means that 
-              ! change in lability in the bottom part of the previous cell
-              ! should not be computed
-              ! ----------------------------------------------------------
-              !
-              ! POC concentration is computed using the lagrangian 
-              ! framework. It is only used for the lability param
-              zpoc = tr(ji,jj,jk-1,jpgoc,Kbb) + consgoc(ji,jj,jk) * rday / rfact2               &
-              &   * e3t(ji,jj,jk,Kmm) / 2. / (wsbio4(ji,jj,jk) + rtrn)
-              zpoc = MAX(0., zpoc)
-              !
-              DO jn = 1, jcpoc
-                 !
-                 ! Lagrangian based algorithm. The fraction of each 
-                 ! lability class is computed starting from the previous
-                 ! level
-                 ! -----------------------------------------------------
-                 !
-                 ! the concentration of each lability class is calculated
-                 ! as the sum of the different sources and sinks
-                 ! Please note that production of new GOC experiences
-                 ! degradation 
-                 alphag(ji,jj,jk,jn) = alphag(ji,jj,jk-1,jn) * exp( -reminp(jn) * zsizek ) * zpoc &
-                 &   + prodgoc(ji,jj,jk) * alphan(jn) / tgfunc(ji,jj,jk) / reminp(jn)             &
-                 &   * ( 1. - exp( -reminp(jn) * zsizek ) ) * rday / rfact2 
-                 alphat = alphat + alphag(ji,jj,jk,jn)
-                 remint = remint + alphag(ji,jj,jk,jn) * reminp(jn)
-              END DO
-            ELSE
-              !
-              ! standard algorithm in the rest of the water column
-              ! See the comments in the previous block.
-              ! ---------------------------------------------------
-              !
-              zpoc = tr(ji,jj,jk-1,jpgoc,Kbb) + consgoc(ji,jj,jk-1) * rday / rfact2               &
-              &   * e3t(ji,jj,jk-1,Kmm) / 2. / (wsbio4(ji,jj,jk-1) + rtrn) + consgoc(ji,jj,jk)   &
-              &   * rday / rfact2 * e3t(ji,jj,jk,Kmm) / 2. / (wsbio4(ji,jj,jk) + rtrn)
-              zpoc = max(0., zpoc)
-              !
-              DO jn = 1, jcpoc
-                 alphag(ji,jj,jk,jn) = alphag(ji,jj,jk-1,jn) * exp( -reminp(jn) * ( zsizek              &
-                 &   + zsizek1 ) ) * zpoc + ( prodgoc(ji,jj,jk-1) / tgfunc(ji,jj,jk-1) * ( 1.           &
-                 &   - exp( -reminp(jn) * zsizek1 ) ) * exp( -reminp(jn) * zsizek ) + prodgoc(ji,jj,jk) &
-                 &   / tgfunc(ji,jj,jk) * ( 1. - exp( -reminp(jn) * zsizek ) ) ) * rday / rfact2 / reminp(jn) * alphan(jn) 
-                 alphat = alphat + alphag(ji,jj,jk,jn)
-                 remint = remint + alphag(ji,jj,jk,jn) * reminp(jn)
-              END DO
-            ENDIF
-            !
-            DO jn = 1, jcpoc
-               ! The contribution of each lability class at the current
-               ! level is computed
-               alphag(ji,jj,jk,jn) = alphag(ji,jj,jk,jn) / ( alphat + rtrn)
-            END DO
-            ! Computation of the mean remineralisation rate
-            ztremint(ji,jj,jk) =  MAX(0., remint / ( alphat + rtrn) )
-            !
-          ENDIF
-        ENDIF
-     END_3D
-
-      IF( ln_p4z ) THEN   ;   zremigoc(:,:,:) = MIN( xremip , ztremint(:,:,:) )
-      ELSE                ;   zremigoc(:,:,:) = MIN( xremipc, ztremint(:,:,:) )
+      ENDIF
+      !
+      IF( iom_use( "REMINF" ) ) THEN
+         ALLOCATE( zfolimi(jpi,jpj,jpk) )  ;  zfolimi(:,:,:) = tr(:,:,:,jpfer,Krhs)
+      ENDIF
+      !
+      IF( iom_use( "REMING" ) ) THEN
+         ALLOCATE( zremigoc(jpi,jpj,jpk) )  ;  zremigoc(:,:,:) = tr(:,:,:,jpdoc,Krhs)
       ENDIF
 
-      IF( ln_p4z ) THEN
-         ! The standard PISCES part
-         DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
-            ! POC degradation by bacterial activity. It is a function 
-            ! of the mean lability and of temperature. This also includes
-            ! shrinking of particles due to the bacterial activity
-            ! -----------------------------------------------------------
-            zremig = zremigoc(ji,jj,jk) * xstep * tgfunc(ji,jj,jk)
-            zorem2  = zremig * tr(ji,jj,jk,jpgoc,Kbb)
-            orem(ji,jj,jk)      = zorem2
-            zorem3(ji,jj,jk) = zremig * solgoc * tr(ji,jj,jk,jpgoc,Kbb)
-            zofer2 = zremig * tr(ji,jj,jk,jpbfe,Kbb)
-            zofer3 = zremig * solgoc * tr(ji,jj,jk,jpbfe,Kbb)
+     ! The standard PISCES part
+      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+         ! POC degradation by bacterial activity. It is a function
+         ! of the mean lability and of temperature. This also includes
+         ! shrinking of particles due to the bacterial activity
+         ! -----------------------------------------------------------
+         zremig  = remintgoc(ji,jj,jk) * xstep * tgfunc(ji,jj,jk)
+         zorem2  = zremig * tr(ji,jj,jk,jpgoc,Kbb)
+         orem(ji,jj,jk)  = zorem2
+         orem3(ji,jj,jk) = zremig * solgoc * tr(ji,jj,jk,jpgoc,Kbb)
+         zofer2 = zremig * tr(ji,jj,jk,jpbfe,Kbb)
 
-            ! update of the TRA arrays
-            tr(ji,jj,jk,jppoc,Krhs) = tr(ji,jj,jk,jppoc,Krhs) + zorem3(ji,jj,jk)
-            tr(ji,jj,jk,jpgoc,Krhs) = tr(ji,jj,jk,jpgoc,Krhs) - zorem2 - zorem3(ji,jj,jk)
-            tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) + zofer3
-            tr(ji,jj,jk,jpbfe,Krhs) = tr(ji,jj,jk,jpbfe,Krhs) - zofer2 - zofer3
-            tr(ji,jj,jk,jpdoc,Krhs) = tr(ji,jj,jk,jpdoc,Krhs) + zorem2
-            tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + zofer2
-            zfolimi(ji,jj,jk)   = zofer2
-         END_3D
-      ELSE
+         ! update of the TRA arrays
+         tr(ji,jj,jk,jppoc,Krhs) = tr(ji,jj,jk,jppoc,Krhs) + orem3(ji,jj,jk)
+         tr(ji,jj,jk,jpgoc,Krhs) = tr(ji,jj,jk,jpgoc,Krhs) - zorem2 - orem3(ji,jj,jk)
+         tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) + solgoc * zofer2
+         tr(ji,jj,jk,jpbfe,Krhs) = tr(ji,jj,jk,jpbfe,Krhs) - (1. + solgoc) * zofer2
+         tr(ji,jj,jk,jpdoc,Krhs) = tr(ji,jj,jk,jpdoc,Krhs) + zorem2
+         tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + zofer2
+      END_3D
+      !
+      ! Remineralisation of small big particles
+      IF( iom_use( "REMING" ) .AND. knt == nrdttrc ) THEN
+         CALL iom_put( "REMING", ( tr(:,:,:,jpdoc,Krhs) - zremigoc(:,:,:) ) / &
+               &                    ( xstep * tgfunc(:,:,:) * tr(:,:,:,jpgoc,Kbb) + rtrn ) * tmask(:,:,:) )
+         DEALLOCATE ( zremigoc )
+      ENDIF
+      !
+      IF ( ln_p5z ) THEN
          DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
-            ! POC degradation by bacterial activity. It is a function 
+            ! POC degradation by bacterial activity. It is a function
             ! of the mean lability and of temperature. This also includes
             ! shrinking of particles due to the bacterial activity
             ! --------------------------------------------------------
-            zremig = zremigoc(ji,jj,jk) * xstep * tgfunc(ji,jj,jk)
-            zopoc2 = zremig  * tr(ji,jj,jk,jpgoc,Kbb)
-            orem(ji,jj,jk) = zopoc2
-            zorem3(ji,jj,jk) = zremig * solgoc * tr(ji,jj,jk,jpgoc,Kbb)
+            zremig = remintgoc(ji,jj,jk) * xstep * tgfunc(ji,jj,jk)
             zopon2 = xremipn / xremipc * zremig * tr(ji,jj,jk,jpgon,Kbb)
             zopop2 = xremipp / xremipc * zremig * tr(ji,jj,jk,jpgop,Kbb)
-            zofer2 = xremipn / xremipc * zremig * tr(ji,jj,jk,jpbfe,Kbb)
 
             ! update of the TRA arrays
-            tr(ji,jj,jk,jppoc,Krhs) = tr(ji,jj,jk,jppoc,Krhs) + zorem3(ji,jj,jk)
-            tr(ji,jj,jk,jppon,Krhs) = tr(ji,jj,jk,jppon,Krhs) + solgoc * zopon2 
+            tr(ji,jj,jk,jppon,Krhs) = tr(ji,jj,jk,jppon,Krhs) + solgoc * zopon2
             tr(ji,jj,jk,jppop,Krhs) = tr(ji,jj,jk,jppop,Krhs) + solgoc * zopop2
-            tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) + solgoc * zofer2
-            tr(ji,jj,jk,jpdoc,Krhs) = tr(ji,jj,jk,jpdoc,Krhs) + zopoc2
             tr(ji,jj,jk,jpdon,Krhs) = tr(ji,jj,jk,jpdon,Krhs) + zopon2
             tr(ji,jj,jk,jpdop,Krhs) = tr(ji,jj,jk,jpdop,Krhs) + zopop2
-            tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + zofer2
-            tr(ji,jj,jk,jpgoc,Krhs) = tr(ji,jj,jk,jpgoc,Krhs) - zopoc2 - zorem3(ji,jj,jk)
             tr(ji,jj,jk,jpgon,Krhs) = tr(ji,jj,jk,jpgon,Krhs) - zopon2 * (1. + solgoc)
             tr(ji,jj,jk,jpgop,Krhs) = tr(ji,jj,jk,jpgop,Krhs) - zopop2 * (1. + solgoc)
-            tr(ji,jj,jk,jpbfe,Krhs) = tr(ji,jj,jk,jpbfe,Krhs) - zofer2 * (1. + solgoc)
-            zfolimi(ji,jj,jk)   = zofer2
          END_3D
       ENDIF
+
 
      IF(sn_cfctl%l_prttrc)   THEN  ! print mean trends (used for debugging)
         WRITE(charout, FMT="('poc1')")
@@ -262,191 +171,66 @@ CONTAINS
         CALL prt_ctl(tab4d_1=tr(:,:,:,:,Krhs), mask1=tmask, clinfo=ctrcnm)
      ENDIF
 
-     ! Lability parameterization for the small OM particles. This param 
-     ! is based on the same theoretical background as the big particles.
-     ! However, because of its low sinking speed, lability is not supposed
-     ! to be equal to its initial value (the value of the freshly produced
-     ! organic matter) in the MLD. It is however uniform in the mixed layer.
-     ! ---------------------------------------------------------------------
-     totprod (:,:) = 0.
-     totthick(:,:) = 0.
-     totcons (:,:) = 0.
-
-     ! intregrated production and consumption of POC in the mixed layer
-     ! ----------------------------------------------------------------
+      ! Lability parameterization for the small OM particles.
+      ! ---------------------------------------------------------
+      IF( ll_poc_lab ) THEN
+         ! Initialisation of the lability distributions that are set to the distribution of newly produced organic particles
+         IF(lwp) write(numout,*)
+         IF(lwp) write(numout,*) ' Compute variable lability for biogeochemistry at kt =  ',  kt, '  day = ', nday_year
+         IF(lwp) write(numout,*) '~~~~~~'
+         !
+         CALL p4z_poc_lab( kt, Kbb, Kmm )
+         !
+     ENDIF
+     !
+     IF( iom_use( "REMINP" ) ) THEN
+         ALLOCATE( zremipoc(jpi,jpj,jpk) )  ;  zremipoc(:,:,:) = tr(:,:,:,jpdoc,Krhs)
+     ENDIF
+     !
      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
-        zdep = hmld(ji,jj)
-        IF (tmask(ji,jj,jk) == 1. .AND. gdept(ji,jj,jk,Kmm) <= zdep ) THEN
-          totprod(ji,jj) = totprod(ji,jj) + prodpoc(ji,jj,jk) * e3t(ji,jj,jk,Kmm) * rday/ rfact2
-          ! The temperature effect is included here
-          totthick(ji,jj) = totthick(ji,jj) + e3t(ji,jj,jk,Kmm)* tgfunc(ji,jj,jk)
-          totcons(ji,jj) = totcons(ji,jj) - conspoc(ji,jj,jk) * e3t(ji,jj,jk,Kmm) * rday/ rfact2    &
-          &                / ( tr(ji,jj,jk,jppoc,Kbb) + rtrn )
-        ENDIF
-     END_3D
+        ! POC disaggregation by turbulence and bacterial activity.It is a function
+        ! of the mean lability and of temperature
+        ! --------------------------------------------------------
+        zremip = remintpoc(ji,jj,jk) * xstep * tgfunc(ji,jj,jk)
+        zorem  = zremip * tr(ji,jj,jk,jppoc,Kbb)
+        orem(ji,jj,jk)  = orem(ji,jj,jk) + zorem
+        zofer  = zremip * tr(ji,jj,jk,jpsfe,Kbb)
 
-     ! Computation of the lability spectrum in the mixed layer. In the mixed 
-     ! layer, this spectrum is supposed to be uniform as a result of intense
-     ! mixing.
-     ! ---------------------------------------------------------------------
-     ztremint(:,:,:) = zremipoc(:,:,:)
-     DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
-        IF (tmask(ji,jj,jk) == 1.) THEN
-          zdep = hmld(ji,jj)
-          alphat = 0.0
-          remint = 0.0
-          IF( gdept(ji,jj,jk,Kmm) <= zdep ) THEN
-             DO jn = 1, jcpoc
-                ! For each lability class, the system is supposed to be 
-                ! at equilibrium: Prod - Sink - w alphap = 0.
-                alphap(ji,jj,jk,jn) = totprod(ji,jj) * alphan(jn) / ( reminp(jn)    &
-                &                     * totthick(ji,jj) + totcons(ji,jj) + wsbio + rtrn )
-                alphat = alphat + alphap(ji,jj,jk,jn)
-             END DO
-             DO jn = 1, jcpoc
-                alphap(ji,jj,jk,jn) = alphap(ji,jj,jk,jn) / ( alphat + rtrn)
-                remint = remint + alphap(ji,jj,jk,jn) * reminp(jn)
-             END DO
-             ! Mean remineralization rate in the mixed layer
-             ztremint(ji,jj,jk) =  MAX( 0., remint )
-          ENDIF
-        ENDIF
+        ! Update of the TRA arrays
+        tr(ji,jj,jk,jpdoc,Krhs) = tr(ji,jj,jk,jpdoc,Krhs) + zorem
+        tr(ji,jj,jk,jppoc,Krhs) = tr(ji,jj,jk,jppoc,Krhs) - zorem
+        tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + zofer
+        tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) - zofer
      END_3D
      !
-     IF( ln_p4z ) THEN   ;  zremipoc(:,:,:) = MIN( xremip , ztremint(:,:,:) )
-     ELSE                ;  zremipoc(:,:,:) = MIN( xremipc, ztremint(:,:,:) )
+     ! Remineralisation of small particles
+     IF( iom_use( "REMINP" ) .AND. knt == nrdttrc ) THEN
+         CALL iom_put( "REMINP", ( tr(:,:,:,jpdoc,Krhs) - zremipoc(:,:,:) ) / &
+               &                  ( xstep * tgfunc(:,:,:) * tr(:,:,:,jpgoc,Kbb) + rtrn ) * tmask(:,:,:) )
+         DEALLOCATE ( zremipoc )
+     ENDIF
+     !
+     IF ( ln_p5z ) THEN
+        DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+           ! POC disaggregation by turbulence and bacterial activity.It is a function
+           ! of the mean lability and of temperature
+           !--------------------------------------------------------
+           zremip = remintpoc(ji,jj,jk) * xstep * tgfunc(ji,jj,jk)
+           zopon  = xremipn / xremipc * zremip * tr(ji,jj,jk,jppon,Kbb)
+           zopop  = xremipp / xremipc * zremip * tr(ji,jj,jk,jppop,Kbb)
+
+           ! Update of the TRA arrays
+           tr(ji,jj,jk,jppon,Krhs) = tr(ji,jj,jk,jppon,Krhs) - zopon
+           tr(ji,jj,jk,jppop,Krhs) = tr(ji,jj,jk,jppop,Krhs) - zopop
+           tr(ji,jj,jk,jpdon,Krhs) = tr(ji,jj,jk,jpdon,Krhs) + zopon
+           tr(ji,jj,jk,jpdop,Krhs) = tr(ji,jj,jk,jpdop,Krhs) + zopop
+        END_3D
      ENDIF
 
-     ! The lability parameterization is used here. The code is here 
-     ! almost identical to what is done for big particles. The only difference
-     ! is that an additional source from GOC to POC is included. This means 
-     ! that since we need the lability spectrum of GOC, GOC spectrum 
-     ! should be determined before.
-     ! -----------------------------------------------------------------------
-     DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 2, jpkm1)
-        IF (tmask(ji,jj,jk) == 1.) THEN
-          zdep = hmld(ji,jj)
-          IF( gdept(ji,jj,jk,Kmm) > zdep ) THEN
-            alphat = 0.
-            remint = 0.
-            !
-            ! the scale factors are corrected with temperature
-            zsizek1  = e3t(ji,jj,jk-1,Kmm) / 2. / (wsbio3(ji,jj,jk-1) + rtrn) * tgfunc(ji,jj,jk-1)
-            zsizek = e3t(ji,jj,jk,Kmm) / 2. / (wsbio3(ji,jj,jk) + rtrn) * tgfunc(ji,jj,jk)
-            !
-            ! Special treatment of the level just below the MXL
-            ! See the comments in the GOC section
-            ! ---------------------------------------------------
-            !
-            IF ( gdept(ji,jj,jk-1,Kmm) <= zdep ) THEN
-              !
-              ! Computation of the POC concentration using the 
-              ! lagrangian algorithm
-              zpoc = tr(ji,jj,jk-1,jppoc,Kbb) + conspoc(ji,jj,jk) * rday / rfact2               &
-              &   * e3t(ji,jj,jk,Kmm) / 2. / (wsbio3(ji,jj,jk) + rtrn)
-              zpoc = max(0., zpoc)
-              ! 
-              DO jn = 1, jcpoc
-                 ! computation of the lability spectrum applying the 
-                 ! different sources and sinks
-                 alphap(ji,jj,jk,jn) = alphap(ji,jj,jk-1,jn) * exp( -reminp(jn) * zsizek ) * zpoc  &
-                 &   + ( prodpoc(ji,jj,jk) * alphan(jn) + zorem3(ji,jj,jk) * alphag(ji,jj,jk,jn) ) &
-                 &   / tgfunc(ji,jj,jk) / reminp(jn) * rday / rfact2 * ( 1. - exp( -reminp(jn)     &
-                 &   * zsizek ) )
-                 alphap(ji,jj,jk,jn) = MAX( 0., alphap(ji,jj,jk,jn) )
-                 alphat = alphat + alphap(ji,jj,jk,jn)
-              END DO
-            ELSE
-              !
-              ! Lability parameterization for the interior of the ocean
-              ! This is very similar to what is done in the previous 
-              ! block
-              ! --------------------------------------------------------
-              !
-              zpoc = tr(ji,jj,jk-1,jppoc,Kbb) + conspoc(ji,jj,jk-1) * rday / rfact2               &
-              &   * e3t(ji,jj,jk-1,Kmm) / 2. / (wsbio3(ji,jj,jk-1) + rtrn) + conspoc(ji,jj,jk)   &
-              &   * rday / rfact2 * e3t(ji,jj,jk,Kmm) / 2. / (wsbio3(ji,jj,jk) + rtrn)
-              zpoc = max(0., zpoc)
-              !
-              DO jn = 1, jcpoc
-                 alphap(ji,jj,jk,jn) = alphap(ji,jj,jk-1,jn) * exp( -reminp(jn)                       &
-                 &   * ( zsizek + zsizek1 ) ) * zpoc + ( prodpoc(ji,jj,jk-1) * alphan(jn)             & 
-                 &   + zorem3(ji,jj,jk-1) * alphag(ji,jj,jk-1,jn) ) * rday / rfact2 / reminp(jn)      &
-                 &   / tgfunc(ji,jj,jk-1) * ( 1. - exp( -reminp(jn) * zsizek1 ) ) * exp( -reminp(jn)  &
-                 &   * zsizek ) + ( prodpoc(ji,jj,jk) * alphan(jn) + zorem3(ji,jj,jk)                 &
-                 &   * alphag(ji,jj,jk,jn) ) * rday / rfact2 / reminp(jn) / tgfunc(ji,jj,jk) * ( 1.   &
-                 &   - exp( -reminp(jn) * zsizek ) )
-                 alphap(ji,jj,jk,jn) = max(0., alphap(ji,jj,jk,jn) )
-                 alphat = alphat + alphap(ji,jj,jk,jn)
-              END DO
-            ENDIF
-            ! Normalization of the lability spectrum so that the 
-            ! integral is equal to 1
-            DO jn = 1, jcpoc
-               alphap(ji,jj,jk,jn) = alphap(ji,jj,jk,jn) / ( alphat + rtrn)
-               remint = remint + alphap(ji,jj,jk,jn) * reminp(jn)
-            END DO
-            ! Mean remineralization rate in the water column
-            ztremint(ji,jj,jk) =  MAX( 0., remint )
-          ENDIF
-        ENDIF
-     END_3D
-
-     IF( ln_p4z ) THEN   ;   zremipoc(:,:,:) = MIN( xremip , ztremint(:,:,:) )
-     ELSE                ;   zremipoc(:,:,:) = MIN( xremipc, ztremint(:,:,:) )
-     ENDIF
-
-     IF( ln_p4z ) THEN
-         DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
-            IF (tmask(ji,jj,jk) == 1.) THEN
-              ! POC disaggregation by turbulence and bacterial activity.It is a function
-              ! of the mean lability and of temperature  
-              ! --------------------------------------------------------
-              zremip          = zremipoc(ji,jj,jk) * xstep * tgfunc(ji,jj,jk)
-              zorem           = zremip * tr(ji,jj,jk,jppoc,Kbb)
-              zofer           = zremip * tr(ji,jj,jk,jpsfe,Kbb)
-              
-              ! Update of the TRA arrays
-              tr(ji,jj,jk,jpdoc,Krhs) = tr(ji,jj,jk,jpdoc,Krhs) + zorem
-              orem(ji,jj,jk)      = orem(ji,jj,jk) + zorem
-              tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + zofer
-              tr(ji,jj,jk,jppoc,Krhs) = tr(ji,jj,jk,jppoc,Krhs) - zorem
-              tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) - zofer
-              zfolimi(ji,jj,jk)   = zfolimi(ji,jj,jk) + zofer
-            ENDIF
-         END_3D
-     ELSE
-       DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
-          ! POC disaggregation by turbulence and bacterial activity.It is a function
-          ! of the mean lability and of temperature  
-          !--------------------------------------------------------
-          zremip = zremipoc(ji,jj,jk) * xstep * tgfunc(ji,jj,jk)
-          zopoc  = zremip * tr(ji,jj,jk,jppoc,Kbb)
-          orem(ji,jj,jk)  = orem(ji,jj,jk) + zopoc
-          zopon  = xremipn / xremipc * zremip * tr(ji,jj,jk,jppon,Kbb)
-          zopop  = xremipp / xremipc * zremip * tr(ji,jj,jk,jppop,Kbb)
-          zofer  = xremipn / xremipc * zremip * tr(ji,jj,jk,jpsfe,Kbb)
-              
-          ! Update of the TRA arrays
-          tr(ji,jj,jk,jppoc,Krhs) = tr(ji,jj,jk,jppoc,Krhs) - zopoc
-          tr(ji,jj,jk,jppon,Krhs) = tr(ji,jj,jk,jppon,Krhs) - zopon
-          tr(ji,jj,jk,jppop,Krhs) = tr(ji,jj,jk,jppop,Krhs) - zopop
-          tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) - zofer
-          tr(ji,jj,jk,jpdoc,Krhs) = tr(ji,jj,jk,jpdoc,Krhs) + zopoc
-          tr(ji,jj,jk,jpdon,Krhs) = tr(ji,jj,jk,jpdon,Krhs) + zopon 
-          tr(ji,jj,jk,jpdop,Krhs) = tr(ji,jj,jk,jpdop,Krhs) + zopop 
-          tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + zofer 
-          zfolimi(ji,jj,jk)   = zfolimi(ji,jj,jk) + zofer
-       END_3D
-     ENDIF
-
-     IF( lk_iomput ) THEN
-        IF( knt == nrdttrc ) THEN
-          zrfact2 = 1.e3 * rfact2r
-          CALL iom_put( "REMINP" , zremipoc(:,:,:) * tmask(:,:,:) )  ! Remineralisation rate of small particles
-          CALL iom_put( "REMING" , zremigoc(:,:,:) * tmask(:,:,:) )  ! Remineralisation rate of large particles
-          CALL iom_put( "REMINF" , zfolimi(:,:,:)  * tmask(:,:,:)  * 1.e+9 * zrfact2 )  ! Remineralisation of biogenic particulate iron
-        ENDIF
+     ! Remineralisation of biogenic particulate iron
+     IF( iom_use( "REMINF" ) .AND. knt == nrdttrc ) THEN
+        CALL iom_put( "REMINF", ( tr(:,:,:,jpfer,Krhs) - zfolimi(:,:,:) ) * 1.e+9 * 1.e3 * rfact2r * tmask(:,:,:) ) 
+        DEALLOCATE( zfolimi )
      ENDIF
 
       IF(sn_cfctl%l_prttrc)   THEN  ! print mean trends (used for debugging)
@@ -460,6 +244,202 @@ CONTAINS
       !
    END SUBROUTINE p4z_poc
 
+   SUBROUTINE p4z_goc_lab( kt, Kbb, Kmm )
+      !!---------------------------------------------------------------------
+      !!                     ***  ROUTINE p4z_poc  ***
+      !!
+      !! ** Purpose :   Compute remineralization of organic particles
+      !!                A reactivity-continuum parameterization is chosen
+      !!                to describe the lability of the organic particles
+      !!                As a consequence, the remineralisation rates of the
+      !!                the different pools change with time as a function of
+      !!                the lability distribution
+      !!
+      !! ** Method  : - Computation of the remineralisation rates is performed
+      !!                according to reactivity continuum formalism described
+      !!                in Aumont et al. (2017).
+      !!---------------------------------------------------------------------
+      INTEGER, INTENT(in) ::   kt         ! ocean time step and ???
+      INTEGER, INTENT(in) ::   Kbb, Kmm  ! time level indices
+      !
+      INTEGER  ::   ji, jj, jk, jn
+      REAL(wp) ::   zsizek, alphat, zremint, alphatm1
+      REAL(wp) ::   zpoc1, zpoc2, zfact
+      REAL(wp) ::   zreminp1, zreminp2
+      REAL(wp) ::   ztemp, ztemp1, ztemp2, zxremip
+      REAL(wp), DIMENSION(jcpoc) :: alpham1
+
+      DO jn = 1, jcpoc
+         alphag(:,:,:,jn) = alphan(jn)
+      END DO
+
+     ! Lability parameterization. This is the big particles part (GOC)
+     ! This lability parameterization is always active. However, if only one
+     ! lability class is specified in the namelist, this is equivalent to
+     ! a standard parameterisation with a constant lability
+     ! -----------------------------------------------------------------------
+     remintgoc(:,:,:) = xremipbound
+     !
+     DO_2D( nn_hls, nn_hls, nn_hls, nn_hls)
+        alpham1(:) = alphan(:)
+        DO jk = 2, jpkm1
+           IF( tmask(ji,jj,jk) == 1. .AND. gdept(ji,jj,jk,Kmm) > pdep(ji,jj) ) THEN
+              !
+              ! In the case of GOC, lability is constant in the mixed layer
+              ! It is computed only below the mixed layer depth
+              ! ------------------------------------------------------------
+              zsizek = e3t(ji,jj,jk,Kmm) / 2. / (wsbio4(ji,jj,jk) + rtrn)
+              !
+              ! standard algorithm in the rest of the water column
+              ! See the comments in the previous block.
+              ! ---------------------------------------------------
+              zfact  = rday / rfact2 / ( tr(ji,jj,jk,jpgoc,Kbb) + rtrn )
+              zpoc1  = MIN(rbound, MAX(-rbound, consgoc(ji,jj,jk) * zfact ) )
+              zpoc2  = MIN(rbound, MAX(-rbound, prodgoc(ji,jj,jk) * zfact ) )
+              !
+              DO jn = 1, jcpoc
+                 zreminp1 = reminp(jn) * tgfunc(ji,jj,jk) - zpoc1
+                 ztemp    = MIN(rbound, MAX(-rbound,  zreminp1 * zsizek ) )
+                 ztemp1   = EXP( -ztemp )
+                 ztemp2   = zpoc2 * ( 1. - ztemp1 ) / zreminp1 * alphan(jn)
+                 alphag(ji,jj,jk,jn) = alpham1(jn) * ztemp1 + ztemp2
+                 alpham1(jn) = alphag(ji,jj,jk,jn) * ztemp1 + ztemp2
+              END DO
+
+              alphatm1 = SUM( alpham1(:) ) + rtrn
+              alphat   = SUM( alphag(ji,jj,jk,:) ) + rtrn
+              alphag(ji,jj,jk,:) = alphag(ji,jj,jk,:) / alphat
+              alpham1(:)         = alpham1(:) / alphatm1
+              !
+              ! The contribution of each lability class at the current level is computed
+              zremint = SUM( alphag(ji,jj,jk,:) * reminp(:) )
+              ! Computation of the mean remineralisation rate
+              remintgoc(ji,jj,jk) = MIN( xremipbound, zremint )
+              !
+           ENDIF
+        END DO
+     END_2D
+     !
+   END SUBROUTINE p4z_goc_lab
+
+   SUBROUTINE p4z_poc_lab( kt, Kbb, Kmm )
+      !!---------------------------------------------------------------------
+      !!                     ***  ROUTINE p4z_poc  ***
+      !!
+      !! ** Purpose :   Compute remineralization of organic particles
+      !!                A reactivity-continuum parameterization is chosen
+      !!                to describe the lability of the organic particles
+      !!                As a consequence, the remineralisation rates of the
+      !!                the different pools change with time as a function of
+      !!                the lability distribution
+      !!
+      !! ** Method  : - Computation of the remineralisation rates is performed
+      !!                according to reactivity continuum formalism described
+      !!                in Aumont et al. (2017).
+      !!---------------------------------------------------------------------
+      INTEGER, INTENT(in) ::   kt         ! ocean time step and ???
+      INTEGER, INTENT(in) ::   Kbb, Kmm  ! time level indices
+      !
+      INTEGER  ::   ji, jj, jk, jn
+      REAL(wp) ::   zsizek, alphat, zremint, alphatm1
+      REAL(wp) ::   zpoc1, zpoc2, zpoc3, zfact
+      REAL(wp) ::   zreminp1, zreminp2
+      REAL(wp) ::   ztemp, ztemp1, ztemp2, ztemp3
+      REAL(wp), DIMENSION(jpi,jpj)   :: ztotprod, ztotthick, ztotcons
+      REAL(wp), DIMENSION(jcpoc) :: alpham1
+
+      DO jn = 1, jcpoc
+         alphap(:,:,:,jn) = alphan(jn)
+      END DO
+
+     ! Lability parameterization for the small OM particles. This param
+     ! is based on the same theoretical background as the big particles.
+     ! However, because of its low sinking speed, lability is not supposed
+     ! to be equal to its initial value (the value of the freshly produced
+     ! organic matte) in the MLD. It is however uniform in the mixed layer.
+     ! ---------------------------------------------------------------------
+     ztotprod (:,:)    = 0.
+     ztotthick(:,:)    = 0.
+     ztotcons (:,:)    = 0.
+     remintpoc(:,:,:)  = xremipbound
+
+     ! intregrated production and consumption of POC in the mixed layer
+     ! ----------------------------------------------------------------
+     DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+        IF (tmask(ji,jj,jk) == 1. .AND. gdept(ji,jj,jk,Kmm) <= pdep(ji,jj) ) THEN
+          zfact = e3t(ji,jj,jk,Kmm) * rday/ rfact2
+          ztotprod(ji,jj)  = ztotprod(ji,jj) + prodpoc(ji,jj,jk) * zfact
+          ! The temperature effect is included here
+          ztotthick(ji,jj) = ztotthick(ji,jj) + e3t(ji,jj,jk,Kmm)* tgfunc(ji,jj,jk)
+          ztotcons(ji,jj)  = ztotcons(ji,jj) - conspoc(ji,jj,jk) * zfact / ( tr(ji,jj,jk,jppoc,Kbb) + rtrn )
+        ENDIF
+     END_3D
+
+     ! Computation of the lability spectrum in the mixed layer. In the mixed
+     ! layer, this spectrum is supposed to be uniform as a result of intense
+     ! mixing.
+     ! ---------------------------------------------------------------------
+     DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+        IF (tmask(ji,jj,jk) == 1. .AND. gdept(ji,jj,jk,Kmm) <= pdep(ji,jj) ) THEN
+           DO jn = 1, jcpoc
+             ! For each lability class, the system is supposed to be
+             ! at equilibrium: Prod - Sink - w alphap = 0.
+             alphap(ji,jj,jk,jn) = ztotprod(ji,jj) * alphan(jn) / ( reminp(jn)    &
+             &                     * ztotthick(ji,jj) + ztotcons(ji,jj) + wsbio3(ji,jj,jk) + rtrn )
+             alphap(ji,jj,jk,jn) = MAX(0., alphap(ji,jj,jk,jn) )
+          END DO
+          alphat = SUM( alphap(ji,jj,jk,:) ) + rtrn
+          alphap(ji,jj,jk,:)  = alphap(ji,jj,jk,:) / alphat
+          zremint = SUM( alphap(ji,jj,jk,:) * reminp(:) )
+          ! Mean remineralization rate in the mixed layer
+          remintpoc(ji,jj,jk) =  MIN( xremipbound, zremint )
+        ENDIF
+     END_3D
+     !
+     !
+     ! The lability parameterization is used here. The code is here
+     ! almost identical to what is done for big particles. The only difference
+     ! is that an additional source from GOC to POC is included. This means
+     ! that since we need the lability spectrum of GOC, GOC spectrum
+     ! should be determined before.
+     ! -----------------------------------------------------------------------
+     DO_2D( nn_hls, nn_hls, nn_hls, nn_hls)
+        alpham1(:) = alphap(ji,jj,1,:)
+        DO jk = 2, jpkm1
+           IF (tmask(ji,jj,jk) == 1. .AND. gdept(ji,jj,jk,Kmm) > pdep(ji,jj) ) THEN
+              ! the scale factors are corrected with temperature
+              zsizek  = e3t(ji,jj,jk,Kmm) / 2. / (wsbio3(ji,jj,jk) + rtrn)
+              !
+              ! Special treatment of the level just below the MXL
+              ! See the comments in the GOC section
+              zfact  = rday / rfact2 / ( tr(ji,jj,jk,jppoc,Kbb) + rtrn )
+              zpoc1  = MIN(rbound, MAX(-rbound, conspoc(ji,jj,jk) * zfact ) )
+              zpoc2  = MIN(rbound, MAX(-rbound, prodpoc(ji,jj,jk) * zfact ) )
+              zpoc3  = MIN(rbound, MAX(-rbound, orem3 (ji,jj,jk) * zfact  ) )
+              !
+              DO jn = 1, jcpoc
+                 zreminp1 = reminp(jn) * tgfunc(ji,jj,jk) - zpoc1
+                 ztemp    = MIN(rbound, MAX(-rbound,  zreminp1 * zsizek ) )
+                 ztemp1   = EXP( -ztemp )
+                 ztemp2   = zpoc2 * ( 1. - ztemp1 ) / zreminp1 * alphan(jn)
+                 ztemp3   = zpoc3 * ( 1. - ztemp1 ) / zreminp1 * alphag(ji,jj,jk,jn)
+                 alphap(ji,jj,jk,jn) = alpham1(jn) * ztemp1 + ztemp2 + ztemp3
+                 alpham1(jn) = alphap(ji,jj,jk,jn) * ztemp1 + ztemp2 + ztemp3
+              END DO
+              !
+              alphat = SUM( alphap(ji,jj,jk,:) ) + rtrn
+              alphatm1 = SUM( alpham1(:) ) + rtrn
+              alphap(ji,jj,jk,:) = alphap(ji,jj,jk,:) / alphat
+              alpham1(:) = alpham1(:) / alphatm1
+              ! The contribution of each lability class at the current level is computed
+              zremint = SUM( alphap(ji,jj,jk,:) * reminp(:) )
+              ! Computation of the mean remineralisation rate
+              remintpoc(ji,jj,jk) =  MIN( xremipbound, zremint )
+           ENDIF
+        END DO
+     END_2D
+     !
+   END SUBROUTINE p4z_poc_lab
 
    SUBROUTINE p4z_poc_init
       !!----------------------------------------------------------------------
@@ -508,7 +488,9 @@ CONTAINS
       ! Discretization along the lability space
       ! ---------------------------------------
       !
-      ALLOCATE( alphan(jcpoc) , reminp(jcpoc) , alphap(jpi,jpj,jpk,jcpoc) )
+      ALLOCATE( alphan(jcpoc) , reminp(jcpoc) )
+      ALLOCATE( alphap(jpi,jpj,jpk,jcpoc), alphag(jpi,jpj,jpk,jcpoc) )
+      ALLOCATE( orem3(jpi,jpj,jpk) )
       !
       IF (jcpoc > 1) THEN  ! Case when more than one lability class is used
          !
@@ -541,8 +523,25 @@ CONTAINS
 
       DO jn = 1, jcpoc
          alphap(:,:,:,jn) = alphan(jn)
+         alphag(:,:,:,jn) = alphan(jn)
       END DO
-
+      !
+      ! Here we compute the GOC -> POC rate due to the shrinking
+      ! of the fecal pellets/aggregates as a result of bacterial
+      ! solubilization
+      ! This is based on a fractal dimension of 2.56 and a spectral
+      ! slope of -3.6 (identical to what is used in p4zsink to compute
+      ! aggregation
+      solgoc = 0.04/ 2.56 * 1./ ( 1.-50**(-0.04) )
+      !
+      rbound = 1.e+01_wp
+      !
+      IF( ln_p4z ) THEN  ;   xremipbound  = xremip
+      ELSE               ;   xremipbound  = xremipc
+      ENDIF
+      !
+      orem3(:,:,:) = 0.
+      !
    END SUBROUTINE p4z_poc_init
 
 

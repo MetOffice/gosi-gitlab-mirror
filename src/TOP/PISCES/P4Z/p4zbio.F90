@@ -78,7 +78,7 @@ CONTAINS
 
       CALL p4z_opt     ( kt, knt, Kbb, Kmm       )     ! Optic: PAR in the water column
       CALL p4z_sink    ( kt, knt, Kbb, Kmm, Krhs )     ! vertical flux of particulate organic matter
-      CALL p4z_fechem  ( kt, knt, Kbb, Kmm, Krhs )     ! Iron chemistry/scavenging
+      CALL p4z_fechem  ( kt, knt, Kbb, Kmm, Krhs )     ! Iron chemistry/scavenging      
       !
       IF( ln_p4z ) THEN  ! PISCES standard
          ! Phytoplankton only sources/sinks terms

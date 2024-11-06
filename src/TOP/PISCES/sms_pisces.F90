@@ -96,9 +96,9 @@ MODULE sms_pisces
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   consgoc    !: GOC consumption
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   consfe3    !: GOC consumption
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   blim       !: bacterial production factor
-   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   sizen      !: size of nanophyto
-   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   sizep      !: size of picophyto
-   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   sized      !: size of diatoms 
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   sizen, logsizen    !: size of nanophyto
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   sizep, logsizep    !: size of picophyto
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   sized, logsized    !: size of diatoms   
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   sizena     !: size of nanophytoplankton, after
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   sizepa     !: size of picophyto, after
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   sizeda     !: size of diatomss, after
@@ -118,6 +118,9 @@ MODULE sms_pisces
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   tgfunc    !: Temp. dependancy of various biological rates
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   tgfunc2   !: Temp. dependancy of mesozooplankton rates
 
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   remintpoc  ! Mean remineralisation rate of POC
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   remintgoc  ! Mean remineralisation rate of GOC   
+
    LOGICAL, SAVE :: lk_sed
 
    !!----------------------------------------------------------------------
@@ -132,7 +135,7 @@ CONTAINS
       !!        *** ROUTINE sms_pisces_alloc ***
       !!----------------------------------------------------------------------
       USE lib_mpp , ONLY: ctl_stop
-      INTEGER ::   ierr(11)        ! Local variables
+      INTEGER ::   ierr(12)        ! Local variables
       !!----------------------------------------------------------------------
       ierr(:) = 0
       !*  Biological fluxes for light : shared variables for pisces & lobster
@@ -170,18 +173,22 @@ CONTAINS
          ALLOCATE( wsbio3 (jpi,jpj,jpk) , wsbio4 (jpi,jpj,jpk),   STAT=ierr(7) )
 
          !*  Size of phytoplankton cells
-         ALLOCATE( sizen (jpi,jpj,jpk), sized (jpi,jpj,jpk),        &
-           &       sizena(jpi,jpj,jpk), sizeda(jpi,jpj,jpk),      STAT=ierr(8) )
+         ALLOCATE( sizen (jpi,jpj,jpk), sized (jpi,jpj,jpk),      &
+           &       sizena(jpi,jpj,jpk), sizeda(jpi,jpj,jpk),      &
+           &       logsizen(jpi,jpj,jpk), logsized(jpi,jpj,jpk), STAT=ierr(8) )
          ! 
          ALLOCATE( plig(jpi,jpj,jpk)  ,                           STAT=ierr(9) )
+         !
+         ALLOCATE( remintpoc(jpi,jpj,jpk), remintgoc(jpi,jpj,jpk), STAT=ierr(10) )
+         !      
       ENDIF
       !
       IF( ln_p5z ) THEN
          ! PISCES-QUOTA specific part      
-         ALLOCATE( epico(jpi,jpj,jpk)   , epicom(jpi,jpj,jpk) ,   STAT=ierr(10) ) 
+         ALLOCATE( epico(jpi,jpj,jpk)   , epicom(jpi,jpj,jpk) ,   STAT=ierr(11) ) 
 
          !*  Size of phytoplankton cells
-         ALLOCATE( sizep(jpi,jpj,jpk), sizepa(jpi,jpj,jpk),       STAT=ierr(11) )
+         ALLOCATE( sizep(jpi,jpj,jpk), sizepa(jpi,jpj,jpk), logsizep(jpi,jpj,jpk), STAT=ierr(12) )
       ENDIF
       !
       sms_pisces_alloc = MAXVAL( ierr )

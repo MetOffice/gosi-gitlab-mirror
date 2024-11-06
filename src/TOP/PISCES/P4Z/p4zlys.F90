@@ -58,15 +58,17 @@ CONTAINS
       INTEGER, INTENT(in)  ::  Kbb, Krhs ! time level indices
       !
       INTEGER  ::   ji, jj, jk, jn
-      REAL(wp) ::   zdispot, zfact, zcalcon
-      REAL(wp) ::   zomegaca, zexcess, zexcess0, zkd
+      REAL(wp) ::   zcalcon, zomegaca, zexcess, zexcess0, zkd, zdens, zdissol
       CHARACTER (len=25) ::   charout
-      REAL(wp), DIMENSION(jpi,jpj,jpk) ::   zco3, zcaldiss, zhinit, zhi, zco3sat
+      REAL(wp), DIMENSION(jpi,jpj,jpk) ::   zco3, zcaldiss, zhinit, zhi
       !!---------------------------------------------------------------------
       !
       IF( ln_timing )  CALL timing_start('p4z_lys')
       !
-      zhinit  (:,:,:) = hi(:,:,:) * 1000. / ( rhop(:,:,:) + rtrn )
+      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+         zdens = rhop(ji,jj,jk) / 1000._wp
+         zhinit(ji,jj,jk) = hi(ji,jj,jk) / ( zdens + rtrn )
+      END_3D      
       !
       !     -------------------------------------------
       !     COMPUTE [CO3--] and [H+] CONCENTRATIONS
@@ -74,9 +76,10 @@ CONTAINS
 
       CALL solve_at_general( zhinit, zhi, Kbb )
       DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+         zdens = rhop(ji,jj,jk) / 1000._wp
          zco3(ji,jj,jk) = tr(ji,jj,jk,jpdic,Kbb) * ak13(ji,jj,jk) * ak23(ji,jj,jk) / (zhi(ji,jj,jk)**2   &
             &             + ak13(ji,jj,jk) * zhi(ji,jj,jk) + ak13(ji,jj,jk) * ak23(ji,jj,jk) + rtrn )
-         hi  (ji,jj,jk) = zhi(ji,jj,jk) * rhop(ji,jj,jk) / 1000.
+         hi  (ji,jj,jk) = zhi(ji,jj,jk) * zdens
       END_3D
 
       !     ---------------------------------------------------------
@@ -84,47 +87,49 @@ CONTAINS
       !        DISSOLOUTION AND PRECIPITATION OF CACO3 (BE AWARE OF
       !        MGCO3)
       !     ---------------------------------------------------------
-
+!      zkd = kdca * 0.2**(nca - 0.2)
+      zkd = kdca * 0.2**(nca - 0.11)
       DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
 
          ! DEVIATION OF [CO3--] FROM SATURATION VALUE
          ! Salinity dependance in zomegaca and divide by rhop/1000 to have good units
          zcalcon  = calcon * ( salinprac(ji,jj,jk) / 35._wp )
-         zfact    = rhop(ji,jj,jk) / 1000._wp
-         zomegaca = ( zcalcon * zco3(ji,jj,jk) ) / ( aksp(ji,jj,jk) * zfact + rtrn )
-         zco3sat(ji,jj,jk) = aksp(ji,jj,jk) * zfact / ( zcalcon + rtrn )
+         zdens    = rhop(ji,jj,jk) / 1000._wp
+         zomegaca = ( zcalcon * zco3(ji,jj,jk) ) / ( aksp(ji,jj,jk) * zdens + rtrn )
 
          ! SET DEGREE OF UNDER-/SUPERSATURATION
          excess(ji,jj,jk) = 1._wp - zomegaca
          zexcess0 = MAX( 0., excess(ji,jj,jk) )
 
          IF( zomegaca < 0.8 ) THEN
-            zexcess = zexcess0**nca
+            zexcess = kdca * zexcess0**nca
             ! AMOUNT CACO3 THAT RE-ENTERS SOLUTION
-            zdispot = kdca * zexcess * tr(ji,jj,jk,jpcal,Kbb)
          ELSE
-            zkd = kdca * 0.2**(nca - 0.11)
-            zexcess = zexcess0**0.11
-            zdispot = zkd * zexcess * tr(ji,jj,jk,jpcal,Kbb)
-        ENDIF
+!            zexcess = zkd * zexcess0**0.2
+            zexcess = zkd * zexcess0**0.11
+         ENDIF
 
-        !  CHANGE OF [CO3--] , [ALK], PARTICULATE [CACO3],
-        !       AND [SUM(CO2)] DUE TO CACO3 DISSOLUTION/PRECIPITATION
-        zcaldiss(ji,jj,jk)  = zdispot * rfact2 / rmtss ! calcite dissolution
-        !
-        tr(ji,jj,jk,jptal,Krhs) = tr(ji,jj,jk,jptal,Krhs) + 2. * zcaldiss(ji,jj,jk)
-        tr(ji,jj,jk,jpcal,Krhs) = tr(ji,jj,jk,jpcal,Krhs) -      zcaldiss(ji,jj,jk)
-        tr(ji,jj,jk,jpdic,Krhs) = tr(ji,jj,jk,jpdic,Krhs) +      zcaldiss(ji,jj,jk)
+         ! Calcite dissolution
+         zdissol  = zexcess * tr(ji,jj,jk,jpcal,Kbb) * rfact2 / rmtss
+
+         !  CHANGE OF [CO3--] , [ALK], PARTICULATE [CACO3],
+         !       AND [SUM(CO2)] DUE TO CACO3 DISSOLUTION/PRECIPITATION
+         tr(ji,jj,jk,jptal,Krhs) = tr(ji,jj,jk,jptal,Krhs) + 2. * zdissol
+         tr(ji,jj,jk,jpcal,Krhs) = tr(ji,jj,jk,jpcal,Krhs) -      zdissol
+         tr(ji,jj,jk,jpdic,Krhs) = tr(ji,jj,jk,jpdic,Krhs) +      zdissol
+         !
+         zcaldiss(ji,jj,jk) = zdissol
+         !
       END_3D
       !
-
       IF( lk_iomput .AND. knt == nrdttrc ) THEN
          CALL iom_put( "PH" , -1. * LOG10( MAX( hi(:,:,:), rtrn ) ) * tmask(:,:,:) )
          IF( iom_use( "CO3" ) ) THEN
-            zco3(:,:,jpk) = 0.    ; CALL iom_put( "CO3"   , zco3(:,:,:)     * 1.e+3           * tmask(:,:,:) )
+            zco3(:,:,jpk) = 0. ; CALL iom_put( "CO3", zco3(:,:,:) * 1.e+3 * tmask(:,:,:) )
          ENDIF
          IF( iom_use( "CO3sat" ) ) THEN
-           zco3sat(:,:,jpk) = 0.  ; CALL iom_put( "CO3sat", zco3sat(:,:,:)  * 1.e+3           * tmask(:,:,:) )
+                  CALL iom_put( "CO3sat", aksp(:,:,:) * rhop(:,:,:) / 1000._wp &     ! calcite saturation
+              &                / calcon * ( salinprac(:,:,:) / 35._wp ) * 1.e+3 * tmask(:,:,:)  )
          ENDIF
          IF( iom_use( "DCAL" ) ) THEN
            zcaldiss(:,:,jpk) = 0. ; CALL iom_put( "DCAL"  , zcaldiss(:,:,:) * 1.e+3 * rfact2r * tmask(:,:,:) )

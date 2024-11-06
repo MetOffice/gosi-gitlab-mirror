@@ -41,7 +41,7 @@ MODULE p4zsed
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) :: nitrpot    !: Nitrogen fixation 
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:  ) :: sdenit     !: Nitrate reduction in the sediments
    !
-   REAL(wp), SAVE :: r1_rday          
+   REAL(wp), SAVE :: r1_rday, xtemp13, xtemp23   
 
    !! * Substitutions
 #  include "do_loop_substitute.h90"
@@ -72,27 +72,21 @@ CONTAINS
       REAL(wp) ::  zo2, zno3, zflx, zpdenit, z1pdenit, zolimit
       REAL(wp) ::  zsiloss, zcaloss, zws3, zws4, zwsc, zdep
       REAL(wp) ::  zwstpoc, zwstpon, zwstpop
-      REAL(wp) ::  ztrfer, ztrpo4s, ztrdp, zwdust, zmudia, ztemp
-      REAL(wp) ::  xdiano3, xdianh4
+      REAL(wp) ::  ztrfer, ztrpo4s, ztrdp, zwdust, zmudia
+      REAL(wp) ::  zsoufer, zlight, ztrpo4, ztrdop, zratpo4
+      REAL(wp) ::  ztemp, zdiano3, zdianh4      
       !
       CHARACTER (len=25) :: charout
-      REAL(wp), DIMENSION(jpi,jpj    ) :: zdenit2d, zbureff, zwork
+      REAL(wp), DIMENSION(jpi,jpj    ) :: zdenit2d, zbureff
       REAL(wp), DIMENSION(jpi,jpj    ) :: zwsbio3, zwsbio4
       REAL(wp), DIMENSION(jpi,jpj    ) :: zsedcal, zsedsi, zsedc
-      REAL(wp), DIMENSION(jpi,jpj,jpk) :: zsoufer, zlight
-      REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) :: ztrpo4, ztrdop, zirondep, zpdep
       !!---------------------------------------------------------------------
       !
       IF( ln_timing )  CALL timing_start('p4z_sed')
       !
 
-      ! Allocate temporary workspace
-      ALLOCATE( ztrpo4(jpi,jpj,jpk) )
-      IF( ln_p5z )    ALLOCATE( ztrdop(jpi,jpj,jpk) )
-
       zdenit2d(:,:) = 0.e0
       zbureff (:,:) = 0.e0
-      zwork   (:,:) = 0.e0
       zsedsi  (:,:) = 0.e0
       zsedcal (:,:) = 0.e0
       zsedc   (:,:) = 0.e0
@@ -119,9 +113,9 @@ CONTAINS
               zo2   = LOG10( MAX( 10. , tr(ji,jj,ikt,jpoxy,Kbb) * 1E6 ) )
               zno3  = LOG10( MAX( 1.  , tr(ji,jj,ikt,jpno3,Kbb) * 1E6 * rno3 ) )
               zdep  = LOG10( gdepw(ji,jj,ikt+1,Kmm) )
-              zdenit2d(ji,jj) = -2.2567 - 1.185 * zflx - 0.221 * zflx**2 - 0.3995 * zno3 * zo2 + 1.25 * zno3    &
+              zpdenit = -2.2567 - 1.185 * zflx - 0.221 * zflx**2 - 0.3995 * zno3 * zo2 + 1.25 * zno3    &
                 &                + 0.4721 * zo2 - 0.0996 * zdep + 0.4256 * zflx * zo2
-              zdenit2d(ji,jj) = 10.0**( zdenit2d(ji,jj) )
+              zdenit2d(ji,jj) = 10.0**zpdenit
                 !
               zflx = (  tr(ji,jj,ikt,jpgoc,Kbb) * zwsbio4(ji,jj)   &
                 &     + tr(ji,jj,ikt,jppoc,Kbb) * zwsbio3(ji,jj) ) * 1E6
@@ -225,89 +219,67 @@ CONTAINS
       ! Nitrogen fixation process
       ! Small source iron from particulate inorganic iron
       !-----------------------------------
-      DO jk = 1, jpkm1
-         zlight (:,:,jk) =  ( 1.- EXP( -etot_ndcy(:,:,jk) / diazolight ) ) * ( 1. - fr_i(:,:) ) 
-         zsoufer(:,:,jk) = zlight(:,:,jk) * 2E-11 / ( 2E-11 + biron(:,:,jk) )
-      ENDDO
-      IF( ln_p4z ) THEN
-         DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
-            !                      ! Potential nitrogen fixation dependant on temperature and iron
-            ztemp = ts(ji,jj,jk,jp_tem,Kmm)
-            zmudia = MAX( 0.,-0.001096*ztemp**2 + 0.057*ztemp -0.637 ) / rno3
-            !       Potential nitrogen fixation dependant on temperature and iron
-            xdianh4 = tr(ji,jj,jk,jpnh4,Kbb) / ( concnnh4 + tr(ji,jj,jk,jpnh4,Kbb) )
-            xdiano3 = tr(ji,jj,jk,jpno3,Kbb) / ( concnno3 + tr(ji,jj,jk,jpno3,Kbb) ) * (1. - xdianh4)
-            zlim = ( 1.- xdiano3 - xdianh4 )
-            IF( zlim <= 0.1 )   zlim = 0.01
-            zfact = zlim * rfact2
-            ztrfer = biron(ji,jj,jk) / ( concfediaz + biron(ji,jj,jk) )
-            ztrpo4(ji,jj,jk) = tr(ji,jj,jk,jppo4,Kbb) / ( 1E-6 + tr(ji,jj,jk,jppo4,Kbb) )
-            ztrdp = ztrpo4(ji,jj,jk)
-            nitrpot(ji,jj,jk) =  zmudia * r1_rday * zfact * MIN( ztrfer, ztrdp ) * zlight(ji,jj,jk)
-         END_3D
-      ELSE       ! p5z
-         DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
-            !                      ! Potential nitrogen fixation dependant on temperature and iron
-            ztemp = ts(ji,jj,jk,jp_tem,Kmm)
-            zmudia = MAX( 0.,-0.001096*ztemp**2 + 0.057*ztemp -0.637 ) * 7.625
-            !       Potential nitrogen fixation dependant on temperature and iron
-            xdianh4 = tr(ji,jj,jk,jpnh4,Kbb) / ( concnnh4 + tr(ji,jj,jk,jpnh4,Kbb) )
-            xdiano3 = tr(ji,jj,jk,jpno3,Kbb) / ( concnno3 + tr(ji,jj,jk,jpno3,Kbb) ) * (1. - xdianh4)
-            zlim = ( 1.- xdiano3 - xdianh4 )
-            IF( zlim <= 0.1 )   zlim = 0.01
-            zfact = zlim * rfact2
-            ztrfer = biron(ji,jj,jk) / ( concfediaz + biron(ji,jj,jk) )
-            ztrpo4(ji,jj,jk) = tr(ji,jj,jk,jppo4,Kbb) / ( 1E-6 + tr(ji,jj,jk,jppo4,Kbb) )
-            ztrdop(ji,jj,jk) = tr(ji,jj,jk,jpdop,Kbb) / ( 10E-6 + tr(ji,jj,jk,jpdop,Kbb) ) * (1. - ztrpo4(ji,jj,jk))
-            ztrdp = ztrpo4(ji,jj,jk) + ztrdop(ji,jj,jk)
-            nitrpot(ji,jj,jk) =  zmudia * r1_rday * zfact * MIN( ztrfer, ztrdp ) * zlight(ji,jj,jk)
-         END_3D
-      ENDIF
+      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+         !                      ! Potential nitrogen fixation dependant on temperature and iron
+         zlight =  ( 1.- EXP( -etot_ndcy(ji,jj,jk) / diazolight ) ) * ( 1. - fr_i(ji,jj) ) 
+         ztemp = ts(ji,jj,jk,jp_tem,Kmm)
+         zmudia = MAX( 0.,-0.001096*ztemp**2 + 0.057*ztemp -0.637 ) / rno3
+         !       Potential nitrogen fixation dependant on temperature and iron
+         zdianh4 = tr(ji,jj,jk,jpnh4,Kbb) / ( concnnh4 + tr(ji,jj,jk,jpnh4,Kbb) )
+         zdiano3 = tr(ji,jj,jk,jpno3,Kbb) / ( concnno3 + tr(ji,jj,jk,jpno3,Kbb) ) * (1. - zdianh4)
+         zfact   = ( 1. - zdiano3 - zdianh4 ) * rfact2
+         ztrfer  = biron(ji,jj,jk) / ( concfediaz + biron(ji,jj,jk) )
+         ztrpo4  = tr(ji,jj,jk,jppo4,Kbb) / ( 1E-6 + tr(ji,jj,jk,jppo4,Kbb) )
+         IF (ln_p5z) THEN
+            ztrdop  = tr(ji,jj,jk,jpdop,Kbb) / ( 1E-6 + tr(ji,jj,jk,jpdop,Kbb) ) * (1. - ztrpo4)
+            ztrpo4  = ztrpo4 + ztrdop
+         ENDIF
+         nitrpot(ji,jj,jk) =  zmudia * r1_rday * zfact * MIN( ztrfer, ztrpo4 ) * zlight
+         !
+         zsoufer = zlight * 2E-11 / ( 2E-11 + biron(ji,jj,jk) )
+         tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + 0.003 * 4E-10 * zsoufer * rfact2 / rday
+      END_3D
 
       ! Nitrogen change due to nitrogen fixation
       ! ----------------------------------------
+      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+         zfact = nitrpot(ji,jj,jk) * nitrfix
+         !
+         tr(ji,jj,jk,jpnh4,Krhs) = tr(ji,jj,jk,jpnh4,Krhs) + zfact * xtemp13
+         tr(ji,jj,jk,jptal,Krhs) = tr(ji,jj,jk,jptal,Krhs) + rno3 * zfact * xtemp13
+         tr(ji,jj,jk,jpdic,Krhs) = tr(ji,jj,jk,jpdic,Krhs) - zfact * 2.0 * xtemp13
+         tr(ji,jj,jk,jpdoc,Krhs) = tr(ji,jj,jk,jpdoc,Krhs) + zfact * xtemp13
+         tr(ji,jj,jk,jppoc,Krhs) = tr(ji,jj,jk,jppoc,Krhs) + zfact * 2.0 * xtemp23
+         tr(ji,jj,jk,jpgoc,Krhs) = tr(ji,jj,jk,jpgoc,Krhs) + zfact * xtemp23
+         tr(ji,jj,jk,jpoxy,Krhs) = tr(ji,jj,jk,jpoxy,Krhs) + ( ( o2ut + o2nit ) * 2.0 + o2nit ) * zfact * xtemp13
+         tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) - 30E-6 * zfact * xtemp13
+         tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) + 30E-6 * zfact * 2.0 * xtemp23
+         tr(ji,jj,jk,jpbfe,Krhs) = tr(ji,jj,jk,jpbfe,Krhs) + 30E-6 * zfact * xtemp23
+      END_3D
+
       IF( ln_p4z ) THEN
          DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
             zfact = nitrpot(ji,jj,jk) * nitrfix
-            tr(ji,jj,jk,jpnh4,Krhs) = tr(ji,jj,jk,jpnh4,Krhs) + zfact / 3.0
-            tr(ji,jj,jk,jptal,Krhs) = tr(ji,jj,jk,jptal,Krhs) + rno3 * zfact / 3.0
-            tr(ji,jj,jk,jpdic,Krhs) = tr(ji,jj,jk,jpdic,Krhs) - zfact * 2.0 / 3.0            
-            tr(ji,jj,jk,jppo4,Krhs) = tr(ji,jj,jk,jppo4,Krhs) - zfact * 2.0 / 3.0
-            tr(ji,jj,jk,jpdoc,Krhs) = tr(ji,jj,jk,jpdoc,Krhs) + zfact * 1.0 / 3.0
-            tr(ji,jj,jk,jppoc,Krhs) = tr(ji,jj,jk,jppoc,Krhs) + zfact * 1.0 / 3.0 * 2.0 / 3.0
-            tr(ji,jj,jk,jpgoc,Krhs) = tr(ji,jj,jk,jpgoc,Krhs) + zfact * 1.0 / 3.0 * 1.0 / 3.0
-            tr(ji,jj,jk,jpoxy,Krhs) = tr(ji,jj,jk,jpoxy,Krhs) + ( o2ut + o2nit ) * zfact * 2.0 / 3.0 + o2nit * zfact / 3.0
-            tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) - 30E-6 * zfact * 1.0 / 3.0
-            tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) + 30E-6 * zfact * 1.0 / 3.0 * 2.0 / 3.0
-            tr(ji,jj,jk,jpbfe,Krhs) = tr(ji,jj,jk,jpbfe,Krhs) + 30E-6 * zfact * 1.0 / 3.0 * 1.0 / 3.0
-            tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + 0.002 * 4E-10 * zsoufer(ji,jj,jk) * rfact2 / rday
+            tr(ji,jj,jk,jppo4,Krhs) = tr(ji,jj,jk,jppo4,Krhs) - zfact * 2.0 * xtemp13
             tr(ji,jj,jk,jppo4,Krhs) = tr(ji,jj,jk,jppo4,Krhs) + concdnh4 / ( concdnh4 + tr(ji,jj,jk,jppo4,Kbb) ) &
             &                     * 0.001 * tr(ji,jj,jk,jpdoc,Kbb) * xstep
          END_3D
       ELSE    ! p5z
          DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
+            ztrpo4  = tr(ji,jj,jk,jppo4,Kbb) / ( 1E-6 + tr(ji,jj,jk,jppo4,Kbb) )
+            ztrdop  = tr(ji,jj,jk,jpdop,Kbb) / ( 1E-6 + tr(ji,jj,jk,jpdop,Kbb) ) * (1. - ztrpo4)
+            zratpo4 = ztrpo4 / (ztrpo4 + ztrdop + rtrn)
+            !
             zfact = nitrpot(ji,jj,jk) * nitrfix
-            tr(ji,jj,jk,jpnh4,Krhs) = tr(ji,jj,jk,jpnh4,Krhs) + zfact / 3.0
-            tr(ji,jj,jk,jptal,Krhs) = tr(ji,jj,jk,jptal,Krhs) + rno3 * zfact / 3.0
-            tr(ji,jj,jk,jpdic,Krhs) = tr(ji,jj,jk,jpdic,Krhs) - zfact * 2.0 / 3.0            
-            tr(ji,jj,jk,jppo4,Krhs) = tr(ji,jj,jk,jppo4,Krhs) - 16.0 / 46.0 * zfact * ( 1.0 - 1.0 / 3.0 ) &
-            &                     * ztrpo4(ji,jj,jk) / (ztrpo4(ji,jj,jk) + ztrdop(ji,jj,jk) + rtrn)
-            tr(ji,jj,jk,jpdon,Krhs) = tr(ji,jj,jk,jpdon,Krhs) + zfact * 1.0 / 3.0
-            tr(ji,jj,jk,jpdoc,Krhs) = tr(ji,jj,jk,jpdoc,Krhs) + zfact * 1.0 / 3.0
-            tr(ji,jj,jk,jpdop,Krhs) = tr(ji,jj,jk,jpdop,Krhs) + 16.0 / 46.0 * zfact / 3.0  &
-            &                     - 16.0 / 46.0 * zfact  * 2.0 / 3.0  * ztrdop(ji,jj,jk)   &
-            &                     / (ztrpo4(ji,jj,jk) + ztrdop(ji,jj,jk) + rtrn)
-            tr(ji,jj,jk,jppoc,Krhs) = tr(ji,jj,jk,jppoc,Krhs) + zfact * 1.0 / 3.0 * 2.0 / 3.0
-            tr(ji,jj,jk,jppon,Krhs) = tr(ji,jj,jk,jppon,Krhs) + zfact * 1.0 / 3.0 * 2.0 /3.0
-            tr(ji,jj,jk,jppop,Krhs) = tr(ji,jj,jk,jppop,Krhs) + 16.0 / 46.0 * zfact * 1.0 / 3.0 * 2.0 /3.0
-            tr(ji,jj,jk,jpgoc,Krhs) = tr(ji,jj,jk,jpgoc,Krhs) + zfact * 1.0 / 3.0 * 1.0 / 3.0
-            tr(ji,jj,jk,jpgon,Krhs) = tr(ji,jj,jk,jpgon,Krhs) + zfact * 1.0 / 3.0 * 1.0 /3.0
-            tr(ji,jj,jk,jpgop,Krhs) = tr(ji,jj,jk,jpgop,Krhs) + 16.0 / 46.0 * zfact * 1.0 / 3.0 * 1.0 /3.0
-            tr(ji,jj,jk,jpoxy,Krhs) = tr(ji,jj,jk,jpoxy,Krhs) + ( o2ut + o2nit ) * zfact * 2.0 / 3.0 + o2nit * zfact / 3.0
-            tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) - 30E-6 * zfact * 1.0 / 3.0 
-            tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) + 30E-6 * zfact * 1.0 / 3.0 * 2.0 / 3.0
-            tr(ji,jj,jk,jpbfe,Krhs) = tr(ji,jj,jk,jpbfe,Krhs) + 30E-6 * zfact * 1.0 / 3.0 * 1.0 / 3.0
-            tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + 0.002 * 4E-10 * zsoufer(ji,jj,jk) * rfact2 / rday
+            tr(ji,jj,jk,jppo4,Krhs) = tr(ji,jj,jk,jppo4,Krhs) - 16.0 / 46.0 * zfact * 2.0 * xtemp13  &
+            &                     * zratpo4
+            tr(ji,jj,jk,jpdon,Krhs) = tr(ji,jj,jk,jpdon,Krhs) + zfact * xtemp13
+            tr(ji,jj,jk,jpdop,Krhs) = tr(ji,jj,jk,jpdop,Krhs) + 16.0 / 46.0 * zfact * xtemp13  &
+            &                     - 16.0 / 46.0 * zfact * 2.0 * xtemp13 * (1.0 - zratpo4)
+            tr(ji,jj,jk,jppon,Krhs) = tr(ji,jj,jk,jppon,Krhs) + zfact * 2.0 * xtemp23
+            tr(ji,jj,jk,jppop,Krhs) = tr(ji,jj,jk,jppop,Krhs) + 16.0 / 46.0 * zfact * 2.0 * xtemp23
+            tr(ji,jj,jk,jpgon,Krhs) = tr(ji,jj,jk,jpgon,Krhs) + zfact * xtemp23
+            tr(ji,jj,jk,jpgop,Krhs) = tr(ji,jj,jk,jpgop,Krhs) + 16.0 / 46.0 * zfact * xtemp23
          END_3D
          !
       ENDIF
@@ -326,8 +298,6 @@ CONTAINS
          CALL prt_ctl_info( charout, cdcomp = 'top' )
          CALL prt_ctl(tab4d_1=tr(:,:,:,:,Krhs), mask1=tmask, clinfo=ctrcnm)
       ENDIF
-      !
-      IF( ln_p5z )    DEALLOCATE( ztrpo4, ztrdop )
       !
       IF( ln_timing )  CALL timing_stop('p4z_sed')
       !
@@ -377,6 +347,9 @@ CONTAINS
       r1_rday  = 1. / rday
       !
       lk_sed = ln_sediment .AND. ln_sed_2way 
+      !
+      xtemp13 = 1.0 / 3.0
+      xtemp23 = xtemp13 * xtemp13
       !
       nitrpot(:,:,jpk) = 0._wp   ! define last level for iom_put
       !

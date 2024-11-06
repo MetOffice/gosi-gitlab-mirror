@@ -97,12 +97,14 @@ CONTAINS
       REAL(wp) ::   zdenom, zratio, zironmin, zbactno3, zbactnh4
       REAL(wp) ::   zconc1d, zconc1dnh4, zconc0n, zconc0nnh4   
       REAL(wp) ::   fananof, fadiatf, znutlim, zfalim
+      REAL(wp) ::   zsizen, zsized, zconcnfe, zconcdfe
       REAL(wp) ::   znutlimtot, zlimno3, zlimnh4, zbiron
       !!---------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('p4z_lim')
       !
       sizena(:,:,:) = 1.0  ;  sizeda(:,:,:) = 1.0
+      logsizen(:,:,:) = LOG( sizen(:,:,:) )  ;   logsized(:,:,:) = LOG(sized(:,:,:) )      
       !
       DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
          
@@ -113,13 +115,15 @@ CONTAINS
          z1_trbphy   = 1. / ( tr(ji,jj,jk,jpphy,Kbb) + rtrn )
          z1_trbdia   = 1. / ( tr(ji,jj,jk,jpdia,Kbb) + rtrn )
 
-         concnfe(ji,jj,jk) = concnfer * sizen(ji,jj,jk)**0.81
-         zconc0n           = concnno3 * sizen(ji,jj,jk)**0.81
-         zconc0nnh4        = concnnh4 * sizen(ji,jj,jk)**0.81
+         zsizen            = EXP(logsizen(ji,jj,jk)*0.81)
+         concnfe(ji,jj,jk) = concnfer * zsizen
+         zconc0n           = concnno3 * zsizen
+         zconc0nnh4        = concnnh4 * zsizen
 
-         concdfe(ji,jj,jk) = concdfer * sized(ji,jj,jk)**0.81 
-         zconc1d           = concdno3 * sized(ji,jj,jk)**0.81 
-         zconc1dnh4        = concdnh4 * sized(ji,jj,jk)**0.81  
+         zsized            = EXP(logsized(ji,jj,jk)*0.81)
+         concdfe(ji,jj,jk) = concdfer * zsized
+         zconc1d           = concdno3 * zsized
+         zconc1dnh4        = concdnh4 * zsized
 
           ! Computation of the optimal allocation parameters
           ! Based on the different papers by Pahlow et al., and 
