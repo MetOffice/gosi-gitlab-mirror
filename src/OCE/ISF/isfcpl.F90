@@ -281,7 +281,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       !
       ! Julpal --Check  
-      IF(lwp) write(numout,*)'isfcpl_tr -- ', cdtype,' running on kjpt variables'
+      IF(lwp) write(numout,*)'isfcpl_tr -- ', cdtype,' running on ', kjpt,' variables'
       IF(lwp) write(numout,*)''
       !
       CALL iom_get( numror, jpdom_auto, 'tmask'  , ztmask_b   ) ! need to extrapolate T/S
