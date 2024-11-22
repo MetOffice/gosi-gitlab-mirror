@@ -59,6 +59,9 @@ MODULE isfcpl
       INTEGER                    ::   ngb    ! 0/1 (valid location or not (ie on halo or no neigbourg))
    END TYPE
 #endif
+   !!---------------------------------------------------------------------
+   INTEGER, PUBLIC :: id
+   !!---------------------------------------------------------------------
    !
    !! * Substitutions
 #  include "do_loop_substitute.h90"
@@ -84,8 +87,6 @@ CONTAINS
       !!
       !!---------------------------------------------------------------------
       INTEGER, INTENT(in) :: Kbb, Kmm, Kaa      ! ocean time level indices
-      !!---------------------------------------------------------------------
-      INTEGER :: id
       !!----------------------------------------------------------------------
       !
       ! start on an euler time step
@@ -278,6 +279,10 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj,jpk)      :: ztmask1, zwmaskb, ztmp3d
       REAL(wp), DIMENSION(jpi,jpj,jpk,kjpt) :: zpt0
       !!----------------------------------------------------------------------
+      !
+      ! Julpal --Check  
+      IF(lwp) write(numout,*)'isfcpl_tr -- ', cdtype,' running on kjpt variables'
+      IF(lwp) write(numout,*)''
       !
       CALL iom_get( numror, jpdom_auto, 'tmask'  , ztmask_b   ) ! need to extrapolate T/S
       !CALL iom_get( numror, jpdom_auto, 'wmask'  , zwmask_b  ) ! need to extrapolate T/S
