@@ -238,8 +238,10 @@ CONTAINS
       !!----------------------------------------------------------------------
       USE trcrst          ! passive tracers restart
       USE trcdta          ! initialisation from files
+#if defined key_isf      
       USE isfcpl,      ONLY: isfcpl_tr, isfcpl_cons, id ! extend into new opened cells.
       USE isf_oce,     ONLY: ln_isfcpl, ln_isfcpl_cons  ! ice-shelves module switch
+#endif
 
       !
       INTEGER, INTENT(in) :: Kbb, Kmm, Kaa   ! time level index
@@ -252,6 +254,7 @@ CONTAINS
         !
         CALL trc_rst_read( Kbb, Kmm )
         !
+#if defined key_isf        
         !!=====================
         !! ice-shelves coupling -- 
         !!     filling ice freed, newly opened-or closed- cells 
@@ -275,7 +278,7 @@ CONTAINS
               IF(lwp) WRITE(numout,*) ' trcini -- isfcpl_cons done '
            ENDIF !! id
         ENDIF  !! ln_isfcpl
-
+#endif
       ELSE                             ! Initialisation of tracer from a file that may also be used for damping
         IF( ln_trcdta .AND. nb_trcdta > 0 ) THEN
             ! update passive tracers arrays with input data read from file
