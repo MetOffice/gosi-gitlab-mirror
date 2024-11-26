@@ -27,7 +27,8 @@ MODULE trcini
    USE trcbc           ! generalized Boundary Conditions
    USE trcais          ! tracers from Antartic Ice Sheet
    USE trcbdy          ! passive-tracer open boundary conditions
- 
+   USE in_out_manager  ! I/O manager
+
    IMPLICIT NONE
    PRIVATE
    
@@ -237,8 +238,9 @@ CONTAINS
       !!----------------------------------------------------------------------
       USE trcrst          ! passive tracers restart
       USE trcdta          ! initialisation from files
-      USE isfcpl                                   ! extend into new opened cells.
-      USE isf_oce, ONLY: ln_isfcpl, ln_isfcpl_cons  ! ice-shelves module switch
+      USE isfcpl,      ONLY: isfcpl_tr, isfcpl_cons, id ! extend into new opened cells.
+      USE isf_oce,     ONLY: ln_isfcpl, ln_isfcpl_cons  ! ice-shelves module switch
+
       !
       INTEGER, INTENT(in) :: Kbb, Kmm, Kaa   ! time level index
       INTEGER             :: jn, jl          ! dummy loop indices
@@ -250,11 +252,30 @@ CONTAINS
         !
         CALL trc_rst_read( Kbb, Kmm )
         !
-        IF( ln_isfcpl ) CALL isfcpl_tr(Kmm, 'TRC', tr, jptra)
-        !         !
-        ! apply the 'conservation' method
-        IF ( ln_isfcpl_cons ) CALL isfcpl_cons(Kmm,'TRC', tr, jptra)
-        !
+        !!=====================
+        !! ice-shelves coupling -- 
+        !!     filling ice freed, newly opened-or closed- cells 
+        IF( ln_isfcpl ) THEN
+           IF(lwp) WRITE(numout,*) ' trcini -- in isfcpl loop -- id = ', id
+           IF (id == 0) THEN
+              IF(lwp) WRITE(numout,*) ' trc_ini_state: restart variables for ice sheet coupling are missing, skip coupling for this leg '
+              IF(lwp) WRITE(numout,*) ' ~~~~~~~~~~~'
+              IF(lwp) WRITE(numout,*) ' '
+           ELSE
+              !! run isfcpl.
+              !! but first - check the inventory before, just to make sure all is OK
+              CALL trc_ini_inv( Kmm ) !! check no NaNs before isfcpl_tr call 
+              CALL flush(numout)
+              CALL isfcpl_tr(Kmm, 'TRC', tr, jptra)
+              IF(lwp) WRITE(numout,*) ' trcini -- isfcpl_tr done'
+              !         !
+              ! apply the 'conservation' method
+              IF(lwp) WRITE(numout,*) ' trcini -- isfcpl_cons starts '
+              IF ( ln_isfcpl_cons ) CALL isfcpl_cons(Kmm,'TRC', tr, jptra)
+              IF(lwp) WRITE(numout,*) ' trcini -- isfcpl_cons done '
+           ENDIF !! id
+        ENDIF  !! ln_isfcpl
+
       ELSE                             ! Initialisation of tracer from a file that may also be used for damping
         IF( ln_trcdta .AND. nb_trcdta > 0 ) THEN
             ! update passive tracers arrays with input data read from file
