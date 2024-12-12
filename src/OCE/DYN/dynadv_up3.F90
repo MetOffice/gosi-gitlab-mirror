@@ -33,7 +33,7 @@ MODULE dynadv_up3
    REAL(wp), PARAMETER :: gamma1 = 1._wp/3._wp  ! =1/4 quick      ; =1/3  3rd order UBS
    REAL(wp), PARAMETER :: gamma2 = 1._wp/32._wp ! =0   2nd order  ; =1/32 4th order centred
 #if defined key_RK3
-   REAL(wp), PUBLIC, PARAMETER :: pp_stb_thres_dynup3 = 1.25_wp  ! starting Courant number threshold for adaptive implicit vertical advection
+   REAL(wp), PUBLIC, PARAMETER :: pp_stb_thres_dynup3 = 1.35_wp  ! starting Courant number threshold for adaptive implicit vertical advection
    REAL(wp), PUBLIC, PARAMETER :: pp_stb_cstra_dynup3 = 1.60_wp  ! stability constraint for up3 with RK3 (=1.626 in Lemarie et al 2015)
 #else
    REAL(wp), PUBLIC, PARAMETER :: pp_stb_thres_dynup3 = 0.15_wp  ! starting Courant number threshold for adaptive implicit vertical advection
@@ -115,7 +115,7 @@ CONTAINS
                &     CALL ctl_stop('STOP','dynadv_up3: put all the 2 arguments both (pUe, pVe) or none of them' )
          ENDIF
       ENDIF
-      !                             ! RK3: check the presence of 3D advective transport 
+      !                             ! RK3: check the presence of 3D advective transport
       !
       IF( l_trddyn ) THEN           ! trends: send trend to trddyn for diagnostic  
          ALLOCATE( zu_trd(T2D(0),jpk), zv_trd(T2D(0),jpk) )
