@@ -246,32 +246,21 @@ CONTAINS
       IF ( rn_iso_frac - zepsilon > 0. ) THEN
          ! Search for a uniform density/temperature region where adjacent levels          
          ! differ by less than rn_iso_frac * deltaT.                                      
-         ! ik_iso is the index of the last level in the uniform layer  
-         ! ll_found indicates whether the mixed layer depth can be found by interpolation 
-         ik_iso(:,:)   = ik_ref(:,:) 
+         ! ik_iso is the index of the last level in the uniform layer
+         ik_iso(:,:) = ik_ref(:,:)
          DO jj = 1, jpj      ! Changed from nlcj
             DO ji = 1, jpi   ! Changed from nlci
 !CDIR NOVECTOR 
                DO jk = ik_ref(ji,jj), ikmt(ji,jj)-1 
                   IF ( zmoddT(ji,jj,jk) > ( rn_iso_frac * zdelta_T(ji,jj) ) ) THEN 
-                     ik_iso(ji,jj)   = jk 
-                     ll_found(ji,jj) = ( zmoddT(ji,jj,jk) > zdelta_T(ji,jj) ) 
-                     EXIT 
+                     ik_iso(ji,jj) = jk
+                     zT_ref(ji,jj) = zT(ji,jj,jk)          ! Update the reference temperature/density
+                     EXIT
                   END IF 
                END DO 
             END DO 
          END DO 
-
-         ! Use linear interpolation to find depth of mixed layer base where possible 
-         hmld_zint(:,:) = rn_zref 
-         DO jj = 1, jpj 
-            DO ji = 1, jpi 
-               IF (ll_found(ji,jj) .and. tmask(ji,jj,1) == 1.0) THEN 
-                  zdz =  abs( zdelta_T(ji,jj) / zdTdz(ji,jj,ik_iso(ji,jj)) ) 
-                  hmld_zint(ji,jj) = gdept(ji,jj,ik_iso(ji,jj),Kmm) + zdz 
-               END IF 
-            END DO 
-         END DO 
+         ik_ref(:,:) = ik_iso(:,:)                         ! Update the reference level
       END IF
 
       ! If ll_found = .false. then calculate MLD using difference of zdelta_T    
