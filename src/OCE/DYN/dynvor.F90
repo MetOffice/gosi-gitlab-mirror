@@ -137,7 +137,7 @@ CONTAINS
          END SELECT
          ztrdu(:,:,:) = puu(:,:,:,Krhs) - ztrdu(:,:,:)
          ztrdv(:,:,:) = pvv(:,:,:,Krhs) - ztrdv(:,:,:)
-         CALL trd_dyn( ztrdu, ztrdv, jpdyn_pvo, kt, Kmm )
+         CALL trd_dyn( ztrdu, ztrdv, jpdyn_pvo_save, kt, Kmm )
          !
          IF( n_dynadv /= np_LIN_dyn ) THEN   !* relative vorticity or metric trend (only in non-linear case)
             ztrdu(:,:,:) = puu(:,:,:,Krhs)

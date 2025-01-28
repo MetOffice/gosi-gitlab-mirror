@@ -183,10 +183,15 @@ CONTAINS
          IF( ln_KE_trd  )   CALL trd_dyn( puu(:,:,:,Kaa), pvv(:,:,:,Kaa), jpdyn_ken, kt, Kmm )
          !
          IF( ln_dyn_trd ) THEN              ! 3D output: total momentum trends
-            zua(:,:,:) = ( puu(:,:,:,Kaa) - puu(:,:,:,Kbb) ) * r1_Dt
-            zva(:,:,:) = ( pvv(:,:,:,Kaa) - pvv(:,:,:,Kbb) ) * r1_Dt
-            CALL iom_put( "utrd_tot", zua )        ! total momentum trends, except the asselin time filter
-            CALL iom_put( "vtrd_tot", zva )
+            IF( ln_linssh ) THEN
+               zua(:,:,:) = ( puu(:,:,:,Kaa) - puu(:,:,:,Kbb) ) * r1_Dt
+               zva(:,:,:) = ( pvv(:,:,:,Kaa) - pvv(:,:,:,Kbb) ) * r1_Dt
+            ELSE
+               zua(:,:,:) = ( pe3u(:,:,:,Kaa)*puu(:,:,:,Kaa) - pe3u(:,:,:,Kbb)*puu(:,:,:,Kbb) ) * r1_Dt / pe3u(:,:,:,Kmm)
+               zva(:,:,:) = ( pe3v(:,:,:,Kaa)*pvv(:,:,:,Kaa) - pe3v(:,:,:,Kbb)*pvv(:,:,:,Kbb) ) * r1_Dt / pe3v(:,:,:,Kmm)
+            ENDIF
+            CALL trd_dyn( zua, zva, jpdyn_tot, kt, Kmm, Kaa)  ! total momentum trends, except the asselin time filter
+
          ENDIF
          !
          zua(:,:,:) = puu(:,:,:,Kmm)             ! save the now velocity before the asselin filter

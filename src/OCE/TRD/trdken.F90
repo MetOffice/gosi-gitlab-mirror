@@ -196,29 +196,31 @@ CONTAINS
       !! 
       !! ** Work only for full steps and partial steps (ln_hpg_zco or ln_hpg_zps)
       !!---------------------------------------------------------------------- 
-      INTEGER                   , INTENT(in   ) ::   kt      ! ocean time-step index
-      INTEGER                   , INTENT(in   ) ::   Kmm     ! time level index
-      REAL(wp), DIMENSION(:,:,:), INTENT(  out) ::   pconv   ! 
+      INTEGER                         , INTENT(in   ) ::   kt      ! ocean time-step index
+      INTEGER                         , INTENT(in   ) ::   Kmm     ! time level index
+      REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(inout) ::   pconv   !
       !
       INTEGER  ::   ji, jj, jk   ! dummy loop indices
       INTEGER  ::   iku, ikv     ! local integers
       REAL(wp) ::   zcoef        ! local scalars
-      REAL(wp), DIMENSION(jpi,jpj,jpk) ::  zconv  ! 3D workspace
+      REAL(wp), DIMENSION(A2D(0),jpk) ::  zconv  ! 3D workspace
       !!----------------------------------------------------------------------
       !
       ! Local constant initialization 
       zcoef = - rho0 * grav * 0.5_wp      
       
       !  Surface value (also valid in partial step case)
-      zconv(:,:,1) = zcoef * ( 2._wp * rhd(:,:,1) ) * ww(:,:,1) * e3w(:,:,1,Kmm)
+      DO_2D( 0, 0, 0, 0 )
+         zconv(ji,jj,1) = zcoef * ( 2._wp * rhd(ji,jj,1) ) * ww(ji,jj,1) * e3w(ji,jj,1,Kmm)
+      END_2D
 
       ! interior value (2=<jk=<jpkm1)
-      DO jk = 2, jpk
-         zconv(:,:,jk) = zcoef * ( rhd(:,:,jk) + rhd(:,:,jk-1) ) * ww(:,:,jk) * e3w(:,:,jk,Kmm)
-      END DO
+      DO_3D( 0, 0, 0, 0, 2, jpk )
+         zconv(ji,jj,jk) = zcoef * ( rhd(ji,jj,jk) + rhd(ji,jj,jk-1) ) * ww(ji,jj,jk) * e3w(ji,jj,jk,Kmm)
+      END_3D
 
       ! conv value on T-point
-      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1 )
+      DO_3D( 0, 0, 0, 0, 1, jpkm1 )
          zcoef = 0.5_wp / e3t(ji,jj,jk,Kmm)
          pconv(ji,jj,jk) = zcoef * ( zconv(ji,jj,jk) + zconv(ji,jj,jk+1) ) * tmask(ji,jj,jk)
       END_3D

@@ -188,7 +188,17 @@ CONTAINS
          pva(ji,jj,ikbv) = pva(ji,jj,ikbv) + MAX(  zCdv , zm1_2dt  ) * pvb(ji,jj,ikbv)
       END_2D
       !
+      IF( l_trddyn ) THEN      ! trends: send trends to trddyn for further diagnostics
+         ztrdu(:,:,:) = pua(:,:,:) - ztrdu(:,:,:)
+         ztrdv(:,:,:) = pva(:,:,:) - ztrdv(:,:,:)
+         CALL trd_dyn( ztrdu(:,:,:), ztrdv(:,:,:), jpdyn_bfre, kt, Kmm)
+      ENDIF
+      !
       IF( ln_isfcav ) THEN        ! ocean cavities
+         IF( l_trddyn ) THEN      ! trends: store the input trends
+            ztrdu(:,:,:) = pua(:,:,:)
+            ztrdv(:,:,:) = pva(:,:,:)
+         ENDIF
          DO_2D( 0, 0, 0, 0 )
             ikbu = miku(ji,jj)          ! first wet ocean u- & v-levels
             ikbv = mikv(ji,jj)
@@ -200,14 +210,14 @@ CONTAINS
             pua(ji,jj,ikbu) = pua(ji,jj,ikbu) + MAX(  zCdu , zm1_2dt  ) * pub(ji,jj,ikbu)
             pva(ji,jj,ikbv) = pva(ji,jj,ikbv) + MAX(  zCdv , zm1_2dt  ) * pvb(ji,jj,ikbv)
          END_2D
+         IF( l_trddyn ) THEN      ! trends: send trends to trddyn for further diagnostics
+            ztrdu(:,:,:) = pua(:,:,:) - ztrdu(:,:,:)
+            ztrdv(:,:,:) = pva(:,:,:) - ztrdv(:,:,:)
+            CALL trd_dyn( ztrdu(:,:,:), ztrdv(:,:,:), jpdyn_tfre, kt, Kmm)
+         ENDIF
       ENDIF
+      IF( l_trddyn )  DEALLOCATE( ztrdu, ztrdv )
       !
-      IF( l_trddyn ) THEN      ! trends: send trends to trddyn for further diagnostics
-         ztrdu(:,:,:) = pua(:,:,:) - ztrdu(:,:,:)
-         ztrdv(:,:,:) = pva(:,:,:) - ztrdv(:,:,:)
-         CALL trd_dyn( ztrdu(:,:,:), ztrdv(:,:,:), jpdyn_bfr, kt, Kmm )
-         DEALLOCATE( ztrdu, ztrdv )
-      ENDIF
       !                                          ! print mean trends (used for debugging)
       IF(sn_cfctl%l_prtctl)   CALL prt_ctl( tab3d_1=pua, clinfo1=' bfr  - Ua: ', mask1=umask,               &
          &                                  tab3d_2=pva, clinfo2=       ' Va: ', mask2=vmask, clinfo3='dyn' )
