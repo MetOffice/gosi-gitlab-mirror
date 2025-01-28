@@ -24,6 +24,7 @@ MODULE iceupdate
    USE traqsr         ! add penetration of solar flux in the calculation of heat budget
    USE icectl         ! sea-ice: control prints
    USE zdfdrg  , ONLY : ln_drgice_imp
+   USE trd_oce , ONLY : l_trddyn         ! dynamics trends diagnostics
    !
    USE in_out_manager ! I/O manager
    USE iom            ! I/O manager library
@@ -388,6 +389,12 @@ CONTAINS
          !                                                   ! stresses at the ocean surface
          utau(ji,jj) = ( 1._wp - zat_u ) * utau_oce(ji,jj) + zat_u * zutau_ice
          vtau(ji,jj) = ( 1._wp - zat_v ) * vtau_oce(ji,jj) + zat_v * zvtau_ice
+         !
+         IF( l_trddyn ) THEN
+            uiceoc(ji,jj) = zat_u * zutau_ice
+            viceoc(ji,jj) = zat_v * zvtau_ice
+         ENDIF
+         !
       END_2D
       CALL lbc_lnk( 'iceupdate', utau, 'U', -1.0_wp, vtau, 'V', -1.0_wp )   ! lateral boundary condition
       !

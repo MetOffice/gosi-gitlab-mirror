@@ -125,7 +125,7 @@ CONTAINS
       IF( l_trddyn ) THEN      ! save the hydrostatic pressure gradient trends for momentum trend diagnostics
          ztrdu(:,:,:) = puu(:,:,:,Krhs) - ztrdu(:,:,:)
          ztrdv(:,:,:) = pvv(:,:,:,Krhs) - ztrdv(:,:,:)
-         CALL trd_dyn( ztrdu, ztrdv, jpdyn_hpg, kt, Kmm )
+         CALL trd_dyn( ztrdu, ztrdv, jpdyn_hpg_save, kt, Kmm )
          DEALLOCATE( ztrdu , ztrdv )
       ENDIF
       !

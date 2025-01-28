@@ -23,6 +23,9 @@ MODULE bdydyn
    USE lbclnk          ! ocean lateral boundary conditions (or mpp link)
    USE in_out_manager  !
    USE domvvl          ! variable volume
+   USE trd_oce        ! trends: ocean variables
+   USE trddyn         ! trend manager: dynamics
+
 
    IMPLICIT NONE
    PRIVATE
@@ -52,7 +55,9 @@ CONTAINS
       !
       INTEGER ::   jk, ii, ij, ib_bdy, ib, igrd     ! Loop counter
       LOGICAL ::   ll_dyn2d, ll_dyn3d, ll_orlanski
+      REAL(wp), ALLOCATABLE,       DIMENSION(:,:,:) ::   ua_tmp, va_tmp     ! RDP: temporary save of 2d momentum
       REAL(wp), DIMENSION(jpi,jpj) :: zua2d, zva2d     ! after barotropic velocities
+      REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) :: zbdytrdu, zbdytrdv  ! bdy trends
       !!----------------------------------------------------------------------
       !
       ll_dyn2d = .true.
@@ -62,11 +67,25 @@ CONTAINS
          IF( dyn3d_only )   ll_dyn2d = .false.
       ENDIF
       !
+      IF ( l_trddyn ) THEN
+         IF ( ll_dyn3d ) THEN
+             ALLOCATE( zbdytrdu(jpi,jpj,jpk), zbdytrdv(jpi,jpj,jpk) )
+             zbdytrdu(:,:,:) = 0._wp
+             zbdytrdv(:,:,:) = 0._wp
+         ENDIF
+      ENDIF
+      !
       ll_orlanski = .false.
       DO ib_bdy = 1, nb_bdy
          IF ( cn_dyn2d(ib_bdy) == 'orlanski' .OR. cn_dyn2d(ib_bdy) == 'orlanski_npo' &
      &   .OR. cn_dyn3d(ib_bdy) == 'orlanski' .OR. cn_dyn3d(ib_bdy) == 'orlanski_npo')   ll_orlanski = .true.
       END DO
+
+      IF ( l_trddyn ) THEN
+         ALLOCATE( zbdytrdu(jpi,jpj,jpk), zbdytrdv(jpi,jpj,jpk) )
+         zbdytrdu(:,:,:) = puu(:,:,:,Kaa)
+         zbdytrdv(:,:,:) = pvv(:,:,:,Kaa)
+      ENDIF
 
       !-------------------------------------------------------
       ! Split velocities into barotropic and baroclinic parts
@@ -119,6 +138,13 @@ CONTAINS
             pvv(:,:,jk,Kbb) = ( pvv(:,:,jk,Kbb) + vv_b(:,:,Kbb) ) * vmask(:,:,jk)
          END DO
       END IF
+      !
+      IF ( l_trddyn ) THEN
+         zbdytrdu(:,:,:) = ( puu(:,:,:,Kaa) - zbdytrdu(:,:,:) ) * r1_Dt
+         zbdytrdv(:,:,:) = ( pvv(:,:,:,Kaa) - zbdytrdv(:,:,:) ) * r1_Dt
+         CALL trd_dyn( zbdytrdu, zbdytrdv, jpdyn_bdy, kt )
+         DEALLOCATE( zbdytrdu, zbdytrdv )
+      ENDIF
       !
    END SUBROUTINE bdy_dyn
 

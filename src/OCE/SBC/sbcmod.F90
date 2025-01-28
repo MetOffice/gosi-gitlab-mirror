@@ -56,6 +56,7 @@ MODULE sbcmod
    USE bdy_oce   , ONLY: ln_bdy
    USE usrdef_sbc     ! user defined: surface boundary condition
    USE closea         ! closed sea
+   USE trd_oce, ONLY: l_trddyn ! flag for dynamics trends diagnostics
    USE lbclnk         ! ocean lateral boundary conditions (or mpp link)
    !
    USE prtctl         ! Print control                    (prt_ctl routine)
@@ -409,7 +410,11 @@ CONTAINS
             rnf_b    (:,:  ) = rnf    (:,:  )
             rnf_tsc_b(:,:,:) = rnf_tsc(:,:,:)
          ENDIF
-        !
+         IF( l_trddyn .and. nn_ice == 2 ) THEN
+            uiceoc_b(:,:) = uiceoc(:,:)
+            viceoc_b(:,:) = viceoc(:,:)
+         ENDIF
+         !
       ENDIF
       !                                            ! ---------------------------------------- !
       !                                            !        forcing field computation         !
@@ -557,6 +562,11 @@ CONTAINS
             qns_b (:,:) = qns (:,:)
             emp_b (:,:) = emp (:,:)
             sfx_b (:,:) = sfx (:,:)
+         ENDIF
+         !
+         IF( l_trddyn .and. nn_ice == 2 ) THEN
+            uiceoc_b(:,:) = uiceoc(:,:)
+            viceoc_b(:,:) = viceoc(:,:)
          ENDIF
       ENDIF
       !                                                ! ---------------------------------------- !
