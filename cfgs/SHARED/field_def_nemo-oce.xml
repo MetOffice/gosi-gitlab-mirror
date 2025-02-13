@@ -481,6 +481,7 @@ that are available in the tidal-forcing implementation (see
       <field id="volcello"     long_name="Ocean Volume"                        standard_name="ocean_volume"                    unit="m3"    />
   
       <!-- additions to diawri.F90 -->
+      <field id="ke"          long_name="kinetic energy"  standard_name="specific_kinetic_energy_of_sea_water"   unit="m2/s2"     />
       <field id="eken"          long_name="kinetic energy"  standard_name="specific_kinetic_energy_of_sea_water"   unit="m2/s2"     />
   
       <!-- Case EOS = TEOS-10 : output potential temperature -->
