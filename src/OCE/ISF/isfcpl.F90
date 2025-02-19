@@ -36,7 +36,7 @@ MODULE isfcpl
    PRIVATE
 
    PUBLIC isfcpl_rst_write, isfcpl_init                    ! iceshelf restart read and write
-   PUBLIC isfcpl_ssh, isfcpl_tr, isfcpl_vol, isfcpl_cons  ! iceshelf correction for ssh, tra, dyn and conservation
+   PUBLIC isfcpl_ssh, isfcpl_tr, isfcpl_vol, isfcpl_cons   ! iceshelf correction for ssh, tra, dyn and conservation
 
    TYPE isfcons
       INTEGER                ::   ii     ! i global
@@ -46,7 +46,7 @@ MODULE isfcpl
       REAL(wp), DIMENSION(2) ::   dts    ! 1-heat increment; 2-salt increment
       REAL(wp)               ::   lon    ! lon
       REAL(wp)               ::   lat    ! lat
-      INTEGER                ::   ngb    ! 0/1 (valid location or not (ie on halo or no neigbourg))
+      INTEGER                ::   ngb    ! 0/1 (valid location or not (ie on halo or no neighbourg))
    END TYPE
 #if defined key_top
    TYPE isfconspt                            !! pt for Passive Tracers
@@ -56,7 +56,7 @@ MODULE isfcpl
       REAL(wp), DIMENSION(100)   ::   dpt    ! passive tracers increment !! jptra cannot be used there so set to 100
       REAL(wp)                   ::   lon    ! lon
       REAL(wp)                   ::   lat    ! lat
-      INTEGER                    ::   ngb    ! 0/1 (valid location or not (ie on halo or no neigbourg))
+      INTEGER                    ::   ngb    ! 0/1 (valid location or not (ie on halo or no neighbourg))
    END TYPE
 #endif
    !!---------------------------------------------------------------------
@@ -178,7 +178,7 @@ CONTAINS
       !!
       !! ** Purpose :   basic guess of ssh in new wet cell
       !!
-      !! ** Method  :   basic extrapolation from neigbourg cells
+      !! ** Method  :   basic extrapolation from neighbouring cells
       !!
       !!----------------------------------------------------------------------
       !!
@@ -194,7 +194,7 @@ CONTAINS
       CALL iom_get( numror, jpdom_auto, 'ssmask'  , zssmask_b   ) ! need to extrapolate T/S
 
       ! compute new ssh if we open a full water column
-      ! rude average of the closest neigbourgs (e1e2t not taking into account)
+      ! crude average of the closest neighbourgs (e1e2t not taking into account)
       !
       zssh(:,:)     = ssh(:,:,Kmm)
       zssmask0(:,:) = zssmask_b(:,:)
@@ -256,7 +256,7 @@ CONTAINS
       !!
       !! ** Purpose :   compute new tn, sn in case of evolving geometry of ice shelves
       !!
-      !! ** Method  :   tn, sn : basic extrapolation from neigbourg cells
+      !! ** Method  :   tn, sn : basic extrapolation from neighbouring cells
       !!
       !!----------------------------------------------------------------------
       INTEGER                                  , INTENT(in   ) ::   Kmm    ! ocean time level index
@@ -341,11 +341,11 @@ CONTAINS
                jip1=ji+1; jim1=ji-1;
                jjp1=jj+1; jjm1=jj-1;
                !
-               ! check if a wet neigbourg cell is present
+               ! check if a wet neighbouring cell is present
                zsummsk = ztmask0(jip1,jj  ,jk) + ztmask0(jim1,jj  ,jk) &
                        + ztmask0(ji  ,jjp1,jk) + ztmask0(ji  ,jjm1,jk)
                !
-               ! if neigbourg wet cell available at the same level
+               ! if neighbouring wet cell available at the same level
                IF ( zdmask(ji,jj) == 1._wp  .AND. zsummsk /= 0._wp ) THEN
                   !
                   ! horizontal basic extrapolation
@@ -359,14 +359,14 @@ CONTAINS
                   ! update mask for next pass
                   ztmask1(ji,jj,jk)=1
                   !
-               ! in case no neigbourg wet cell available at the same level
+               ! in case no neighbouring wet cell available at the same level
                ! check if a wet cell is available below
                ELSEIF (zdmask(ji,jj) == 1._wp .AND. zsummsk == 0._wp) THEN
                   !
                   ! vertical extrapolation if horizontal extrapolation failed
                   jkm1=max(1,jk-1) ; jkp1=min(jpk,jk+1)
                   !
-                  ! check if a wet neigbourg cell is present
+                  ! check if a wet neighbouring cell is present
                   zsummsk = ztmask0(ji,jj,jkm1) + ztmask0(ji,jj,jkp1)
                   IF (zdmask(ji,jj) == 1._wp .AND. zsummsk /= 0._wp ) THEN
                      DO jn = 1,kjpt
@@ -401,7 +401,7 @@ CONTAINS
       ! case we open a cell but no neigbour cells available to get an estimate of T and S
       IF( cdtype == 'TRA' ) THEN
          DO_3D( 0, 0, 0, 0, 1,jpk-1 )
-            IF (tmask(ji,jj,jk) == 1._wp .AND. pt(ji,jj,jk,2,Kmm) == 0._wp)              &
+            IF (tmask(ji,jj,jk) == 1._wp .AND. pt(ji,jj,jk,2,Kmm) == 0._wp)      &
                &   CALL ctl_stop('STOP', 'failing to fill all new weet cell,     &
                &                          try increase nn_drown or activate XXXX &
                &                         in your domain cfg computation'         )
@@ -513,7 +513,7 @@ CONTAINS
       !!                removed or added during the coupling processes (wet or dry new cell)
       !!
       !! ** Method  :   - compare volume/heat/salt before and after
-      !!                - look for the closest wet cells (share amoung neigbourgs if there are)
+      !!                - look for the closest wet cells (share amoung neighbourgs if there are)
       !!                - build the correction increment to applied at each time step
       !!
       !!----------------------------------------------------------------------
@@ -717,8 +717,8 @@ CONTAINS
                   !!
                   IF( cdtype == 'TRA' ) THEN
                      IF ( SUM( tmask(jim1:jip1,jjm1:jjp1,jk) ) > 0._wp ) THEN
-                        ! spread correction amoung neigbourg wet cells (horizontal direction first)
-                        ! as it is a rude correction corner and lateral cell have the same weight
+                        ! spread correction amoung neighbouring wet cells (horizontal direction first)
+                        ! as it is a crude correction corner and lateral cell have the same weight
                         !
                         z1_sum =  1._wp / SUM( tmask(jim1:jip1,jjm1:jjp1,jk) )
                         !
@@ -735,7 +735,7 @@ CONTAINS
                         IF (tmask(jip1,jjp1,jk) == 1) CALL update_isfpts(zisfpts, jisf, jip1, jjp1, jk, zdvol, zdpt, z1_sum)
                         !
                      ELSE IF ( tmask(ji,jj,jk+1) == 1._wp ) THEN
-                        ! spread correction amoung neigbourg wet cells (vertical direction)
+                        ! spread correction amoung neighbouring wet cells (vertical direction)
                         CALL update_isfpts(zisfpts, jisf, ji  , jj  , jk+1, zdvol, zdpt, 1.0_wp, 0)
                      ELSE
                         ! need to find where to put correction in later on
@@ -744,8 +744,8 @@ CONTAINS
 #if defined key_top
                   ELSEIF( cdtype == 'TRC' ) THEN
                       IF ( SUM( tmask(jim1:jip1,jjm1:jjp1,jk) ) > 0._wp ) THEN
-                        ! spread correction amoung neigbourg wet cells (horizontal direction first)
-                        ! as it is a rude correction corner and lateral cell have the same weight
+                        ! spread correction amoung neighbouring wet cells (horizontal direction first)
+                        ! as it is a crude correction corner and lateral cell have the same weight
                         !
                         z1_sum =  1._wp / SUM( tmask(jim1:jip1,jjm1:jjp1,jk) )
                         !
@@ -762,7 +762,7 @@ CONTAINS
                         IF (tmask(jip1,jjp1,jk) == 1) CALL update_isfptr(zisfptr, jisf, jip1, jjp1, jk, zdpt, z1_sum)
                         !
                      ELSE IF ( tmask(ji,jj,jk+1) == 1._wp ) THEN
-                        ! spread correction amoung neigbourg wet cells (vertical direction)
+                        ! spread correction amoung neighbouring wet cells (vertical direction)
                         CALL update_isfptr(zisfptr, jisf, ji  , jj  , jk+1, zdpt, 1.0_wp, 0)
                      ELSE
                         ! need to find where to put correction in later on
@@ -924,7 +924,7 @@ CONTAINS
       ! increment position
       kpts = kpts + 1
       !
-      ! define if we need to look for closest valid wet cell (no neighbours or neigbourg on halo)
+      ! define if we need to look for closest valid wet cell (no neighbours or neighbourg on halo)
       IF ( PRESENT(kfind) ) THEN
          ifind = kfind
       ELSE
@@ -945,7 +945,7 @@ CONTAINS
       !!                  ***  ROUTINE get_correction  ***
       !!
       !! ** Action : - Find the closest valid cell if needed (wet and not on the halo)
-      !!             - Scale the correction depending of pratio (case where multiple wet neigbourgs)
+      !!             - Scale the correction depending of pratio (case where multiple wet neighbourgs)
       !!             - Fill the correction array
       !!
       !!----------------------------------------------------------------------
@@ -1001,7 +1001,7 @@ CONTAINS
       ! increment position
       kpts = kpts + 1
       !
-      ! define if we need to look for closest valid wet cell (no neighbours or neigbourg on halo)
+      ! define if we need to look for closest valid wet cell (no neighbours or neighbourg on halo)
       IF ( PRESENT(kfind) ) THEN
          ifind = kfind
       ELSE
@@ -1023,7 +1023,7 @@ CONTAINS
       !!                  ***  ROUTINE get_correction  ***
       !!
       !! ** Action : - Find the closest valid cell if needed (wet and not on the halo)
-      !!             - Scale the correction depending of pratio (case where multiple wet neigbourgs)
+      !!             - Scale the correction depending of pratio (case where multiple wet neighbourgs)
       !!             - Fill the correction array
       !!
       !!----------------------------------------------------------------------
