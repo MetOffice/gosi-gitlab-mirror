@@ -53,7 +53,7 @@ MODULE isfcpl
       INTEGER                    ::   ii     ! i global
       INTEGER                    ::   jj     ! j global
       INTEGER                    ::   kk     ! k level
-      REAL(wp), DIMENSION(100)   ::   dpt    ! passive tracers increment !! jptra cannot be used there so set to 100
+      REAL(wp), DIMENSION(jptra)   ::   dpt    ! passive tracers increment !! jptra cannot be used there so set to jptra
       REAL(wp)                   ::   lon    ! lon
       REAL(wp)                   ::   lat    ! lat
       INTEGER                    ::   ngb    ! 0/1 (valid location or not (ie on halo or no neighbourg))
@@ -563,7 +563,7 @@ CONTAINS
          ALLOCATE( zdpt(kjpt))
 #if defined key_top
       ELSEIF( cdtype == 'TRC' ) THEN
-         ALLOCATE( zdpt(100))
+         ALLOCATE( zdpt(jptra))
       ENDIF
 #endif
 
@@ -992,7 +992,7 @@ CONTAINS
       !                                                                 ! or source location (kfind=1)
       INTEGER                   , INTENT(in   ), OPTIONAL :: kfind      ! 0  target cell already found
       !                                                                 ! 1  target to be determined
-      REAL(wp), DIMENSION(100)  , INTENT(in   )           :: pdtr       ! vol/sal/tem increment
+      REAL(wp), DIMENSION(jptra)  , INTENT(in   )           :: pdtr       ! vol/sal/tem increment
       REAL(wp),                   INTENT(in   )           :: pratio     ! and ratio in case increment span over multiple cells.
       !!----------------------------------------------------------------------
       INTEGER :: ifind, jn
@@ -1029,7 +1029,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER                   , INTENT(in) :: ki, kj, kk, kfind        ! target point indices
       REAL(wp)                  , INTENT(in) :: plon, plat               ! target point lon/lat
-      REAL(wp), DIMENSION(100)  , INTENT(in) :: ptrlinc                  ! correction increment for vol/temp/salt
+      REAL(wp), DIMENSION(jptra), INTENT(in) :: ptrlinc                  ! correction increment for vol/temp/salt
       !!----------------------------------------------------------------------
       INTEGER :: jj, ji, jn, iig, ijg
       !!----------------------------------------------------------------------

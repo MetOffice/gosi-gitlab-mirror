@@ -239,8 +239,7 @@ CONTAINS
       USE trcrst          ! passive tracers restart
       USE trcdta          ! initialisation from files
 #if defined key_isf      
-      USE isfcpl,      ONLY: isfcpl_tr, isfcpl_cons, id ! extend into new opened cells.
-      USE isf_oce,     ONLY: ln_isfcpl, ln_isfcpl_cons  ! ice-shelves module switch
+      USE isftrc_cpl,  ONLY: isftrc_cpl_init ! extend into new opened cells.
 #endif
 
       !
@@ -258,28 +257,13 @@ CONTAINS
         !!=====================
         !! ice-shelves coupling -- 
         !!     filling ice freed, newly opened-or closed- cells 
-        IF( ln_isfcpl ) THEN
-           IF(lwp) WRITE(numout,*) ' trcini -- in isfcpl loop -- id = ', id
-           IF (id == 0) THEN
-              IF(lwp) WRITE(numout,*) ' trc_ini_state: restart variables for ice sheet coupling are missing, skip coupling for this leg '
-              IF(lwp) WRITE(numout,*) ' ~~~~~~~~~~~'
-              IF(lwp) WRITE(numout,*) ' '
-           ELSE
-              !! run isfcpl.
-              !! but first - check the inventory before, just to make sure all is OK
-              CALL trc_ini_inv( Kmm ) !! check no NaNs before isfcpl_tr call 
-              CALL flush(numout)
-              CALL isfcpl_tr(Kmm, 'TRC', tr, jptra)
-              IF(lwp) WRITE(numout,*) ' trcini -- isfcpl_tr done'
-              !         !
-              ! apply the 'conservation' method
-              IF(lwp) WRITE(numout,*) ' trcini -- isfcpl_cons starts '
-              IF ( ln_isfcpl_cons ) CALL isfcpl_cons(Kmm,'TRC', tr, jptra)
-              IF(lwp) WRITE(numout,*) ' trcini -- isfcpl_cons done '
-           ENDIF !! id
-        ENDIF  !! ln_isfcpl
+        CALL trc_ini_inv( Kmm ) !! check no NaNs before isfcpl_tr call
+        !! 
+        CALL isftrc_cpl_init(Kbb,Kmm, Kaa)
+        !!
+        !!=====================
 #endif
-      ELSE                             ! Initialisation of tracer from a file that may also be used for damping
+      ELSE  ! Initialisation of tracer from a file that may also be used for damping
         IF( ln_trcdta .AND. nb_trcdta > 0 ) THEN
             ! update passive tracers arrays with input data read from file
             DO jn = 1, jptra
