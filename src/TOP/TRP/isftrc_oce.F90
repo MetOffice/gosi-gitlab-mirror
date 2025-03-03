@@ -15,7 +15,10 @@ MODULE isftrc_oce
    USE par_kind
    USE par_oce       , ONLY: jpi, jpj, jpk
    USE in_out_manager, ONLY: wp, jpts ! I/O manager
-   USE par_trc , ONLY : jptra
+   USE lib_mpp       , ONLY: ctl_stop, mpp_sum      ! MPP library
+   USE fldread        ! read input fields
+   USE isf_oce       , ONLY: ln_isfcpl_cons
+   USE par_trc       , ONLY: jptra
 
    IMPLICIT NONE
 
@@ -53,11 +56,17 @@ CONTAINS
       !!----------------------------------------------------------------------
       ierr = 0
       !
-      ALLOCATE( risfcpl_trc(jpi,jpj,jpk,jptra) , &
-         &      risfcpl_cons_trc(jpi,jpj,jpk,jptra) , STAT=ialloc )
+      ALLOCATE( risfcpl_trc(jpi,jpj,jpk,jptra) ,STAT=ialloc )
       ierr = ierr + ialloc
       !
-      risfcpl_trc(:,:,:,:) = 0._wp ; risfcpl_cons_trc(:,:,:,:) = 0._wp
+      risfcpl_trc(:,:,:,:) = 0._wp
+      !
+      IF ( ln_isfcpl_cons ) THEN
+         ALLOCATE( risfcpl_cons_trc(jpi,jpj,jpk,jptra), STAT=ialloc )
+         ierr = ierr + ialloc
+         !
+         risfcpl_cons_trc(:,:,:,:) = 0._wp
+      ENDIF
       !
       CALL mpp_sum ( 'isf', ierr )
       IF( ierr /= 0 )   CALL ctl_stop('STOP','isfcpl: failed to allocate arrays.')

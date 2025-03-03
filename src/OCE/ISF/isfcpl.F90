@@ -29,6 +29,7 @@ MODULE isfcpl
    !
 #if defined key_top
    USE par_trc , ONLY : jptra
+   USE isftrc_oce
 #endif
    !
    IMPLICIT NONE
@@ -39,26 +40,15 @@ MODULE isfcpl
    PUBLIC isfcpl_ssh, isfcpl_tr, isfcpl_vol, isfcpl_cons   ! iceshelf correction for ssh, tra, dyn and conservation
 
    TYPE isfcons
-      INTEGER                ::   ii     ! i global
-      INTEGER                ::   jj     ! j global
-      INTEGER                ::   kk     ! k level
-      REAL(wp)               ::   dvol   ! volume increment
-      REAL(wp), DIMENSION(2) ::   dts    ! 1-heat increment; 2-salt increment
-      REAL(wp)               ::   lon    ! lon
-      REAL(wp)               ::   lat    ! lat
-      INTEGER                ::   ngb    ! 0/1 (valid location or not (ie on halo or no neighbourg))
+      INTEGER                   ::   ii     ! i global
+      INTEGER                   ::   jj     ! j global
+      INTEGER                   ::   kk     ! k level
+      REAL(wp)                  ::   dvol   ! volume increment
+      REAL(wp), DIMENSION(jpts) ::   dts    ! 1-heat increment; 2-salt increment
+      REAL(wp)                  ::   lon    ! lon
+      REAL(wp)                  ::   lat    ! lat
+      INTEGER                   ::   ngb    ! 0/1 (valid location or not (ie on halo or no neighbourg))
    END TYPE
-#if defined key_top
-   TYPE isfconspt                            !! pt for Passive Tracers
-      INTEGER                    ::   ii     ! i global
-      INTEGER                    ::   jj     ! j global
-      INTEGER                    ::   kk     ! k level
-      REAL(wp), DIMENSION(jptra)   ::   dpt    ! passive tracers increment !! jptra cannot be used there so set to jptra
-      REAL(wp)                   ::   lon    ! lon
-      REAL(wp)                   ::   lat    ! lat
-      INTEGER                    ::   ngb    ! 0/1 (valid location or not (ie on halo or no neighbourg))
-   END TYPE
-#endif
    !!---------------------------------------------------------------------
    INTEGER, PUBLIC :: id
    !!---------------------------------------------------------------------
@@ -113,7 +103,7 @@ CONTAINS
          CALL isfcpl_ssh(Kbb, Kmm, Kaa)
          !
          ! extrapolation tracer properties
-         CALL isfcpl_tr(Kmm,'TRA',ts,2)
+         CALL isfcpl_tr(Kmm,'TRA',ts,jpts)
          !
          ! correction of the horizontal divergence and associated temp. and salt content flux
          ! Need to : - include in the cpl cons the risfcpl_vol/tsc contribution
@@ -121,7 +111,7 @@ CONTAINS
          CALL isfcpl_vol(Kmm)
          !
          ! apply the 'conservation' method
-         IF ( ln_isfcpl_cons ) CALL isfcpl_cons(Kmm,'TRA',ts,2)
+         IF ( ln_isfcpl_cons ) CALL isfcpl_cons(Kmm,'TRA',ts,jpts)
          !
       END IF
       !
@@ -261,7 +251,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER                                  , INTENT(in   ) ::   Kmm    ! ocean time level index
       CHARACTER(len=3)                         , INTENT(in   ) ::   cdtype ! =TRA or TRC (tracer indicator)
-      INTEGER                                  , INTENT(in   ) ::   kjpt   ! number of tracers = 2 (TRA) or jptra (TRC)
+      INTEGER                                  , INTENT(in   ) ::   kjpt   ! number of tracers = jpts (=2 - TRA) or jptra (TRC)
       REAL(wp), DIMENSION(jpi,jpj,jpk,kjpt,jpt), INTENT(inout) ::   pt     ! tracers and RHS of tracer equation
                                                                            ! pt is ts (TRA) or the tr array (TRC)
       !!----------------------------------------------------------------------
@@ -530,7 +520,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER, INTENT(in)             :: Kmm    ! ocean time level index
       CHARACTER(len=3), INTENT(in   ) :: cdtype ! =TRA or TRC (tracer indicator)
-      INTEGER         , INTENT(in   ) :: kjpt   ! number of tracers = 2 (TRA) or jptra (TRC)
+      INTEGER         , INTENT(in   ) :: kjpt   ! number of tracers = jpts (=2 - TRA) or jptra (TRC)
       REAL(wp), DIMENSION(jpi,jpj,jpk,kjpt,jpt), INTENT(inout) ::   pt
       !!----------------------------------------------------------------------
       INTEGER  ::   ji   , jj  , jk  , jn, jproc      ! loop index
@@ -908,14 +898,14 @@ CONTAINS
       !!----------------------------------------------------------------------
       !!----------------------------------------------------------------------
       TYPE(isfcons), DIMENSION(:), INTENT(inout) :: sisfpts
-      INTEGER,                     INTENT(inout) :: kpts
+      INTEGER                    , INTENT(inout) :: kpts
       !!----------------------------------------------------------------------
       INTEGER                , INTENT(in   )           :: ki, kj, kk      !    target location (kfind=0)
       !                                                                   ! or source location (kfind=1)
       INTEGER                , INTENT(in   ), OPTIONAL :: kfind           ! 0  target cell already found
       !                                                                   ! 1  target to be determined
-      REAL(wp), DIMENSION(2) , INTENT(in   )           :: pdts            ! vol/sal/tem increment
-      REAL(wp)               , INTENT(in   )           :: pdvol, pratio   ! vol/sal/tem increment
+      REAL(wp), DIMENSION(jpts) , INTENT(in   )        :: pdts            ! sal/tem increment
+      REAL(wp)                  , INTENT(in   )        :: pdvol, pratio   ! vol increment
       !                                                                   ! and ratio in case increment span over multiple cells.
       !!----------------------------------------------------------------------
       INTEGER :: ifind, jn
@@ -930,10 +920,6 @@ CONTAINS
       ELSE
          ifind = ( 1 - tmask_i(ki,kj) ) * tmask(ki,kj,kk)
       END IF
-      ! update T - S values
-      !DO jn = 1,2
-      !   pdts(jn) = pratio * pdts(jn)
-      !ENDDO
       !
       ! update isfpts structure
       sisfpts(kpts) = isfcons(mig(ki), mjg(kj), kk, pratio * pdvol, pratio * pdts, glamt(ki,kj), gphit(ki,kj), ifind )
@@ -951,8 +937,8 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER                 , INTENT(in) :: ki, kj, kk, kfind ! target point indices
       REAL(wp)                , INTENT(in) :: plon, plat        ! target point lon/lat
-      REAL(wp)                , INTENT(in) :: pvolinc           ! correction increment for vol/temp/salt
-      REAL(wp), DIMENSION(2)  , INTENT(in) :: ptslinc           ! correction increment for vol/temp/salt
+      REAL(wp)                , INTENT(in) :: pvolinc           ! correction increment for vol
+      REAL(wp),DIMENSION(jpts), INTENT(in) :: ptslinc           ! correction increment for temp/salt
       !!----------------------------------------------------------------------
       INTEGER :: jj, ji, jn, iig, ijg
       !!----------------------------------------------------------------------
@@ -973,82 +959,5 @@ CONTAINS
       END DO
 
    END SUBROUTINE get_correction
-   !
-#if defined key_top
-   SUBROUTINE update_isfptr(sisfpts, kpts, ki, kj, kk, pdtr, pratio, kfind)
-      !!---------------------------------------------------------------------
-      !!                  ***  ROUTINE update_isfpts  ***
-      !!
-      !! ** Purpose : if a cell become dry, we need to put the corrective increment elsewhere
-      !!
-      !! ** Action  : update the list of point
-      !!
-      !!----------------------------------------------------------------------
-      !!----------------------------------------------------------------------
-      TYPE(isfconspt), DIMENSION(:), INTENT(inout) :: sisfpts
-      INTEGER,                     INTENT(inout) :: kpts
-      !!----------------------------------------------------------------------
-      INTEGER                   , INTENT(in   )           :: ki, kj, kk !    target location (kfind=0)
-      !                                                                 ! or source location (kfind=1)
-      INTEGER                   , INTENT(in   ), OPTIONAL :: kfind      ! 0  target cell already found
-      !                                                                 ! 1  target to be determined
-      REAL(wp), DIMENSION(jptra)  , INTENT(in   )           :: pdtr       ! vol/sal/tem increment
-      REAL(wp),                   INTENT(in   )           :: pratio     ! and ratio in case increment span over multiple cells.
-      !!----------------------------------------------------------------------
-      INTEGER :: ifind, jn
-      !!----------------------------------------------------------------------
-      !
-      ! increment position
-      kpts = kpts + 1
-      !
-      ! define if we need to look for closest valid wet cell (no neighbours or neighbourg on halo)
-      IF ( PRESENT(kfind) ) THEN
-         ifind = kfind
-      ELSE
-         ifind = ( 1 - tmask_i(ki,kj) ) * tmask(ki,kj,kk)
-      END IF
-      !
-      ! update pass tracers values
-      !DO jn = 1,jptra
-      !   pdtr(jn) = pratio * pdtr(jn)
-      !ENDDO
-      !
-      ! update isfpts structure
-      sisfpts(kpts) = isfconspt(mig(ki), mjg(kj), kk, pratio * pdtr, glamt(ki,kj), gphit(ki,kj), ifind )
-      !
-   END SUBROUTINE update_isfptr
-   !
-   SUBROUTINE get_correction_pt( ki, kj, kk, plon, plat, ptrlinc, kfind)
-      !!---------------------------------------------------------------------
-      !!                  ***  ROUTINE get_correction  ***
-      !!
-      !! ** Action : - Find the closest valid cell if needed (wet and not on the halo)
-      !!             - Scale the correction depending of pratio (case where multiple wet neighbourgs)
-      !!             - Fill the correction array
-      !!
-      !!----------------------------------------------------------------------
-      INTEGER                   , INTENT(in) :: ki, kj, kk, kfind        ! target point indices
-      REAL(wp)                  , INTENT(in) :: plon, plat               ! target point lon/lat
-      REAL(wp), DIMENSION(jptra), INTENT(in) :: ptrlinc                  ! correction increment for vol/temp/salt
-      !!----------------------------------------------------------------------
-      INTEGER :: jj, ji, jn, iig, ijg
-      !!----------------------------------------------------------------------
-      !
-      ! define global indice of correction location
-      iig = ki ; ijg = kj
-      IF ( kfind == 1 ) CALL dom_ngb( plon, plat, iig, ijg,'T', kk)
-      !
-      ! fill the correction array
-      DO jj = mj0(ijg),mj1(ijg)
-         DO ji = mi0(iig),mi1(iig)
-            ! correct the vol_flx and corresponding heat/salt flx in the closest cell
-            DO jn = 1,jptra
-               risfcpl_cons_trc(ji,jj,kk,jn) =  risfcpl_cons_trc(ji,jj,kk,jn) + ptrlinc(jn)
-            ENDDO
-         END DO
-      END DO
-
-   END SUBROUTINE get_correction_pt
-#endif
    !
 END MODULE isfcpl

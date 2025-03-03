@@ -29,14 +29,14 @@ MODULE isftrc_cpl
    USE lib_mpp , ONLY : mpp_sum, mpp_max ! mpp routine
    !
    USE par_trc , ONLY : jptra
+   USE isftrc_oce
    !
-   USE isfcpl  , ONLY : isfcpl_tr, isfcpl_cons, id ! extend into new opened cells.
 
    IMPLICIT NONE
 
    PRIVATE
    !
-   PUBLIC isftrc_cpl_init                                  ! iceshelf restart read and write
+   PUBLIC isftrc_cpl_init, update_isfptr,get_correction_pt  ! iceshelf restart read and write
    !
    !!---------------------------------------------------------------------
    !
@@ -63,8 +63,7 @@ CONTAINS
       !!             - compute the T/S/vol correction increment to keep trend to 0
       !!
       !!---------------------------------------------------------------------
-      USE isf_cpl,     ONLY: isfcpl_tri, isfcpl_cons, id ! extend into new opened cells.
-      USE isf_oce,     ONLY: ln_isfcpl, ln_isfcpl_cons  ! ice-shelves module switch
+      USE isfcpl,      ONLY: isfcpl_tr, isfcpl_cons, id ! extend into new opened cells.
       !! 
       INTEGER, INTENT(in) :: Kbb, Kmm, Kaa      ! ocean time level indices
       !!----------------------------------------------------------------------
@@ -91,7 +90,6 @@ CONTAINS
          !IF ( ln_isfcpl_cons ) CALL isfcpl_cons(Kmm,'TRA',ts,2)
          !
          IF( ln_isfcpl ) THEN
-            IF(lwp) WRITE(numout,*) ' trcini -- in isfcpl loop -- id = ', id
             IF (id == 0) THEN
               IF(lwp) WRITE(numout,*) ' trc_ini_state: restart variables for ice sheet coupling are missing, skip coupling for this leg '
               IF(lwp) WRITE(numout,*) ' ~~~~~~~~~~~'
@@ -134,14 +132,14 @@ CONTAINS
       !!----------------------------------------------------------------------
       !!----------------------------------------------------------------------
       TYPE(isfconspt), DIMENSION(:), INTENT(inout) :: sisfpts
-      INTEGER,                     INTENT(inout) :: kpts
+      INTEGER                      , INTENT(inout) :: kpts
       !!----------------------------------------------------------------------
       INTEGER                   , INTENT(in   )           :: ki, kj, kk !    target location (kfind=0)
       !                                                                 ! or source location (kfind=1)
       INTEGER                   , INTENT(in   ), OPTIONAL :: kfind      ! 0  target cell already found
       !                                                                 ! 1  target to be determined
       REAL(wp), DIMENSION(100)  , INTENT(in   )           :: pdtr       ! vol/sal/tem increment
-      REAL(wp),                   INTENT(in   )           :: pratio     ! and ratio in case increment span over multiple cells.
+      REAL(wp)                  , INTENT(in   )           :: pratio     ! and ratio in case increment span over multiple cells.
       !!----------------------------------------------------------------------
       INTEGER :: ifind, jn
       !!----------------------------------------------------------------------
@@ -155,11 +153,6 @@ CONTAINS
       ELSE
          ifind = ( 1 - tmask_i(ki,kj) ) * tmask(ki,kj,kk)
       END IF
-      !
-      ! update pass tracers values
-      !DO jn = 1,jptra
-      !   pdtr(jn) = pratio * pdtr(jn)
-      !ENDDO
       !
       ! update isfpts structure
       sisfpts(kpts) = isfconspt(mig(ki), mjg(kj), kk, pratio * pdtr, glamt(ki,kj), gphit(ki,kj), ifind )
