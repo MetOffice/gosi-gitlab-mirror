@@ -28,7 +28,7 @@ MODULE isftrc_oce
    !
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:,:) ::   risfcpl_trc, risfcpl_cons_trc  !:
    !
-   TYPE isfconspt                            !! pt for Passive Tracers
+   TYPE, PUBLIC :: isfconspt                          !! pt for Passive Tracers
       INTEGER                             ::   ii     ! i global
       INTEGER                             ::   jj     ! j global
       INTEGER                             ::   kk     ! k level
