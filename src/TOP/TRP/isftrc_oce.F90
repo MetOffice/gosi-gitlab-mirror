@@ -29,13 +29,13 @@ MODULE isftrc_oce
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:,:) ::   risfcpl_trc, risfcpl_cons_trc  !:
    !
    TYPE isfconspt                            !! pt for Passive Tracers
-      INTEGER                    ::   ii     ! i global
-      INTEGER                    ::   jj     ! j global
-      INTEGER                    ::   kk     ! k level
-      REAL(wp), DIMENSION(jptra) ::   dpt    ! number of passive tracers increment
-      REAL(wp)                   ::   lon    ! lon
-      REAL(wp)                   ::   lat    ! lat
-      INTEGER                    ::   ngb    ! 0/1 (valid location or not (ie on halo or no neighbourg))
+      INTEGER                             ::   ii     ! i global
+      INTEGER                             ::   jj     ! j global
+      INTEGER                             ::   kk     ! k level
+      REAL(wp), ALLOCATABLE, DIMENSION(:) ::   dpt    ! number of passive tracers increment
+      REAL(wp)                            ::   lon    ! lon
+      REAL(wp)                            ::   lat    ! lat
+      INTEGER                             ::   ngb    ! 0/1 (valid location or not (ie on halo or no neighbourg))
    END TYPE
 
    !!----------------------------------------------------------------------
@@ -62,7 +62,7 @@ CONTAINS
       risfcpl_trc(:,:,:,:) = 0._wp
       !
       IF ( ln_isfcpl_cons ) THEN
-         ALLOCATE( risfcpl_cons_trc(jpi,jpj,jpk,jptra), STAT=ialloc )
+         ALLOCATE( risfcpl_cons_trc(jpi,jpj,jpk,jptra), isfconspt%dpt(jptra) STAT=ialloc )
          ierr = ierr + ialloc
          !
          risfcpl_cons_trc(:,:,:,:) = 0._wp
@@ -71,7 +71,7 @@ CONTAINS
       CALL mpp_sum ( 'isf', ierr )
       IF( ierr /= 0 )   CALL ctl_stop('STOP','isfcpl: failed to allocate arrays.')
       !
-   END SUBROUTINE isf_alloc_cpl
+   END SUBROUTINE isftrc_alloc_cpl
 
    
    SUBROUTINE isftrc_dealloc_cpl()
@@ -91,7 +91,7 @@ CONTAINS
       CALL mpp_sum ( 'isf', ierr )
       IF( ierr /= 0 )   CALL ctl_stop('STOP','isfcpl: failed to deallocate arrays.')
       !
-   END SUBROUTINE isf_dealloc_cpl
+   END SUBROUTINE isftrc_dealloc_cpl
 
    !!======================================================================
 END MODULE isftrc_oce
