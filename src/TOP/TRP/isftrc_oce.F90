@@ -62,7 +62,7 @@ CONTAINS
       risfcpl_trc(:,:,:,:) = 0._wp
       !
       IF ( ln_isfcpl_cons ) THEN
-         ALLOCATE( risfcpl_cons_trc(jpi,jpj,jpk,jptra), isfconspt%dpt(jptra) STAT=ialloc )
+         ALLOCATE( risfcpl_cons_trc(jpi,jpj,jpk,jptra), isfconspt%dpt(jptra), STAT=ialloc )
          ierr = ierr + ialloc
          !
          risfcpl_cons_trc(:,:,:,:) = 0._wp
