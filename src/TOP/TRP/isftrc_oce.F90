@@ -29,15 +29,13 @@ MODULE isftrc_oce
    !! Jpalm -- 12-03-2025 -- need a real parameter constant for
    !!          the array dimension in the structure bellow
    !!          the allocation does not work otherwise
-   INTEGER, PUBLIC, PARAMETER ::   jptrc   = jptra
-   !
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:,:) ::   risfcpl_trc, risfcpl_cons_trc  !:
    !
    TYPE, PUBLIC :: isfconspt                          !! pt for Passive Tracers
       INTEGER                             ::   ii     ! i global
       INTEGER                             ::   jj     ! j global
       INTEGER                             ::   kk     ! k level
-      REAL(wp), ALLOCATABLE, DIMENSION(jptrc) ::   dpt    ! number of passive tracers increment
+      REAL(wp), DIMENSION(jpmaxtrc)       ::   dpt    ! number of passive tracers
       REAL(wp)                            ::   lon    ! lon
       REAL(wp)                            ::   lat    ! lat
       INTEGER                             ::   ngb    ! 0/1 (valid location or not (ie on halo or no neighbourg))

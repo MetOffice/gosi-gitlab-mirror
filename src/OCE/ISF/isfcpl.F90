@@ -28,7 +28,7 @@ MODULE isfcpl
    USE lib_mpp , ONLY : mpp_sum, mpp_max ! mpp routine
    !
 #if defined key_top
-   USE par_trc , ONLY : jptra
+   USE par_trc , ONLY : jptra, jpmaxtrc
    USE isftrc_oce
 #endif
    !
@@ -391,7 +391,7 @@ CONTAINS
       ! case we open a cell but no neigbour cells available to get an estimate of T and S
       IF( cdtype == 'TRA' ) THEN
          DO_3D( 0, 0, 0, 0, 1,jpk-1 )
-            IF (tmask(ji,jj,jk) == 1._wp .AND. pt(ji,jj,jk,2,Kmm) == 0._wp)      &
+            IF (tmask(ji,jj,jk) == 1._wp .AND. pt(ji,jj,jk,jp_sal,Kmm) == 0._wp) &
                &   CALL ctl_stop('STOP', 'failing to fill all new weet cell,     &
                &                          try increase nn_drown or activate XXXX &
                &                         in your domain cfg computation'         )
@@ -553,10 +553,11 @@ CONTAINS
          ALLOCATE( zdpt(kjpt))
 #if defined key_top
       ELSEIF( cdtype == 'TRC' ) THEN
-         ALLOCATE( zdpt(jptra))
+         ALLOCATE( zdpt(jpmaxtrc)) !! needs jpmaxtrc to match the structure array dimension
       ENDIF
 #endif
-
+      ! init zdpt
+      zdpt(:) = 0.0
       !
       ! get restart variable
       CALL iom_get( numror, jpdom_auto, 'tmask'  , ztmask_b(:,:,:) ) ! need to extrapolate T/S
@@ -622,7 +623,7 @@ CONTAINS
          END DO
 #if defined key_top
      ELSEIF( cdtype == 'TRC' ) THEN
-        !! need the vol update as well :
+        !! need the vol update as well as done for T-S in isfcpl_vol() :
         risfcpl_trc(:,:,:,jn) = -risfcpl_vol(:,:,:) * pt(:,:,:,jn,Kmm)
         !!
         DO jk = 1,jpk-1
