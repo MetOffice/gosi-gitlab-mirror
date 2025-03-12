@@ -672,7 +672,6 @@ CONTAINS
 #if defined key_top
       ELSEIF( cdtype == 'TRC' ) THEN
          ALLOCATE(zisfptr(nisfl(narea)))
-         ALLOCATE(zisfptr%dpt(jptra))
          !!TYPE isfconspt (ii,jj,kk,dts(jptra),lon,lat,ngb)
          !! re-use zdpt. was use for risfcpl_cons_tsc calc - but is not needed anymore and has the correct dim
          zdpt(:) = -HUGE(1.0)
