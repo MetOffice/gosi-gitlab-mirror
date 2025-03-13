@@ -77,7 +77,7 @@ CONTAINS
       IF ( ln_isfdebug ) THEN
          IF( .NOT. l_istiled .OR. ntile == nijtile ) THEN                       ! Do only for the full domain
             DO jn = 1, jptra
-               CALL debug('trc_isf: tr(:,:,:,:,Krhs), ctrcnm(jn), ptr(:,:,:,1,Krhs))
+               CALL debug('trc_isf: tr(:,:,:,:,Krhs)', ctrcnm(jn), ptr(:,:,:,1,Krhs))
             END DO
          ENDIF
       END IF
@@ -109,4 +109,4 @@ CONTAINS
       !
    END SUBROUTINE trc_isf_cpl
    !
-END MODULE traisf
+END MODULE trcisf

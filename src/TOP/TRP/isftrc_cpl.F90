@@ -28,7 +28,7 @@ MODULE isftrc_cpl
    USE iom            ! I/O library
    USE lib_mpp , ONLY : mpp_sum, mpp_max ! mpp routine
    !
-   USE par_trc , ONLY : jptra
+   USE par_trc , ONLY : jptra, jpmaxtrc
    USE isftrc_oce
    !
 
@@ -138,7 +138,7 @@ CONTAINS
       !                                                                 ! or source location (kfind=1)
       INTEGER                   , INTENT(in   ), OPTIONAL :: kfind      ! 0  target cell already found
       !                                                                 ! 1  target to be determined
-      REAL(wp), DIMENSION(jptra), INTENT(in   )           :: pdtr       ! vol/sal/tem increment
+      REAL(wp), DIMENSION(jpmaxtrc), INTENT(in   )        :: pdtr       ! passive tracer increment
       REAL(wp)                  , INTENT(in   )           :: pratio     ! and ratio in case increment span over multiple cells.
       !!----------------------------------------------------------------------
       INTEGER :: ifind, jn
@@ -170,7 +170,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER                   , INTENT(in) :: ki, kj, kk, kfind        ! target point indices
       REAL(wp)                  , INTENT(in) :: plon, plat               ! target point lon/lat
-      REAL(wp), DIMENSION(jptra), INTENT(in) :: ptrlinc                  ! correction increment for vol/temp/salt
+      REAL(wp), DIMENSION(jpmaxtrc), INTENT(in) :: ptrlinc                  ! correction increment for vol/temp/salt
       !!----------------------------------------------------------------------
       INTEGER :: jj, ji, jn, iig, ijg
       !!----------------------------------------------------------------------

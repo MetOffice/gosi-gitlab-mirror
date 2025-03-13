@@ -18,7 +18,7 @@ MODULE isftrc_oce
    USE lib_mpp       , ONLY: ctl_stop, mpp_sum      ! MPP library
    USE fldread        ! read input fields
    USE isf_oce       , ONLY: ln_isfcpl_cons
-   USE par_trc       , ONLY: jptra
+   USE par_trc       , ONLY: jptra, jpmaxtrc
 
    IMPLICIT NONE
 
