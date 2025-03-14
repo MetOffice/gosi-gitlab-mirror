@@ -28,8 +28,9 @@ MODULE isfcpl
    USE lib_mpp , ONLY : mpp_sum, mpp_max ! mpp routine
    !
 #if defined key_top
-   USE par_trc , ONLY : jptra, jpmaxtrc
+   USE par_trc,    ONLY : jptra, jpmaxtrc
    USE isftrc_oce
+   USE isftrc_cpl, ONLY : update_isfptr, get_correction_pt
 #endif
    !
    IMPLICIT NONE
