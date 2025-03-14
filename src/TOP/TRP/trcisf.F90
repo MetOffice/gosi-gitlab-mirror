@@ -9,13 +9,13 @@ MODULE trcisf
    !!----------------------------------------------------------------------
    !!   trc_isf       : update the tracer trend at ocean surface
    !!----------------------------------------------------------------------
-   USE isf_oce                                     ! Ice shelf variables
+   USE isf_oce                                       ! Ice shelf variables
    USE isftrc_oce, ONLY : risfcpl_trc, risfcpl_cons_trc ! Ice shelf variables
    USE par_oce   , ONLY : nijtile, ntile, ntsi, ntei, ntsj, ntej
-   USE dom_oce                                     ! ocean space domain variables
+   USE dom_oce                                       ! ocean space domain variables
    USE isfutils  , ONLY : debug                      ! debug option
    USE timing    , ONLY : timing_start, timing_stop  ! Timing
-   USE in_out_manager                              ! I/O manager
+   USE in_out_manager                                ! I/O manager
    USE trc       , ONLY : ctrcnm
    USE par_trc   , ONLY : jptra
 
@@ -54,32 +54,30 @@ CONTAINS
       IF( .NOT. l_istiled .OR. ntile == 1 )  THEN                       ! Do only on the first tile
          IF( kt == nit000 ) THEN
             IF(lwp) WRITE(numout,*)
-            IF(lwp) WRITE(numout,*) 'trc_isf : Ice shelf -- passive tracer '
+            IF(lwp) WRITE(numout,*) 'trc_isf : Ice shelf -- passive tracer update '
             IF(lwp) WRITE(numout,*) '~~~~~~~ '
          ENDIF
       ENDIF
       !
-      ! ice sheet coupling case
-      IF ( ln_isfcpl ) THEN
-         !
-         ! Dynamical stability at start up after change in under ice shelf cavity geometry is achieve by correcting the divergence.
-         ! This is achieved by applying a volume flux in order to keep the horizontal divergence after remapping
-         ! the same as at the end of the latest time step. So correction need to be apply at nit000 (euler time step) and
-         ! half of it at nit000+1 (leap frog time step).
-         ! in accordance to this, the heat content flux due to injected water need to be added in the temperature and salt trend
-         ! at time step nit000 and nit000+1
-         IF ( kt == nit000  ) CALL trc_isf_cpl(Kmm, risfcpl_trc       , ptr(:,:,:,:,Krhs))
-         IF ( kt == nit000+1) CALL trc_isf_cpl(Kmm, risfcpl_trc*0.5_wp, ptr(:,:,:,:,Krhs))
-         !
-         ! ensure 0 trend due to unconservation of the ice shelf coupling
-         IF ( ln_isfcpl_cons ) CALL trc_isf_cpl(Kmm, risfcpl_cons_trc, ptr(:,:,:,:,Krhs))
-         !
-      END IF
+      ! ice sheet coupling case by default
       !
+      ! Dynamical stability at start up after change in under ice shelf cavity geometry is achieve by correcting the divergence.
+      ! This is achieved by applying a volume flux in order to keep the horizontal divergence after remapping
+      ! the same as at the end of the latest time step. So correction need to be apply at nit000 (euler time step) and
+      ! half of it at nit000+1 (leap frog time step).
+      ! in accordance to this, the heat content flux due to injected water need to be added in the temperature and salt trend
+      ! at time step nit000 and nit000+1
+      IF ( kt == nit000  ) CALL trc_isf_cpl(Kmm, risfcpl_trc       , ptr(:,:,:,:,Krhs))
+      IF ( kt == nit000+1) CALL trc_isf_cpl(Kmm, risfcpl_trc*0.5_wp, ptr(:,:,:,:,Krhs))
+      !!
+      !!----------------------
+      ! ensure 0 trend due to unconservation of the ice shelf coupling
+      IF ( ln_isfcpl_cons ) CALL trc_isf_cpl(Kmm, risfcpl_cons_trc, ptr(:,:,:,:,Krhs))
+      !!
       IF ( ln_isfdebug ) THEN
          IF( .NOT. l_istiled .OR. ntile == nijtile ) THEN                       ! Do only for the full domain
             DO jn = 1, jptra
-               CALL debug('trc_isf: tr(:,:,:,:,Krhs)', ctrcnm(jn), ptr(:,:,:,1,Krhs))
+               CALL debug('trc_isf: tr(:,:,:,:,Krhs)' ctrcnm(jn), ptr(:,:,:,1,Krhs))
             END DO
          ENDIF
       END IF
