@@ -46,7 +46,8 @@ CONTAINS
       INTEGER                                  , INTENT(in   ) :: Kmm, Krhs ! ocean time level indices
       REAL(dp), DIMENSION(jpi,jpj,jpk,jptra,jpt), INTENT(inout) :: ptr       ! passive tracers and RHS of tracer equation
       !!----------------------------------------------------------------------
-      INTEGER   :: jn    ! passive tracer indices
+      INTEGER       :: jn      ! passive tracer indices
+      CHARACTER(35) :: charout ! text for debug call
       !!----------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('trc_isf')
@@ -77,7 +78,8 @@ CONTAINS
       IF ( ln_isfdebug ) THEN
          IF( .NOT. l_istiled .OR. ntile == nijtile ) THEN                       ! Do only for the full domain
             DO jn = 1, jptra
-               CALL debug('trc_isf: tr(:,:,:,:,Krhs)' ctrcnm(jn), ptr(:,:,:,1,Krhs))
+               WRITE(charout,*) 'trc_isf: tr(:,:,:,:,Krhs )', trim(ctrcnm(jn))
+               CALL debug( trim(charout), ptr(:,:,:,jn,Krhs))
             END DO
          ENDIF
       END IF
