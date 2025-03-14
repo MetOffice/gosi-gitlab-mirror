@@ -122,7 +122,7 @@ CONTAINS
       ! salt
       IF( iom_use('icesalt' ) )   CALL iom_put( 'icesalt', sm_i(:,:)                 * zmsk00 )                               ! mean ice salinity
       IF( iom_use('icesalm' ) )   CALL iom_put( 'icesalm', st_i(:,:) * rhoi * 1.0e-3 * zmsk00 )                               ! Mass of salt in sea ice per cell area
-      IF( iom_use('iceepnd' ) )   CALL iom_put( 'iceepnd', SUM( a_ip_eff * a_i, dim=3 ) * zmsk00  )   
+      IF( iom_use('iceepnd' ) )   CALL iom_put( 'iceepnd', SUM( a_ip_eff(A2D(0),:) * a_i(A2D(0),:), dim=3 ) * zmsk00  )   
       ! heat
       IF( iom_use('icetemp' ) )   CALL iom_put( 'icetemp', ( tm_i (:,:) - rt0 ) * zmsk00 )                                    ! ice mean temperature
       IF( iom_use('snwtemp' ) )   CALL iom_put( 'snwtemp', ( tm_s (:,:) - rt0 ) * zmsksn )                                    ! snw mean temperature
