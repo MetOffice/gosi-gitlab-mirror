@@ -35,7 +35,7 @@ MODULE isftrc_cpl
 
    PRIVATE
    !
-   PUBLIC isftrc_cpl_init, update_isfptr,get_correction_pt  ! iceshelf restart read and write
+   PUBLIC update_isfptr,get_correction_pt  ! iceshelf restart read and write
    !
    !!---------------------------------------------------------------------
    !
