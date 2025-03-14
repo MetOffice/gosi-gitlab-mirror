@@ -12,13 +12,7 @@ MODULE isftrc_cpl
    !!   isfrst        : read/write iceshelf variables in/from restart
    !!----------------------------------------------------------------------
    USE oce            ! ocean dynamics and tracers
-#if defined key_qco
-   USE domqco  , ONLY : dom_qco_zgr      ! vertical scale factor interpolation
-#elif defined key_linssh
-   !                                     ! fix in time coordinate
-#else
-   USE domvvl  , ONLY : dom_vvl_zgr      ! vertical scale factor interpolation
-#endif
+   !
    USE domutl  , ONLY : dom_ngb          ! find the closest grid point from a given lon/lat position
    USE isf_oce        ! ice shelf variable
    USE isftrc_oce     ! trc shelf variable 
