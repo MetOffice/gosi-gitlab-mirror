@@ -288,6 +288,7 @@ CONTAINS
       !                                                         ! Partial top/bottom cell: GRADh(tr(Kmm))
    END SUBROUTINE trc_ini_state
 
+#if defined key_isf
    SUBROUTINE isftrc_cpl_init(Kbb, Kmm, Kaa)
       !!---------------------------------------------------------------------
       !!                   ***  ROUTINE iscpl_init  ***
@@ -360,6 +361,7 @@ CONTAINS
       !vv   (:,:,:,Kbb)   = vv   (:,:,:,Kmm)
       !ssh (:,:,Kbb)     = ssh (:,:,Kmm)
    END SUBROUTINE isftrc_cpl_init
+#endif
 
    SUBROUTINE top_alloc
       !!----------------------------------------------------------------------
