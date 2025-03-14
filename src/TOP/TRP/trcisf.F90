@@ -46,6 +46,8 @@ CONTAINS
       INTEGER                                  , INTENT(in   ) :: Kmm, Krhs ! ocean time level indices
       REAL(dp), DIMENSION(jpi,jpj,jpk,jptra,jpt), INTENT(inout) :: ptr       ! passive tracers and RHS of tracer equation
       !!----------------------------------------------------------------------
+      INTEGER   :: jn    ! passive tracer indices
+      !!----------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('trc_isf')
       !
@@ -98,7 +100,7 @@ CONTAINS
       INTEGER                               , INTENT(in   ) :: Kmm   ! ocean time level index
       REAL(wp), DIMENSION(jpi,jpj,jpk,jptra), INTENT(in   ) :: ptsc
       !!----------------------------------------------------------------------
-      INTEGER :: ji, jj, jk
+      INTEGER :: ji, jj, jk, jn
       !!----------------------------------------------------------------------
       !
       DO_3D( 0, 0, 0, 0, 1, jpk )
