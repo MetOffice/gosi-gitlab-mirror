@@ -30,7 +30,6 @@ MODULE isfcpl
 #if defined key_top
    USE par_trc,    ONLY : jptra, jpmaxtrc
    USE isftrc_oce
-   USE isftrc_cpl, ONLY : update_isfptr, get_correction_pt
 #endif
    !
    IMPLICIT NONE
@@ -510,7 +509,8 @@ CONTAINS
       !!----------------------------------------------------------------------
       !
 #if defined key_top
-      USE trc, ONLY : tr, ctrcnm
+      USE trc,        ONLY : tr, ctrcnm
+      USE isftrc_cpl, ONLY : update_isfptr, get_correction_pt
 #endif
       !!----------------------------------------------------------------------
       TYPE(isfcons)  , DIMENSION(:),ALLOCATABLE :: zisfpts ! list of point receiving a correction
