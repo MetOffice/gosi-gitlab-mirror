@@ -29,7 +29,7 @@ MODULE trcstp
 #if defined key_isf
    USE isf_oce,     ONLY : ln_isfcpl
    USE trcisf,      ONLY : trc_isf
-#if defined key_isf
+#endif
 
    IMPLICIT NONE
    PRIVATE
