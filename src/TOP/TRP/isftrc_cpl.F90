@@ -63,6 +63,7 @@ CONTAINS
       !!             - compute the T/S/vol correction increment to keep trend to 0
       !!
       !!---------------------------------------------------------------------
+      USE trc,         ONLY: tr
       USE isfcpl,      ONLY: isfcpl_tr, isfcpl_cons, id ! extend into new opened cells.
       !! 
       INTEGER, INTENT(in) :: Kbb, Kmm, Kaa      ! ocean time level indices
