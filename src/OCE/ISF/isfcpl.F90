@@ -50,8 +50,7 @@ MODULE isfcpl
       INTEGER                   ::   ngb    ! 0/1 (valid location or not (ie on halo or no neighbourg))
    END TYPE
    !!---------------------------------------------------------------------
-   INTEGER,           PUBLIC :: id
-   INTEGER, DIMENSION(jpnij) :: nisfl              ! local  number of cell concerned by the wet->dry case (for isfcpl_cons not duplicate the mpp_sum for TRA and TRC)
+   INTEGER, PUBLIC :: id
    !!---------------------------------------------------------------------
    !
    !! * Substitutions
@@ -532,7 +531,7 @@ CONTAINS
       INTEGER  ::   ingb, ifind                       ! 0/1 target found or need to be found
       INTEGER  ::   nisfl_area                        ! global number of cell concerned by the wet->dry case
       INTEGER  ::   ialloc
-      ! INTEGER, DIMENSION(jpnij) :: nisfl              ! local  number of cell concerned by the wet->dry case
+      INTEGER, DIMENSION(jpnij) :: nisfl              ! local  number of cell concerned by the wet->dry case
       !
       REAL(wp) ::   z1_sum, z1_rdtiscpl
       REAL(wp) ::   zdvol, zratio                     ! vol increment
@@ -657,25 +656,25 @@ CONTAINS
       !
       ! compute the total number of point receiving a correction increment for each processor
       ! local
-      IF( cdtype == 'TRA' ) THEN
-         nisfl(:)=0
-         DO jk = 1,jpk-1
-            DO jj = Njs0,Nje0
-               DO ji = Nis0,Nie0
-                  jip1=MIN(ji+1,jpi) ; jim1=MAX(ji-1,1) ; jjp1=MIN(jj+1,jpj) ; jjm1=MAX(jj-1,1) ;
-                  IF ( tmask(ji,jj,jk) == 0._wp .AND. ztmask_b(ji,jj,jk) == 1._wp ) THEN
-                     nisfl(narea) = nisfl(narea) + MAX(SUM(tmask(jim1:jip1,jjm1:jjp1,jk)),1._wp)
-                  ENDIF
-               ENDDO
+      nisfl(:)=0
+      DO jk = 1,jpk-1
+         DO jj = Njs0,Nje0
+            DO ji = Nis0,Nie0
+               jip1=MIN(ji+1,jpi) ; jim1=MAX(ji-1,1) ; jjp1=MIN(jj+1,jpj) ; jjm1=MAX(jj-1,1) ;
+               IF ( tmask(ji,jj,jk) == 0._wp .AND. ztmask_b(ji,jj,jk) == 1._wp ) THEN
+                  nisfl(narea) = nisfl(narea) + MAX(SUM(tmask(jim1:jip1,jjm1:jjp1,jk)),1._wp)
+               ENDIF
             ENDDO
          ENDDO
-         !
-         ! global
-         CALL mpp_sum('isfcpl',nisfl  )
-         !
-         IF(lwp) WRITE(numout,*) ' isfcpl_cons -- ',cdtype,' isfcpl nisfl = ',nisfl
-         CALL flush(numout)
-         !
+      ENDDO
+      !
+      ! global
+      CALL mpp_sum('isfcpl',nisfl  )
+      !
+      IF(lwp) WRITE(numout,*) ' isfcpl_cons -- ',cdtype,' isfcpl nisfl = ',nisfl
+      CALL flush(numout)
+      !
+      IF( cdtype == 'TRA' ) THEN
          ! allocate list of point receiving correction
          ALLOCATE(zisfpts(nisfl(narea)))
          !
