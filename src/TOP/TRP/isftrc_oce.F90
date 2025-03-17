@@ -14,7 +14,7 @@ MODULE isftrc_oce
    !!----------------------------------------------------------------------
    USE par_kind
    USE par_oce       , ONLY: jpi, jpj, jpk
-   USE in_out_manager, ONLY: wp, jpts ! I/O manager
+   USE in_out_manager
    USE lib_mpp       , ONLY: ctl_stop, mpp_sum      ! MPP library
    USE fldread        ! read input fields
    USE isf_oce       , ONLY: ln_isfcpl_cons
