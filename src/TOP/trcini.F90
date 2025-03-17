@@ -343,11 +343,13 @@ CONTAINS
               !CALL flush(numout)
               CALL isfcpl_tr(Kmm, 'TRC', tr, jptra)
               IF(lwp) WRITE(numout,*) ' trcini -- isfcpl_tr done'
+              CALL flush(numout)
               !         !
               ! apply the 'conservation' method
               IF(lwp) WRITE(numout,*) ' trcini -- isfcpl_cons starts '
               IF ( ln_isfcpl_cons ) CALL isfcpl_cons(Kmm,'TRC', tr, jptra)
               IF(lwp) WRITE(numout,*) ' trcini -- isfcpl_cons done '
+              CALL flush(numout)
             ENDIF !! id
          ENDIF  !! ln_isfcpl
 

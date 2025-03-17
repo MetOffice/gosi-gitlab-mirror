@@ -64,12 +64,21 @@ CONTAINS
       !
       risfcpl_trc(:,:,:,:) = 0._wp
       !
+      IF(lwp) WRITE(numout,*) ' isftrc_oce :  risfcpl_trc allocated'
+      IF(lwp) WRITE(numout,*) '            just before allocating ln_isfcpl_cons'
+      IF(lwp) WRITE(numout,*) ' '
+      CALL flush(numout)
+      !!
       IF ( ln_isfcpl_cons ) THEN
          ALLOCATE( risfcpl_cons_trc(jpi,jpj,jpk,jptra), STAT=ialloc )
          ierr = ierr + ialloc
          !
          risfcpl_cons_trc(:,:,:,:) = 0._wp
       ENDIF
+      !
+      IF(lwp) WRITE(numout,*) ' isftrc_oce :  risfcpl_cons_trc allocated'
+      IF(lwp) WRITE(numout,*) ' '
+      CALL flush(numout)
       !
       CALL mpp_sum ( 'isf', ierr )
       IF( ierr /= 0 )   CALL ctl_stop('STOP','isfcpl: failed to allocate arrays.')

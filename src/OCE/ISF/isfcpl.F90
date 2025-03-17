@@ -559,6 +559,8 @@ CONTAINS
 #endif
       ! init zdpt
       zdpt(:) = 0.0
+      IF(lwp) WRITE(numout,*) ' isfcpl_cons -- zdpt allocated and initialized'
+      CALL flush(numout)
       !
       ! get restart variable
       CALL iom_get( numror, jpdom_auto, 'tmask'  , ztmask_b(:,:,:) ) ! need to extrapolate T/S
@@ -594,6 +596,9 @@ CONTAINS
          risfcpl_cons_trc = 0.0
 #endif
       ENDIF
+      !
+      IF(lwp) WRITE(numout,*) ' isfcpl_cons -- ',cdtype,' risfcpl_cons_tr initialized'
+      CALL flush(numout)
 
       !==============================================================================
       ! 2.0: diagnose the heat, salt and volume input and compute the correction variable
@@ -641,6 +646,9 @@ CONTAINS
 #endif
       ENDIF
       !
+      IF(lwp) WRITE(numout,*) ' isfcpl_cons -- ',cdtype,' risfcpl_cons_tr filled'
+      CALL flush(numout)
+      !
       !==============================================================================
       ! 3.0: diagnose the heat, salt and volume input and compute the correction variable
       !      for case where we close a cell
@@ -682,6 +690,9 @@ CONTAINS
 #endif
       ENDIF
       !
+      IF(lwp) WRITE(numout,*) ' isfcpl_cons -- ',cdtype,' zisfpts/r initialized'
+      CALL flush(numout)
+      !
       !
       !
       ! start computing the correction and fill zisfpts
@@ -706,6 +717,10 @@ CONTAINS
                      ENDDO
 #endif
                   ENDIF
+                  !
+                  IF(lwp) WRITE(numout,*) ' isfcpl_cons -- ',cdtype,' correction calculations -- zdpt filled from risfcpl_cons_tr'
+                  IF(lwp) WRITE(numout,*) ' isfcpl_cons -- ',cdtype,' now will call update isfpt...'
+                  CALL flush(numout)
                   !!
                   IF( cdtype == 'TRA' ) THEN
                      IF ( SUM( tmask(jim1:jip1,jjm1:jjp1,jk) ) > 0._wp ) THEN
@@ -766,6 +781,10 @@ CONTAINS
             END DO
          END DO
       END DO
+      !
+      IF(lwp) WRITE(numout,*) ' isfcpl_cons -- ',cdtype,' update isfpt DONE'
+      IF(lwp) WRITE(numout,*) ' isfcpl_cons -- ',cdtype,' now will get_corrections'
+      CALL flush(numout)
       !
       ! share data among all processes because for some point we need to find the closest wet point (could be on other process)
       DO jproc=1,jpnij
@@ -853,6 +872,10 @@ CONTAINS
          END DO
       END DO
       !
+      IF(lwp) WRITE(numout,*) ' isfcpl_cons -- ',cdtype,' get_corrections DONE'
+      IF(lwp) WRITE(numout,*) ' isfcpl_cons -- ',cdtype,' finalize risfcpl_cons_trc '
+      CALL flush(numout)
+      !
       !==============================================================================
       ! 4.0: finalisation and compute ssh equivalent of the volume correction
       !==============================================================================
@@ -886,6 +909,9 @@ CONTAINS
          !
 #endif
       ENDIF
+      !
+      IF(lwp) WRITE(numout,*) ' isfcpl_cons -- ',cdtype,' CALL finished -- all done'
+      CALL flush(numout)
       !
    END SUBROUTINE isfcpl_cons
    !
