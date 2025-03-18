@@ -630,7 +630,9 @@ CONTAINS
 #if defined key_top
      ELSEIF( cdtype == 'TRC' ) THEN
         !! need the vol update as well as done for T-S in isfcpl_vol() :
-        risfcpl_trc(:,:,:,jn) = -risfcpl_vol(:,:,:) * pt(:,:,:,jn,Kmm)
+        DO jn = 1,kjpt
+           risfcpl_trc(:,:,:,jn) = -risfcpl_vol(:,:,:) * pt(:,:,:,jn,Kmm)
+        END DO
         !!
         DO jk = 1,jpk-1
             DO jj = Njs0,Nje0
