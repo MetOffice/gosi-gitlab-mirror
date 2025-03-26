@@ -718,10 +718,10 @@ that are available in the tidal-forcing implementation (see
   <field_group id="grid_U"   grid_ref="grid_U_2D">
     <field id="hu"            long_name="water column height at U point"                         standard_name="water_column_height_U"       unit="m" />
     <field id="e2u"           long_name="U-cell width in meridional direction"                   standard_name="cell_width"                  unit="m"                                 />
-    <field id="e3u"           long_name="U-cell thickness"                                       standard_name="cell_thickness"              unit="m"          grid_ref="grid_U_3D_inner"   />
+    <field id="e3u"           long_name="U-cell thickness"                                       standard_name="cell_thickness"              unit="m"          grid_ref="grid_T_3D_inner"   />
     <field id="e3u_0"         long_name="Initial U-cell thickness"                               standard_name="ref_cell_thickness"          unit="m"          grid_ref="grid_U_3D_inner"   />
-    <field id="uoce"          long_name="ocean current along i-axis"                             standard_name="sea_water_x_velocity"        unit="m/s"        grid_ref="grid_U_3D"   />
-    <field id="uoce_e3u"      long_name="ocean current along i-axis  (thickness weighted)"                                                   unit="m/s"        grid_ref="grid_U_3D"    > uoce * e3u </field>
+    <field id="uoce"          long_name="ocean current along i-axis"                             standard_name="sea_water_x_velocity"        unit="m/s"        grid_ref="grid_T_3D"   />
+    <field id="uoce_e3u"      long_name="ocean current along i-axis  (thickness weighted)"                                                   unit="m/s"        grid_ref="grid_T_3D"    > uoce * e3u </field>
     <field id="uoce_e3u_vsum" long_name="ocean current along i-axis * e3u summed on the vertical"  field_ref="uoce_e3u"                      unit="m3/s"       grid_ref="grid_U_vsum" />
     <field id="uocetr_vsum"   long_name="ocean transport along i-axis  summed on the vertical"     field_ref="e2u"                           unit="m3/s"                               > this * uoce_e3u_vsum  </field>
 
@@ -730,7 +730,7 @@ that are available in the tidal-forcing implementation (see
     <field id="msftbarot"         long_name="ocean_barotropic_mass_streamfunction"                                                                             unit="kg s-1"           > uocetr_vsum_cumul * $rho0 </field>
 
     <field id="uoce2_e3u"         long_name="ocean current along i-axis squared (thickness weighted)"                                       unit="m3/s2"      grid_ref="grid_U_3D"  > uoce * uoce * e3u </field>
-    <field id="ssu"          long_name="ocean surface current along i-axis"                                                                 unit="m/s"                             />
+    <field id="ssu"          long_name="ocean surface current along i-axis"                                                                 unit="m/s"          grid_ref="grid_T_2D"                    />
     <field id="sbu"          long_name="ocean bottom current along i-axis"                                                                  unit="m/s"  grid_ref="grid_U_2D_inner" />
     <field id="ubar"         long_name="ocean barotropic current along i-axis"                                                              unit="m/s"                             />
     <field id="uocetr_eff"   long_name="Effective ocean transport along i-axis"                 standard_name="ocean_volume_x_transport"    unit="m3/s"       grid_ref="grid_U_3D" />
@@ -779,14 +779,14 @@ that are available in the tidal-forcing implementation (see
 
   <field_group id="grid_V"   grid_ref="grid_V_2D">
     <field id="e1v"          long_name="V-cell width in longitudinal direction"                 standard_name="cell_width"                  unit="m"                               />
-    <field id="e3v"          long_name="V-cell thickness"                                       standard_name="cell_thickness"              unit="m"          grid_ref="grid_V_3D_inner" />
+    <field id="e3v"          long_name="V-cell thickness"                                       standard_name="cell_thickness"              unit="m"          grid_ref="grid_T_3D_inner" />
     <field id="e3v_0"        long_name="Initial V-cell thickness"                               standard_name="ref_cell_thickness"          unit="m"          grid_ref="grid_V_3D_inner" />
     <field id="hv"            long_name="water column height at V point"                        standard_name="water_column_height_V"       unit="m" />
-    <field id="voce"         long_name="ocean current along j-axis"                             standard_name="sea_water_y_velocity"        unit="m/s"        grid_ref="grid_V_3D" />
-    <field id="voce_e3v"     long_name="ocean current along j-axis  (thickness weighted)"                                                   unit="m/s"        grid_ref="grid_V_3D"  > voce * e3v </field>
+    <field id="voce"         long_name="ocean current along j-axis"                             standard_name="sea_water_y_velocity"        unit="m/s"        grid_ref="grid_T_3D" />
+    <field id="voce_e3v"     long_name="ocean current along j-axis  (thickness weighted)"                                                   unit="m/s"        grid_ref="grid_T_3D"  > voce * e3v </field>
 
     <field id="voce2_e3v"    long_name="ocean current along j-axis squared (thickness weighted)"                                            unit="m3/s2"      grid_ref="grid_V_3D"  > voce * voce * e3v </field>
-    <field id="ssv"          long_name="ocean surface current along j-axis"                                                                 unit="m/s"                             />
+    <field id="ssv"          long_name="ocean surface current along j-axis"                                                                 unit="m/s" grid_ref="grid_T_2D"           />
     <field id="sbv"          long_name="ocean bottom current along j-axis"                                                                  unit="m/s"  grid_ref="grid_V_2D_inner" />
     <field id="vbar"         long_name="ocean barotropic current along j-axis"                                                              unit="m/s"                             />
     <field id="vocetr_eff"   long_name="Effective ocean transport along j-axis"                 standard_name="ocean_volume_y_transport"    unit="m3/s"       grid_ref="grid_V_3D" />
