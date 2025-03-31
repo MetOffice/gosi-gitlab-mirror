@@ -72,7 +72,7 @@ include:
       - tests/${CONFIG}_ST/*/sette.*.out
       - tests/${CONFIG}_ST/*/sette.*.err
       - tests/${CONFIG}_ST/*/ocean.output*
-    when: always
+    when: on_failure
     expire_in: 1 week
 
 .artifact_rpt: &artifact_rpt
