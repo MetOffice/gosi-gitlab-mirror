@@ -888,7 +888,7 @@ that are available in the tidal-forcing implementation (see
       <field id="msftbarot"         long_name="ocean_barotropic_mass_streamfunction"  unit="kg s-1"           > uocetr_vsum_cumul * $rho0 </field>
   
   
-      <field id="ssu"          long_name="ocean surface current along i-axis"         unit="m/s"                             />
+      <field id="ssu"          long_name="ocean surface current along i-axis"         unit="m/s"                grid_ref="grid_T_2D"             />
       <field id="ubar"         long_name="ocean barotropic current along i-axis"      unit="m/s"                             />
       <field id="ssuww"        long_name="ocean surface wind work along i-axis"       standard_name="surface_x_wind_work"    unit="N/m*s" > utau * ssu </field>
       <!-- AGRIF sponge -->
@@ -920,21 +920,21 @@ that are available in the tidal-forcing implementation (see
     </field_group>     <!-- End of field group for grid_U_2D_inner -->
 
     <field_group id="group_U_3D" grid_ref="grid_U_3D" >  <!-- Start of field group for grid_U_3D -->
-      <field id="uoce"          long_name="ocean current along i-axis"              standard_name="sea_water_x_velocity"      unit="m/s" />
+      <field id="uoce"          long_name="ocean current along i-axis"              standard_name="sea_water_x_velocity"      unit="m/s" grid_ref="grid_T_3D" />
       <field id="uoce2_e3u"         long_name="ocean current along i-axis squared (thickness weighted)"                                       unit="m3/s2"      grid_ref="grid_U_3D"  > uoce * uoce * e3u </field>
       <!-- u-eddy diffusivity coefficients (available if ln_traldf_OFF=F) -->
       <field id="ahtu_3d"       long_name=" 3D u-EIV coefficient"                                                             unit="m2/s or m4/s"/>
       <!-- u-eiv diffusivity coefficients (available if ln_ldfeiv=F) -->
       <field id="aeiu_3d"       long_name=" 3D u-EIV coefficient"                                                             unit="m2/s"/>
       <field id="uocetr_eff"    long_name="Effective ocean transport along i-axis"  standard_name="ocean_volume_x_transport"  unit="m3/s"/>
-      <field id="uoce_e3u"      long_name="ocean current along i-axis  (thickness weighted)"                                  unit="m/s"  > uoce * e3u    </field>
+      <field id="uoce_e3u"      long_name="ocean current along i-axis  (thickness weighted)"          grid_ref="grid_T_3D"                        unit="m/s"  > uoce * e3u    </field>
       <!-- variables available with WAVE (ln_wave=T) -->
       <field id="ustokes"      long_name="Stokes Drift Velocity i-axis"             standard_name="StokesDrift_x_velocity"    unit="m/s" />
       <field id="ustokes_e3u"  long_name="Stokes Drift Velocity i-axis  (thickness weighted)"                                 unit="m/s"  > ustokes * e3u </field>
     </field_group>     <!-- End of field group for grid_U_3D -->
   
     <field_group id="group_U_3D_inner" grid_ref="grid_U_3D_inner" >  <!-- Start of field group for grid_U_3D_inner -->
-      <field id="e3u"           long_name="U-cell thickness"                          standard_name="cell_thickness"                                 unit="m"/>
+      <field id="e3u"           long_name="U-cell thickness"                          standard_name="cell_thickness"                                 unit="m" grid_ref="grid_T_3D_inner"  />
       <field id="e3u_0"         long_name="Initial U-cell thickness"                  standard_name="ref_cell_thickness"                             unit="m"/>
       <!-- variables available with MLE (ln_mle=T) -->
       <field id="psiu_mle"      long_name="MLE streamfunction along i-axis"                                                                          unit="m3/s"/>
@@ -957,7 +957,7 @@ that are available in the tidal-forcing implementation (see
       <field id="hv"            long_name="water column height at V point"           standard_name="water_column_height_V"       unit="m" />
       <field id="e1v"           long_name="V-cell width in longitudinal direction"   standard_name="cell_width"                  unit="m" />
   
-      <field id="ssv"          long_name="ocean surface current along j-axis"         unit="m/s"                             />
+      <field id="ssv"          long_name="ocean surface current along j-axis"         unit="m/s"           grid_ref="grid_T_2D"     />
       <field id="vbar"         long_name="ocean barotropic current along j-axis"      unit="m/s"                             />
       <field id="ssvww"        long_name="ocean surface wind work along j-axis"       standard_name="surface_y_wind_work"    unit="N/m*s" > vtau * ssv </field>
       <!-- AGRIF sponge -->
@@ -989,14 +989,14 @@ that are available in the tidal-forcing implementation (see
     </field_group>     <!-- End of field group for grid_V_2D_inner -->
 
     <field_group id="group_V_3D" grid_ref="grid_V_3D" >  <!-- Start of field group for grid_V_3D -->
-      <field id="voce"          long_name="ocean current along j-axis"              standard_name="sea_water_y_velocity"      unit="m/s" />
+      <field id="voce"          long_name="ocean current along j-axis"              standard_name="sea_water_y_velocity"      unit="m/s" grid_ref="grid_T_3D" />
         <field id="voce2_e3v"    long_name="ocean current along j-axis squared (thickness weighted)"                                            unit="m3/s2"      grid_ref="grid_V_3D"  > voce * voce * e3v </field>
       <!-- v-eddy diffusivity coefficients (available if ln_traldf_OFF=F) -->
       <field id="ahtv_3d"       long_name=" 3D v-eddy diffusivity coefficient"                                                unit="m2/s or (m4/s)^1/2" />
       <!-- v-eiv diffusivity coefficients (available if ln_ldfeiv=F) -->
       <field id="aeiv_3d"       long_name=" 3D v-EIV coefficient"                                                             unit="m2/s"/>
       <field id="vocetr_eff"    long_name="Effective ocean transport along j-axis"  standard_name="ocean_volume_y_transport"  unit="m3/s"/>
-      <field id="voce_e3v"      long_name="ocean current along j-axis  (thickness weighted)"                                  unit="m/s"  > voce * e3v    </field>
+      <field id="voce_e3v"      long_name="ocean current along j-axis  (thickness weighted)"            grid_ref="grid_T_3D"         unit="m/s"  > voce * e3v    </field>
       
       <!-- variables available with WAVE (ln_wave=T) -->
       <field id="vstokes"      long_name="Stokes Drift Velocity j-axis"             standard_name="StokesDrift_y_velocity"    unit="m/s" />
@@ -1005,7 +1005,7 @@ that are available in the tidal-forcing implementation (see
   
     <field_group id="group_V_3D_inner" grid_ref="grid_V_3D_inner" >  <!-- Start of field group for grid_V_3D_inner -->
 
-      <field id="e3v"           long_name="V-cell thickness"                          standard_name="cell_thickness"                                 unit="m"/>
+      <field id="e3v"           long_name="V-cell thickness"                          standard_name="cell_thickness"                                 unit="m" grid_ref="grid_T_3D_inner"/>
       <field id="e3v_0"         long_name="Initial V-cell thickness"                  standard_name="ref_cell_thickness"                             unit="m"/>
       <!-- variables available with MLE (ln_mle=T) -->
       <field id="psiv_mle"      long_name="MLE streamfunction along j-axis"                                                                          unit="m3/s"/>
