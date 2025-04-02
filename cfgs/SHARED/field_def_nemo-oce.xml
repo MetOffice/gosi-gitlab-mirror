@@ -334,9 +334,9 @@ that are available in the tidal-forcing implementation (see
 
       <field id="sstgrad_con"      long_name="module of conservative sst gradient"                                                                                 unit="degC/m"  grid_ref="grid_T_2D_inner" />
       <field id="sstgrad2_con"     long_name="square of module of conservative sst gradient"                                                                       unit="degC2/m2" grid_ref="grid_T_2D_inner" />
-      <field id="sbt_con"          long_name="sea bottom conservative temperature"                                                                                 unit="degC"    grid_ref="grid_T_2D_inner" />
+      <field id="sbt_con"          long_name="sea bottom conservative temperature"                                                                                 unit="degC"    grid_ref="grid_T_2D" />
       <field id="tosmint_con"      long_name="vertical integral of conservative temperature times density"     standard_name="integral_wrt_depth_of_product_of_density_and_conservative_temperature"  unit="(kg m2) degree_C" grid_ref="grid_T_2D_inner" />
-      <field id="sbs_abs"          long_name="sea bottom absolute salinity"                                                                                    unit="g/kg"   grid_ref="grid_T_2D_inner" />
+      <field id="sbs_abs"          long_name="sea bottom absolute salinity"                                                                                    unit="g/kg"   grid_ref="grid_T_2D" />
       <field id="somint_abs"       long_name="vertical integral of absolute salinity times density"        standard_name="integral_wrt_depth_of_product_of_density_and_absolute_salinity"  unit="(kg m2) x (1e-3)" grid_ref="grid_T_2D_inner" />
 
 
@@ -402,15 +402,15 @@ that are available in the tidal-forcing implementation (see
       <!-- * variable related to ice shelf forcing * -->
   
       <!-- * fwf * -->
-      <field id="fwfisf_cav"      long_name="Ice shelf fresh water flux ( from isf to oce )"                    unit="kg/m2/s"   />
+      <field id="fwfisf_cav"      long_name="Ice shelf fresh water flux ( from isf to oce )"      unit="kg/m2/s"   grid_ref="grid_T_2D" />
       <field id="fwfisf_par"      long_name="Ice shelf fresh water flux ( from isf to oce )"                    unit="kg/m2/s"   />
   
       <!-- * heat fluxes * -->
       <field id="qoceisf_cav"     long_name="Ice shelf ocean  heat flux ( from isf to oce )"                    unit="W/m2"   />
       <field id="qoceisf_par"     long_name="Ice shelf ocean  heat flux ( from isf to oce )"                    unit="W/m2"   />
-      <field id="qlatisf_cav"     long_name="Ice shelf latent heat flux ( from isf to oce )"                    unit="W/m2"   />
+      <field id="qlatisf_cav"     long_name="Ice shelf latent heat flux ( from isf to oce )"                    unit="W/m2"  grid_ref="grid_T_2D" />
       <field id="qlatisf_par"     long_name="Ice shelf latent heat flux ( from isf to oce )"                    unit="W/m2"   />
-      <field id="qhcisf_cav"      long_name="Ice shelf heat content flux of injected water ( from isf to oce )" unit="W/m2"   />
+      <field id="qhcisf_cav"      long_name="Ice shelf heat content flux of injected water ( from isf to oce )" unit="W/m2"  grid_ref="grid_T_2D" />
       <field id="qhcisf_par"      long_name="Ice shelf heat content flux of injected water ( from isf to oce )" unit="W/m2"   />
       <field id="qconisf"         long_name="Conductive heat flux through the ice shelf ( from isf to oce )"    unit="W/m2"   />
       
@@ -475,7 +475,7 @@ that are available in the tidal-forcing implementation (see
 
     <field_group id="group_T_3D_inner" grid_ref="grid_T_3D_inner" >  <!-- Start of field group for grid_T_3D_inner -->
 
-      <field id="e3t"          long_name="T-cell thickness"                    standard_name="cell_thickness"        unit="m"    />
+      <field id="e3t"          long_name="T-cell thickness"                    standard_name="cell_thickness"        unit="m"  grid_ref="grid_T_3D"  />
       <field id="e3t_0"        long_name="Initial T-cell thickness"            standard_name="ref_cell_thickness"    unit="m"     />
       <field id="masscello"    long_name="Sea Water Mass per unit area"        standard_name="sea_water_mass_per_unit_area"    unit="kg/m2" />
       <field id="volcello"     long_name="Ocean Volume"                        standard_name="ocean_volume"                    unit="m3"    />
@@ -727,22 +727,22 @@ that are available in the tidal-forcing implementation (see
 
     <field_group id="SBC_T_2D_inner" grid_ref="grid_T_2D_inner" >  <!-- Start of field group for grid_T_2D_inner (SBC) -->
 
-      <field id="empmr"        long_name="Net Upward Water Flux"                standard_name="water_flux_out_of_sea_ice_and_sea_water"                              unit="kg/m2/s"   />
+      <field id="empmr"        long_name="Net Upward Water Flux"                standard_name="water_flux_out_of_sea_ice_and_sea_water"                              unit="kg/m2/s"   grid_ref="grid_T_2D" />
       <field id="empbmr"       long_name="Net Upward Water Flux at pre. tstep"  standard_name="water_flux_out_of_sea_ice_and_sea_water"                              unit="kg/m2/s"   />
-      <field id="emp_oce"      long_name="Evap minus Precip over ocean"         standard_name="evap_minus_precip_over_sea_water"                                     unit="kg/m2/s"   />
-      <field id="emp_ice"      long_name="Evap minus Precip over ice"           standard_name="evap_minus_precip_over_sea_ice"                                       unit="kg/m2/s"   />
-      <field id="saltflx"      long_name="Downward salt flux"                                                                                                        unit="g/m2/s"    />
-      <field id="fwfice"       long_name="Ice-Ocean Freshwater Flux (>0 to the ocean)"                                                                               unit="kg/m2/s"   />
-      <field id="snowpre"      long_name="Snow precipitation"                   standard_name="snowfall_flux"                                                        unit="kg/m2/s"   />
-      <field id="precip"       long_name="Total precipitation"                  standard_name="precipitation_flux"                                                   unit="kg/m2/s"   />
+      <field id="emp_oce"      long_name="Evap minus Precip over ocean"         standard_name="evap_minus_precip_over_sea_water"                                     unit="kg/m2/s"   grid_ref="grid_T_2D"  />
+      <field id="emp_ice"      long_name="Evap minus Precip over ice"           standard_name="evap_minus_precip_over_sea_ice"                                       unit="kg/m2/s"   grid_ref="grid_T_2D" />
+      <field id="saltflx"      long_name="Downward salt flux"                                                                                   unit="g/m2/s"  grid_ref="grid_T_2D"  />
+      <field id="fwfice"       long_name="Ice-Ocean Freshwater Flux (>0 to the ocean)"                                                                               unit="kg/m2/s"  grid_ref="grid_T_2D"  />
+      <field id="snowpre"      long_name="Snow precipitation"                   standard_name="snowfall_flux"                                                        unit="kg/m2/s"   grid_ref="grid_T_2D" />
+      <field id="precip"       long_name="Total precipitation"                  standard_name="precipitation_flux"                                                   unit="kg/m2/s"  grid_ref="grid_T_2D" />
       <field id="wclosea"      long_name="closed sea empmr correction"          standard_name="closea_empmr"                                                         unit="kg/m2/s"   />
 
-      <field id="qt"           long_name="Net Downward Heat Flux"                standard_name="surface_downward_heat_flux_in_sea_water"                              unit="W/m2"                      />
+      <field id="qt"           long_name="Net Downward Heat Flux"                standard_name="surface_downward_heat_flux_in_sea_water"                              unit="W/m2"     grid_ref="grid_T_2D"     />
       <field id="qns"          long_name="non solar Downward Heat Flux"                                                                                               unit="W/m2"                      />
       <field id="qsr"          long_name="Shortwave Radiation"                   standard_name="net_downward_shortwave_flux_at_sea_water_surface"                     unit="W/m2"                      />
       <field id="qrp"          long_name="Surface Heat Flux: Damping"            standard_name="heat_flux_into_sea_water_due_to_newtonian_relaxation"                 unit="W/m2"                      />
       <field id="qclosea"      long_name="closed sea heat content flux"          standard_name="closea_heat_content_downward_flux"                                    unit="W/m2"     />
-      <field id="erp"          long_name="Surface Water Flux: Damping"           standard_name="water_flux_out_of_sea_water_due_to_newtonian_relaxation"              unit="kg/m2/s"                   />
+      <field id="erp"          long_name="Surface Water Flux: Damping"           standard_name="water_flux_out_of_sea_water_due_to_newtonian_relaxation"              unit="kg/m2/s"    grid_ref="grid_T_2D"  />
       <field id="taum"         long_name="wind stress module"                    standard_name="magnitude_of_surface_downward_stress"                                 unit="N/m2"                      />
       <field id="wspd"         long_name="wind speed module"                     standard_name="wind_speed"                                                           unit="m/s"                       />
 
@@ -823,7 +823,7 @@ that are available in the tidal-forcing implementation (see
 
     <!-- Single use grid_refs not requiring field_groups (SBC) -->
     <!-- qsr3d: MLF only -->
-    <field id="qsr3d"  long_name="Shortwave Radiation 3D distribution"   standard_name="downwelling_shortwave_flux_in_sea_water"  unit="W/m2" grid_ref="grid_T_3D_inner" />
+    <field id="qsr3d"  long_name="Shortwave Radiation 3D distribution"   standard_name="downwelling_shortwave_flux_in_sea_water"  unit="W/m2" grid_ref="grid_T" />
 
   </field_group> <!-- SBC -->
 
@@ -934,7 +934,7 @@ that are available in the tidal-forcing implementation (see
     </field_group>     <!-- End of field group for grid_U_3D -->
   
     <field_group id="group_U_3D_inner" grid_ref="grid_U_3D_inner" >  <!-- Start of field group for grid_U_3D_inner -->
-      <field id="e3u"           long_name="U-cell thickness"                          standard_name="cell_thickness"                                 unit="m" grid_ref="grid_T_3D_inner"  />
+      <field id="e3u"           long_name="U-cell thickness"                          standard_name="cell_thickness"                                 unit="m" grid_ref="grid_T_3D"  />
       <field id="e3u_0"         long_name="Initial U-cell thickness"                  standard_name="ref_cell_thickness"                             unit="m"/>
       <!-- variables available with MLE (ln_mle=T) -->
       <field id="psiu_mle"      long_name="MLE streamfunction along i-axis"                                                                          unit="m3/s"/>
@@ -1005,7 +1005,7 @@ that are available in the tidal-forcing implementation (see
   
     <field_group id="group_V_3D_inner" grid_ref="grid_V_3D_inner" >  <!-- Start of field group for grid_V_3D_inner -->
 
-      <field id="e3v"           long_name="V-cell thickness"                          standard_name="cell_thickness"                                 unit="m" grid_ref="grid_T_3D_inner"/>
+      <field id="e3v"           long_name="V-cell thickness"                          standard_name="cell_thickness"                                 unit="m" grid_ref="grid_T_3D"/>
       <field id="e3v_0"         long_name="Initial V-cell thickness"                  standard_name="ref_cell_thickness"                             unit="m"/>
       <!-- variables available with MLE (ln_mle=T) -->
       <field id="psiv_mle"      long_name="MLE streamfunction along j-axis"                                                                          unit="m3/s"/>
