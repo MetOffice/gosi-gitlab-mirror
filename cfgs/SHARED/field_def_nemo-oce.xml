@@ -823,7 +823,7 @@ that are available in the tidal-forcing implementation (see
 
     <!-- Single use grid_refs not requiring field_groups (SBC) -->
     <!-- qsr3d: MLF only -->
-    <field id="qsr3d"  long_name="Shortwave Radiation 3D distribution"   standard_name="downwelling_shortwave_flux_in_sea_water"  unit="W/m2" grid_ref="grid_T_3D" />
+    <field id="qsr3d"  long_name="Shortwave Radiation 3D distribution"   standard_name="downwelling_shortwave_flux_in_sea_water"  unit="W/m2" grid_ref="grid_T" />
 
   </field_group> <!-- SBC -->
 
