@@ -283,7 +283,7 @@ sette_rpt:RESTART:
   rules:             # Dependency on the 'RESTART'-test selection, and restriction to the configurations relevant for the 'RESTART' test
     - if: $SETTE_TEST =~ /ALL|RESTART/ && ($CONFIG =~ $PATTERN_RESTART || $NEMO_CONFIG =~ $PATTERN_RESTART)
       when: delayed
-      start_in: 5 seconds
+      start_in: 10 seconds
   dependencies: []   # No retrieval of previous artefacts
   tags:
     - $NEMO_HPC
@@ -308,7 +308,7 @@ sette_rpt:REPRO:
   rules:
     - if: $SETTE_TEST =~ /ALL|REPRO/ && ($CONFIG =~ $PATTERN_REPRO || $NEMO_CONFIG =~ $PATTERN_REPRO)
       when: delayed
-      start_in: 5 seconds
+      start_in: 10 seconds
   parallel: 
     <<: *loop
   tags:
@@ -334,7 +334,7 @@ sette_rpt:CORRUPT:
   rules:
     - if: $SETTE_TEST =~ /ALL|CORRUPT/ && ($CONFIG =~ $PATTERN_CORRUPT || $NEMO_CONFIG =~ $PATTERN_CORRUPT)
       when: delayed
-      start_in: 5 seconds
+      start_in: 10 seconds
   parallel: 
     <<: *loop
   tags:
@@ -360,7 +360,7 @@ sette_rpt:PHYOPTS:
   rules:
     - if: $SETTE_TEST =~ /ALL|PHYOPTS/ && ($CONFIG =~ $PATTERN_PHYOPTS || $NEMO_CONFIG =~ $PATTERN_PHYOPTS)
       when: delayed
-      start_in: 5 seconds
+      start_in: 10 seconds
   parallel: 
     <<: *loop
   tags:
@@ -386,7 +386,7 @@ sette_rpt:ROTSYM:
   rules:
     - if: $SETTE_TEST =~ /ALL|ROTSYM/ && ($CONFIG =~ $PATTERN_ROTSYM || $NEMO_CONFIG =~ $PATTERN_ROTSYM)
       when: delayed
-      start_in: 5 seconds
+      start_in: 10 seconds
   parallel: 
     <<: *loop
   tags:
@@ -412,7 +412,7 @@ sette_rpt:COMPARE:
   rules:
     - if: $NEMO_REFSHA != "" && ($CONFIG =~ $PATTERN_RESTART || $NEMO_CONFIG =~ $PATTERN_RESTART)
       when: delayed
-      start_in: 5 seconds
+      start_in: 10 seconds
   parallel: 
     <<: *loop
   tags:

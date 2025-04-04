@@ -296,7 +296,7 @@ if [[ $? == 0 ]] ; then
 else
   branchname="Unknown"
 fi
-rev_date0=`git log -1 | grep Date | sed -e 's/.*Date: *//' -e's/ +.*$//'`
+rev_date0="`git -C ${MAIN_DIR} show --no-patch --format=%ct ${REVISION_NB}`"
 rev_date=`${DATE_CONV}"${rev_date0}" +"%y%j"`
 revision=${rev_date}_${revision}
 if [[ $localchanges > 0 ]] ; then
