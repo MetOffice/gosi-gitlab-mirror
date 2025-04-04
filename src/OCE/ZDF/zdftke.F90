@@ -754,6 +754,7 @@ CONTAINS
       !!
       INTEGER             ::   ji, jj, jk   ! dummy loop indices
       INTEGER             ::   ios
+      REAL(wp)            ::   zminval
       !!
       NAMELIST/namzdf_tke/ rn_ediff, rn_ediss , rn_ebb   , rn_emin  ,  &
          &                 rn_emin0, rn_bshear, nn_mxl   , ln_mxl0  ,  &
@@ -856,7 +857,7 @@ CONTAINS
       !                               !* Check of some namelist values
       IF( nn_mxl  < 0   .OR.  nn_mxl  > 3 )   CALL ctl_stop( 'bad flag: nn_mxl is  0, 1, 2 or 3' )
       IF( nn_pdl  < 0   .OR.  nn_pdl  > 1 )   CALL ctl_stop( 'bad flag: nn_pdl is  0 or 1' )
-      IF( ( nn_htau < 0   .OR.  nn_htau > 1 ) .AND. nn_htau .NE. 4 .AND. nn_htau .NE. 5 )   CALL ctl_stop( 'bad flag: nn_htau is 0, 1 , 4 or 5 ' )
+      IF( ( nn_htau < 0   .OR.  nn_htau > 1 ) .AND. nn_htau /= 4 .AND. nn_htau /= 5 .AND. nn_htau /= 6 .AND. nn_htau /= 7)   CALL ctl_stop( 'bad flag: nn_htau is 0, 1 , 4 , 5, 6 or 7' )
       IF( nn_etau == 3 .AND. .NOT. ln_cpl )   CALL ctl_stop( 'nn_etau == 3 : HF taum only known in coupled mode' )
       !
       IF( ln_mxl0 ) THEN
@@ -886,6 +887,29 @@ CONTAINS
                       htau(ji,jj) = htau(ji,jj) + MIN( 20._wp, 135._wp * ABS( SIN( rpi/180._wp * (gphit(ji,jj) + 40.0) ) ) )
                   ENDIF
             END_2D
+         CASE( 6 )                                 ! deeper mixing in the Northern emisphere
+            DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
+                  IF( gphit(ji,jj) > 0._wp ) THEN
+                    zminval = 30._wp
+                  ELSE
+                    zminval = 10._wp
+                  ENDIF
+                  htau(ji,jj) = MAX(  0.5_wp, MIN( zminval, 45._wp*rn_htau_scaling*ABS( SIN( rpi/180._wp * gphit(ji,jj) ) ) )   )
+                  IF( gphit(ji,jj) <= -40._wp ) THEN
+                      htau(ji,jj) = htau(ji,jj) + MIN( 20._wp, 135._wp * ABS(SIN( rpi/180._wp * (gphit(ji,jj) + 40.0) ) ) )
+                  ENDIF
+            END_2D 
+         CASE( 7 )                                 ! symmetric function
+            DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
+                  zminval = 10._wp
+                  htau(ji,jj) = MAX(  0.5_wp, MIN( zminval, 45._wp*rn_htau_scaling*ABS( SIN( rpi/180._wp * gphit(ji,jj) ) ) )   )
+                  IF( gphit(ji,jj) <= -40._wp ) THEN
+                      htau(ji,jj) = htau(ji,jj) + MIN( 20._wp, 135._wp * ABS(SIN( rpi/180._wp * (gphit(ji,jj) + 40.0) ) ) )
+                  ELSE IF ( gphit(ji,jj) >= 40._wp ) THEN
+                      htau(ji,jj) = htau(ji,jj) + MIN( 20._wp, 135._wp * ABS(SIN( rpi/180._wp * (gphit(ji,jj) - 40.0) ) ) )
+                  ENDIF
+            END_2D
+   
          END SELECT
       ENDIF
       !                                !* read or initialize all required files
