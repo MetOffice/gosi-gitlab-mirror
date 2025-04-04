@@ -176,7 +176,7 @@ clean_config() {
 # define validation dir
 set_valid_dir () {
     REVISION_NB=`git -C ${MAIN_DIR} rev-parse --short=8 HEAD`
-    REV_DATE0="`git -C ${MAIN_DIR} log -1 | grep Date | sed -e 's/.*Date: *//' -e's/ +.*$//'`"
+    REV_DATE0="`git -C ${MAIN_DIR} show --no-patch --format=%ct ${REVISION_NB}`"
     REV_DATE=`${DATE_CONV}"${REV_DATE0}" +"%y%j"`
     REVISION_NB=${REV_DATE}_${NEMO_REV}
     echo "value of revision number of NEMOGCM: ${REVISION_NB}"
