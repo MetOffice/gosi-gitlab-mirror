@@ -711,9 +711,11 @@ function identictest(){
       fi
    else
       printf "${format_field1} %-27s %s\n" $nam $nam2 " incomplete test"
+      AGRIF_EC=1
    fi
   else
       printf "${format_field1} %-27s %s\n" " " " " " non-existent test directory"
+      AGRIF_EC=1
   fi
 }
 ########################### END of function definitions #################################
