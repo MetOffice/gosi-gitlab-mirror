@@ -46,11 +46,12 @@ JOB_PREFIX_NOMPMD=${SETTE_JOB_PREFIX_NOMPMD:-batch}
 # ------------------------------------------------------------------------------------------
 #
 # MISCELLANEOUS
-# command for converting date (from git log -1) into 2-digit year + yearday
-date -j -f "%a %b %d %H:%M:%S %Y" "Tue Nov 30 17:10:53 2021" +"%y%j" >& /dev/null
-if [ $? == 0 ] ; then DATE_CONV='date -j -f "%a %b %d %H:%M:%S %Y" ' ;fi 
-date --date="Tue Nov 30 17:10:53 2021" +"%y%j" >& /dev/null
-if [ $? == 0 ] ; then DATE_CONV='date --date=' ;fi 
+# command for converting unix timestamp into 2-digit year + yearday
+date -r 1733905602 +"%y%j" >& /dev/null
+if [ $? == 0 ] ; then DATE_CONV='date -r' ;fi
+date --date=@1733905602 +"%y%j" >& /dev/null
+if [ $? == 0 ] ; then DATE_CONV='date --date=@' ;fi
+if [ -z "${DATE_CONV}" ]; then echo "\"date\" command not supported; please adapt sette scripts accordingly to your version"; exit 1; fi
 # only for IBM
 #TMPDIR=${CONFIG_DIR}/${NEW_CONF}/EXP00
 # cleaning CFG_ST
@@ -77,7 +78,7 @@ export DO_CORRUPT=0
 export DO_PHYOPTS=0
 export DO_TRANSFORM=0
 export SCTRANSFORMS=()
-TEST_TYPES=(${SETTE_TEST_TYPES[@]:-"COMPILE RESTART REPRO PHYOPTS CORRUPT"})
+TEST_TYPES=(${SETTE_TEST_TYPES[@]:-"COMPILE RESTART REPRO CORRUPT PHYOPTS"})
 if [[ ${TEST_TYPES[*]} =~ .*COMPILE.* ]]; then export DO_COMPILE=1 ;fi
 if [[ ${TEST_TYPES[*]} =~ .*RESTART.* ]]; then export DO_RESTART=1 ;fi
 if [[ ${TEST_TYPES[*]} =~ .*REPRO.* ]]; then export DO_REPRO=1 ;fi

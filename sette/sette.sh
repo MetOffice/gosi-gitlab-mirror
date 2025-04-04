@@ -151,7 +151,8 @@ if [ $# -gt 0 ]; then
 fi
 #
 # Get SETTE parameters
-. ./param.cfg
+. ./param.default
+[ -f ./param.cfg ] && . ./param.cfg || echo "warning: \"param.cfg\" file not found; SETTE will use default paramaters from \"param.default\" file"
 #
 # Set the common compile keys to add or delete based on command-line arguments:
 #
