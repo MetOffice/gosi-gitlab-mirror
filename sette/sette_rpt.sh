@@ -725,8 +725,7 @@ function identictest(){
 # LOAD param variable (COMPILER, NEMO_VALIDATION_DIR )
   SETTE_DIR=$(cd $(dirname "$0"); pwd)
   MAIN_DIR=$(dirname $SETTE_DIR)
-  . ./param.default
-  [ -f ./param.cfg ] && . ./param.cfg || echo "warning: \"param.cfg\" file not found; SETTE will use default paramaters from \"param.default\" file"
+  . ./param.cfg
   TEST_CONFIGS_AVAILABLE=${TEST_CONFIGS_AVAILABLE[@]:-${TEST_CONFIGS[@]}}     # Workaround for some dated param.cfgs files
   if [ -z $USER_INPUT ] ; then USER_INPUT='yes' ; fi        # Default: yes => request user input on decisions.
                                                             # (but may br inherited/imported from sette.sh)

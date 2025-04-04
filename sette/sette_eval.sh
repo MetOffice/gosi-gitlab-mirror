@@ -174,8 +174,7 @@ function runcmpres(){
   SETTE_DIR=$(cd $(dirname "$0"); pwd)
   MAIN_DIR=$(dirname $SETTE_DIR)
   quiet=0
-  . ./param.default
-  [ -f ./param.cfg ] && . ./param.cfg || echo "warning: \"param.cfg\" file not found; SETTE will use default paramaters from \"param.default\" file"
+  . ./param.cfg
   TEST_CONFIGS_AVAILABLE=${TEST_CONFIGS_AVAILABLE[@]:-${TEST_CONFIGS[@]}}     # workaround for some dated param.cfgs files
   USER_INPUT='yes'        # Default: yes => request user input on decisions.
 

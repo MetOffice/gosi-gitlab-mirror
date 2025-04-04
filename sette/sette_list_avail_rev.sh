@@ -5,9 +5,7 @@ SETTE_DIR=$(cd $(dirname "$0"); pwd)
 MAIN_DIR=$(dirname $SETTE_DIR)
 USE_REF=0
 
-. ./param.default
-[ -f ./param.cfg ] && . ./param.cfg || echo "warning: \"param.cfg\" file not found; SETTE will use default paramaters from \"param.default\" file"
-
+. ./param.cfg
 
 if [ $# -gt 0 ]; then
   while getopts c:v:Rh option; do 
