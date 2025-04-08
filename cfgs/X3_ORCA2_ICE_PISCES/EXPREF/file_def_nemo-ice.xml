@@ -8,7 +8,7 @@
 ============================================================================================================
  -->
     
- <file_definition type="one_file" compression_level="1" name="@expname@_@freq@_@startdate@_@enddate@" sync_freq="1mo" min_digits="4">
+ <file_definition type="one_file"  compression_level="1" name="@expname@_@freq@_@startdate@_@enddate@" sync_freq="1mo" min_digits="4">
    
    <file_group id="ice_5d" output_freq="5d"  output_level="10" enabled=".TRUE.">  <!-- 5d files -->   	
      <file id="file101" name_suffix="_icemod" mode="write" gatherer="igatherer" writer="iwriter" using_server2="true" description="ice variables" enabled=".true." >
@@ -88,7 +88,7 @@
 
      </file>
      
-     <file id="file102" compression_level="0" name_suffix="_SBC_scalar" mode="write" gatherer="igatherer" writer="iwriter" using_server2="true" description="scalar variables" enabled=".true." >
+     <file id="file102" name_suffix="_SBC_scalar" compression_level="0" mode="write" gatherer="igatherer" writer="iwriter" using_server2="true" description="scalar variables" enabled=".true." >
        <!-- global contents -->
        <field field_ref="ibgvol_tot"     name="ibgvol_tot"   />
        <field field_ref="sbgvol_tot"     name="sbgvol_tot"   />
@@ -122,7 +122,7 @@
    <file_group id="ice_4h"  output_freq="4h"  output_level="10" enabled=".TRUE."/> <!-- 4h files -->
    <file_group id="ice_6h"  output_freq="6h"  output_level="10" enabled=".TRUE."/> <!-- 6h files -->      
 
-   <file_group id="1m"  compression_level="0" output_freq="1mo" output_level="10" enabled=".TRUE."> <!-- real monthly files -->
+   <file_group id="ice_1m"  output_freq="1mo" output_level="10" enabled=".TRUE."> <!-- real monthly files -->
 
      <!-- To compute transport through straits : need to read ice mask at ice iteration at freq_offset = 1mo - nn_fsbc
       <file id="file111" name_suffix="_strait_ice" description="transport variables through straits" >
