@@ -2057,7 +2057,7 @@ CONTAINS
    !!   'key_xios'                                         XIOS interface
    !!----------------------------------------------------------------------
 
-   SUBROUTINE iom_set_domain_attr( cdid, ni_glo, nj_glo, ibegin, jbegin, ni, nj,                                               &
+   SUBROUTINE iom_set_domain_attr( cdid, cdname, ni_glo, nj_glo, ibegin, jbegin, ni, nj,                                               &
       &                                    data_dim, data_ibegin, data_ni, data_jbegin, data_nj, lonvalue, latvalue, mask,     &
       &                                  ntiles, tile_ibegin, tile_jbegin, tile_ni, tile_nj,                                   &
       &                                  tile_data_ibegin, tile_data_jbegin, tile_data_ni, tile_data_nj,                       &
@@ -2065,6 +2065,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       !!----------------------------------------------------------------------
       CHARACTER(LEN=*)                  , INTENT(in) ::   cdid
+      CHARACTER(LEN=*)        , OPTIONAL, INTENT(in) ::   cdname
       INTEGER                 , OPTIONAL, INTENT(in) ::   ni_glo, nj_glo, ibegin, jbegin, ni, nj
       INTEGER,  DIMENSION(:)  , OPTIONAL, INTENT(in) ::   tile_ibegin, tile_jbegin, tile_ni, tile_nj
       INTEGER,  DIMENSION(:)  , OPTIONAL, INTENT(in) ::   tile_data_ibegin, tile_data_jbegin, tile_data_ni, tile_data_nj
@@ -2084,7 +2085,7 @@ CONTAINS
             &    tile_data_ni=tile_data_ni, tile_data_nj=tile_data_nj,                                                     &
 #endif
             &    lonvalue_1D=lonvalue, latvalue_1D=latvalue, mask_1D=mask, nvertex=nvertex, bounds_lon_1D=bounds_lon,      &
-            &    bounds_lat_1D=bounds_lat, area=area, type='curvilinear')
+            &    bounds_lat_1D=bounds_lat, area=area, TYPE='curvilinear', name = cdname )
       ENDIF
       IF( xios_is_valid_domaingroup(cdid) ) THEN
          CALL xios_set_domaingroup_attr( cdid, ni_glo=ni_glo, nj_glo=nj_glo, ibegin=ibegin, jbegin=jbegin, ni=ni, nj=nj,   &
@@ -2095,10 +2096,8 @@ CONTAINS
             &    tile_data_ni=tile_data_ni, tile_data_nj=tile_data_nj,                                                     &
 #endif
             &    lonvalue_1D=lonvalue, latvalue_1D=latvalue, mask_1D=mask, nvertex=nvertex, bounds_lon_1D=bounds_lon,      &
-            &    bounds_lat_1D=bounds_lat, area=area, type='curvilinear' )
+            &    bounds_lat_1D=bounds_lat, area=area, type='curvilinear', name = cdname )
       ENDIF
-      !
-      CALL xios_solve_inheritance()
       !
    END SUBROUTINE iom_set_domain_attr
 
@@ -2154,7 +2153,6 @@ CONTAINS
          IF( xios_is_valid_axis     (cdid) )   CALL xios_set_axis_attr     ( cdid)
          IF( xios_is_valid_axisgroup(cdid) )   CALL xios_set_axisgroup_attr( cdid)
       END IF
-      CALL xios_solve_inheritance()
    END SUBROUTINE iom_set_axis_attr
 
 
@@ -2167,7 +2165,6 @@ CONTAINS
       !!----------------------------------------------------------------------
       IF( xios_is_valid_field     (cdid) )   CALL xios_set_field_attr     ( cdid, freq_op=freq_op, freq_offset=freq_offset )
       IF( xios_is_valid_fieldgroup(cdid) )   CALL xios_set_fieldgroup_attr( cdid, freq_op=freq_op, freq_offset=freq_offset )
-      CALL xios_solve_inheritance()
    END SUBROUTINE iom_set_field_attr
 
 
@@ -2179,7 +2176,6 @@ CONTAINS
       !!----------------------------------------------------------------------
       IF( xios_is_valid_file     (cdid) )   CALL xios_set_file_attr     ( cdid, name=name, name_suffix=name_suffix )
       IF( xios_is_valid_filegroup(cdid) )   CALL xios_set_filegroup_attr( cdid, name=name, name_suffix=name_suffix )
-      CALL xios_solve_inheritance()
    END SUBROUTINE iom_set_file_attr
 
 
@@ -2219,7 +2215,6 @@ CONTAINS
       !!----------------------------------------------------------------------
       IF( xios_is_valid_grid     (cdid) )   CALL xios_set_grid_attr     ( cdid, mask_3D=mask )
       IF( xios_is_valid_gridgroup(cdid) )   CALL xios_set_gridgroup_attr( cdid, mask_3D=mask )
-      CALL xios_solve_inheritance()
    END SUBROUTINE iom_set_grid_attr
 
    SUBROUTINE iom_setkt( kt, cdname )
@@ -2279,7 +2274,7 @@ CONTAINS
       CALL iom_set_domain_attr("grid_"//cdgrd, data_dim=2, data_ibegin = -nn_hls, data_ni=jpi, data_jbegin = -nn_hls, data_nj=jpj)
 
       ! Inner domain only
-      CALL iom_set_domain_attr("grid_"//cdgrd//"_inner", ni_glo = Ni0glo, nj_glo = Nj0glo,   &
+      CALL iom_set_domain_attr("grid_"//cdgrd//"_inner", name = "grid_"//cdgrd, ni_glo = Ni0glo, nj_glo = Nj0glo,   &
          &                     ibegin = mig0(Nis0) - 1, jbegin = mjg0(Njs0) - 1, ni = Ni_0, nj = Nj_0)
       CALL iom_set_domain_attr("grid_"//cdgrd//"_inner", data_dim=2, data_ibegin = 0, data_ni=Ni_0, data_jbegin = 0, data_nj=Nj_0)
 
