@@ -295,9 +295,9 @@ if [ ${config} == "GYRE_GO" ] ; then
     SETTE_CONFIG="GYRE_GO"${CONFIG_SUFFIX}
     if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
     then
-        ITEND=12    # 1 day
+        ITEND=16     # 1.25 days
     else
-        ITEND=1080  # 90 days
+        ITEND=1152   # 90 days
     fi
 
     if [ ${DO_COMPILE} -eq 1 ] ;  then
@@ -329,7 +329,7 @@ if [ ${config} == "GYRE_GO" ] ; then
         # Increase horizontal and vertical resolution
         set_namelist namelist_cfg nn_GYRE 2
         set_namelist namelist_cfg jpkglo 75
-        set_namelist namelist_cfg rn_Dt 6300.
+        set_namelist namelist_cfg rn_Dt 6750.
         # Accomodate QCO option
         set_namelist namelist_cfg ln_hpg_zco .false.
         set_namelist namelist_cfg ln_hpg_sco .true.
