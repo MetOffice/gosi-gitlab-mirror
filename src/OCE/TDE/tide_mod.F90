@@ -429,7 +429,8 @@ CONTAINS
       
       IF( nsec_day == NINT(0.5_wp * rn_Dt) .OR. kt == nit000 ) THEN      ! start a new day
          !
-         CALL tide_harmo(tide_components, tide_harmonics, ndt05) ! Update oscillation parameters of tidal components for start of current day
+         CALL tide_harmo( tide_components, tide_harmonics )   ! Update oscillation parameters of tidal components for 00h of the
+         !                                                    ! current day
          !
          !
          IF(lwp) THEN
@@ -459,7 +460,7 @@ CONTAINS
       IF (PRESENT(psec_day)) THEN 
          CALL astronomic_angle(psec_day)
       ELSE
-         CALL astronomic_angle(nsec_day)
+         CALL astronomic_angle( 0 )
       END IF
       CALL tide_pulse( ptide_comp, ptide_harmo )
       CALL tide_vuf(   ptide_comp, ptide_harmo )

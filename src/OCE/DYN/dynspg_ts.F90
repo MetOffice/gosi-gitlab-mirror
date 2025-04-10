@@ -29,6 +29,7 @@ MODULE dynspg_ts
    !!----------------------------------------------------------------------
    USE oce             ! ocean dynamics and tracers
    USE dom_oce         ! ocean space and time domain
+   USE daymod, ONLY : ndt05   ! half the time-step length
    USE sbc_oce         ! surface boundary condition: ocean
    USE isf_oce         ! ice shelf variable (fwfisf)
    USE zdf_oce         ! vertical physics: variables
@@ -183,7 +184,7 @@ LOGICAL, SAVE :: ll_bt_av    ! =T : boxcard time averaging   =F : foreward backw
       REAL(wp), DIMENSION(jpi,jpj)          :: zuwdav2, zvwdav2    ! averages over the sub-steps of zuwdmask and zvwdmask
 #endif
       REAL(wp), ALLOCATABLE, DIMENSION(:,:) :: z2d          ! 2D workspace
-      REAL(wp) ::   zt0substep !   Time of day at the beginning of the time substep
+      REAL(wp) ::   zttide   ! Time of day for tidal updates
       !!----------------------------------------------------------------------
       !
       !                                         !* Allocate temporary arrays
@@ -522,10 +523,10 @@ LOGICAL, SAVE :: ll_bt_av    ! =T : boxcard time averaging   =F : foreward backw
          !                    !==  Update the forcing ==! (BDY and tides)
          !
          IF( ln_bdy      .AND. ln_tide )   CALL bdy_dta_tides( kt, kit=jn, pt_offset= REAL(noffset+1,wp) )
-         ! Update tide potential at the beginning of current time substep
+         ! Update the tide potential at the center of the current time sub-step
          IF( ln_tide_pot .AND. ln_tide ) THEN
-            zt0substep = REAL(nsec_day, wp) - 0.5_wp*rn_Dt + (jn + noffset - 1) * rn_Dt / REAL(nn_e, wp)
-            CALL upd_tide(zt0substep, Kmm)
+            zttide = REAL( nsec_day - ndt05, wp ) + ( jn + noffset - 0.5_wp ) * rDt_e
+            CALL upd_tide(zttide, Kmm)
          END IF
          !
          !                    !==  extrapolation at mid-step  ==!   (jn+1/2)
