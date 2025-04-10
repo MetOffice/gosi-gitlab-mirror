@@ -8,7 +8,7 @@ MODULE diamlr
 
    USE par_oce        , ONLY :   wp, jpi, jpj, ntsi, ntei, ntsj, ntej 
    USE phycst         , ONLY :   rpi
-   USE dom_oce        , ONLY :   adatrj
+   USE dom_oce        , ONLY :   adatrj, rn_Dt, lk_RK3
    USE tide_mod
    !
    USE in_out_manager , ONLY :   lwp, numout, ln_timing
@@ -412,17 +412,24 @@ CONTAINS
       !! ** Purpose : update time used in multiple-linear-regression analysis
       !!
       !!----------------------------------------------------------------------
-      INTEGER ::   ji, jj
+      INTEGER  ::   ji, jj
+      REAL(wp) ::   ztime
 
       IF( ln_timing )   CALL timing_start('dia_mlr')
 
       ! Update time to the continuous time since the start of the model run
-      ! (value of adatrj converted to time in units of seconds)
+      ! (value of adatrj from the current (RK3) or preceding (MLF) time step
+      ! converted to time in units of seconds)
       !
       ! A 2-dimensional field of constant value is sent, and subsequently used directly 
       ! or transformed to a scalar or a constant 3-dimensional field as required.
+      IF( lk_RK3 ) THEN
+         ztime = adatrj * 86400.0_wp
+      ELSE
+         ztime = adatrj * 86400.0_wp - rn_Dt
+      END IF
       DO_2D( 0, 0, 0, 0 )
-         adatrj2d(ji,jj) = adatrj*86400.0_wp
+         adatrj2d(ji,jj) = ztime
       END_2D
       IF ( iom_use('diamlr_time') ) CALL iom_put('diamlr_time', adatrj2d)
       !
