@@ -64,6 +64,11 @@ CONTAINS
       NAMELIST/nammpp/ jpni, jpnj, nn_hls, ln_nnogather, ln_mppdelay, ln_listonly, nn_comm
       !!----------------------------------------------------------------------     
       !
+      ! To increase BENCH stability, avoid time update
+      ! so that first time step to be recomputed at every time step
+      !
+      l_perpetual_ts = .TRUE.
+
       READ_NML_(numnam_cfg,cfg,namusr_def,.TRUE.)
       IF(lwm)   WRITE( numond, namusr_def )      
       !
