@@ -23,6 +23,7 @@ MODULE stprk3
    USE domqco         ! quasi-eulerian coordinate      (dom_qco_r3c routine)
    USE stprk3_stg     ! RK3 stages
    USE stp2d          ! external mode solver
+   USE lib_mpp, ONLY : l_perpetual_ts
 
    IMPLICIT NONE
    PRIVATE
@@ -207,12 +208,16 @@ CONTAINS
       !
       IF ( l_ldfeke   )  CALL ldf_eke( kstp, Nbb )                ! GEOMETRIC param. (time evolution of eiv coefficient)
       !
-      Nrhs = Nbb   ;   Nbb  = Naa   ;   Naa  = Nrhs    ! Swap: Nnn unchanged, Nbb <==> Naa
+      IF ( .NOT. l_perpetual_ts ) THEN
+         !
+         Nrhs = Nbb   ;   Nbb  = Naa   ;   Naa  = Nrhs    ! Swap: Nnn unchanged, Nbb <==> Naa
 
-      ! linear extrapolation of ssh to compute ww at the beginning of the next time-step
-      ! ssh(n+1) = 2*ssh(n) - ssh(n-1)    
-      ssh(:,:,Naa) = 2*ssh(:,:,Nbb) - ssh(:,:,Naa)
-      !!st: ssh recomputed at the begining of stp2d
+         ! linear extrapolation of ssh to compute ww at the beginning of the next time-step
+         ! ssh(n+1) = 2*ssh(n) - ssh(n-1)    
+         ssh(:,:,Naa) = 2*ssh(:,:,Nbb) - ssh(:,:,Naa)
+         !!st: ssh recomputed at the begining of stp2d
+         !
+      ENDIF
 
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       ! diagnostics and outputs
