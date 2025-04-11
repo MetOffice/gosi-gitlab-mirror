@@ -517,9 +517,9 @@ CONTAINS
          !                    !==  Update the forcing ==! (BDY and tides)
          !
          IF( ln_bdy      .AND. ln_tide )   CALL bdy_dta_tides( kt, kit=jn, pt_offset= REAL(noffset+1,wp) )
-         ! Update tide potential at the beginning of current time substep
+         ! Update the tide potential at the center of the current time sub-step
          IF( ln_tide_pot .AND. ln_tide ) THEN
-            zt0substep = REAL(nsec_day, wp) - 0.5_wp*rn_Dt + (jn + noffset - 1) * rn_Dt / REAL(nn_e, wp)
+            zt0substep = REAL( nsec_day, wp ) - 0.5_wp * rn_Dt + ( jn + noffset - 0.5_wp ) * rn_Dt / REAL( nn_e, wp )
             CALL upd_tide(zt0substep, Kmm)
          END IF
          !
