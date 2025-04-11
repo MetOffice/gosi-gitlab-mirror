@@ -8,7 +8,7 @@ MODULE diamlr
    USE par_kind
    USE par_oce        , ONLY :   wp, jpi, jpj
    USE phycst         , ONLY :   rpi
-   USE dom_oce        , ONLY :   adatrj
+   USE dom_oce        , ONLY :   adatrj, rn_Dt
    USE tide_mod
    !
    USE in_out_manager , ONLY :   lwp, numout, ln_timing
@@ -417,12 +417,12 @@ CONTAINS
 
       IF( ln_timing )   CALL timing_start('dia_mlr')
 
-      ! Update time to the continuous time since the start of the model run
-      ! (value of adatrj converted to time in units of seconds)
+      ! Update time to the continuous time since the start of the model run (value
+      ! of adatrj from the preceding time step converted to time in units of seconds)
       !
       ! A 2-dimensional field of constant value is sent, and subsequently used directly 
       ! or transformed to a scalar or a constant 3-dimensional field as required.
-      adatrj2d(:,:) = adatrj*86400.0_wp
+      adatrj2d(:,:) = adatrj * 86400.0_wp - rn_Dt
       IF ( iom_use('diamlr_time') ) CALL iom_put('diamlr_time', adatrj2d)
       !
       IF( ln_timing )   CALL timing_stop('dia_mlr')
