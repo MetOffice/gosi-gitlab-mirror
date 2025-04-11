@@ -60,7 +60,7 @@ MODULE dynspg_ts
    USE iom             ! IOM library
    USE restart         ! only for lrst_oce
 
-   USE iom   ! to remove
+   USE timing
 
    IMPLICIT NONE
    PRIVATE
@@ -178,6 +178,8 @@ CONTAINS
       REAL(wp), ALLOCATABLE, DIMENSION(:,:) :: z2d          ! 2D workspace
       REAL(wp) ::   zt0substep !   Time of day at the beginning of the time substep
       !!----------------------------------------------------------------------
+      !
+      IF( ln_timing )   CALL timing_start('dyn_spg_ts')
       !
       !                                         !* Allocate temporary arrays
 #if ! defined key_PSYCLONE_2p5p0
@@ -724,6 +726,8 @@ CONTAINS
       !
       CALL iom_put( "baro_u" , puu_b(:,:,Kmm) )  ! Barotropic  U Velocity
       CALL iom_put( "baro_v" , pvv_b(:,:,Kmm) )  ! Barotropic  V Velocity
+      !
+      IF( ln_timing )   CALL timing_stop('dyn_spg_ts')
       !
    END SUBROUTINE dyn_spg_ts
 

@@ -15,9 +15,9 @@ MODULE timing
    USE par_kind, ONLY: dp, i4
    USE par_oce , ONLY: ntile, jpni, jpnj, jpnij
 #if defined key_agrif
-   USE dom_oce , ONLY: l_istiled, narea, nimpi, njmpi
+   USE dom_oce , ONLY: l_istiled, narea, nimpi, njmpi, rn_Dt
 #else
-   USE dom_oce , ONLY: l_istiled, narea, nimpi, njmpi, Agrif_Root, Agrif_CFixed
+   USE dom_oce , ONLY: l_istiled, narea, nimpi, njmpi, Agrif_Root, Agrif_CFixed, rn_Dt
 #endif
    !! WARNING: we cannot use lib_mpp because of circular dependencies
    
@@ -289,7 +289,7 @@ CONTAINS
       TYPE(timer), POINTER, INTENT(inout) :: sd_root      ! root chain link of the chain
       !
       TYPE(timer), POINTER :: s_wrk
-      REAL(dp) :: zmytime, zmysum, zval, zavgtime, zavgsum, zavgextra, zmin, zmax, zblc, zldsum
+      REAL(dp) :: zmytime, zmysum, zval, zavgtime, zavgsum, zavgextra, zmin, zmax, zblc, zldsum, zsypd
       REAL(dp), DIMENSION(:), ALLOCATABLE :: zalltime
       INTEGER :: inb
       INTEGER :: jpnbtest = 100
@@ -438,6 +438,7 @@ CONTAINS
          s_wrk => sd_root
          DO WHILE ( ASSOCIATED(s_wrk) )
             zmysum = zmysum + s_wrk%tnet
+
             IF( ll_avg .AND. narea == 1 )   zldsum = zldsum + s_wrk%tnetblc
             s_wrk => s_wrk%s_next
          END DO
@@ -451,7 +452,26 @@ CONTAINS
                WRITE(cline, "('Performance statistics between time step ',i0,' and ',i0)") n1st(ji), nend(ji)
             ENDIF
             CALL write_bigheader(cline)
-            
+           
+            ! Print model speed
+            IF( ji == 2 ) THEN
+
+               zsypd  = 0._dp
+               ! convert time-to-solution (inner time steps)
+               ! to speed in simulated years per day (SYPD)
+               IF ( zmax > 0. ) THEN
+                  zsypd = ( nend(ji) - n1st(ji) + 1 ) * rn_Dt / ( zmax * 365._dp )
+                  WRITE(numtime,*) ' '
+                  WRITE(numtime,'(a,f0.2)') '            Model speed (SYPD) : ', zsypd
+                  WRITE(numtime,*) ' '
+               ELSE
+                  WRITE(numtime,*) ' '
+                  WRITE(numtime,*) ' unable to calculate SYPD '
+                  WRITE(numtime,*) ' '
+               ENDIF
+
+            ENDIF
+
             ! execute gnuplot script to get statistics and plot on timing time series (e.g. step) for the given time window
             IF( ll_execmd )   CALL gnuplot_statplot( sd_root, ji )
             IF( ll_avg .AND. narea == 1 ) THEN

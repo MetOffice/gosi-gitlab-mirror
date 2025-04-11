@@ -12,9 +12,9 @@ MODULE usrdef_nam
    !!----------------------------------------------------------------------
    !!   usr_def_nam   : read user defined namelist and set global domain size
    !!----------------------------------------------------------------------
-   USE par_oce        ! ocean space and time domain
-   USE in_out_manager ! I/O manager
-   USE lib_mpp        ! to get ctl_nam
+   USE par_oce                            ! ocean space and time domain
+   USE in_out_manager                     ! I/O manager
+   USE lib_mpp                            ! to get ctl_nam
    
    IMPLICIT NONE
    PRIVATE
@@ -63,6 +63,10 @@ CONTAINS
       NAMELIST/namusr_def/ nn_isize, nn_jsize, nn_ksize, ln_Iperio, ln_Jperio, ln_NFold, cn_NFtype
       NAMELIST/nammpp/ jpni, jpnj, nn_hls, ln_nnogather, ln_mppdelay, ln_listonly, nn_comm
       !!----------------------------------------------------------------------     
+      ! To increase BENCH stability, avoid time update
+      ! so that first time step to be recomputed at every time step
+      !
+      l_perpetual_ts = .TRUE.
       !
       READ_NML_(numnam_cfg,cfg,namusr_def,.TRUE.)
       IF(lwm)   WRITE( numond, namusr_def )      
