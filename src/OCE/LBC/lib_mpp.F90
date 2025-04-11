@@ -201,6 +201,9 @@ MODULE lib_mpp
    INTEGER, PUBLIC :: ndlrstuse
    INTEGER, PUBLIC :: ndlrstoff
 
+   LOGICAL, PUBLIC :: l_perpetual_ts = .FALSE.      ! Avoid time update to ensure stability
+                                                    ! ( BENCH test case only )
+
    LOGICAL, PUBLIC ::   ln_nnogather                !: namelist control of northfold comms
    LOGICAL, PUBLIC ::   ln_mppdelay                 !: namelist control of delayed mpi communications
    INTEGER, PUBLIC ::   nn_comm                     !: namelist control of comms
