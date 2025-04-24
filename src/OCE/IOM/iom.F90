@@ -2223,15 +2223,12 @@ CONTAINS
       CALL xios_get_handle( "domain_definition", domaingroup_hdl )        ! get domain_definition handle
       CALL xios_get_handle(   "grid_definition",   gridgroup_hdl )        ! get   grid_definition handle
       !
-      cldom = TRIM(cdid)//clsfx(1)                                           ! the default domain name 
-      IF( xios_is_valid_domain(cldom) ) THEN                                 ! must be found in the xml file
+      IF( xios_is_valid_domain(cdid) ) THEN                                 ! must be found in the xml file
          DO jn = 1, isfx
             cldom = TRIM(cdid)//clsfx(jn)
             IF( .NOT. xios_is_valid_domain(cldom) )   CALL xios_add_child( domaingroup_hdl, domain_hdl, cldom )
-            IF( cdid /= cldom )   CALL xios_set_domain_attr( cldom, domain_ref = cdid )    ! link this new domain to cdid
-            ! trick to avoid to duplicate dimension in output files : x_grid_T, x_grid_T_inner etc...
             CALL xios_set_domain_attr( cldom, name = cdid )   ! force the name to avoid duplicated dimension names
-            
+
             IF( PRESENT(data_ibegin) ) THEN
                CALL xios_set_domain_attr( cldom, data_ibegin = data_ibegin - ihsz(jn), data_ni = data_ni + 2*ihsz(jn),   &
                   &                              data_jbegin = data_jbegin - ihsz(jn), data_nj = data_nj + 2*ihsz(jn) )
@@ -2255,16 +2252,19 @@ CONTAINS
                   CALL xios_add_child( gridgroup_hdl, grid_hdl, clgrd )       ! add a new 2D grid to grid_definition
                   CALL xios_add_child( grid_hdl, domain_hdl, clgrd )          ! add a new domain
                   CALL xios_set_domain_attr( clgrd, domain_ref = cldom )      ! link this new domain to cldom
+                  CALL xios_set_domain_attr( clgrd, name = cdid )             ! force the name to avoid duplicated dimension names
                ENDIF
                clgrd = TRIM(cdid)//'_3D'//clsfx(jn)                       ! new 3D grid name
                IF( .NOT. xios_is_valid_grid(clgrd) ) THEN                 ! if not already defined
                   CALL xios_add_child( gridgroup_hdl, grid_hdl, clgrd )       ! add a new 3D grid to grid_definition
                   CALL xios_add_child( grid_hdl, domain_hdl, clgrd )          ! add a new domain
                   CALL xios_set_domain_attr( clgrd, domain_ref = cldom )      ! link this new domain to cldom
+                  CALL xios_set_domain_attr( clgrd, name = cdid )             ! force the name to avoid duplicated dimension names
                   cl1 = cdid(LEN_TRIM(cdid):)                                 ! last letter of cdid
                   cl1 = CHAR(ICHAR(cl1)+32)                                   ! from upper to lower case
                   CALL xios_add_child( grid_hdl, axis_hdl, clgrd)             ! add a new axis
                   CALL xios_set_axis_attr( clgrd, axis_ref = 'depth'//cl1 )   ! link this new axis to 'depth'//cl1
+                  CALL xios_set_axis_attr( clgrd, name = 'depth'//cl1 )       ! force the name to avoid duplicated dimension names
                ENDIF
             ENDIF
          END DO
@@ -2340,15 +2340,18 @@ CONTAINS
                CALL xios_add_child( gridgroup_hdl, grid_hdl, clgrd )       ! add a new 2D grid to grid_definition
                CALL xios_add_child( grid_hdl, domain_hdl, clgrd )          ! add a new domain
                CALL xios_set_domain_attr( clgrd, domain_ref = cldom )      ! link this new domain to cldom
+               CALL xios_set_domain_attr( clgrd, name='grid_'//cl1 )       ! force the name to avoid duplicated dimension names
             ENDIF
             clgrd = TRIM(cdid)//'_3D'//clsfx(jn)                       ! new 3D grid name
             IF( .NOT. xios_is_valid_grid(clgrd) ) THEN                 ! if not already defined
                CALL xios_add_child( gridgroup_hdl, grid_hdl, clgrd )       ! add a new 3D grid to grid_definition
                CALL xios_add_child( grid_hdl, domain_hdl, clgrd )          ! add a new domain
                CALL xios_set_domain_attr( clgrd, domain_ref = cldom )      ! link this new domain to cldom
+               CALL xios_set_domain_attr( clgrd, name='grid_'//cl1 )       ! force the name to avoid duplicated dimension names
                cl1 = CHAR(ICHAR(cl1)+32)                                   ! from upper to lower case
                CALL xios_add_child( grid_hdl, axis_hdl, clgrd)             ! add a new axis
                CALL xios_set_axis_attr( clgrd, axis_ref = 'depth'//cl1 )   ! link this new axis to 'depth'//cl1
+               CALL xios_set_axis_attr( clgrd, name = 'depth'//cl1 )       ! force the name to avoid duplicated dimension names
             ENDIF
          ENDIF
       END DO
@@ -2389,9 +2392,11 @@ CONTAINS
             cldom = TRIM(cddom)//csfx(jn)
             CALL xios_add_child( grid_hdl, domain_hdl, clgrd )          ! add a new domain
             CALL xios_set_domain_attr( clgrd, domain_ref = cldom )      ! link this new domain to cldom
+            CALL xios_set_domain_attr( clgrd, name = cldom )            ! force the name to avoid duplicated dimension names
             DO ja = 1, iax
                CALL xios_add_child( grid_hdl, axis_hdl, clgrd)          ! add a new axis
                CALL xios_set_axis_attr( clgrd, axis_ref = cdaxe(ja) )   ! link this new axis to cdaxe(ja)
+               CALL xios_set_axis_attr( clgrd, name = cdaxe(ja) )       ! force the name to avoid duplicated dimension names
             END DO
             IF(llscalar) THEN
                CALL xios_add_child( grid_hdl, scalar_hdl, clgrd )
