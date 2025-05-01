@@ -359,7 +359,9 @@ CONTAINS
          &    iom_use( 'mld_dt02' ) .OR. iom_use( 'topthdep' ) .OR. iom_use( 'mldr10_3' ) .OR.  & 
          &    iom_use( '20d'      ) .OR. iom_use( '26d'      ) .OR. iom_use( '28d'      ) .OR.  & 
          &    iom_use( 'hc300'    ) .OR. iom_use( 'hc700'    ) .OR. iom_use( 'hc2000'   ) .OR.  & 
-         &    iom_use( 'pycndep'  ) .OR. iom_use( 'tinv'     ) .OR. iom_use( 'depti'    )
+         &    iom_use( 'pycndep'  ) .OR. iom_use( 'tinv'     ) .OR. iom_use( 'depti'    ) .OR.  &
+         &    iom_use( 'mldzint_1' ) .OR. iom_use( 'mldzint_2' ) .OR. iom_use( 'mldzint_3' ) .OR.  &
+         &    iom_use( 'mldzint_4' ) .OR. iom_use( 'mldzint_5' )
       !
       IF( l_hth ) THEN
          IF(lwp) WRITE(numout,*)
