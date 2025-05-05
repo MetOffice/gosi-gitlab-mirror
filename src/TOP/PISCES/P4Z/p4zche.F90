@@ -31,8 +31,9 @@ MODULE p4zche
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   :: sio3eq   ! chemistry of Si
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   :: fekeq    ! chemistry of Fe
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   :: chemc    ! Solubilities of O2 and CO2
-   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   :: chemo2    ! Solubilities of O2 and CO2
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   :: chemo2   ! Solubilities of O2 and CO2
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:,:) :: fesol    ! solubility of Fe
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   akfe2ox  ! Oxydation rate of FEII
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   salinprac  ! Practical salinity
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   tempis   ! In situ temperature
 
@@ -147,7 +148,7 @@ CONTAINS
       !! ** Method  : - ...
       !!---------------------------------------------------------------------
       INTEGER, INTENT(in) ::   Kbb, Kmm  ! time level indices
-      INTEGER  ::   ji, jj, jk, itt
+      INTEGER  ::   ji, jj, jk
       REAL(wp) ::   ztkel, ztkel1, ztkel2, ztkel3
       REAL(wp) ::   zt, zsal, zlogsal, zsal2, zbuf1, zbuf2
       REAL(wp) ::   ztgg , ztgg2, ztgg3 , ztgg4 , ztgg5
@@ -166,17 +167,13 @@ CONTAINS
       ! Thus, when TEOS08 is used, absolute salinity is converted to 
       ! practical salinity
       ! -------------------------------------------------------------
-      ! Don't consider mid-step values if online coupling
-      ! because these are possibly non-monotonic (even with FCT): 
-      IF ( l_offline ) THEN ; itt = Kmm ; ELSE ; itt = Kbb ; ENDIF
-      
       IF (neos == -1) THEN
          DO_3D( 0, 0, 0, 0, 1, jpk )
-            salinprac(ji,jj,jk) = ts(ji,jj,jk,jp_sal,itt) * 35.0 / 35.16504
+            salinprac(ji,jj,jk) = ts(ji,jj,jk,jp_sal,Kmm) * 35.0 / 35.16504
          END_3D
       ELSE
          DO_3D( 0, 0, 0, 0, 1, jpk )
-            salinprac(ji,jj,jk) = ts(ji,jj,jk,jp_sal,itt)
+            salinprac(ji,jj,jk) = ts(ji,jj,jk,jp_sal,Kmm)
          END_3D
       ENDIF
 
@@ -188,9 +185,9 @@ CONTAINS
       ! ---------------------------------------------------------------------
       DO_3D( 0, 0, 0, 0, 1, jpk )
          zpres = gdept(ji,jj,jk,Kmm) / 1000.
-         za1   = 0.04 * ( 1.0 + 0.185 * ts(ji,jj,jk,jp_tem,itt) + 0.035 * (salinprac(ji,jj,jk) - 35.0) )
-         za2   = 0.0075 * ( 1.0 - ts(ji,jj,jk,jp_tem,itt) / 30.0 )
-         tempis(ji,jj,jk) = ts(ji,jj,jk,jp_tem,itt) - zpres * ( za1 - za2 * zpres )
+         za1   = 0.04 * ( 1.0 + 0.185 * ts(ji,jj,jk,jp_tem,Kmm) + 0.035 * (salinprac(ji,jj,jk) - 35.0) )
+         za2   = 0.0075 * ( 1.0 - ts(ji,jj,jk,jp_tem,Kmm) / 30.0 )
+         tempis(ji,jj,jk) = ts(ji,jj,jk,jp_tem,Kmm) - zpres * ( za1 - za2 * zpres )
       END_3D
       !
       ! CHEMICAL CONSTANTS - SURFACE LAYER
@@ -434,6 +431,9 @@ CONTAINS
           fluorid(ji,jj,jk) = zft 
 
           fekeq (ji,jj,jk)  = EXP( LOG(10.) * ( 17.27 - 1565.7 / ztkel ) ) 
+
+          ! Oxidation kinetic of FeII
+          akfe2ox(ji,jj,jk) = EXP( LOG(10.) * (21.56 - 1545.0 / ztkel - 3.23 * zisqrt + 1.52 * zis) ) / total2free / 60.0
 
           ! Liu and Millero (1999) only valid 5 - 50 degC
           ztkel1 = MAX( 5. , tempis(ji,jj,jk) ) + 273.16 
@@ -829,7 +829,8 @@ CONTAINS
 
       ierr(:) = 0
 
-      ALLOCATE( fekeq(A2D(0),jpk), chemc(A2D(0),3), chemo2(A2D(0),jpk), STAT=ierr(1) )
+      ALLOCATE( fekeq(A2D(0),jpk)  , chemc(A2D(0),3), chemo2(A2D(0),jpk),   &
+         &      akfe2ox(A2D(0),jpk),                   STAT=ierr(1) )
 
       ALLOCATE( akb3(A2D(0),jpk)     , tempis(A2D(0),jpk),       &
          &      akw3(A2D(0),jpk)     , borat (A2D(0),jpk)  ,       &
