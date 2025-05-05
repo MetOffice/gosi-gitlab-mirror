@@ -163,7 +163,7 @@ ${COMPIL_DIR}/Fmake_tools_bld.sh ${TOOLS_DIR} ${CUR_CONF} ${NEMO_TDIR} || exit
 
 #- At this stage cpp keys have been updated. we can check the arch file
 #- When used for the first time, choose a compiler ---
-${COMPIL_DIR}/Fcheck_archfile.sh ${TOOLS_DIR}/${CUR_CONF}/BLD/arch_tools.fcm ${TOOLS_DIR}/${CUR_CONF}/BLD/cpp_tools.fcm ${MAIN_DIR}/arch/arch-${CMP_NAM}.fcm ${x_b} || exit
+${COMPIL_DIR}/Fcheck_archfile.sh ${NEMO_TDIR}/${CUR_CONF}/BLD/arch_tools.fcm ${NEMO_TDIR}/${CUR_CONF}/BLD/cpp_tools.fcm ${MAIN_DIR}/arch/arch-${CMP_NAM}.fcm ${x_b} || exit
 
 #- At this stage the configuration has beeen chosen
 #- We coose the default light file
@@ -246,7 +246,7 @@ if [ "${NBR_PRC}" -gt 0 ]; then
 
     if ls ${NEMO_TDIR}/${CUR_CONF}/BLD/bin/*.exe 2>/dev/null && [ -z "${x_c}" ]; then
         for i in ${NEMO_TDIR}/${CUR_CONF}/BLD/bin/*.exe ; do
-            ln -sfv ${i} ${TOOLS_DIR}/${CUR_CONF}/.
+            ln -sfv ${i} ${NEMO_TDIR}/${CUR_CONF}/.
         done
     fi
 fi
