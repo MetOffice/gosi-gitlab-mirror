@@ -888,7 +888,7 @@ CONTAINS
                   ENDIF
             END_2D
          CASE( 6 )                                 ! deeper mixing in the Northern emisphere
-            DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
+            DO_2D( 0, 0, 0, 0 )
                   IF( gphit(ji,jj) > 0._wp ) THEN
                     zminval = 30._wp
                   ELSE
@@ -900,7 +900,7 @@ CONTAINS
                   ENDIF
             END_2D 
          CASE( 7 )                                 ! symmetric function
-            DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
+            DO_2D( 0, 0, 0, 0 )
                   zminval = 10._wp
                   htau(ji,jj) = MAX(  0.5_wp, MIN( zminval, 45._wp*rn_htau_scaling*ABS( SIN( rpi/180._wp * gphit(ji,jj) ) ) )   )
                   IF( gphit(ji,jj) <= -40._wp ) THEN

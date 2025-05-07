@@ -158,7 +158,7 @@ CONTAINS
       INTEGER                    , INTENT(in   ) ::   Kmm      ! ocean time level index
       !                          !               !!         !==  top or bottom variables  ==!
       INTEGER , DIMENSION(:,:)   , INTENT(in   ) ::   k_mk     ! wet level (1st or last)
-      REAL(wp), DIMENSION(:,:)   , INTENT(in   ) ::   pCdmin   ! min drag value
+      REAL(wp), DIMENSION(A2D(2)), INTENT(in   ) ::   pCdmin   ! min drag value
       REAL(wp)                   , INTENT(in   ) ::   pCdmax   ! max drag value
       REAL(wp)                   , INTENT(in   ) ::   pz0      ! roughness
       REAL(wp)                   , INTENT(in   ) ::   pke0     ! background tidal KE
