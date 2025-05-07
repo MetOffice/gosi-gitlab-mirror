@@ -51,7 +51,7 @@ set -o posix
 #
 # ::
 #
-#  $ ./maketools -t ifort_osx - j3 -n NESTING
+#  $ ./maketools -m ifort_osx - j3 -n NESTING
 #
 #
 # TODO
@@ -94,15 +94,15 @@ while getopts :hbm:n:r:j:t:v: V
     case $V in
         (h)  x_h=${OPTARG};
             echo "Usage	 : "${b_n} \
-                 " [-h] [-n name] [-m arch] [-j No] [-t tmpdir] [-v n]";
-            echo " -h	 : help";
+                 " [-h] [-n name] [-m arch] [-j No] [-t bldloc] [-v n]";
+            echo " -h           : help";
             echo " -h institute : specific help for consortium members";
-            echo " -n name : tool name, [-n help] to list existing tools";
-            echo " -m arch : choose compiler, [-m help] to list exiting compilers";
-            echo " -b      : compile with debug options";
-            echo " -j No	 : number of processes used to compile (0=nocompilation)";
-            echo " -t dir  : remporary directory for compilation"
-            echo " -v n    : level of verbosity (0-3)";
+            echo " -n name      : tool name, [-n help] to list existing tools";
+            echo " -m arch      : choose compiler, [-m help] to list exiting compilers";
+            echo " -b           : compile with debug options";
+            echo " -j No        : number of processes used to compile (0=nocompilation)";
+            echo " -t bldloc    : alternative build location";
+            echo " -v n         : level of verbosity (0-3)";
             echo "";
             echo "Example to compile Agrif Nesting tools";
             echo "maketools -n NESTING" ;
@@ -159,7 +159,7 @@ ${COMPIL_DIR}/Fcheck_config.sh ${TOOLS_DIR}/tools.txt ${CUR_CONF} || exit
 echo "${CUR_CONF} "  > ${TOOLS_DIR}/tools.txt
 
 #- Make the building directory
-${COMPIL_DIR}/Fmake_tools_bld.sh ${TOOLS_DIR} ${CUR_CONF} ${NEMO_TDIR} || exit
+${COMPIL_DIR}/Fmake_tools_bld.sh ${CUR_CONF} ${NEMO_TDIR} || exit
 
 #- At this stage cpp keys have been updated. we can check the arch file
 #- When used for the first time, choose a compiler ---

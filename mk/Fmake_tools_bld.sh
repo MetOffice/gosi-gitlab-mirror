@@ -57,8 +57,7 @@ set -o posix
 #   * creation
 #
 #-
-[ ! -d ${3}/${2}/BLD ] && \mkdir -p ${3}/${2}/BLD
-[ ! -d ${1}/${2}/BLD ] && ln -sf ${3}/${2}/BLD ${1}/${2}/BLD
+[ ! -d ${2}/${1}/BLD ] && \mkdir -p ${2}/${1}/BLD
 # enforce presence of cpp_tools.fcm (write a blank one if not present in the tools directory)
 # cp instead of ln to avoid overwiting previous tool cpp_XXX.fcm file when compiling a file without cpp_YYY.fcm file.
-[ -f ${3}/${2}/cpp_${2}.fcm ] && ln -sf -f ${3}/${2}/cpp_${2}.fcm ${3}/${2}/BLD/cpp_tools.fcm || echo 'bld::tool::fppkeys ' > ${3}/${2}/BLD/cpp_tools.fcm
+[ -f ${2}/${1}/cpp_${1}.fcm ] && ln -sf -f ${2}/${1}/cpp_${1}.fcm ${2}/${1}/BLD/cpp_tools.fcm || echo 'bld::tool::fppkeys ' > ${2}/${1}/BLD/cpp_tools.fcm
