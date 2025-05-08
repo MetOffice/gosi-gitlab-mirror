@@ -69,7 +69,7 @@ MODULE iom
    PRIVATE iom_p1d_sp, iom_p2d_sp, iom_p3d_sp, iom_p4d_sp
    PRIVATE iom_p1d_dp, iom_p2d_dp, iom_p3d_dp, iom_p4d_dp
 #if defined key_xios
-   PRIVATE iom_set_domain_attr, iom_set_axis_attr, iom_set_field_attr, iom_set_file_attr, iom_get_file_attr, iom_set_grid_attr
+   PRIVATE iom_set_domain_attr, iom_set_axis_attr, iom_set_field_attr, iom_set_file_attr, iom_get_file_attr
    PRIVATE set_grid, set_grid_bounds, set_scalar, set_xmlatt, set_mooring, iom_sdate
    PRIVATE iom_set_rst_context, iom_set_vars_active
 # endif
@@ -2173,8 +2173,8 @@ CONTAINS
    !!----------------------------------------------------------------------
 
    SUBROUTINE iom_set_domain_attr( cdid, ni_glo, nj_glo, ibegin, jbegin, ni, nj,                                     &
-      &                            data_dim, data_ibegin, data_ni, data_jbegin, data_nj, lonvalue, latvalue, mask,   &
-      &                            ntiles, tile_ibegin, tile_jbegin, tile_ni, tile_nj,                               &
+      &                            data_dim, data_ibegin, data_ni, data_jbegin, data_nj, lonvalue, latvalue,         &
+      &                            ntiles, tile_ibegin, tile_jbegin, tile_ni, tile_nj, mask_1D, mask_3D,             &
       &                            tile_data_ibegin, tile_data_jbegin, tile_data_ni, tile_data_nj,                   &
       &                            nvertex, bounds_lon, bounds_lat, area,                                            &
       &                            cdsfx, khsz, ldogrd )
@@ -2188,7 +2188,8 @@ CONTAINS
       INTEGER                 , OPTIONAL, INTENT(in) ::   nvertex, ntiles
       REAL(dp), DIMENSION(:)  , OPTIONAL, INTENT(in) ::   lonvalue, latvalue
       REAL(dp), DIMENSION(:,:), OPTIONAL, INTENT(in) ::   bounds_lon, bounds_lat, area
-      LOGICAL , DIMENSION(:)  , OPTIONAL, INTENT(in) ::   mask
+      LOGICAL,  DIMENSION(:)  , OPTIONAL, INTENT(in) ::   mask_1D
+      LOGICAL,DIMENSION(:,:,:), OPTIONAL, INTENT(in) ::   mask_3D
       CHARACTER(LEN=*)        , OPTIONAL, INTENT(in) ::   cdsfx   ! overwrite csfx definition 
       INTEGER                 , OPTIONAL, INTENT(in) ::   khsz    ! overwrite nhsz definition
       LOGICAL                 , OPTIONAL, INTENT(in) ::   ldogrd 
@@ -2244,7 +2245,7 @@ CONTAINS
 #endif
             CALL xios_set_domain_attr( cldom, ni_glo = ni_glo, nj_glo = nj_glo, ibegin = ibegin, jbegin = jbegin, ni = ni, nj = nj,   &
                &    lonvalue_1D = lonvalue, latvalue_1D = latvalue, bounds_lon_1D = bounds_lon, bounds_lat_1D = bounds_lat,           &
-               &    mask_1D = mask, nvertex = nvertex, area = area, TYPE = 'curvilinear', data_dim = data_dim )
+               &    mask_1D = mask_1D, nvertex = nvertex, area = area, TYPE = 'curvilinear', data_dim = data_dim )
 
             IF( lldogrd ) THEN                                            ! add new grid definitions
                clgrd = TRIM(cdid)//'_2D'//clsfx(jn)                       ! new 2D grid name
@@ -2266,11 +2267,10 @@ CONTAINS
                   CALL xios_set_axis_attr( clgrd, axis_ref = 'depth'//cl1 )   ! link this new axis to 'depth'//cl1
                   CALL xios_set_axis_attr( clgrd, name = 'depth'//cl1 )       ! force the name to avoid duplicated dimension names
                ENDIF
+               IF( PRESENT(mask_3D) )   CALL xios_set_grid_attr( clgrd, mask_3D = mask_3D )
             ENDIF
          END DO
       ENDIF
-      !
-      CALL xios_solve_inheritance()
       !
       DEALLOCATE(clsfx, ihsz)
       !
@@ -2425,7 +2425,6 @@ CONTAINS
          IF( xios_is_valid_axis     (cdid) )   CALL xios_set_axis_attr     ( cdid)
          IF( xios_is_valid_axisgroup(cdid) )   CALL xios_set_axisgroup_attr( cdid)
       END IF
-      CALL xios_solve_inheritance()
    END SUBROUTINE iom_set_axis_attr
 
 
@@ -2438,7 +2437,6 @@ CONTAINS
       !!----------------------------------------------------------------------
       IF( xios_is_valid_field     (cdid) )   CALL xios_set_field_attr     ( cdid, freq_op=freq_op, freq_offset=freq_offset )
       IF( xios_is_valid_fieldgroup(cdid) )   CALL xios_set_fieldgroup_attr( cdid, freq_op=freq_op, freq_offset=freq_offset )
-      CALL xios_solve_inheritance()
    END SUBROUTINE iom_set_field_attr
 
 
@@ -2450,7 +2448,6 @@ CONTAINS
       !!----------------------------------------------------------------------
       IF( xios_is_valid_file     (cdid) )   CALL xios_set_file_attr     ( cdid, name=name, name_suffix=name_suffix )
       IF( xios_is_valid_filegroup(cdid) )   CALL xios_set_filegroup_attr( cdid, name=name, name_suffix=name_suffix )
-      CALL xios_solve_inheritance()
    END SUBROUTINE iom_set_file_attr
 
 
@@ -2481,17 +2478,6 @@ CONTAINS
       ENDIF
    END SUBROUTINE iom_get_file_attr
 
-
-   SUBROUTINE iom_set_grid_attr( cdid, mask )
-      !!----------------------------------------------------------------------
-      !!----------------------------------------------------------------------
-      CHARACTER(LEN=*)                   , INTENT(in) ::   cdid
-      LOGICAL, DIMENSION(:,:,:), OPTIONAL, INTENT(in) ::   mask
-      !!----------------------------------------------------------------------
-      IF( xios_is_valid_grid     (cdid) )   CALL xios_set_grid_attr     ( cdid, mask_3D=mask )
-      IF( xios_is_valid_gridgroup(cdid) )   CALL xios_set_gridgroup_attr( cdid, mask_3D=mask )
-      CALL xios_solve_inheritance()
-   END SUBROUTINE iom_set_grid_attr
 
    SUBROUTINE iom_setkt( kt, cdname )
       !!----------------------------------------------------------------------
@@ -2580,8 +2566,8 @@ CONTAINS
                          zmask(:,:,1    ) = tmask(Nis0:Nie0, Njs0:Nje0,1)
          END SELECT
          !
-         CALL iom_set_domain_attr( "grid_"//cdgrd       , mask=RESHAPE(zmask(:,:,1),(/Ni_0*Nj_0    /)) /= 0. )
-         CALL iom_set_grid_attr  ( "grid_"//cdgrd//"_3D", mask=RESHAPE(zmask(:,:,:),(/Ni_0,Nj_0,jpk/)) /= 0. )
+         CALL iom_set_domain_attr( "grid_"//cdgrd, mask_1D = RESHAPE(zmask(:,:,1),(/Ni_0*Nj_0    /)) /= 0.   &
+            &                                    , mask_3D = RESHAPE(zmask(:,:,:),(/Ni_0,Nj_0,jpk/)) /= 0. )
       ENDIF
       !
    END SUBROUTINE set_grid
