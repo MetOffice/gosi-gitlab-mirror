@@ -14,8 +14,9 @@ variables:
     value: "default"
     options:
       - "default"
-      - "intel"
       - "gcc"
+      - "intel"
+      - "oneapi"
 
   NEMO_COMPILATION:
     description: "Nemo compilation mode"
