@@ -140,9 +140,10 @@ find_fortran_wrapper () {
 find_fortran_compiler () {
     if   [ $( $FCnemo --version | head -n 1 | grep -ci "\(gcc\|gnu\)" ) -eq 1 ] ; then ftncomp="gnu"
     elif [ $( $FCnemo --version | head -n 1 | grep -ci        "ifort" ) -eq 1 ] ; then ftncomp="intel"
+    elif [ $( $FCnemo --version | head -n 1 | grep -ci          "ifx" ) -eq 1 ] ; then ftncomp="oneapi"
     elif [ $( $FCnemo --version | head -n 1 | grep -ci "Cray Fortran" ) -eq 1 ] ; then ftncomp="cray"
     else
-	echo_red "ERROR: the fortran wrapper $FCnemo does not correspond to the gnu, the intel or the cray compiler" \
+	echo_red "ERROR: the fortran wrapper $FCnemo does not correspond to the gnu, the intel or the cray compilers" \
 		 "       please use one of these compilers or add your compiler in $0"
 	exit 1
     fi
@@ -413,10 +414,11 @@ find_fortran_compiler
 #
 # first guess
 case "$ftncomp" in
-    intel) guess=${CCnemo:-icc}	;;
-    gnu)   guess=${CCnemo:-gcc}	;;
-    cray)  guess=${CCnemo:-cc}	;;
-    *)     guess=${CCnemo:-""}	;;
+    intel)  guess=${CCnemo:-icc} ;;
+    oneapi) guess=${CCnemo:-icx} ;;
+    gnu)    guess=${CCnemo:-gcc} ;;
+    cray)   guess=${CCnemo:-cc}  ;;
+    *)      guess=${CCnemo:-""}  ;;
 esac
 listcc="$guess gcc cc icc"  # try $guess and other usuals C compilers... 
 CCnemo="notfound"
@@ -447,7 +449,7 @@ echo_green "CPPnemo=$CPPnemo"
 #-----------------------------------------------------
 #
 case "$ftncomp" in
-    intel)
+    intel|oneapi)
 	PROD_FCFLAGS="-i4 -r8 -O3 -fp-model strict -xHost -fno-alias"
 	DEBUG_FCFLAGS="-i4 -r8 -g -O0 -debug all -traceback -fp-model strict -ftrapuv -check all,noarg_temp_created -fpe-all0 -ftz -init=arrays,snan,huge"
 	echo_orange "WARNING: We assume you will execute NEMO on the same machine you compiled it. " \
@@ -455,7 +457,7 @@ case "$ftncomp" in
 	;;
     gnu)
 	PROD_FCFLAGS="-fdefault-real-8 -march=native -O2 -fno-expensive-optimizations -funroll-all-loops -fcray-pointer -ffree-line-length-none"
-	DEBUG_FCFLAGS="-fdefault-real-8 -Og -g -fbacktrace -funroll-all-loops -fcray-pointer -ffree-line-length-none -fcheck=all -finit-real=nan -ffpe-trap=invalid,zero,overflow -ffpe-summary=invalid,zero,overflow"
+	DEBUG_FCFLAGS="-fdefault-real-8 -Og -g -fbacktrace -funroll-all-loops -fcray-pointer -ffree-line-length-none -fcheck=all,no-array-temps -finit-real=nan -finit-logical=true -finit-integer=2147483647 -ffpe-trap=invalid,zero,overflow -ffpe-summary=invalid,zero,overflow"
 	rev=$( $FCnemo --version | head -n 1 | sed -e "s/.* \([0-9]*\).*/\1/" )
 	# if gfortran version >= 10 : add -fallow-argument-mismatch 
 	if [ $rev -ge 10 ]
@@ -623,7 +625,7 @@ cat > $archname << EOF
 %OASIS_INC           $OASIS_INC
 %OASIS_LIB           $OASIS_LIB
 
-%CPP	             $CPPnemo
+%CPP                 $CPPnemo
 %FC                  $FCnemo 
 %PROD_FCFLAGS        $PROD_FCFLAGS
 %DEBUG_FCFLAGS       $DEBUG_FCFLAGS
