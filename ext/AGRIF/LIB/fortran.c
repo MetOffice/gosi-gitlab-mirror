@@ -377,6 +377,7 @@ extern YYSTYPE fortran_lval;
 
 int fortran_parse (void);
 
+extern int fortran_lex (void);
 
 
 /* Copy the second part of user declarations.  */
@@ -10610,8 +10611,6 @@ static int input (void );
  */
 #ifndef YY_DECL
 #define YY_DECL_IS_OURS 1
-
-extern int fortran_lex (void);
 
 #define YY_DECL int fortran_lex (void)
 #endif /* !YY_DECL */
