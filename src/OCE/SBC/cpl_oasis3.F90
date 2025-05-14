@@ -33,6 +33,10 @@ MODULE cpl_oasis3
    USE dom_oce                      ! ocean space and time domain
    USE in_out_manager               ! I/O manager
    USE lbclnk                       ! ocean lateral boundary conditions (or mpp link)
+   USE lib_mpp
+#if defined key_agrif || ! defined key_mpi_off
+   USE MPI
+#endif
 
    IMPLICIT NONE
    PRIVATE

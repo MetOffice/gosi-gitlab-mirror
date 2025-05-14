@@ -25,6 +25,7 @@ MODULE icerst
    !
    Use in_out_manager ! I/O manager
    USE iom            ! I/O manager library
+   USE ioipsl  , ONLY : ju2ymds                     ! for calendar
    USE lib_mpp        ! MPP library
 
    IMPLICIT NONE
@@ -48,6 +49,9 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER, INTENT(in) ::   kt       ! number of iteration
       !
+      INTEGER             ::   iyear, imonth, iday
+      REAL (wp)           ::   zsec
+      REAL (wp)           ::   zfjulday
       CHARACTER(len=20)   ::   clkt     ! ocean time-step define as a character
       CHARACTER(len=50)   ::   clname   ! ice output restart file name
       CHARACTER(len=256)  ::   clpath   ! full path to ice output restart file
@@ -64,8 +68,15 @@ CONTAINS
          &                             .OR. ( kt == nitend - nn_fsbc + 1 .AND. .NOT. lrst_ice ) ) THEN
          IF( nitrst <= nitend .AND. nitrst > 0 ) THEN
             ! beware of the format used to write kt (default is i8.8, that should be large enough...)
-            IF( nitrst > 99999999 ) THEN   ;   WRITE(clkt, *       ) nitrst
-            ELSE                           ;   WRITE(clkt, '(i8.8)') nitrst
+            IF ( ln_rstdate ) THEN
+               zfjulday = fjulday + (2*nn_fsbc+1)*rdt / rday
+               IF( ABS(zfjulday - REAL(NINT(zfjulday),wp)) < 0.1 / rday )   zfjulday = REAL(NINT(zfjulday),wp)   ! avoid truncation error
+               CALL ju2ymds( zfjulday, iyear, imonth, iday, zsec )           
+               WRITE(clkt, '(i4.4,2i2.2)') iyear, imonth, iday
+            ELSE
+               IF( nitrst > 99999999 ) THEN   ;   WRITE(clkt, *       ) nitrst
+               ELSE                           ;   WRITE(clkt, '(i8.8)') nitrst
+               ENDIF
             ENDIF
             ! create the file
             clname = TRIM(cexper)//"_"//TRIM(ADJUSTL(clkt))//"_"//TRIM(cn_icerst_out)
@@ -350,6 +361,11 @@ CONTAINS
             DO jk = 1, nlay_i
                szv_i(:,:,jk,:) = sv_i(:,:,:) * r1_nlay_i
             ENDDO
+         ENDIF
+
+         ! If this is a coupled model we need to pick up a_i for use as a_i_last_couple
+         IF (ln_cpl) then
+            a_i_last_couple = a_i
          ENDIF
 
          CALL iom_delay_rst( 'READ', numrir )   ! read all delayed global communication variables (if not already done)
