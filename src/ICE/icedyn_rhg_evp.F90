@@ -804,6 +804,70 @@ CONTAINS
       IF( iom_use('icestr') )   CALL iom_put( 'icestr' , strength * zmsk00 )   ! strength
       IF( iom_use('icedlt') )   CALL iom_put( 'icedlt' , zdelta   * zmsk00 )   ! delta
 
+      ! Write some diagnostics to standard.out to investigate stability
+      ! 
+      IF( MOD( kt - nit000 + 1, 48 ) == 0 ) THEN ! Daily output from monthly cycling
+        ! Max values
+        IF (mpprank == 33) THEN ! 0033 Marguerite Bay West
+          WRITE(numout,'(a11,1x,i5,1x,f9.2)') '0033:strmax', kt - nit000 + 1, maxval(strength)
+          WRITE(numout,'(a11,1x,i5,1x,e10.4)') '0033:shemax', kt - nit000 + 1, maxval(pshear_i)
+          WRITE(numout,'(a11,1x,i5,1x,e10.4)') '0033:divmax', kt - nit000 + 1, maxval(pdivu_i)
+          WRITE(numout,'(a11,1x,i5,1x,e10.4)') '0033:delmax', kt - nit000 + 1, maxval(zdelta)
+        END IF
+        !
+        IF (mpprank == 34) THEN ! 0034 Marguerite Bay East
+          WRITE(numout,'(a11,1x,i5,1x,f9.2)') '0034:strmax', kt - nit000 + 1, maxval(strength)
+          WRITE(numout,'(a11,1x,i5,1x,e10.4)') '0034:shemax', kt - nit000 + 1, maxval(pshear_i)
+          WRITE(numout,'(a11,1x,i5,1x,e10.4)') '0034:divmax', kt - nit000 + 1, maxval(pdivu_i)
+          WRITE(numout,'(a11,1x,i5,1x,e10.4)') '0034:delmax', kt - nit000 + 1, maxval(zdelta)
+        END IF
+        !
+        IF (mpprank == 321) THEN ! 0321 N Greenland
+          WRITE(numout,'(a11,1x,i5,1x,f9.2)') '0321:strmax', kt - nit000 + 1, maxval(strength)
+          WRITE(numout,'(a11,1x,i5,1x,e10.4)') '0321:shemax', kt - nit000 + 1, maxval(pshear_i)
+          WRITE(numout,'(a11,1x,i5,1x,e10.4)') '0321:divmax', kt - nit000 + 1, maxval(pdivu_i)
+          WRITE(numout,'(a11,1x,i5,1x,e10.4)') '0321:delmax', kt - nit000 + 1, maxval(zdelta)
+        END IF
+        !  
+        IF (mpprank == 339) THEN ! 0339 Canadian Archipelago
+          WRITE(numout,'(a11,1x,i5,1x,f9.2)') '0339:strmax', kt - nit000 + 1, maxval(strength)
+          WRITE(numout,'(a11,1x,i5,1x,e10.4)') '0339:shemax', kt - nit000 + 1, maxval(pshear_i)
+          WRITE(numout,'(a11,1x,i5,1x,e10.4)') '0339:divmax', kt - nit000 + 1, maxval(pdivu_i)
+          WRITE(numout,'(a11,1x,i5,1x,e10.4)') '0339:delmax', kt - nit000 + 1, maxval(zdelta)
+        END IF
+        !
+        ! Mean values
+        IF (mpprank == 33) THEN ! 0033 Marguerite Bay West
+          WRITE(numout,'(a12,1x,i5,1x,f9.2)') '0033:strmean', kt - nit000 + 1, sum(strength)/size(strength)
+          WRITE(numout,'(a12,1x,i5,1x,e10.4)') '0033:shemean', kt - nit000 + 1, sum(pshear_i)/size(pshear_i)
+          WRITE(numout,'(a12,1x,i5,1x,e10.4)') '0033:divmean', kt - nit000 + 1, sum(pdivu_i)/size(pdivu_i)
+          WRITE(numout,'(a12,1x,i5,1x,e10.4)') '0033:delmean', kt - nit000 + 1, sum(zdelta)/size(zdelta)
+        END IF
+        !
+        IF (mpprank == 34) THEN ! 0034 Marguerite Bay East
+          WRITE(numout,'(a12,1x,i5,1x,f9.2)') '0034:strmean', kt - nit000 + 1, sum(strength)/size(strength)
+          WRITE(numout,'(a12,1x,i5,1x,e10.4)') '0034:shemean', kt - nit000 + 1, sum(pshear_i)/size(pshear_i)
+          WRITE(numout,'(a12,1x,i5,1x,e10.4)') '0034:divmean', kt - nit000 + 1, sum(pdivu_i)/size(pdivu_i)
+          WRITE(numout,'(a12,1x,i5,1x,e10.4)') '0034:delmean', kt - nit000 + 1, sum(zdelta)/size(zdelta)
+        END IF
+        !
+        IF (mpprank == 321) THEN ! 0321 N Greenland
+          WRITE(numout,'(a12,1x,i5,1x,f9.2)') '0321:strmean', kt - nit000 + 1, sum(strength)/size(strength)
+          WRITE(numout,'(a12,1x,i5,1x,e10.4)') '0321:shemean', kt - nit000 + 1, sum(pshear_i)/size(pshear_i)
+          WRITE(numout,'(a12,1x,i5,1x,e10.4)') '0321:divmean', kt - nit000 + 1, sum(pdivu_i)/size(pdivu_i)
+          WRITE(numout,'(a12,1x,i5,1x,e10.4)') '0321:delmean', kt - nit000 + 1, sum(zdelta)/size(zdelta)
+        END IF
+        !  
+        IF (mpprank == 339) THEN ! 0339 Canadian Archipelago
+          WRITE(numout,'(a12,1x,i5,1x,f9.2)') '0339:strmean', kt - nit000 + 1, sum(strength)/size(strength)
+          WRITE(numout,'(a12,1x,i5,1x,e10.4)') '0339:shemean', kt - nit000 + 1, sum(pshear_i)/size(pshear_i)
+          WRITE(numout,'(a12,1x,i5,1x,e10.4)') '0339:divmean', kt - nit000 + 1, sum(pdivu_i)/size(pdivu_i)
+          WRITE(numout,'(a12,1x,i5,1x,e10.4)') '0339:delmean', kt - nit000 + 1, sum(zdelta)/size(zdelta)
+        END IF
+        !
+      END IF
+
+
       ! --- Stress tensor invariants (SIMIP diags) --- !
       IF( iom_use('normstr') .OR. iom_use('sheastr') ) THEN
          !
@@ -827,6 +891,53 @@ CONTAINS
          !
          IF( iom_use('normstr') )   CALL iom_put( 'normstr', zsig_I (:,:) * zmsk00(:,:) ) ! Normal stress
          IF( iom_use('sheastr') )   CALL iom_put( 'sheastr', zsig_II(:,:) * zmsk00(:,:) ) ! Maximum shear stress
+
+         ! write some diagnostics to standard.out to investigate stability
+         !
+         IF( MOD( kt - nit000 + 1, 48 ) == 0 ) THEN ! Daily output from monthly cycling
+           ! Max values
+           IF (mpprank == 33) THEN ! 0033 Marguerite Bay West (normstress, shearstress)
+             WRITE(numout,'(a11,1x,i5,1x,f10.2)') '0033:nosmax', kt - nit000 + 1, maxval(zsig_I)
+             WRITE(numout,'(a11,1x,i5,1x,f10.2)') '0033:shsmax', kt - nit000 + 1, maxval(zsig_II)
+           END IF
+           !
+           IF (mpprank == 34) THEN ! 0034 Marguerite Bay East (normstress, shearstress)
+             WRITE(numout,'(a11,1x,i5,1x,f10.2)') '0034:nosmax', kt - nit000 + 1, maxval(zsig_I)
+             WRITE(numout,'(a11,1x,i5,1x,f10.2)') '0034:shsmax', kt - nit000 + 1, maxval(zsig_II)
+           END IF
+           !  
+           IF (mpprank == 321) THEN ! 0321 N Greenland (normstress, shearstress)
+             WRITE(numout,'(a11,1x,i5,1x,f10.2)') '0321:nosmax', kt - nit000 + 1, maxval(zsig_I)
+             WRITE(numout,'(a11,1x,i5,1x,f10.2)') '0321:shsmax', kt - nit000 + 1, maxval(zsig_II)
+           END IF
+           !  
+           IF (mpprank == 339) THEN ! 0339 Canadian Archipelago (normstress, shearstress)
+             WRITE(numout,'(a11,1x,i5,1x,f10.2)') '0339:nosmax', kt - nit000 + 1, maxval(zsig_I)
+             WRITE(numout,'(a11,1x,i5,1x,f10.2)') '0339:shsmax', kt - nit000 + 1, maxval(zsig_II)
+           END IF
+           !
+           ! Mean values sum(strength)/size(strength)
+           IF (mpprank == 33) THEN ! 0033 Marguerite Bay West (normstress, shearstress)
+             WRITE(numout,'(a12,1x,i5,1x,f10.2)') '0033:nosmean', kt - nit000 + 1, sum(zsig_I)/size(zsig_I)
+             WRITE(numout,'(a12,1x,i5,1x,f10.2)') '0033:shsmean', kt - nit000 + 1, sum(zsig_II)/size(zsig_II)
+           END IF
+           !
+           IF (mpprank == 34) THEN ! 0034 Marguerite Bay East (normstress, shearstress)
+             WRITE(numout,'(a12,1x,i5,1x,f10.2)') '0034:nosmean', kt - nit000 + 1, sum(zsig_I)/size(zsig_I)
+             WRITE(numout,'(a12,1x,i5,1x,f10.2)') '0034:shsmean', kt - nit000 + 1, sum(zsig_II)/size(zsig_II)
+           END IF
+           !  
+           IF (mpprank == 321) THEN ! 0321 N Greenland (normstress, shearstress)
+             WRITE(numout,'(a12,1x,i5,1x,f10.2)') '0321:nosmean', kt - nit000 + 1, sum(zsig_I)/size(zsig_I)
+             WRITE(numout,'(a12,1x,i5,1x,f10.2)') '0321:shsmean', kt - nit000 + 1, sum(zsig_II)/size(zsig_II)
+           END IF
+           !  
+           IF (mpprank == 339) THEN ! 0339 Canadian Archipelago (normstress, shearstress)
+             WRITE(numout,'(a12,1x,i5,1x,f10.2)') '0339:nosmean', kt - nit000 + 1, sum(zsig_I)/size(zsig_I)
+             WRITE(numout,'(a12,1x,i5,1x,f10.2)') '0339:shsmean', kt - nit000 + 1, sum(zsig_II)/size(zsig_II)
+           END IF
+           !
+         END IF
 
          DEALLOCATE ( zsig_I, zsig_II )
 

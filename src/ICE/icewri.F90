@@ -64,7 +64,7 @@ CONTAINS
       !!-------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('icewri')
-
+   
       ! get missing value from xml
       CALL iom_miss_val( 'icetemp', zmiss_val )
 
@@ -240,6 +240,62 @@ CONTAINS
       !
       IF( ln_timing )  CALL timing_stop('icewri')
       !
+
+      ! Write some diagnostics to standard.out to investigate stability
+      !
+      IF( MOD( kt - nit000 + 1, 48 ) == 0 ) THEN ! Daily output from monthly cycling
+        ! Max values
+        IF (mpprank == 33) THEN ! 0033 Marguerite Bay West
+          WRITE(numout,'(a11,1x,i5,1x,f6.2)') '0033:sitmax', kt - nit000 + 1, maxval(vt_i) 
+          WRITE(numout,'(a11,1x,i5,1x,f5.3)') '0033:sicmax', kt - nit000 + 1, maxval(at_i) 
+          WRITE(numout,'(a11,1x,i5,1x,e11.4)') '0033:spdmax', kt - nit000 + 1, maxval(z2d)
+        END IF
+        ! 
+        IF (mpprank == 34) THEN ! 0034 Marguerite Bay East
+          WRITE(numout,'(a11,1x,i5,1x,f6.2)') '0034:sitmax', kt - nit000 + 1, maxval(vt_i) 
+          WRITE(numout,'(a11,1x,i5,1x,f5.3)') '0034:sicmax', kt - nit000 + 1, maxval(at_i) 
+          WRITE(numout,'(a11,1x,i5,1x,e11.4)') '0034:spdmax', kt - nit000 + 1, maxval(z2d)
+        END IF
+        !  
+        IF (mpprank == 321) THEN ! 0321 N Greenland
+          WRITE(numout,'(a11,1x,i5,1x,f6.2)') '0321:sitmax', kt - nit000 + 1, maxval(vt_i) 
+          WRITE(numout,'(a11,1x,i5,1x,f5.3)') '0321:sicmax', kt - nit000 + 1, maxval(at_i) 
+          WRITE(numout,'(a11,1x,i5,1x,e11.4)') '0321:spdmax', kt - nit000 + 1, maxval(z2d)
+        END IF
+        !  
+        IF (mpprank == 339) THEN ! 0339 Canadian Archipelago
+          WRITE(numout,'(a11,1x,i5,1x,f6.2)') '0339:sitmax', kt - nit000 + 1, maxval(vt_i) 
+          WRITE(numout,'(a11,1x,i5,1x,f5.3)') '0339:sicmax', kt - nit000 + 1, maxval(at_i) 
+          WRITE(numout,'(a11,1x,i5,1x,e11.4)') '0339:spdmax', kt - nit000 + 1, maxval(z2d)
+        END IF
+        !
+        ! Mean values
+        IF (mpprank == 33) THEN ! 0033 Marguerite Bay West
+          WRITE(numout,'(a12,1x,i5,1x,f6.2)') '0033:sitmean', kt - nit000 + 1, sum(vt_i)/size(vt_i) 
+          WRITE(numout,'(a12,1x,i5,1x,f5.3)') '0033:sicmean', kt - nit000 + 1, sum(at_i)/size(at_i) 
+          WRITE(numout,'(a12,1x,i5,1x,e11.4)') '0033:spdmean', kt - nit000 + 1, sum(z2d)/size(z2d)
+        END IF
+        !
+        IF (mpprank == 34) THEN ! 0034 Marguerite Bay East
+          WRITE(numout,'(a12,1x,i5,1x,f6.2)') '0034:sitmean', kt - nit000 + 1, sum(vt_i)/size(vt_i) 
+          WRITE(numout,'(a12,1x,i5,1x,f5.3)') '0034:sicmean', kt - nit000 + 1, sum(at_i)/size(at_i) 
+          WRITE(numout,'(a12,1x,i5,1x,e11.4)') '0034:spdmean', kt - nit000 + 1, sum(z2d)/size(z2d)
+        END IF
+        !  
+        IF (mpprank == 321) THEN ! 0321 N Greenland
+          WRITE(numout,'(a12,1x,i5,1x,f6.2)') '0321:sitmean', kt - nit000 + 1, sum(vt_i)/size(vt_i) 
+          WRITE(numout,'(a12,1x,i5,1x,f5.3)') '0321:sicmean', kt - nit000 + 1, sum(at_i)/size(at_i)
+          WRITE(numout,'(a12,1x,i5,1x,e11.4)') '0321:spdmean', kt - nit000 + 1, sum(z2d)/size(z2d)
+        END IF
+        !  
+        IF (mpprank == 339) THEN ! 0339 Canadian Archipelago
+          WRITE(numout,'(a12,1x,i5,1x,f6.2)') '0339:sitmean', kt - nit000 + 1, sum(vt_i)/size(vt_i) 
+          WRITE(numout,'(a12,1x,i5,1x,f5.3)') '0339:sicmean', kt - nit000 + 1, sum(at_i)/size(at_i)
+          WRITE(numout,'(a12,1x,i5,1x,e11.4)') '0339:spdmean', kt - nit000 + 1, sum(z2d)/size(z2d)
+        END IF
+        !
+      END IF
+
    END SUBROUTINE ice_wri
 
 

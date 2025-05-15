@@ -353,7 +353,45 @@ CONTAINS
         !
       ENDIF ! ridging diagnostics
 
-! ------- !
+
+      ! Write some diagnostics to standard.out to investigate stability
+      !
+      IF( MOD( kt - nit000 + 1, 48 ) == 0 ) THEN ! Daily output from monthly cycling
+        ! Max values
+        IF (mpprank == 33) THEN ! 0033 Marguerite Bay West
+          WRITE(numout,'(a11,1x,i5,1x,e10.2)') '0033:rdgmax', kt - nit000 + 1, maxval(dairdg2dt)
+        END IF
+        !
+        IF (mpprank == 34) THEN ! 0034 Marguerite Bay East
+          WRITE(numout,'(a11,1x,i5,1x,e10.2)') '0034:rdgmax', kt - nit000 + 1, maxval(dairdg2dt)
+        END IF
+        !
+        IF (mpprank == 321) THEN ! 0321 N Greenland
+          WRITE(numout,'(a11,1x,i5,1x,e10.2)') '0321:rdgmax', kt - nit000 + 1, maxval(dairdg2dt)
+        END IF
+        !  
+        IF (mpprank == 339) THEN ! 0339 Canadian Archipelago
+          WRITE(numout,'(a11,1x,i5,1x,e10.2)') '0339:rdgmax', kt - nit000 + 1, maxval(dairdg2dt)
+        END IF
+        !
+        ! Mean values
+        IF (mpprank == 33) THEN ! 0033 Marguerite Bay West
+          WRITE(numout,'(a12,1x,i5,1x,e10.2)') '0033:rdgmean', kt - nit000 + 1, sum(dairdg2dt)/size(dairdg2dt)
+        END IF
+        !
+        IF (mpprank == 34) THEN ! 0034 Marguerite Bay East
+          WRITE(numout,'(a12,1x,i5,1x,e10.2)') '0034:rdgmean', kt - nit000 + 1, sum(dairdg2dt)/size(dairdg2dt)
+        END IF
+        !
+        IF (mpprank == 321) THEN ! 0321 N Greenland
+          WRITE(numout,'(a12,1x,i5,1x,e10.2)') '0321:rdgmean', kt - nit000 + 1, sum(dairdg2dt)/size(dairdg2dt)
+        END IF
+        !  
+        IF (mpprank == 339) THEN ! 0339 Canadian Archipelago
+          WRITE(numout,'(a12,1x,i5,1x,e10.2)') '0339:rdgmean', kt - nit000 + 1, sum(dairdg2dt)/size(dairdg2dt)
+        END IF
+        !
+      END IF
 
       CALL ice_var_agg( 1 ) 
 

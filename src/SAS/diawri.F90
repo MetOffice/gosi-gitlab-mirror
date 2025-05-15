@@ -193,6 +193,7 @@ CONTAINS
       itmod = kt - nit000 + 1
 
 
+
       ! 1. Define NETCDF files and fields at beginning of first time step
       ! -----------------------------------------------------------------
 
