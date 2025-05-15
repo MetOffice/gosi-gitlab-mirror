@@ -2274,7 +2274,7 @@ CONTAINS
       CALL iom_set_domain_attr("grid_"//cdgrd, data_dim=2, data_ibegin = -nn_hls, data_ni=jpi, data_jbegin = -nn_hls, data_nj=jpj)
 
       ! Inner domain only
-      CALL iom_set_domain_attr("grid_"//cdgrd//"_inner", name = "grid_"//cdgrd, ni_glo = Ni0glo, nj_glo = Nj0glo,   &
+      CALL iom_set_domain_attr("grid_"//cdgrd//"_inner", cdname = "grid_"//cdgrd, ni_glo = Ni0glo, nj_glo = Nj0glo,   &
          &                     ibegin = mig0(Nis0) - 1, jbegin = mjg0(Njs0) - 1, ni = Ni_0, nj = Nj_0)
       CALL iom_set_domain_attr("grid_"//cdgrd//"_inner", data_dim=2, data_ibegin = 0, data_ni=Ni_0, data_jbegin = 0, data_nj=Nj_0)
 
