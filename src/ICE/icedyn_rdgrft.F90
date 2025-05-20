@@ -105,24 +105,13 @@ CONTAINS
    INTEGER FUNCTION ice_dyn_rdgrft_alloc()
       !!-------------------------------------------------------------------
       !!                ***  ROUTINE ice_dyn_rdgrft_alloc ***
-      !!-------------------------------------------------------------------
-      IF( ll_diag_rdg ) THEN
-         ALLOCATE( closing_net(jpij) , opning(jpij)    , closing_gross(jpij),                   &
-            &      apartf(jpij,0:jpl), hrmin (jpij,jpl), hraft(jpij,jpl)    , aridge(jpij,jpl), &
-            &      hrmax (jpij,jpl)  , hrexp (jpij,jpl), hi_hrdg(jpij,jpl)  , araft(jpij,jpl) , &
-            &      airdg1(jpij)      , airft1(jpij)    , airdg2(jpij)       , airft2(jpij)    , &
-            ! diagnostics
-            &      opning_2d(A2D(0)) , dairdg1dt(A2D(0)) , dairft1dt(A2D(0)) , dairdg2dt(A2D(0)) , dairft2dt(A2D(0)) , &
-            !
-            &      STAT=ice_dyn_rdgrft_alloc )
-      ELSE
-         ALLOCATE( closing_net(jpij) , opning(jpij)    , closing_gross(jpij),                   &
+      !!-------------------------------------------------------------------     
+      ALLOCATE( closing_net(jpij) , opning(jpij)    , closing_gross(jpij),                   &
             &      apartf(jpij,0:jpl), hrmin (jpij,jpl), hraft(jpij,jpl)    , aridge(jpij,jpl), &
             &      hrmax (jpij,jpl)  , hrexp (jpij,jpl), hi_hrdg(jpij,jpl)  , araft(jpij,jpl) , &
             &      airdg1(jpij)      , airft1(jpij)    , airdg2(jpij)       , airft2(jpij)    , &
             &      STAT=ice_dyn_rdgrft_alloc )         
-      ENDIF
-      
+      !     
       CALL mpp_sum ( 'icedyn_rdgrft', ice_dyn_rdgrft_alloc )
       IF( ice_dyn_rdgrft_alloc /= 0 )   CALL ctl_stop( 'STOP',  'ice_dyn_rdgrft_alloc: failed to allocate arrays'  )
       !
@@ -185,6 +174,17 @@ CONTAINS
          IF(lwp) WRITE(numout,*)
          IF(lwp) WRITE(numout,*)'ice_dyn_rdgrft: ice ridging and rafting'
          IF(lwp) WRITE(numout,*)'~~~~~~~~~~~~~~'
+         ! diagnostics     
+         IF( iom_use('lead_open') .OR. iom_use('rdg_loss') .OR. iom_use('rft_loss') .OR. &
+         &                          iom_use('rdg_gain') .OR. iom_use('rft_gain') ) THEN
+           ll_diag_rdg = .TRUE.
+         !       
+         ALLOCATE( opning_2d(A2D(0)) , dairdg1dt(A2D(0)) , dairft1dt(A2D(0)) , dairdg2dt(A2D(0)) , dairft2dt(A2D(0)) )
+         !      
+         ELSE
+           ll_diag_rdg = .FALSE.
+         ENDIF
+         !
       ENDIF     
 
       ! Initialise ridging diagnostics if required
@@ -1240,14 +1240,6 @@ CONTAINS
             WRITE(numout,*) '            rn_fsnwrft   = ', rn_fsnwrft
             WRITE(numout,*) '            rn_fpndrft   = ', rn_fpndrft
          ENDIF
-      ENDIF
-      !
-      ! diagnostics
-      IF( iom_use('lead_open') .OR. iom_use('rdg_loss') .OR. iom_use('rft_loss') .OR. &
-         &                          iom_use('rdg_gain') .OR. iom_use('rft_gain') ) THEN
-         ll_diag_rdg = .TRUE.
-      ELSE
-         ll_diag_rdg = .FALSE.
       ENDIF
       !                              ! allocate arrays
       IF( ice_dyn_rdgrft_alloc() /= 0 )   CALL ctl_stop( 'STOP', 'ice_dyn_rdgrft_init: unable to allocate arrays' )
