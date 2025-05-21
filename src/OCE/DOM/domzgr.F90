@@ -92,13 +92,14 @@ CONTAINS
          IF(lwp) WRITE(numout,*)
          IF(lwp) WRITE(numout,*) '   ==>>>   Read vertical mesh in ', TRIM( cn_domcfg ), ' file'
          !
-         CALL zgr_read   ( ln_zco  , ln_zps  , ln_sco, ln_isfcav,   & 
-            &              gdept_1d, gdepw_1d, e3t_1d, e3w_1d   ,   &    ! 1D gridpoints depth
-            &              gdept_0 , gdepw_0                    ,   &    ! gridpoints depth 
-            &              e3t_0   , e3u_0   , e3v_0 , e3f_0    ,   &    ! vertical scale factors
-            &              e3w_0   , e3uw_0  , e3vw_0           ,   &    ! vertical scale factors
-            &              k_top   , k_bot                      ,   &    ! 1st & last ocean level
-            &              is_mbkuvf, mbku, mbkv, mbkf )                 ! U/V/F points bottom levels
+         CALL zgr_read   ( ln_zco   , ln_zps  , ln_sco, ln_loczgr,   &    ! type of vert. coord.
+            &              ln_isfcav                             ,   &    ! ice-cavities
+            &              gdept_1d , gdepw_1d, e3t_1d, e3w_1d   ,   &    ! 1D gridpoints depth
+            &              gdept_0  , gdepw_0                    ,   &    ! gridpoints depth 
+            &              e3t_0    , e3u_0   , e3v_0 , e3f_0    ,   &    ! vertical scale factors
+            &              e3w_0    , e3uw_0  , e3vw_0           ,   &    ! vertical scale factors
+            &              k_top    , k_bot                      ,   &    ! 1st & last ocean level
+            &              is_mbkuvf, mbku, mbkv, mbkf )                  ! U/V/F points bottom levels
             !
       ELSE                          !==  User defined configuration  ==!
          IF(lwp) WRITE(numout,*)
@@ -169,6 +170,7 @@ CONTAINS
          WRITE(numout,*) '      z-coordinate - full steps      ln_zco    = ', ln_zco
          WRITE(numout,*) '      z-coordinate - partial steps   ln_zps    = ', ln_zps
          WRITE(numout,*) '      s- or hybrid z-s-coordinate    ln_sco    = ', ln_sco
+         WRITE(numout,*) '      localized vertical coordinates ln_loczgr = ', ln_loczgr
          WRITE(numout,*) '      ice shelf cavities             ln_isfcav = ', ln_isfcav
       ENDIF
 
@@ -218,13 +220,14 @@ CONTAINS
    END SUBROUTINE dom_zgr
 
 
-   SUBROUTINE zgr_read( ld_zco  , ld_zps  , ld_sco  , ld_isfcav,   &   ! type of vertical coordinate
-      &                 pdept_1d, pdepw_1d, pe3t_1d , pe3w_1d  ,   &   ! 1D reference vertical coordinate
-      &                 pdept , pdepw ,                            &   ! 3D t & w-points depth
-      &                 pe3t  , pe3u  , pe3v   , pe3f ,            &   ! vertical scale factors
-      &                 pe3w  , pe3uw , pe3vw         ,            &   !     -      -      -
-      &                 k_top  , k_bot  ,                          &   ! top & bottom ocean level
-      &                 k_mbkuvf  , k_bot_u  , k_bot_v  , k_bot_f  )   ! U/V/F points bottom levels
+   SUBROUTINE zgr_read( ld_zco   , ld_zps  , ld_sco , ld_loczgr,  &   ! type of vertical coordinate
+      &                 ld_isfcav,                                &   ! ice-cavities
+      &                 pdept_1d , pdepw_1d, pe3t_1d, pe3w_1d  ,  &   ! 1D reference vertical coordinate
+      &                 pdept    , pdepw   ,                      &   ! 3D t & w-points depth
+      &                 pe3t     , pe3u    , pe3v   , pe3f     ,  &   ! vertical scale factors
+      &                 pe3w     , pe3uw   , pe3vw  ,             &   !     -      -      -
+      &                 k_top    , k_bot   ,                      &   ! top & bottom ocean level
+      &                 k_mbkuvf , k_bot_u , k_bot_v, k_bot_f  )      ! U/V/F points bottom levels
       !!---------------------------------------------------------------------
       !!              ***  ROUTINE zgr_read  ***
       !!
@@ -232,12 +235,13 @@ CONTAINS
       !!
       !!----------------------------------------------------------------------
       LOGICAL                   , INTENT(out) ::   ld_zco, ld_zps, ld_sco      ! vertical coordinate flags
+      LOGICAL                   , INTENT(out) ::   ld_loczgr                   ! localised vert. coord. flag
       LOGICAL                   , INTENT(out) ::   ld_isfcav                   ! under iceshelf cavity flag
       REAL(wp), DIMENSION(:)    , INTENT(out) ::   pdept_1d, pdepw_1d          ! 1D grid-point depth       [m]
       REAL(wp), DIMENSION(:)    , INTENT(out) ::   pe3t_1d , pe3w_1d           ! 1D vertical scale factors [m]
       REAL(wp), DIMENSION(:,:,:), INTENT(out) ::   pdept, pdepw                ! grid-point depth          [m]
-      REAL(wp), DIMENSION(:,:,:), INTENT(out)  :: pe3u, pe3v, pe3f! vertical scale factors    [m]
-      REAL(dp), DIMENSION(:,:,:), INTENT(out)  :: pe3t! vertical scale factors    [m]
+      REAL(wp), DIMENSION(:,:,:), INTENT(out) ::   pe3u, pe3v, pe3f            ! vertical scale factors    [m]
+      REAL(dp), DIMENSION(:,:,:), INTENT(out) ::   pe3t                        ! vertical scale factors    [m]
       REAL(wp), DIMENSION(:,:,:), INTENT(out) ::   pe3w , pe3uw, pe3vw         !    -       -      -
       INTEGER , DIMENSION(:,:)  , INTENT(out) ::   k_top , k_bot               ! first & last ocean level
       INTEGER                   , INTENT(out) ::   k_mbkuvf                    ! ==1 if mbku, mbkv, mbkf are in file
@@ -245,7 +249,7 @@ CONTAINS
       !
       INTEGER  ::   ji,jj,jk     ! dummy loop index
       INTEGER  ::   inum, iatt
-      REAL(WP) ::   z_zco, z_zps, z_sco, z_cav
+      REAL(WP) ::   z_zco, z_zps, z_sco, z_cav, z_loc
       REAL(wp), DIMENSION(jpi,jpj) ::   z2d   ! 2D workspace
       CHARACTER(len=7) ::   catt   ! 'zco', 'zps, 'sco' or 'UNKNOWN'
       !!----------------------------------------------------------------------
@@ -263,6 +267,7 @@ CONTAINS
       ld_zco = catt == 'zco'          ! default = .false.
       ld_zps = catt == 'zps'          ! default = .false.
       ld_sco = catt == 'sco'          ! default = .false.
+      ld_loczgr = catt == 'loczgr'    ! default = .false.
       !                          !* ocean cavities under iceshelves
       CALL iom_getatt( inum,    'IsfCav', iatt )   ! returns -999 if not found
       ld_isfcav = iatt == 1           ! default = .false.
@@ -276,6 +281,11 @@ CONTAINS
       IF( iatt == -999 ) THEN
          CALL iom_get( inum, 'ln_isfcav', z_cav )   ;   ld_isfcav = z_cav /= 0._wp
       ENDIF
+      !                          !*local vertical coordinates
+      z_loc = 0._wp
+      IF( iom_varid( inum, 'ln_loczgr', ldstop = .FALSE. ) > 0 ) CALL iom_get( inum, 'ln_loczgr'  , z_loc )
+      ld_loczgr = z_loc /= 0._wp
+      !
       ! ------- keep compatibility with OLD VERSION... end -------
       !
       !                          !* ocean top and bottom level

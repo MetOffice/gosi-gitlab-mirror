@@ -230,13 +230,21 @@
       !
       !
       LOGICAL :: check_namelist
+      LOGICAL :: bdy_z, bdy_parent_z
       CHARACTER(len=15) :: cl_check1, cl_check2, cl_check3, cl_check4 
       REAL(wp), DIMENSION(jpi,jpj) ::   zk   ! workspace
       INTEGER :: ji, jj, jk
       INTEGER :: jpk_parent, ierr
       !!----------------------------------------------------------------------
-    
-     ! CALL Agrif_Declare_Var_ini
+ 
+      bdy_z = .FALSE.    
+      bdy_parent_z = .FALSE.
+      IF ( ln_zps .OR. ln_zco ) bdy_z = .TRUE.
+      IF ( ln_sco .AND. ln_loczgr ) bdy_z = .TRUE.
+      IF ( Agrif_Parent(ln_zps) .OR. Agrif_Parent(ln_zco) ) bdy_parent_z = .TRUE.
+      IF ( Agrif_Parent(ln_sco) .AND. Agrif_Parent(ln_loczgr) ) bdy_parent_z = .TRUE.
+
+      ! CALL Agrif_Declare_Var_ini
 
       IF( agrif_oce_alloc()  > 0 )   CALL ctl_warn('agrif agrif_oce_alloc: allocation of arrays failed')
 
@@ -263,7 +271,7 @@
          mbku_parent(ji,jj) = MIN( mbkt_parent(ji+1,jj  ), mbkt_parent(ji,jj) )
          mbkv_parent(ji,jj) = MIN( mbkt_parent(ji  ,jj+1), mbkt_parent(ji,jj) )
       END_2D
-      IF ( ln_sco.AND.Agrif_Parent(ln_sco) ) THEN 
+      IF ( .NOT.bdy_z .AND. .NOT.bdy_parent_z ) THEN 
          DO_2D( 1, 0, 1, 0 )
             hu0_parent(ji,jj) = 0.5_wp * ( ht0_parent(ji,jj)+ht0_parent(ji+1,jj) ) * ssumask(ji,jj)
             hv0_parent(ji,jj) = 0.5_wp * ( ht0_parent(ji,jj)+ht0_parent(ji,jj+1) ) * ssvmask(ji,jj)
@@ -306,7 +314,7 @@
       END_3D
 
       ! Assume a step at the bottom except if (pure) s-coordinates
-      IF ( .NOT.Agrif_Parent(ln_sco) ) THEN 
+      IF ( bdy_z ) THEN 
          DO_2D( 1, 0, 1, 0 )
             jk = mbku_parent(ji,jj)
             e3u0_parent(ji,jj,jk) = MIN(e3t0_parent(ji,jj,jk), e3t0_parent(ji+1,jj  ,jk))

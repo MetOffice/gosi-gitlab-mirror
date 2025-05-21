@@ -132,6 +132,7 @@ MODULE dom_oce
    LOGICAL, PUBLIC ::   ln_zco       !: z-coordinate - full step
    LOGICAL, PUBLIC ::   ln_zps       !: z-coordinate - partial step
    LOGICAL, PUBLIC ::   ln_sco       !: s-coordinate or hybrid z-s coordinate
+   LOGICAL, PUBLIC ::   ln_loczgr    !: presence of localized vertical coordinates
    LOGICAL, PUBLIC ::   ln_isfcav    !: presence of ISF
    !                                                        !  reference scale factors
    REAL(dp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::     e3t_0   !: t- vert. scale factor [m]

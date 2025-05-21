@@ -409,7 +409,7 @@ CONTAINS
             END DO
          END DO
 
-         IF ( l_vremap.OR.ln_zps ) THEN
+         IF ( l_vremap .OR. ln_zps .OR. ( ln_sco.AND.ln_loczgr ) ) THEN
 
             ! Fill cell depths (i.e. gdept) to be interpolated
             ! Warning: these are masked, hence extrapolated prior interpolation.

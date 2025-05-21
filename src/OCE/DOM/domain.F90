@@ -710,9 +710,10 @@ CONTAINS
       CALL iom_putatt( inum, 'NFtype',          c_NFtype     )
 
       !                                   ! type of vertical coordinate
-      IF(ln_zco)   CALL iom_putatt( inum, 'VertCoord', 'zco' )
-      IF(ln_zps)   CALL iom_putatt( inum, 'VertCoord', 'zps' )
-      IF(ln_sco)   CALL iom_putatt( inum, 'VertCoord', 'sco' )
+      IF(ln_zco)    CALL iom_putatt( inum, 'VertCoord', 'zco' )
+      IF(ln_zps)    CALL iom_putatt( inum, 'VertCoord', 'zps' )
+      IF(ln_sco)    CALL iom_putatt( inum, 'VertCoord', 'sco' )
+      IF(ln_loczgr) CALL iom_putatt( inum, 'VertCoord', 'loczgr' )
       
       !                                   ! ocean cavities under iceshelves
       CALL iom_putatt( inum, 'IsfCav', COUNT( (/ln_isfcav/) ) )

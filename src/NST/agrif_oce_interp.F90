@@ -934,7 +934,7 @@ CONTAINS
            END DO
          END DO
 
-         IF( l_vremap .OR. l_ini_child .OR. ln_zps ) THEN
+         IF( l_vremap .OR. l_ini_child .OR. ln_zps .OR. ( ln_sco.AND.ln_loczgr ) ) THEN
 
             ! Fill cell depths (i.e. gdept) to be interpolated
             ! Warning: these are masked, hence extrapolated prior interpolation.
@@ -1028,7 +1028,7 @@ CONTAINS
  
          ELSE
          
-            IF ( Agrif_Parent(ln_zps) ) THEN ! Account for partial cells 
+            IF ( Agrif_Parent(ln_zps).OR.( Agrif_Parent(ln_sco).AND.Agrif_Parent(ln_loczgr) ) ) THEN ! Account for partial cells 
                                              ! linear vertical interpolation
                DO jj=j1,j2
                   DO ji=i1,i2
@@ -1658,7 +1658,9 @@ CONTAINS
       !!----------------------------------------------------------------------  
       !    
       IF( before ) THEN
-         IF ( ln_zps ) THEN
+         ! In the parent model, localised vert. coord must be outside the
+         ! area where the AGRIF zooms are implemented
+         IF ( ln_zps.OR.( ln_sco.AND.ln_loczgr ) ) THEN
             DO jk = k1, k2
                DO jj = j1, j2
                   DO ji = i1, i2
