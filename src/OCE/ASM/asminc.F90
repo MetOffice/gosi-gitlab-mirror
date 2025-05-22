@@ -351,22 +351,36 @@ CONTAINS
       ! Allocate and initialize the increment arrays
       !--------------------------------------------------------------------
 
-      ALLOCATE( t_bkginc     (jpi,jpj,jpk) )   ;   t_bkginc     (:,:,:) = 0._wp
-      ALLOCATE( s_bkginc     (jpi,jpj,jpk) )   ;   s_bkginc     (:,:,:) = 0._wp
-      ALLOCATE( u_bkginc     (jpi,jpj,jpk) )   ;   u_bkginc     (:,:,:) = 0._wp
-      ALLOCATE( v_bkginc     (jpi,jpj,jpk) )   ;   v_bkginc     (:,:,:) = 0._wp
-      ALLOCATE( ssh_bkginc   (jpi,jpj)     )   ;   ssh_bkginc   (:,:)   = 0._wp
-      ALLOCATE( sic_bkginc   (jpi,jpj)     )   ;   sic_bkginc   (:,:)   = 0._wp
-      ALLOCATE( sit_bkginc(jpi,jpj)        )   ;   sit_bkginc   (:,:)   = 0._wp
-#if defined key_si3 && defined key_asminc
-      ALLOCATE( a_i_bkginc   (jpi,jpj,jpl) )   ;   a_i_bkginc   (:,:,:) = 0._wp
-      ALLOCATE( lincr_newice(jpi,jpj,jpl) )    ;   lincr_newice (:,:,:) = .FALSE.
-#endif
+      IF(ln_trainc) THEN
+         ALLOCATE( t_bkginc     (jpi,jpj,jpk) )   ;   t_bkginc     (:,:,:) = 0._wp
+         ALLOCATE( s_bkginc     (jpi,jpj,jpk) )   ;   s_bkginc     (:,:,:) = 0._wp
+      ENDIF
+      IF(ln_dyninc) THEN
+         ALLOCATE( u_bkginc     (jpi,jpj,jpk) )   ;   u_bkginc     (:,:,:) = 0._wp
+         ALLOCATE( v_bkginc     (jpi,jpj,jpk) )   ;   v_bkginc     (:,:,:) = 0._wp
+      ENDIF
+      IF(ln_sshinc) THEN
+         ALLOCATE( ssh_bkginc   (jpi,jpj)     )   ;   ssh_bkginc   (:,:)   = 0._wp
 #if defined key_asminc
-      ALLOCATE( ssh_iau      (jpi,jpj)     )   ;   ssh_iau      (:,:)   = 0._wp
+         IF(ln_asmiau) THEN
+            ALLOCATE( ssh_iau      (jpi,jpj)     )   ;   ssh_iau      (:,:)   = 0._wp
+         ENDIF
 #endif
+      ENDIF
+      IF(ln_sitinc) THEN
+         ALLOCATE( sit_bkginc(jpi,jpj)        )   ;   sit_bkginc   (:,:)   = 0._wp
+      ENDIF
+      IF(ln_sicinc) THEN
+         ALLOCATE( sic_bkginc   (jpi,jpj)     )   ;   sic_bkginc   (:,:)   = 0._wp
+#if defined key_si3 && defined key_asminc
+         ALLOCATE( a_i_bkginc   (jpi,jpj,jpl) )   ;   a_i_bkginc   (:,:,:) = 0._wp
+         ALLOCATE( lincr_newice(jpi,jpj,jpl) )    ;   lincr_newice (:,:,:) = .FALSE.
+#endif
+      ENDIF
 #if defined key_cice && defined key_asminc
-      ALLOCATE( ndaice_da    (jpi,jpj)     )   ;   ndaice_da    (:,:)   = 0._wp
+      IF(ln_sicinc.OR.ln_sitinc) THEN
+        ALLOCATE( ndaice_da    (jpi,jpj)     )   ;   ndaice_da    (:,:)   = 0._wp
+      ENDIF
 #endif
       !
       IF ( ln_trainc .OR. ln_dyninc .OR.   &                   !--------------------------------------
