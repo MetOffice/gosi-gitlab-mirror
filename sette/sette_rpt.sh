@@ -37,7 +37,7 @@ function get_ktdiff2() {
 
 function rottest() { 
 #
-# Rotational symmetry checks. Expects ROT_000 and ROT_180 run directories
+# Rotational symmetry checks. Expects ROT_000, ROT_090, and ROT_180 test-run directories
 #
   vdir=$1
   nam=$2
@@ -55,10 +55,16 @@ function rottest() {
   fi
 
   if [ -d $vdir/$mach/$dorv/$nam ]; then
+
+    # proceed only if output from rotational-symmetry testing test runs is available
+    [ ! -d $vdir/$mach/$dorv/$nam/ROT_000 ] && \
+    [ ! -d $vdir/$mach/$dorv/$nam/ROT_090 ] && \
+    [ ! -d $vdir/$mach/$dorv/$nam/ROT_180 ] && return
+
     # check ocean output
     runtest $vdir $nam $pass ROT
-    #
-    # run restartibility test
+
+    # run rotational-symmetry test
     f1o=$vdir/$mach/$dorv/$nam/ROT_000/ocean.output
     f1s=$vdir/$mach/$dorv/$nam/ROT_000/run.stat
     f1t=$vdir/$mach/$dorv/$nam/ROT_000/tracer.stat
@@ -91,7 +97,7 @@ function rottest() {
       cmp -s $f1s $f2s
       if [ $? == 0 ]; then
         if [ $pass == 0 ]; then 
-          printf "${format_field1} %s %s\n" $nam "run.stat    180deg  rotation  passed  :" $dorv
+          printf "${format_field1} %s %s\n" $nam "run.stat    180deg rotation  passed  :" $dorv
         fi
       else
         get_ktdiff $f1s $f2s
@@ -1095,9 +1101,11 @@ do
   # Rotational symmetry 
   if [ ${DO_ROTSYM} -eq 1 ]; then
      echo ""
-     echo "   !----Rotational symmetry----!   "
-     dir1=VORTEX
-     rottest $NEMO_VALID VORTEX $pass 
+     echo "   !----rotational symmetry----!   "
+     for rotational_test in ${TEST_CONFIGS[@]}
+     do
+        rottest $NEMO_VALID ${rotational_test} $pass
+     done
   fi
 
   # Restartability test
