@@ -320,18 +320,28 @@ CONTAINS
       ! Allocate and initialize the increment arrays
       !--------------------------------------------------------------------
 
-      ALLOCATE( t_bkginc     (jpi,jpj,jpk) )   ;   t_bkginc     (:,:,:) = 0._wp
-      ALLOCATE( s_bkginc     (jpi,jpj,jpk) )   ;   s_bkginc     (:,:,:) = 0._wp
-      ALLOCATE( u_bkginc     (jpi,jpj,jpk) )   ;   u_bkginc     (:,:,:) = 0._wp
-      ALLOCATE( v_bkginc     (jpi,jpj,jpk) )   ;   v_bkginc     (:,:,:) = 0._wp
-      ALLOCATE( ssh_bkginc   (jpi,jpj)     )   ;   ssh_bkginc   (:,:)   = 0._wp
-      ALLOCATE( seaice_bkginc(jpi,jpj)     )   ;   seaice_bkginc(:,:)   = 0._wp
+      IF(ln_trainc) THEN
+         ALLOCATE( t_bkginc     (jpi,jpj,jpk) )   ;   t_bkginc     (:,:,:) = 0._wp
+         ALLOCATE( s_bkginc     (jpi,jpj,jpk) )   ;   s_bkginc     (:,:,:) = 0._wp
+      ENDIF
+      IF(ln_dyninc) THEN
+         ALLOCATE( u_bkginc     (jpi,jpj,jpk) )   ;   u_bkginc     (:,:,:) = 0._wp
+         ALLOCATE( v_bkginc     (jpi,jpj,jpk) )   ;   v_bkginc     (:,:,:) = 0._wp
+      ENDIF
+      IF(ln_sshinc) THEN
+         ALLOCATE( ssh_bkginc   (jpi,jpj)     )   ;   ssh_bkginc   (:,:)   = 0._wp
 #if defined key_asminc
-      ALLOCATE( ssh_iau      (jpi,jpj)     )   ;   ssh_iau      (:,:)   = 0._wp
+         IF(ln_asmiau) THEN
+            ALLOCATE( ssh_iau      (jpi,jpj)     )   ;   ssh_iau      (:,:)   = 0._wp
+         ENDIF
 #endif
+     ENDIF
+     IF(ln_seaiceinc) THEN
+        ALLOCATE( seaice_bkginc(jpi,jpj)     )   ;   seaice_bkginc(:,:)   = 0._wp
 #if defined key_cice && defined key_asminc
-      ALLOCATE( ndaice_da    (jpi,jpj)     )   ;   ndaice_da    (:,:)   = 0._wp
+        ALLOCATE( ndaice_da    (jpi,jpj)     )   ;   ndaice_da    (:,:)   = 0._wp
 #endif
+      ENDIF
       !
       IF ( ln_trainc .OR. ln_dyninc .OR.   &       !--------------------------------------
          & ln_sshinc .OR. ln_seaiceinc   ) THEN    ! Read the increments from file
