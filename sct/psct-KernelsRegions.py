@@ -4,6 +4,7 @@
 # ======================================================================
 #  History : 5.0  !  2024  (S. Mueller)
 #            5.0  !  2025-01  (S. Mueller) Update for compatibility with the latest PSyclone release version
+#            5.0  !  2025-03  (S. Mueller) Update for compatibility with PSyclone version 3.1.0
 # ----------------------------------------------------------------------
 #
 # This script is a PSyclone (https://github.com/stfc/PSyclone) transformation
@@ -90,11 +91,25 @@ INVOKES_REJECT_PREFIXES = [ 'copy_obfbdata',             # Derived-type issues a
 # been found to lead to model-result differences in comparison to the
 # corresponding run without GPU support
 INVOKES_REJECT_PREFIXES += [ 'ldf_c1d', 'ldf_c2d' ]
+# Reject invokes identified by name substrings
+INVOKES_REJECT_SUBSTR = []
 
 # For compatibility with PSyclone release version 3.0.0
 if P3API:
     MODULES_REJECT_PREFIXES += [ 'domtile' ]   # Unsupported string assignment
     NemoLoop.set_loop_type_inference_rules({ 'lon' : { 'variable' : 'ji' }, 'lat' : { 'variable' : 'jj' } })
+
+# For compatibility with PSyclone release version 3.1.0
+if P3API:
+    INVOKES_REJECT_SUBSTR += [ 'tide_init_components',
+                               'iom_set_',
+                               'obs_rea_surf',
+                               'obs_rea_prof',
+                               'bdy_init',
+                               'trc_bdy_ini',
+                               'p4z_sed_init',
+                               'sed_ini_nam',
+                               'trc_nam_ice' ]
 
 # ----------------------------------------------------------------------
 # Auxiliary functions
@@ -231,7 +246,9 @@ def trans(psy):
     invokes = []
     if not len([ m for m in MODULES_REJECT_PREFIXES if psy.name.lower().startswith('psy_'+m) ]):
         for invoke in psy.invokes.invoke_list:
-            if not len([ m for m in INVOKES_REJECT_PREFIXES if invoke.name.lower().startswith(m) ]):
+            reject = len([ m for m in INVOKES_REJECT_PREFIXES if invoke.name.lower().startswith(m) ]) > 0
+            reject = reject or len([ m for m in INVOKES_REJECT_SUBSTR if invoke.name.lower().count(m) ]) > 0
+            if not reject:
                 invokes.append(invoke)
             else:
                 print(PSCT_LOG_PREFIX+": module "+psy.name+", invoke "+invoke.name+" rejected")
