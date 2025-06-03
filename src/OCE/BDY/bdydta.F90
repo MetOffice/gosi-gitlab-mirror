@@ -68,6 +68,10 @@ MODULE bdydta
    TYPE(FLD), PUBLIC, ALLOCATABLE, DIMENSION(:,:), TARGET ::   bf   ! structure of input fields (file informations, fields read)
 !$AGRIF_END_DO_NOT_TREAT
 
+   ! Flags used to indicate boundary-data arrays that have been separated from the corresponding input-data arrays and need to be
+   ! reset at each time step
+   LOGICAL, DIMENSION(:,:), ALLOCATABLE ::   l_bdydta_reset
+
    !! * Substitutions
 #  include "do_loop_substitute.h90"
 #  include "domzgr_substitute.h90"
@@ -87,12 +91,14 @@ CONTAINS
       !! ** Method  :   Use fldread.F90
       !!                
       !!----------------------------------------------------------------------
-      INTEGER, INTENT(in)           ::   kt           ! ocean time-step index 
-      INTEGER, INTENT(in)           ::   Kmm          ! ocean time level index
+      INTEGER, INTENT(in)              ::   kt                                  ! ocean time-step index
+      INTEGER, INTENT(in)              ::   Kmm                                 ! ocean time level index
       !
-      INTEGER ::  jbdy, jfld, jstart, jend, ib, jl    ! dummy loop indices
-      INTEGER ::  ii, ij, ik, igrd, ipl               ! local integers
-      TYPE(OBC_DATA)         , POINTER ::   dta_alias        ! short cut
+      INTEGER                          ::   jbdy, jfld, jstart, jend, ib,   &   ! dummy loop indices
+         &                                  jl                                  !
+      INTEGER                          ::   ii, ij, ik, igrd, ipl               ! local integers
+      INTEGER, DIMENSION(5)            ::   istat                               ! memory-allocation status flags
+      TYPE(OBC_DATA)         , POINTER ::   dta_alias                           ! short cut
       TYPE(FLD), DIMENSION(:), POINTER ::   bf_alias
       !!---------------------------------------------------------------------------
       !
@@ -195,6 +201,43 @@ CONTAINS
 #endif
          END DO ! jbdy
          !
+         ! Some open-boundary data are modified at each timestep below. To prevent in-situ modifications of original data that are
+         ! still required but not updated at each time step (in the absence of temporal interpolation or for static boundary
+         ! conditions that correspond to initial boundary conditions), the corresponding dta_bdy(:) elements that hold the modified
+         ! data are associated with new arrays instead of with the corresponding elements of bf(:,:)%fnow that hold the original
+         ! data; the relevant data copying is carried out below, prior to the data modifications.
+         istat(:) = 0
+         DO jbdy = 1, nb_bdy
+            dta_alias => dta_bdy(jbdy)
+            bf_alias  => bf(:,jbdy)
+            IF( ASSOCIATED( dta_alias%ssh ) .AND. ( ln_tide .OR. ln_apr_obc ) .AND.   &
+               &                                  ( .NOT. bf_alias(jp_bdyssh)%ln_tint .OR. nn_dyn2d_dta(jbdy) == 0 ) ) THEN
+               ALLOCATE( dta_alias%ssh( SIZE( bf_alias(jp_bdyssh)%fnow(:,1,1) ) ), STAT=istat(1) )
+               l_bdydta_reset(jp_bdyssh,jbdy) = .TRUE.
+            END IF
+            IF( ASSOCIATED( dta_alias%u2d ) .AND. ( ln_tide .OR. cn_tra(jbdy) == 'runoff' ) .AND.   &
+               &                                  ( .NOT. bf_alias(jp_bdyu2d)%ln_tint .OR. nn_dyn2d_dta(jbdy) == 0 ) ) THEN
+               ALLOCATE( dta_alias%u2d( SIZE( bf_alias(jp_bdyu2d)%fnow(:,1,1) ) ), STAT=istat(2) )
+               l_bdydta_reset(jp_bdyu2d,jbdy) = .TRUE.
+            END IF
+            IF( ASSOCIATED( dta_alias%v2d ) .AND. ( ln_tide .OR. cn_tra(jbdy) == 'runoff' ) .AND.   &
+               &                                  ( .NOT. bf_alias(jp_bdyv2d)%ln_tint .OR. nn_dyn2d_dta(jbdy) == 0 ) ) THEN
+               ALLOCATE( dta_alias%v2d( SIZE( bf_alias(jp_bdyv2d)%fnow(:,1,1) ) ), STAT=istat(3) )
+               l_bdydta_reset(jp_bdyv2d,jbdy) = .TRUE.
+            END IF
+            IF( ASSOCIATED( dta_alias%u3d ) .AND. bf_alias(jp_bdyu3d)%ltotvel .AND.   &
+               &                                  ( .NOT. bf_alias(jp_bdyu3d)%ln_tint .OR. nn_dyn3d_dta(jbdy) == 0 ) ) THEN
+               ALLOCATE( dta_alias%u3d( SIZE( bf_alias(jp_bdyu3d)%fnow, DIM=1 ), SIZE( bf_alias(jp_bdyu3d)%fnow, DIM=3 ) ), STAT=istat(4) )
+               l_bdydta_reset(jp_bdyu3d,jbdy) = .TRUE.
+            END IF
+            IF( ASSOCIATED( dta_alias%v3d ) .AND. bf_alias(jp_bdyv3d)%ltotvel .AND.   &
+               &                                  ( .NOT. bf_alias(jp_bdyv3d)%ln_tint .OR. nn_dyn3d_dta(jbdy) == 0 ) ) THEN
+               ALLOCATE( dta_alias%v3d( SIZE( bf_alias(jp_bdyv3d)%fnow, DIM=1 ), SIZE( bf_alias(jp_bdyv3d)%fnow, DIM=3 ) ), STAT=istat(5) )
+               l_bdydta_reset(jp_bdyv3d,jbdy) = .TRUE.
+            END IF
+         END DO
+         IF( MAXVAL(istat) > 0 ) CALL ctl_stop( 'STOP', 'bdy_dta: memory-allocation problem' )
+
       ENDIF ! kt == nit000
 
       ! update external data from files
@@ -209,6 +252,14 @@ CONTAINS
          ! ------------------------
          ! BDY: use pt_offset=0.5 as applied at the end of the step and fldread is referenced at the middle of the step
          CALL fld_read( kt, 1, bf_alias, pt_offset = 0.5_wp, Kmm = Kmm )
+
+         ! reset open-boundary data arrays that have been separated from the corresponding input-data arrays
+         IF( l_bdydta_reset(jp_bdyssh,jbdy) ) dta_alias%ssh(:)   = bf_alias(jp_bdyssh)%fnow(:,1,1)
+         IF( l_bdydta_reset(jp_bdyu2d,jbdy) ) dta_alias%u2d(:)   = bf_alias(jp_bdyu2d)%fnow(:,1,1)
+         IF( l_bdydta_reset(jp_bdyv2d,jbdy) ) dta_alias%v2d(:)   = bf_alias(jp_bdyv2d)%fnow(:,1,1)
+         IF( l_bdydta_reset(jp_bdyu3d,jbdy) ) dta_alias%u3d(:,:) = bf_alias(jp_bdyu3d)%fnow(:,1,:)
+         IF( l_bdydta_reset(jp_bdyv3d,jbdy) ) dta_alias%v3d(:,:) = bf_alias(jp_bdyv3d)%fnow(:,1,:)
+
          ! apply some corrections in some specific cases...
          ! --------------------------------------------------
          !
@@ -342,15 +393,16 @@ CONTAINS
       END DO  ! jbdy
 
       IF ( ln_tide ) THEN
-         IF (ln_dynspg_ts) THEN      ! Fill temporary arrays with slow-varying bdy data                           
-            DO jbdy = 1, nb_bdy      ! Tidal component added in ts loop
-               IF ( nn_dyn2d_dta(jbdy) .GE. 2 ) THEN
+         IF( ln_dynspg_ts ) THEN   ! Fill temporary arrays with slow-varying, non-tidal bdy data; these will be combined with the
+                                   ! tidal component in the time-split loop
+            DO jbdy = 1, nb_bdy
+               IF( nn_dyn2d_dta(jbdy) .GE. 2 ) THEN   ! Reset temporary arrays for slow-varying bdy data
                   IF( ASSOCIATED(dta_bdy(jbdy)%ssh) ) dta_bdy_s(jbdy)%ssh(:) = dta_bdy(jbdy)%ssh(:)
                   IF( ASSOCIATED(dta_bdy(jbdy)%u2d) ) dta_bdy_s(jbdy)%u2d(:) = dta_bdy(jbdy)%u2d(:)
                   IF( ASSOCIATED(dta_bdy(jbdy)%v2d) ) dta_bdy_s(jbdy)%v2d(:) = dta_bdy(jbdy)%v2d(:)
-               ENDIF
+               END IF
             END DO
-         ELSE ! Add tides if not split-explicit free surface else this is done in ts loop
+         ELSE   ! Add tides if not split-explicit free surface
             !
             CALL bdy_dta_tides( kt=kt, pt_offset = 1._wp )
          ENDIF
@@ -417,6 +469,14 @@ CONTAINS
       bf(:,:)%lzint      = .FALSE.      ! default definition
       bf(:,:)%ltotvel    = .FALSE.      ! default definition
  
+      ! Prepare flags that indicate the presence of boundary-data arrays that have been separated from the corresponding input-data
+      ! arrays
+      ALLOCATE( l_bdydta_reset(jpbdyfld,nb_bdy), STAT=ierror )
+      IF( ierror > 0 ) THEN
+         CALL ctl_stop( 'bdy_dta: memory-allocation failure' )   ;   RETURN
+      END IF
+      l_bdydta_reset(:,:) = .FALSE.
+
       ! Read namelists
       ! --------------
       nbdy_rdstart = 1
