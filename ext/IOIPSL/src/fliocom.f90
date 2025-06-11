@@ -807,7 +807,7 @@ END INTERFACE
   INTEGER,DIMENSION(nb_ax_mx,nb_fi_mx),SAVE :: nw_ai=-1
 !-
 ! Maximum number of simultaneously defined domains
-  INTEGER,PARAMETER :: dom_max_nb=20000
+  INTEGER,PARAMETER :: dom_max_nb=200
 !-
 ! Maximum number of distributed dimensions for each domain
   INTEGER,PARAMETER :: dom_max_dims=5

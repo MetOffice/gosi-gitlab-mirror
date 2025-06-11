@@ -766,7 +766,6 @@ CONTAINS
          CASE DEFAULT
                CALL ctl_stop('ldf_eiv: Unrecognised option for nn_ldfeiv_shape.')         
       END SELECT
-      IF( nn_hls == 1 )   CALL lbc_lnk( 'ldftra', zaeiw(:,:), 'W', 1.0_wp )   ! lateral boundary condition
       !
       DO_2D( 0, 0, 0, 0 )
          paeiu(ji,jj,1) = 0.5_wp * ( zaeiw(ji,jj) + zaeiw(ji+1,jj  ) ) * umask(ji,jj,1)

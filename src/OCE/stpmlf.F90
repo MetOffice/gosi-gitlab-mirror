@@ -297,6 +297,7 @@ CONTAINS
                          CALL dia_ar5   ( kstp,      Nnn )      ! ar5 diag
          IF( l_diaptr )  CALL dia_ptr   ( kstp,      Nnn )      ! Poleward adv/ldf TRansports diagnostics
 #if defined key_xios
+                         CALL dia_prod  ( kstp,      Nnn )      ! Ocean model product diagnostics
                          CALL dia_wri   ( kstp,      Nnn )      ! Ocean model outputs (XIOS-enabled, tiling-aware variant of 'dia_wri')
 #endif
       END DO

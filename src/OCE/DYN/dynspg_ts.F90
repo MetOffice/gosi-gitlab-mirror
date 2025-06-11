@@ -354,11 +354,7 @@ LOGICAL, SAVE :: ll_bt_av    ! =T : boxcard time averaging   =F : foreward backw
       IF( kt == nit000 .OR. .NOT. lk_linssh )   CALL dyn_cor_2D_init( Kmm )   ! Set zwz, the barotropic Coriolis force coefficient
       !                      ! recompute zwz = f/depth  at every time step for (.NOT.lk_linssh) as the water colomn height changes
       !
-
-      zhU(:,:) = 0._wp
-      zhV(:,:) = 0._wp
-
-  
+      !
       CALL dyn_cor_2D( puu_b(:,:,Kmm), pvv_b(:,:,Kmm), zu_trd, zv_trd )
       !
       DO_2D( 0, 0, 0, 0 )                          ! Remove coriolis term (and possibly spg) from barotropic trend

@@ -103,10 +103,6 @@ standard_name="rft_loss"                                 unit="1/s"  />
       <field id="rdg_gain"     long_name="New ridged ice area gain rate"                             standard_name="rdg_gain"                                 unit="1/s"  />
       <field id="rft_gain"     long_name="New rafted ice area gain rate"                            standard_name="rft_gain"                                 unit="1/s"  />
 
-      <field id="isig1"        long_name="1st principal stress component for EVP rhg"                                                                        unit=""     />
-      <field id="isig2"        long_name="2nd principal stress component for EVP rhg"                                                                        unit=""     />
-      <field id="isig3"        long_name="convergence measure for EVP rheology (must be around 1)"                                                           unit=""     />
-
       <!-- surface heat fluxes -->
       <field id="qt_ice"       long_name="total heat flux at ice surface"                          standard_name="surface_downward_heat_flux_in_air"         unit="W/m2" />
       <field id="qsr_ice"      long_name="solar heat flux at ice surface"                          standard_name="surface_downwelling_shortwave_flux_in_air" unit="W/m2" />
@@ -210,22 +206,6 @@ standard_name="rft_loss"                                 unit="1/s"  />
       <field id="icedrift_mass" long_name="Ice mass drift (conservation check)"   unit="kg/m2/s" />
       <field id="icedrift_salt" long_name="Ice salt drift (conservation check)"   unit="kg/m2/s" />
       <field id="icedrift_heat" long_name="Ice heat drift (conservation check)"   unit="W/m2"    />
-
-      <!-- sbcssm variables -->
-      <field id="sst_m_pot"    unit="degC" />
-      
-      <!-- EOS-80 -->
-      <field id="sss_m_pra"    unit="psu"  />
-      <!-- TEOS-10 -->
-      <field id="sss_m_abs"    unit="g/kg"  />
-      <!-- SEOS -->
-      <field id="sss_m_seos"   unit="psu"  />
-      
-      <field id="ssu_m"    unit="m/s"  />
-      <field id="ssv_m"    unit="m/s"  />
-      <field id="ssh_m"    unit="m"    />
-      <field id="e3t_m"    unit="m"    />
-      <field id="frq_m"    unit="-"    />
 
       <!-- rheology convergence tests -->
       <field id="uice_cvg"   long_name="sea ice velocity convergence"      standard_name="sea_ice_velocity_convergence"      unit="m/s" />
@@ -453,17 +433,9 @@ standard_name="rft_loss"                                 unit="1/s"  />
       <field field_ref="iceapeff"         name="siapeff" />
       <field field_ref="icehpnd"          name="sihpnd" />
       <field field_ref="icevpnd"          name="sivpnd" />
-      <field field_ref="iceepnd"          name="siepnd" />
       <field field_ref="iceage"           name="siage"  />
-      
-      <field id="sst_m_pot"    unit="degC" />
-      
-      <!-- EOS-80 -->
-      <field id="sss_m_pra"    unit="psu"  />
-      <!-- TEOS-10 -->
-      <field id="sss_m_abs"    unit="g/kg"  />
-      <!-- SEOS -->
-      <field id="sss_m_seos"   unit="psu"  />
+      <field field_ref="sst_m"            name="sst_m"  />
+      <field field_ref="sss_m"            name="sss_m"  />
 
       <!-- heat -->
       <field field_ref="icetemp"          name="sitemp" />

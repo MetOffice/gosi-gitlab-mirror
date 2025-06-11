@@ -2392,7 +2392,7 @@ CONTAINS
             cldom = TRIM(cddom)//csfx(jn)
             CALL xios_add_child( grid_hdl, domain_hdl, clgrd )          ! add a new domain
             CALL xios_set_domain_attr( clgrd, domain_ref = cldom )      ! link this new domain to cldom
-            CALL xios_set_domain_attr( clgrd, name = cldom )            ! force the name to avoid duplicated dimension names
+            CALL xios_set_domain_attr( clgrd, name = cddom )            ! force the name to avoid duplicated dimension names
             DO ja = 1, iax
                CALL xios_add_child( grid_hdl, axis_hdl, clgrd)          ! add a new axis
                CALL xios_set_axis_attr( clgrd, axis_ref = cdaxe(ja) )   ! link this new axis to cdaxe(ja)

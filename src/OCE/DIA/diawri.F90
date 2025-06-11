@@ -117,23 +117,20 @@ CONTAINS
       !
       IF( kt == nit000 ) THEN
          IF( ln_TEOS10 ) THEN
-            IF ( iom_use("toce_pot") .OR. iom_use("soce_pra") .OR. iom_use("sst_pot") .OR. iom_use("sss_pra") &
-                  & .OR. iom_use("sbt_pot") .OR. iom_use("sbs_pra") .OR. iom_use("sstgrad_pot") .OR. iom_use("sstgrad2_pot") &
-                  & .OR. iom_use("tosmint_pot") .OR. iom_use("somint_pra"))  THEN 
-               CALL ctl_stop( 'diawri: potential temperature and practical salinity not available with ln_TEOS10' )
-            ELSE
-               ttype='con' ; stype='abs'   ! teos-10 using conservative temperature and absolute salinity
-            ENDIF 
+            ! toce_pot, sst_pot and tosmint_pot diagnostics, converted from conservative temperature, are output by
+            ! dia_ar5 as part of the base NEMO code- do not issue a warning if these are requested.
+            IF ( iom_use("soce_pra") .OR. iom_use("sss_pra") .OR. iom_use("sbt_pot") .OR. iom_use("sbs_pra") .OR. &
+               & iom_use("sstgrad_pot") .OR. iom_use("sstgrad2_pot") .OR. iom_use("somint_pra")) &
+               & CALL ctl_warn( 'diawri: potential temperature and practical salinity not available with ln_TEOS10' )
+            ttype='con' ; stype='abs'   ! teos-10 using conservative temperature and absolute salinity
          ELSE IF ( ln_SEOS) THEN
             ttype='seos' ; stype='seos' ! seos using Simplified Equation of state
          ELSE
             IF ( iom_use("toce_con") .OR. iom_use("soce_abs") .OR. iom_use("sst_con") .OR. iom_use("sss_abs") &
-                  & .OR. iom_use("sbt_con") .OR. iom_use("sbs_abs") .OR. iom_use("sstgrad_con") .OR. iom_use("sstgrad2_con") &
-                  & .OR. iom_use("tosmint_con") .OR. iom_use("somint_abs"))  THEN
-               CALL ctl_stop( 'diawri: conservative temperature and absolute salinity not available with ln_EOS80' )
-            ELSE
-               ttype='pot' ; stype='pra'   ! eos-80 using potential temperature and practical salinity
-            ENDIF
+               & .OR. iom_use("sbt_con") .OR. iom_use("sbs_abs") .OR. iom_use("sstgrad_con") .OR. iom_use("sstgrad2_con") &
+               & .OR. iom_use("tosmint_con") .OR. iom_use("somint_abs")) &
+               & CALL ctl_warn( 'diawri: conservative temperature and absolute salinity not available with ln_EOS80' )
+            ttype='pot' ; stype='pra'   ! eos-80 using potential temperature and practical salinity
          ENDIF
       ENDIF
 
@@ -231,9 +228,15 @@ CONTAINS
       CALL iom_put( "hf" , hf_0(:,:)*( 1._wp + r3f(:,:) ) )   ! water column at f-point (caution here at Naa)
 #endif
 
-      ! --- tracers T&S --- !      
-      CALL iom_put( "toce_"//ttype, ts(:,:,:,jp_tem,Kmm) )    ! 3D temperature
-      CALL iom_put(  "sst_"//ttype, ts(:,:,1,jp_tem,Kmm) )    ! surface temperature
+      ! --- tracers T&S --- !
+      IF( ln_EOS80 ) THEN
+         ! Output only internal part of array for consistency with dia_ar5 (XIOS must use a consistent grid size)
+         CALL iom_put( "toce_"//ttype, ts(A2D(0),:,jp_tem,Kmm) )    ! 3D temperature
+         CALL iom_put(  "sst_"//ttype, ts(A2D(0),1,jp_tem,Kmm) )    ! surface temperature
+      ELSE
+         CALL iom_put( "toce_"//ttype, ts(:,:,   :,jp_tem,Kmm) )    ! 3D temperature
+         CALL iom_put(  "sst_"//ttype, ts(:,:,   1,jp_tem,Kmm) )    ! surface temperature
+      ENDIF
 
       IF ( iom_use("sbt_"//ttype) ) THEN
          DO_2D( 0, 0, 0, 0 )
