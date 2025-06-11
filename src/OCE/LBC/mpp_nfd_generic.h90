@@ -71,7 +71,7 @@
          !
          i0max = MAXVAL( nfni_0, mask = nfproc /= -1 )        ! largest value of Ni_0 among processors (we are not sending halos)
          ilntot = SUM( ipjfld(:) * ipk(:) * ipl(:) )
-         ALLOCATE( zbufs(i0max,MAX(ilntot,1)), ireq_s(nfd_nbnei) )   ! store all the data to be sent in a buffer array
+         ALLOCATE( zbufs(i0max,ilntot), ireq_s(nfd_nbnei) )   ! store all the data to be sent in a buffer array
          ibuffsize = i0max * ilntot                           ! must be the same for all processors -> use i0max
          !
          ! fill the send buffer with all the lines
@@ -108,7 +108,7 @@
             ENDIF
          END DO
          !
-         ALLOCATE( zbufr(i0max,MAX(ilntot,1),nfd_nbnei), ireq_r(nfd_nbnei) ) 
+         ALLOCATE( zbufr(i0max,ilntot,nfd_nbnei), ireq_r(nfd_nbnei) )
          !
          DO jn = 1, nfd_nbnei                  ! 1st loop: first get data which does not need any communication
             !                                  !           -> this gives more time to receive the communications
