@@ -17,6 +17,7 @@ variables:
       - "gcc"
       - "intel"
       - "oneapi"
+      - "dev"
 
   NEMO_COMPILATION:
     description: "Nemo compilation mode"

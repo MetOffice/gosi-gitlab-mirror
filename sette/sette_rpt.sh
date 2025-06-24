@@ -919,9 +919,8 @@ function identictest(){
 rev=""; sha=""
   if [ $# -gt 0 ]; then
     echo ""
-    while getopts n:r:s:R:S:c:x:v:V:ubh option; do
+    while getopts n:r:s:R:S:x:v:V:ubhm: option; do
        case $option in
-          c) mach=$OPTARG;;
           r) rev=$OPTARG
              echo "-r: will use ${rev} revision for current report"
              echo "";;
@@ -957,19 +956,19 @@ rev=""; sha=""
              fi
              ;;
           u) USER_INPUT='no';;
-          b) mach=${mach//_DEBUG}_DEBUG
-             DEBUG="with DEBUG (-b) option"
+          b) DEBUG="with DEBUG (-b) option"
              echo "-b: will use DEBUG compilation directory"
              echo "";;
           n) OPTSTR="$OPTARG"
              TEST_CONFIGS=(${OPTSTR})
              echo "-n: Configuration(s) ${TEST_CONFIGS[@]} will be tested if they are available"
              echo "";;
+          m) export mach=($OPTARG)
+             echo "-m: will use ${mach} computing-architecture directory"
+             echo "";;
           h | *) echo ''
                  echo 'sette_rpt.sh : '
                  echo '     display result for the latest change'
-                 echo ' -c COMPILER_name :'
-                 echo '     display result for the specified compiler'
                  echo ' -r REVISION_number :'
                  echo '     display sette results for the specified revision (set old for the latest revision available for each config)'
                  echo ' -s commit short (8-digits) SHA :'
@@ -987,6 +986,8 @@ rev=""; sha=""
                  echo '     if set the comparison is between two subdirectory trees beneath NEMO_VALIDATION_DIR'
                  echo ' -u to run sette_rpt.sh without any user interaction'
                  echo ' -b to check DEBUG directory of COMPILER_name'
+                 echo ' -m MACHINE_name :'
+                 echo '     display result for the specified computing architecture'
                  echo ''
                  exit 42;;
        esac
@@ -995,6 +996,9 @@ rev=""; sha=""
   fi
 # if $1 (remaining arguments)
   if [[ ! -z $1 ]] ; then rev=$1 ; fi
+
+# append DEBUG if "-b" option is active
+[ -n "${DEBUG}" ] && mach=${mach//_DEBUG}_DEBUG
 
 # https://stackoverflow.com/questions/6059336/how-to-find-the-current-git-branch-in-detached-head-state
 branchname=${CI_COMMIT_BRANCH:-$(git log -1 --pretty=%D HEAD | sed 's|.*origin/||g;s|, .*||g;s|.*-> ||g' )}
