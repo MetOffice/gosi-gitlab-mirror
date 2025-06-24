@@ -83,15 +83,15 @@ CONTAINS
       ! check presence of variable needed for coupling
       ! iom_varid return 0 if not found
       id = 1
-      id = id * iom_varid(numror, 'ssmask', ldstop = .false.)
-      id = id * iom_varid(numror, 'tmask' , ldstop = .false.)
-      id = id * iom_varid(numror, 'e3t_n' , ldstop = .false.)
-      id = id * iom_varid(numror, 'e3u_n' , ldstop = .false.)
-      id = id * iom_varid(numror, 'e3v_n' , ldstop = .false.)
-      IF(lwp) WRITE(numout,*) ' isfcpl_init:', id
-      IF (id == 0) THEN
+      id = MIN(id, iom_varid(numror, 'ssmask', ldstop = .false.))
+      id = MIN(id, iom_varid(numror, 'tmask' , ldstop = .false.))
+      id = MIN(id, iom_varid(numror, 'e3t_n' , ldstop = .false.))
+      id = MIN(id, iom_varid(numror, 'e3u_n' , ldstop = .false.))
+      id = MIN(id, iom_varid(numror, 'e3v_n' , ldstop = .false.))
+      ! skip coupling if starting from initial condition (id == 0 because of missing restart) or if variable not in the restart (id == -1)
+      IF ( id <= 0 ) THEN
          IF(lwp) WRITE(numout,*) ' isfcpl_init: restart variables for ice sheet coupling are missing, skip coupling for this leg '
-         IF(lwp) WRITE(numout,*) ' ~~~~~~~~~~~'
+         IF(lwp) WRITE(numout,*) ' ~~~~~~~~~~~~ (ssmask, tmask, e3t_n, e3u_n or e3v_n), skip coupling for this leg '
          IF(lwp) WRITE(numout,*) ''
       ELSE
          ! extrapolation ssh
