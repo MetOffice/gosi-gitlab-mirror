@@ -752,7 +752,9 @@ CONTAINS
       !
       IF    ( nn_chlprfl == 0 )                      THEN   ;   ipk=1
       ELSEIF( nn_chlprfl == 1 .OR. nn_chlprfl == 2 ) THEN   ;   ipk=jpk   ;   ENDIF
+#if ! defined key_PSYCLONE_2p5p0
       ALLOCATE( zc(T2D(0),0:3), itab(T2D(0),jpk-1) )
+#endif
       !
       !                       !===========================================!
       !                       !==  R-G-B fluxes using chlorophyll data  ==!    with Morel &Berthon (1989) vertical profile
@@ -962,7 +964,9 @@ CONTAINS
       END DO
 
       !
-      DEALLOCATE( zc )
+#if ! defined key_PSYCLONE_2p5p0
+      DEALLOCATE( itab, zc )
+#endif
       !
    END SUBROUTINE qsr_5BDc
 
