@@ -23,6 +23,7 @@ MODULE dynvor
    !!            4.x  ! 2020-03  (G. Madec, A. Nasser)  make ln_dynvor_msk truly efficient on relative vorticity
    !!            4.2  ! 2020-12  (G. Madec, E. Clementi) add vortex force trends (ln_vortex_force=T)
    !!            4.5  ! 2022-06  (S. Techene, G, Madec) refactorization to reduce local memory usage
+   !!            5.0  ! 2025-06  (J, Chanut) suppress mixed energy/enstrophy scheme (ln_dynvor_mix) 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -63,7 +64,6 @@ MODULE dynvor
    LOGICAL, PUBLIC ::   ln_dynvor_ene   !: f-point energy conserving scheme     (ENE)
    LOGICAL, PUBLIC ::   ln_dynvor_enT   !: t-point energy conserving scheme     (ENT)
    LOGICAL, PUBLIC ::   ln_dynvor_een   !: energy & enstrophy conserving scheme (EEN)
-   LOGICAL, PUBLIC ::   ln_dynvor_mix   !: mixed scheme                         (MIX)
    LOGICAL, PUBLIC ::   ln_dynvor_msk   !: vorticity multiplied by fmask (=T) or not (=F) (all vorticity schemes)
    INTEGER, PUBLIC ::   nn_e3f_typ      !: e3f=masked averaging of e3t divided by 4 (=0) or by the sum of mask (=1)
 
@@ -73,7 +73,6 @@ MODULE dynvor
    INTEGER, PUBLIC, PARAMETER ::   np_ENE = 1   ! ENE scheme
    INTEGER, PUBLIC, PARAMETER ::   np_ENT = 2   ! ENT scheme (t-point vorticity)
    INTEGER, PUBLIC, PARAMETER ::   np_EEN = 3   ! EEN scheme
-   INTEGER, PUBLIC, PARAMETER ::   np_MIX = 4   ! MIX scheme
 
    !                                    !: choice of calculated vorticity
    INTEGER, PUBLIC ::   ncor, nrvm, ntot   ! Coriolis, relative vorticity, total vorticity
@@ -133,7 +132,7 @@ CONTAINS
          ztrdv(:,:,:) = pvv(T2D(0),:,Krhs)
          SELECT CASE( nvor_scheme )
          CASE( np_ENS )           ;   CALL vor_ens( kt, Kmm, ncor, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! enstrophy conserving scheme
-         CASE( np_ENE, np_MIX )   ;   CALL vor_ene( kt, Kmm, ncor, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! energy conserving scheme
+         CASE( np_ENE )           ;   CALL vor_ene( kt, Kmm, ncor, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! energy conserving scheme
          CASE( np_ENT )           ;   CALL vor_enT( kt, Kmm, ncor, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! energy conserving scheme (T-pts)
          CASE( np_EEN )           ;   CALL vor_een( kt, Kmm, ncor, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! energy & enstrophy scheme
          END SELECT
@@ -147,7 +146,7 @@ CONTAINS
             SELECT CASE( nvor_scheme )
             CASE( np_ENT )           ;   CALL vor_enT( kt, Kmm, nrvm, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )  ! energy conserving scheme (T-pts)
             CASE( np_ENE )           ;   CALL vor_ene( kt, Kmm, nrvm, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )  ! energy conserving scheme
-            CASE( np_ENS, np_MIX )   ;   CALL vor_ens( kt, Kmm, nrvm, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )  ! enstrophy conserving scheme
+            CASE( np_ENS )           ;   CALL vor_ens( kt, Kmm, nrvm, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )  ! enstrophy conserving scheme
             CASE( np_EEN )           ;   CALL vor_een( kt, Kmm, nrvm, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )  ! energy & enstrophy scheme
             END SELECT
             ztrdu(:,:,:) = puu(T2D(0),:,Krhs) - ztrdu(:,:,:)
@@ -182,13 +181,6 @@ CONTAINS
             ELSE IF( ln_stcor .AND. ln_vortex_force )   THEN
                              CALL vor_ens( kt, Kmm, ntot, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )  ! add the Stokes-Coriolis trend and vortex force
             ENDIF
-         CASE( np_MIX )                        !* mixed ene-ens scheme
-            IF( n_dynadv /= np_LIN_dyn ) THEN
-                             CALL vor_ens( kt, Kmm, nrvm, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! relative vorticity or metric trend (ens)
-            ENDIF
-                             CALL vor_ene( kt, Kmm, ncor, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! planetary vorticity trend (ene)
-            IF( ln_stcor )        CALL vor_ene( kt, Kmm, ncor, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )        ! add the Stokes-Coriolis trend
-            IF( ln_vortex_force ) CALL vor_ens( kt, Kmm, nrvm, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! add vortex force
          CASE( np_EEN )                        !* energy and enstrophy conserving scheme
                              CALL vor_een( kt, Kmm, ntot, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! total vorticity trend
                IF( ln_stcor .AND. .NOT. ln_vortex_force )  THEN
@@ -256,10 +248,6 @@ CONTAINS
             ELSE IF( ln_stcor .AND. ln_vortex_force )   THEN
                              CALL vor_ens( kt, Kmm, ntot, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )  ! add the Stokes-Coriolis trend and vortex force
             ENDIF
-         CASE( np_MIX )                        !* mixed ene-ens scheme
-                             CALL vor_ens( kt, Kmm, nrvm, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! relative vorticity or metric trend (ens)
-            IF( ln_stcor )        CALL vor_ene( kt, Kmm, ncor, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )        ! add the Stokes-Coriolis trend
-            IF( ln_vortex_force ) CALL vor_ens( kt, Kmm, nrvm, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! add vortex force
          CASE( np_EEN )                        !* energy and enstrophy conserving scheme
                              CALL vor_een( kt, Kmm, knoco, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! total vorticity trend
             IF( ln_stcor .AND. .NOT. ln_vortex_force )  THEN
@@ -829,7 +817,7 @@ CONTAINS
       REAL(wp) ::   zmsk    ! local scalars
       !!
       NAMELIST/namdyn_vor/ ln_dynvor_ens, ln_dynvor_ene, ln_dynvor_enT,   &
-         &                 ln_dynvor_een, nn_e3f_typ   , ln_dynvor_mix, ln_dynvor_msk
+         &                 ln_dynvor_een, nn_e3f_typ   , ln_dynvor_msk
       !!----------------------------------------------------------------------
       !
       IF(lwp) THEN
@@ -849,7 +837,6 @@ CONTAINS
          WRITE(numout,*) '      t-point energy conserving scheme               ln_dynvor_enT = ', ln_dynvor_enT
          WRITE(numout,*) '      enstrophy and energy conserving scheme         ln_dynvor_een = ', ln_dynvor_een
          WRITE(numout,*) '         e3f = averaging /4 (=0) or /sum(tmask) (=1)    nn_e3f_typ = ', nn_e3f_typ
-         WRITE(numout,*) '      mixed enstrophy/energy conserving scheme       ln_dynvor_mix = ', ln_dynvor_mix
          WRITE(numout,*) '      masked (=T) or unmasked(=F) vorticity          ln_dynvor_msk = ', ln_dynvor_msk
       ENDIF
 
@@ -858,7 +845,7 @@ CONTAINS
       ! at angles with three ocean points and one land point
       IF(lwp) WRITE(numout,*)
       IF(lwp) WRITE(numout,*) '      change fmask value in the angles (T)           ln_vorlat = ', ln_vorlat
-      IF( ln_vorlat .AND. ( ln_dynvor_ene .OR. ln_dynvor_ens .OR. ln_dynvor_mix ) ) THEN
+      IF( ln_vorlat .AND. ( ln_dynvor_ene .OR. ln_dynvor_ens ) ) THEN
          DO_3D( 1, 0, 1, 0, 1, jpk )
             IF(    tmask(ji,jj+1,jk) + tmask(ji+1,jj+1,jk)              &
                & + tmask(ji,jj  ,jk) + tmask(ji+1,jj  ,jk) == 3._wp )   fmask(ji,jj,jk) = 1._wp
@@ -874,7 +861,6 @@ CONTAINS
       IF( ln_dynvor_ene ) THEN   ;   ioptio = ioptio + 1   ;   nvor_scheme = np_ENE   ;   ENDIF
       IF( ln_dynvor_enT ) THEN   ;   ioptio = ioptio + 1   ;   nvor_scheme = np_ENT   ;   ENDIF
       IF( ln_dynvor_een ) THEN   ;   ioptio = ioptio + 1   ;   nvor_scheme = np_EEN   ;   ENDIF
-      IF( ln_dynvor_mix ) THEN   ;   ioptio = ioptio + 1   ;   nvor_scheme = np_MIX   ;   ENDIF
       !
       IF( ioptio /= 1 ) CALL ctl_stop( ' use ONE and ONLY one vorticity scheme' )
       !
@@ -915,7 +901,7 @@ CONTAINS
       END SELECT
 #if defined key_qco   ||   defined key_linssh
       SELECT CASE( nvor_scheme )    ! qco or linssh cases : pre-computed a specific e3f_0 for some vorticity schemes
-      CASE( np_ENS , np_ENE , np_EEN , np_MIX )
+      CASE( np_ENS , np_ENE , np_EEN )
          !
          ALLOCATE( e3f_0vor(jpi,jpj,jpk) )
          !
@@ -963,7 +949,6 @@ CONTAINS
          CASE( np_ENT )   ;   WRITE(numout,*) '   ==>>>   energy conserving scheme (Coriolis at T-points) (ENT)'
                               IF( ln_dynadv_vec )   CALL ctl_warn('dyn_vor_init: ENT scheme may not work in vector form')
          CASE( np_EEN )   ;   WRITE(numout,*) '   ==>>>   energy and enstrophy conserving scheme (EEN)'
-         CASE( np_MIX )   ;   WRITE(numout,*) '   ==>>>   mixed enstrophy/energy conserving scheme (MIX)'
          END SELECT
       ENDIF
       !
