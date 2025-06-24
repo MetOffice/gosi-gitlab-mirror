@@ -104,10 +104,17 @@ before_script:
   # copy SETTE local param.cfg file
   - SETTE_CFG=${HOST_NAME[${HOSTNAME//[-,.,0-9]*}]}_SETTE_CFG
   - cp -aLv ${!SETTE_CFG} sette/param.cfg
+  # link SETTE HPC batch file 
+  - ln -sv $(realpath sette/BATCH_TEMPLATE/batch-X64_${NEMO_HPC^^}) sette/BATCH_TEMPLATE/batch-auto
   - git config core.filemode false   # ignore git(lab) symlinks permissions changes when pushing then pulling cache ("old mode 100755 -> new mode 100644")
-  - SETTE_OPT="-u -w"   # no user interaction + wait for jobs to end options
+  - SETTE_OPT="-u -w -m auto"     # no user interaction + wait for jobs to end + auto arch generation options
   - if [[ ${NEMO_COMPILATION} == "debug" ]]; then SETTE_OPT="${SETTE_OPT} -b"; fi
-
+  # read default/dev compiler value in SETTE param.cfg file and link corresponding env file 
+  - if [[ ${NEMO_COMPILER} == "default" || ${NEMO_COMPILER} == "dev" ]]; then
+      SETTE_ARCH=$(sed -rn 's/^COMPILER=.*:-(.*)}/\1/p' sette/param.cfg);
+      ln -sv $(realpath arch/*/arch-${SETTE_ARCH}.env) arch/arch-auto.env;
+    fi
+ 
 
 # JOBS
 # sette_cmp : compile reference configurations / testcases

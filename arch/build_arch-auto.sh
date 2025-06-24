@@ -508,6 +508,7 @@ then
 	XIOS_INC=""
 	XIOS_LIB=""
     else
+	echo_green "XIOS_prefix=$XIOS_prefix"
 	XIOS_INC="-I%XIOS_PREFIX/inc"
 	#XIOS_LIB="-L%XIOS_PREFIX/lib -lxios -lstdc++ -Wl,-rpath,%XIOS_PREFIX/lib"
 	XIOS_LIB="-L%XIOS_PREFIX/lib -lxios -lstdc++"
@@ -606,7 +607,7 @@ echo_green "ARnemo=$ARnemo"
 #
 #
 archname=arch-auto.fcm
-cat > $archname << EOF
+cat > $(realpath $(dirname ${0}))/$archname << EOF
 #
 # This arch file was automatically created by $0
 # $( date ) 
@@ -652,5 +653,5 @@ echo
 echo "Content of the created $archname:"
 echo "-------------------------------------"
 echo
-cat $archname
+cat $(realpath $(dirname ${0}))/$archname
 echo

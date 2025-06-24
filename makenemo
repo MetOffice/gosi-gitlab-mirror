@@ -225,11 +225,14 @@ if [ -n "${x_p}" ]; then
     [ -z "${PSCT_VAR}" ] && echo "Error: source-code transformation ${x_p} is not available" && exit 1
 fi
 
+
 # Load environment if exists
 env_file=`find ${MAIN_DIR}/arch -name arch-${CMP_NAM}.env`
 if [ -f "${env_file}" ] ; then
-   echo "Load environment file arch-${CMP_NAM}.env"
+   echo -e "\nEnvironment file arch-${CMP_NAM}.env loaded"
    . ${env_file}
+else
+   echo -e "\nWARNING: Environment file arch-${CMP_NAM}.env not found"
 fi
 
 

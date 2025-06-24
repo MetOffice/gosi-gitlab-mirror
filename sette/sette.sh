@@ -44,7 +44,7 @@ export NEMO_REV=$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)
 
 # Parse command-line arguments
 if [ $# -gt 0 ]; then
-  while getopts n:x:v:g:cybrshTqQteiACFNXuaw option; do
+  while getopts n:x:v:g:cybrshTqQteiACFNXuawm: option; do
      case $option in
         c) export SETTE_CLEAN_CONFIGS='yes'
            export SETTE_SYNC_CONFIGS='yes'
@@ -114,6 +114,9 @@ if [ $# -gt 0 ]; then
         u) export USER_INPUT='no'
            echo "-u: sette.sh will not expect any user interaction == no safety net!" 
            echo "";;
+        m) export SETTE_COMPILER=($OPTARG)
+           echo "-m: $SETTE_COMPILER archfile and batch template will be used"
+           echo "";;
         h | *) echo 'sette.sh with no arguments (in this case all configuration will be tested with default options)'
                echo '-T to set ln_timing false for configurations (default: true)'
                echo '-t set ln_tile false in all tests that support it (default: true)'
@@ -139,7 +142,8 @@ if [ $# -gt 0 ]; then
                echo '-w to wait for Sette jobs to finish'
                echo '-r to print Sette report after Sette jobs completion'
                echo '-u to run sette.sh without any user interaction. This means no checks on creating'
-               echo '          directories etc. i.e. no safety net!' ; exit 42 ;;
+               echo '          directories etc. i.e. no safety net!'
+               echo '-m to select computing architecture file (arch_<machine_name>.fcm) and batch template to run SETTE' ; exit 42 ;;
      esac
   done
   shift $((OPTIND - 1))
