@@ -1022,7 +1022,7 @@ CONTAINS
             !
          END_2D
          !
-      CASE( np_ENE, np_MIX )
+      CASE( np_ENE )
          !
          DO_2D( 0, 0, 0, 0)
             DO jk = 1, mbku(ji,jj)

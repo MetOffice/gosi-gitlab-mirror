@@ -149,7 +149,6 @@
 !-----------------------------------------------------------------------
    ln_dynvor_ene = .false. !  enstrophy conserving scheme
    ln_dynvor_ens = .true.  !  energy conserving scheme
-   ln_dynvor_mix = .false. !  mixed scheme
    ln_dynvor_een = .false. !  energy & enstrophy scheme
 /
 !-----------------------------------------------------------------------
