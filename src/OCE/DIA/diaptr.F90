@@ -442,19 +442,19 @@ CONTAINS
             !
          ENDIF
 
-         ! i-k sum of j surface area - temperature/salinity product on V grid
+         ! i-k sum of j surface area - temperature/salinity flux on V grid
          IF( iom_use( 'sopstvtr' ) .OR. iom_use( 'sophtvtr' ) ) THEN
             !
             ! temperature
             DO_3D( 0, 0, 0, 0, 1, jpkm1 )
                zts(ji,jj,jk) = 0.5 * ( ts(ji,jj,jk,jp_tem,Kmm) + ts(ji,jj+1,jk,jp_tem,Kmm) ) &
-                  &                *  e1v(ji,jj) * e3v(ji,jj,jk,Kmm) !Tracers averaged onto V grid
+                  &                *  e1v(ji,jj) * e3v(ji,jj,jk,Kmm) * vv(ji,jj,jk,Kmm) !Tracers flux on V grid
             END_3D
             CALL dia_ptr_hst( jp_tem, 'vtr', zts(:,:,:) )
             ! salinity
             DO_3D( 0, 0, 0, 0, 1, jpkm1 )
                zts(ji,jj,jk) = 0.5 * ( ts(ji,jj,jk,jp_sal,Kmm) + ts(ji,jj+1,jk,jp_sal,Kmm) ) &
-                  &                *  e1v(ji,jj) * e3v(ji,jj,jk,Kmm)
+                  &                *  e1v(ji,jj) * e3v(ji,jj,jk,Kmm) * vv(ji,jj,jk,Kmm)
             END_3D
             CALL dia_ptr_hst( jp_sal, 'vtr', zts(:,:,:) )
             !
