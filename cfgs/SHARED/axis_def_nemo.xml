@@ -8,7 +8,7 @@
   <axis id="deptht" long_name="Vertical T levels" unit="m" positive="down" />
   <!--   Vertical zoom for a 31-levels ORCA2 grid. For eORCA1 300m corresponds to n=35 -->
   <axis id="deptht300" axis_ref="deptht" >
-    <zoom_axis begin="0" n="19" />
+    <extract_axis begin="0" n="19" />
   </axis>
   <axis id="depthu"  long_name="Vertical U levels"  unit="m" positive="down" />
   <axis id="depthv"  long_name="Vertical V levels"  unit="m" positive="down" />
