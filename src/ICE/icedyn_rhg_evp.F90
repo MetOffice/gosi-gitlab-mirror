@@ -631,7 +631,7 @@ CONTAINS
                !
             END_2D
             !
-            CALL lbc_lnk( 'icedyn_rhg_evp', u_ice, 'U', -1.0_wp, v_ice, 'V', -1.0_wp )
+            CALL lbc_lnk( 'icedyn_rhg_evp', u_ice, 'U', -1.0_wp, v_ice, 'V', -1.0_wp, ldfull=(jter == nn_nevp) )
             !
          ELSE ! odd iterations
             !
@@ -738,7 +738,7 @@ CONTAINS
                !
             END_2D
             !
-            CALL lbc_lnk( 'icedyn_rhg_evp', u_ice, 'U', -1.0_wp, v_ice, 'V', -1.0_wp )
+            CALL lbc_lnk( 'icedyn_rhg_evp', u_ice, 'U', -1.0_wp, v_ice, 'V', -1.0_wp, ldfull=(jter == nn_nevp) )
             !
          ENDIF
          !
