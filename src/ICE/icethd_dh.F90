@@ -176,29 +176,6 @@ CONTAINS
             h_s_1d(ji) = h_s_1d(ji) + zh_s(0)
          ENDIF
 
-         ! Snow melting
-         ! ------------
-         ! If heat still available (zq_top > 0)
-         ! then all snw precip has been melted and we need to melt more snow
-         DO jk = 0, nlay_s
-            IF( zh_s(jk) > 0._wp .AND. zq_top > 0._wp ) THEN
-               !
-               zdum = - zq_top / MAX( ze_s(jk), epsi20 )   ! thickness change
-               zdum = MAX( zdum , - zh_s(jk) )                 ! bound melting
-               
-               hfx_snw_1d    (ji) = hfx_snw_1d    (ji) - ze_s(jk) * zdum * a_i_1d(ji) * r1_Dt_ice   ! heat used to melt snow(W.m-2, >0)
-               wfx_snw_sum_1d(ji) = wfx_snw_sum_1d(ji) - rhos     * zdum * a_i_1d(ji) * r1_Dt_ice   ! snow melting only = water into the ocean
-               
-               ! updates available heat + thickness
-               dh_s_sum(ji) =              dh_s_sum(ji) + zdum
-               zq_top       = MAX( 0._wp , zq_top       + zdum * ze_s(jk) )
-               h_s_1d  (ji) = MAX( 0._wp , h_s_1d  (ji) + zdum )
-               zh_s    (jk) = MAX( 0._wp , zh_s    (jk) + zdum )
-!!$               IF( zh_s(jk) == 0._wp )   ze_s(jk) = 0._wp
-               !
-            ENDIF
-         END DO
-
          ! Snow sublimation and deposition
          !--------------------------------
          ! if qla_ice is >=0 (upwards), heat goes to the atmosphere, therefore snow sublimates
@@ -224,6 +201,28 @@ CONTAINS
             zdeltah = MIN( zdeltah - zdum, 0._wp )
          END DO
 
+         ! Snow melting
+         ! ------------
+         ! If heat still available (zq_top > 0)
+         ! then all snw precip has been melted and we need to melt more snow
+         DO jk = 0, nlay_s
+            IF( zh_s(jk) > 0._wp .AND. zq_top > 0._wp ) THEN
+               !
+               zdum = - zq_top / MAX( ze_s(jk), epsi20 )   ! thickness change
+               zdum = MAX( zdum , - zh_s(jk) )                 ! bound melting
+               
+               hfx_snw_1d    (ji) = hfx_snw_1d    (ji) - ze_s(jk) * zdum * a_i_1d(ji) * r1_Dt_ice   ! heat used to melt snow(W.m-2, >0)
+               wfx_snw_sum_1d(ji) = wfx_snw_sum_1d(ji) - rhos     * zdum * a_i_1d(ji) * r1_Dt_ice   ! snow melting only = water into the ocean
+               
+               ! updates available heat + thickness
+               dh_s_sum(ji) =              dh_s_sum(ji) + zdum
+               zq_top       = MAX( 0._wp , zq_top       + zdum * ze_s(jk) )
+               h_s_1d  (ji) = MAX( 0._wp , h_s_1d  (ji) + zdum )
+               zh_s    (jk) = MAX( 0._wp , zh_s    (jk) + zdum )
+!!$               IF( zh_s(jk) == 0._wp )   ze_s(jk) = 0._wp
+               !
+            ENDIF
+         END DO
          !
          !                       ! ============ !
          !                       !     Ice      !
