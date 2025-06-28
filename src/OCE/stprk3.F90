@@ -210,15 +210,16 @@ CONTAINS
       CALL zdf_nxt( kstp, Nbb, Naa )                   ! vertical physics for tke and gls (avt_k, avm_k)
       IF( l_zdfsh2 )   CALL lbc_lnk( 'stp', avm_k, 'W', 1.0_wp )
       !
-      IF ( .NOT. l_perpetual_ts ) THEN
-         !
-         Nrhs = Nbb   ;   Nbb  = Naa   ;   Naa  = Nrhs    ! Swap: Nnn unchanged, Nbb <==> Naa
-
+      Nrhs = Nbb   ;   Nbb  = Naa   ;   Naa  = Nrhs    ! Swap: Nnn unchanged, Nbb <==> Naa
+      !
+      IF( .NOT. l_perpetual_ts ) THEN
          ! linear extrapolation of ssh to compute ww at the beginning of the next time-step
          ! ssh(n+1) = 2*ssh(n) - ssh(n-1)    
          ssh(:,:,Naa) = 2*ssh(:,:,Nbb) - ssh(:,:,Naa)
          !!st: ssh recomputed at the begining of stp2d
-         !
+      ELSE
+         ! dummy computation to balance the computational cost for the ssh extrapolation when benchmarking
+         ssh(:,:,Nnn) = 2*ssh(:,:,Nbb) - ssh(:,:,Naa)
       ENDIF
 
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -295,7 +296,15 @@ CONTAINS
       ! Coupled mode
       !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
       IF( lk_oasis .AND. nstop == 0 )   CALL sbc_cpl_snd( kstp, Nbb, Nnn )     ! coupled mode : field exchanges
-      !
+
+      !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+      ! Recurrent first time step for benchmarking
+      !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+      IF( l_perpetual_ts ) THEN
+         Nrhs = Nbb   ;   Nbb = Naa   ;   Naa = Nrhs   ! reversal of the Nbb and Naa time-level swap to enforce the recurrence of
+            !                                          ! the first time step in the next time-step iteration
+      END IF
+      
 #if defined key_xios
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       ! Finalize contextes if end of simulation or error detected

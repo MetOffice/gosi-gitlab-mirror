@@ -59,14 +59,12 @@ CONTAINS
       LOGICAL          ::   ln_Iperio, ln_Jperio
       LOGICAL          ::   ln_NFold
       character(len=1) ::   cn_NFtype
+      LOGICAL          ::   ln_perpetual_ts = .TRUE.
       !!
-      NAMELIST/namusr_def/ nn_isize, nn_jsize, nn_ksize, ln_Iperio, ln_Jperio, ln_NFold, cn_NFtype
+      NAMELIST/namusr_def/ nn_isize, nn_jsize, nn_ksize, ln_Iperio, ln_Jperio,   &
+         &                 ln_NFold, cn_NFtype, ln_perpetual_ts
       NAMELIST/nammpp/ jpni, jpnj, nn_hls, ln_nnogather, ln_mppdelay, ln_listonly, nn_comm
       !!----------------------------------------------------------------------     
-      ! To increase BENCH stability, avoid time update
-      ! so that first time step to be recomputed at every time step
-      !
-      l_perpetual_ts = .TRUE.
       !
       READ_NML_(numnam_cfg,cfg,namusr_def,.TRUE.)
       IF(lwm)   WRITE( numond, namusr_def )      
@@ -90,6 +88,9 @@ CONTAINS
       ldIperio = ln_Iperio   ;   ldJperio = ln_Jperio
       ldNFold  = ln_NFold    ;   cdNFtype = cn_NFtype
       !
+      ! To increase BENCH stability, avoid the time update so that the first time step is recomputed at every time step
+      l_perpetual_ts = ln_perpetual_ts
+      !
       !                             ! control print
       IF(lwp) THEN
          WRITE(numout,*) '   '
@@ -111,6 +112,7 @@ CONTAINS
             WRITE(numout,*) '      global domain size-y                 kpj = ', kpj
          ENDIF
          WRITE(numout,*) '      global domain size-z            nn_ksize = ', nn_ksize
+         WRITE(numout,*) '   recurrent 1st time step     ln_perpetual_ts = ', ln_perpetual_ts
          WRITE(numout,*) '   '
       ENDIF
       !

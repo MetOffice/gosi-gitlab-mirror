@@ -14,13 +14,14 @@
 !-----------------------------------------------------------------------
 &namusr_def    !   User defined :   BENCH configuration: Flat bottom, beta-plane
 !-----------------------------------------------------------------------
-   nn_isize   =   360      ! number of point in i-direction of global(local) domain if >0 (<0)  
-   nn_jsize   =   331      ! number of point in j-direction of global(local) domain if >0 (<0)  
-   nn_ksize   =   75       ! total number of point in k-direction
-   ln_Iperio  =   .true.   ! i-periodicity
-   ln_Jperio  =  .false.   ! j-periodicity
-   ln_NFold   =   .true.   ! North pole folding
-      cn_NFtype   =   'F'  ! Folding type: T or F
+   nn_isize        =   360      ! number of point in i-direction of global(local) domain if >0 (<0)
+   nn_jsize        =   331      ! number of point in j-direction of global(local) domain if >0 (<0)
+   nn_ksize        =   75       ! total number of point in k-direction
+   ln_Iperio       =   .true.   ! i-periodicity
+   ln_Jperio       =  .false.   ! j-periodicity
+   ln_NFold        =   .true.   ! North pole folding
+      cn_NFtype       =   'F'      ! Folding type: T or F
+   ln_perpetual_ts =   .true.   ! recurrent first time step
 /
 !-----------------------------------------------------------------------
 &nammpp        !   Massively Parallel Processing
