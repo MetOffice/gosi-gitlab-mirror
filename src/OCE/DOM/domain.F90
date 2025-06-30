@@ -666,33 +666,32 @@ CONTAINS
       !!----------------------------------------------------------------------
       !!                  ***  ROUTINE cfg_write  ***
       !!
-      !! ** Purpose :   Create the "cn_domcfg_out" file, a NetCDF file which
+      !! ** Purpose :   Create the cn_domcfg_out file, a NetCDF file which
       !!              contains all the ocean domain informations required to
       !!              define an ocean configuration.
       !!
       !! ** Method  :   Write in a file all the arrays required to set up an
       !!              ocean configuration.
       !!
-      !! ** output file :   domcfg_out.nc : domain size, characteristics, horizontal
+      !! ** output file :   cn_domcfg_out: domain size, characteristics, horizontal
       !!                       mesh, Coriolis parameter, and vertical scale factors
-      !!                    NB: also contain ORCA family information
+      !!                       also contain periodicity and configuration information 
       !!----------------------------------------------------------------------
-      INTEGER           ::   ji, jj, jk   ! dummy loop indices
-      INTEGER           ::   inum     ! local units
-      CHARACTER(len=21) ::   clnam    ! filename (mesh and mask informations)
-      REAL(wp), DIMENSION(jpi,jpj) ::   z2d   ! workspace
+      INTEGER                          ::   ji, jj, jk   ! dummy loop indices
+      INTEGER                          ::   inum         ! local units
+      REAL(wp), DIMENSION(jpi,jpj    ) ::   z2d   ! workspace
+      REAL(wp), DIMENSION(jpi,jpj,jpk) ::   z3d   ! workspace
       !!----------------------------------------------------------------------
       !
       IF(lwp) WRITE(numout,*)
-      IF(lwp) WRITE(numout,*) 'cfg_write : create the domain configuration file (', TRIM(cn_domcfg_out),'.nc)'
+      IF(lwp) WRITE(numout,*) 'cfg_write : create the domain configuration file: ', TRIM(cn_domcfg_out)
       IF(lwp) WRITE(numout,*) '~~~~~~~~~'
       !
       !                       ! ============================= !
       !                       !  create 'domcfg_out.nc' file  !
       !                       ! ============================= !
       !
-      clnam = cn_domcfg_out  ! filename (configuration information)
-      CALL iom_open( TRIM(clnam), inum, ldwrt = .TRUE. )
+      CALL iom_open( cn_domcfg_out, inum, ldwrt = .TRUE. )
       !
       !                             !==  Configuration specificities  ==!
       !
