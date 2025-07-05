@@ -110,10 +110,8 @@ before_script:
   - SETTE_OPT="-u -w -m auto"     # no user interaction + wait for jobs to end + auto arch generation options
   - if [[ ${NEMO_COMPILATION} == "debug" ]]; then SETTE_OPT="${SETTE_OPT} -b"; fi
   # read default/dev compiler value in SETTE param.cfg file and link corresponding env file 
-  - if [[ ${NEMO_COMPILER} == "default" || ${NEMO_COMPILER} == "dev" ]]; then
-      SETTE_ARCH=$(sed -rn 's/^COMPILER=.*:-(.*)}/\1/p' sette/param.cfg);
-      ln -sv $(realpath arch/*/arch-${SETTE_ARCH}.env) arch/arch-auto.env;
-    fi
+  - SETTE_ARCH=$(sed -rn 's/^COMPILER=.*:-(.*)}/\1/p' sette/param.cfg);
+  - ln -sv $(realpath arch/*/arch-${SETTE_ARCH}.env) arch/arch-auto.env;
  
 
 # JOBS
