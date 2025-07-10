@@ -112,7 +112,9 @@ before_script:
   # read default/dev compiler value in SETTE param.cfg file and link corresponding env file 
   - SETTE_ARCH=$(sed -rn 's/^COMPILER=.*:-(.*)}/\1/p' sette/param.cfg);
   - ln -sv $(realpath arch/*/arch-${SETTE_ARCH}.env) arch/arch-auto.env;
- 
+  - if [[ ${NEMO_HPC} == "ecmwf" && ${NEMO_COMPILER} == "intel" && ${NEMO_COMPILATION} == "normal" ]]; then
+      export FCFLAGSnemo="-march=core-avx2 -i4 -r8 -O3 -fp-model strict -fno-alias -align array64byte";
+    fi
 
 # JOBS
 # sette_cmp : compile reference configurations / testcases
