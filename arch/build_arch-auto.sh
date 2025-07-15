@@ -451,7 +451,7 @@ echo_green "CPPnemo=$CPPnemo"
 # FCFLAGS
 #-----------------------------------------------------
 #
-if [ -n "${FCFLAGSnemo}" ]
+if [ -n "${FCFLAGSnemo:-""}" ]
 then
     echo_green "FCFLAGSnemo=$FCFLAGSnemo"
 else
@@ -635,8 +635,8 @@ cat > $(realpath $(dirname ${0}))/$archname << EOF
 
 %CPP                 $CPPnemo
 %FC                  $FCnemo
-%PROD_FCFLAGS        ${FCFLAGSnemo:-PROD_FCFLAGS}
-%DEBUG_FCFLAGS       ${FCFLAGSnemo:-DEBUG_FCFLAGS}
+%PROD_FCFLAGS        ${FCFLAGSnemo:-${PROD_FCFLAGS}}
+%DEBUG_FCFLAGS       ${FCFLAGSnemo:-${DEBUG_FCFLAGS}}
 %FFLAGS              %FCFLAGS
 %LD                  %FC
 %LDFLAGS             -Wl,-rpath,%HDF5_PREFIX/lib -Wl,-rpath,%NCDF_F_PREFIX/lib -Wl,-rpath,%XIOS_PREFIX/lib
