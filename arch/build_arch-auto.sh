@@ -131,7 +131,8 @@ chk_which () {
 #
 # find fortran wrapper
 find_fortran_wrapper () {
-    if   [ $( err_which mpiifort ) -eq 0 ] ; then FCnemo=mpiifort
+    if   [[ $ftncomp == "intel"  && $( err_which mpiifort ) -eq 0 ]] ; then FCnemo=mpiifort
+    elif [[ $ftncomp == "oneapi" && $( err_which mpiifx )   -eq 0 ]] ; then FCnemo=mpiifx
     elif [ $( err_which mpif90   ) -eq 0 ] ; then FCnemo=mpif90
     elif [ $( err_which ftn      ) -eq 0 ] ; then FCnemo=ftn
     else
@@ -325,7 +326,7 @@ else
     fi
     if [ $( err_which h5pcc ) -eq 0 ]
     then
-        if [ $( h5pcc -showconfig | grep "Parallel HDF5" | grep -c yes ) -ne 1 ]
+        if [ $( h5pcc -showconfig | grep "Parallel HDF5" | grep -c "yes\|ON" ) -ne 1 ]
         then
             echo_orange "WARNING: your hdf5 library was configured without --enable-parallel" \
                         "         you cannot use only the 'one_file' mode in XOS"
@@ -334,7 +335,7 @@ else
 
     # curl
     CURLpath=${CURLpath:-notdef}
-    if [ "$( $NC_CONFIG --dap )" == "yes" ]
+    if [ "$( $NC_CONFIG --has-dap )" == "yes" ]
     then
         if [ "$CURLpath" == "notdef" ]
         then
@@ -384,7 +385,7 @@ then
         if [ $ismpi -eq 0 ]
         then
             echo_orange "WARNING: the fortran compiler provided by $( basename $NF_CONFIG ), \"$FCnemo\", is not starting with \"mpi\" or \"ftn\"." \
-                        "         we look for mpiifort, mpif90 or ftn..."
+                        "         we look for mpiifort, mpiifx, mpif90 or ftn..."
             FCnemo_org=$FCnemo
             find_fortran_compiler
             ftncomp_org=$ftncomp
@@ -457,7 +458,13 @@ then
 else
     case "$ftncomp" in
         intel|oneapi)
-            PROD_FCFLAGS="-i4 -r8 -O3 -fp-model strict -xHost -fno-alias"
+            command -v lscpu >/dev/null 2>&1 && AMD_FLAG=( $(lscpu | grep -o "AuthenticAMD") ) || AMD_FLAG=( $(cat /proc/cpuinfo | tail -28 | grep -o "AuthenticAMD") )
+            if [ -n "${AMD_FLAG}" ]; then
+              command -v lscpu >/dev/null 2>&1 && AVX_FLAGS=( $(lscpu | grep -o "avx[^ ]*") ) || AVX_FLAGS=( $(cat /proc/cpuinfo | tail -28 | grep -o "avx[^ ]*") )
+              [[ ${AVX_FLAGS[-1]:-""} == "avx2"    ]] && AVX_FCFLAG="-march=core-avx2"
+              [[ ${AVX_FLAGS[-1]:-""} == "avx512"* ]] && AVX_FCFLAG="-axCORE-AVX512"
+            fi
+            PROD_FCFLAGS="-i4 -r8 -O3 -fp-model strict ${AVX_FCFLAG:-"-xHost"} -fno-alias"
             DEBUG_FCFLAGS="-i4 -r8 -g -O0 -debug all -traceback -fp-model strict -ftrapuv -check all,noarg_temp_created -fpe-all0 -ftz -init=arrays,snan,huge"
             echo_orange "WARNING: We assume you will execute NEMO on the same machine you compiled it. " \
                         "         If it is not the case, replace -xHost by the appropiate option in PROD_FCFLAGS"
