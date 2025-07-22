@@ -5,5 +5,5 @@
 
 include:
   - project: 'ofcs/nit'
-    ref: main
+    ref: 656-environment-test
     file: '.gitlab-ci.yml'
