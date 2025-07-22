@@ -466,6 +466,10 @@ else
             fi
             PROD_FCFLAGS="-i4 -r8 -O3 -fp-model strict ${AVX_FCFLAG:-"-xHost"} -fno-alias"
             DEBUG_FCFLAGS="-i4 -r8 -g -O0 -debug all -traceback -fp-model strict -ftrapuv -check all,noarg_temp_created -fpe-all0 -ftz -init=arrays,snan,huge"
+            # oneapi dirty fixes:
+            # https://community.intel.com/t5/Intel-Fortran-Compiler/Linking-errors-when-using-memory-sanitizer-in-fortran-project/m-p/1521567
+            # https://community.intel.com/t5/Intel-Fortran-Compiler/Ifx-2025-0-0-bug-in-bounds-checking/m-p/1641688
+            [ ${ftncomp} == "oneapi" ] && DEBUG_FCFLAGS=${DEBUG_FCFLAGS}" -check nouninit -check nobounds"
             echo_orange "WARNING: We assume you will execute NEMO on the same machine you compiled it. " \
                         "         If it is not the case, replace -xHost by the appropiate option in PROD_FCFLAGS"
             ;;
@@ -498,7 +502,7 @@ fi
 #-----------------------------------------------------
 #
 case "${ftncomp}" in
-    gnu)
+    gnu|oneapi)
         PROD_CFLAGS="-O0 -fcommon"
         ;;
     *)
