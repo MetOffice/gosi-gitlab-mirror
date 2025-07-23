@@ -1,10 +1,4 @@
-# compiler options for KARA (using GNU compiler)
-#
-# GNU_OMPI (NEMO-4.0 + XIOS-2.5)
-# gcc/9.3.0 openmpi/4.0.5_gcc9.3.0 hdf5/1.8.18_gcc9.3.0 netcdf/4.7.1_gcc9.3.0 xios/2.5_rev1903_gcc9.3.0
-#
-# GNU_OMPI (NEMO-4.2 + XIOS-TRUNK)
-# gcc/9.3.0 openmpi/4.0.5_gcc9.3.0 hdf5/1.8.18_gcc9.3.0 netcdf/4.7.1_gcc9.3.0 xios/trunk_rev2136_gcc9.3.0
+# compiler options for AA (using GCC compiler)
 #
 #
 # NCDF_INC    netcdf4 include file
@@ -40,27 +34,26 @@
 #---------------------------------------------------------------------------------------------
 #
 #
-%NCDF_INC            -I${NETCDF_INC}
-%NCDF_LIB            -L${NETCDF_LIB} -lnetcdff -lnetcdf -L${HDF5_LIB} -lhdf5_hl -lhdf5
+%NCDF_INC            ${NETCDF4_INCLUDE}
+%NCDF_LIB            -L${NETCDF4_DIR}/lib -lnetcdff -lnetcdf -L${HDF5_DIR}/lib -lhdf5_hl -lm
 %XIOS_INC            -I${XIOS_INC}
-%XIOS_LIB            -L${XIOS_LIB} -lxios
+%XIOS_LIB            -L${XIOS_LIB} -lxios -lstdc++
 %OASIS_INC           -I${OASIS_DIR}/build/lib/mct -I${OASIS_DIR}/build/lib/psmile.MPI1
 %OASIS_LIB           -L${OASIS_DIR}/lib -lpsmile.MPI1 -lmct -lmpeu -lscrip
 
 %CPP                 cpp -Dkey_nosignedzero
 %FC                  mpif90 -c -cpp
-#%PROD_FCFLAGS       -fdefault-real-8 -O2 -ftree-vectorize -funroll-all-loops -march=skylake-avx512 -ffree-line-length-none -Wno-missing-include-dirs
-%PROD_FCFLAGS        -fdefault-real-8 -O1 -march=skylake-avx512 -ffree-line-length-none -Wno-missing-include-dirs
-%DEBUG_FCFLAGS       -fdefault-real-8 -O0 -g -fbacktrace -ftree-vectorize -funroll-all-loops -march=skylake-avx512 -ffree-line-length-none -fcheck=all -finit-real=snan -Wno-missing-include-dirs -ffpe-trap=invalid,zero,overflow
+%PROD_FCFLAGS        -fdefault-real-8 -O3 -funroll-all-loops -fcray-pointer -ffree-line-length-none -fallow-argument-mismatch -Wno-missing-include-dirs
+%DEBUG_FCFLAGS       -fdefault-real-8 -Og -g -fbacktrace -funroll-all-loops -fcray-pointer -ffree-line-length-none -fcheck=all,no-array-temps -finit-real=nan -ffpe-trap=invalid,zero,overflow -ffpe-summary=invalid,zero,overflow -fallow-argument-mismatch -Wno-missing-include-dirs -fno-check-array-temporaries
 %FFLAGS              %FCFLAGS
 %LD                  mpif90
-%LDFLAGS             -lstdc++
+%LDFLAGS             -Wl,-rpath,${HDF5_DIR}/lib -Wl,-rpath=${NETCDF4_DIR}/lib -Wl,-rpath=${XIOS_DIR}/lib
 %FPPFLAGS            -P -traditional
 %AR                  ar
 %ARFLAGS             rs
-%MK                  gmake
+%MK                  make
 %USER_INC            %XIOS_INC %OASIS_INC %NCDF_INC
 %USER_LIB            %XIOS_LIB %OASIS_LIB %NCDF_LIB
 
 %CC                  gcc
-%CFLAGS              -O0
+%CFLAGS              -O0 -fcommon
