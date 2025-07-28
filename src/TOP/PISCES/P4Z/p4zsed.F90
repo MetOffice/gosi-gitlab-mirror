@@ -34,7 +34,7 @@ MODULE p4zsed
    REAL(wp) :: sedfactcalvar  !: Variable  value for dissolving calcite at the bottom
    !
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:  ) :: sdenit     !: Nitrate reduction in the sediments
-   LOGICAL  ::  l_dia_sed, l_dia_sdenit
+   LOGICAL  ::  l_dia_sed, l_dia_sdenit, l_dia_nfix
 
    !! * Substitutions
 #  include "do_loop_substitute.h90"
@@ -73,6 +73,9 @@ CONTAINS
       IF( ln_timing )  CALL timing_start('p4z_sed')
       !
       IF( kt == nittrc000 )  THEN
+         IF( .NOT. ln_p6z ) THEN
+            l_dia_nfix   = iom_use( "Nfix" )
+         ENDIF
          l_dia_sdenit = iom_use( "Sdenit" )
          l_dia_sed    = iom_use( "SedC" ) .OR. iom_use( "SedCal" ) .OR. iom_use( "SedSi" ) 
       ENDIF
@@ -163,7 +166,7 @@ CONTAINS
             sdenit(ji,jj) = rdenit * zpdenit * e3t(ji,jj,ikt,Kmm)
          END_2D
       ENDIF
-      IF( ln_p5z ) THEN
+      IF( ln_p6z ) THEN
          DO_2D( 0, 0, 0, 0 )
             ikt  = mbkt(ji,jj)
             zdep = 1._wp / e3t(ji,jj,ikt,Kmm)

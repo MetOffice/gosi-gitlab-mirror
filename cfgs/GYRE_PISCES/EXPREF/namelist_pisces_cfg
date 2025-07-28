@@ -1,9 +1,9 @@
 !-----------------------------------------------------------------------
 &nampismod     !  Model used 
 !-----------------------------------------------------------------------
-  ln_p2z    = .true.        !  PISCES SIMPLIFIED model used
-  ln_p4z    = .false.       !  PISCES model used
-  ln_p5z    = .false.       !  PISCES QUOTA model used
+  ln_p2z    = .true.      !  PISCES SIMPLIFIED model used
+  ln_p4z    = .false.      !  PISCES model used
+  ln_p6z    = .false.      !  PISCES QUOTA with explicit diazotrophy
 /
 !-----------------------------------------------------------------------
 &nampisext     !   air-sea exchange
@@ -16,30 +16,33 @@
 !-----------------------------------------------------------------------
 &nampisbio     !   biological parameters
 !-----------------------------------------------------------------------
+   nrdttrc    =  4        ! time step frequency for biology
 /
 !-----------------------------------------------------------------------
 &namp4zlim     !   parameters for nutrient limitations for PISCES std  - ln_p4z
 !-----------------------------------------------------------------------
 /
 !-----------------------------------------------------------------------
-&namp5zlim     !   parameters for nutrient limitations PISCES QUOTA    - ln_p5z
+&namp6zlim     !   parameters for nutrient limitations PISCES QUOTA    - ln_p6z
+               !   With Explicit diazotrophy
 !-----------------------------------------------------------------------
 /
 !-----------------------------------------------------------------------
-&namp5zquota   !   parameters for nutrient limitations PISCES quota    - ln_p5z
+&namp6zquota   !   parameters for nutrient limitations PISCES quota    - ln_p6z
+               !   With Explicit Diazotrophy
 !-----------------------------------------------------------------------
 /
 !-----------------------------------------------------------------------
 &nampisopt     !   parameters for optics
 !-----------------------------------------------------------------------
-   ln_varpar = .false.
 / 
 !-----------------------------------------------------------------------
 &namp4zprod    !   parameters for phytoplankton growth for PISCES std  - ln_p4z
 !-----------------------------------------------------------------------
 /
 !-----------------------------------------------------------------------
-&namp5zprod    !   parameters for phytoplankton growth for PISCES quota- ln_p5z
+&namp6zprod    !   parameters for phytoplankton growth for PISCES quota- ln_p6z
+               !   with explicit diazotrophy
 !-----------------------------------------------------------------------
 /
 !-----------------------------------------------------------------------
@@ -47,7 +50,8 @@
 !-----------------------------------------------------------------------
 /
 !-----------------------------------------------------------------------
-&namp5zmort    !   parameters for phytoplankton sinks for PISCES quota - ln_p5z
+&namp6zmort    !   parameters for phytoplankton sinks for PISCES quota - ln_p6z
+               !   with explicit diazotrophy
 !-----------------------------------------------------------------------
 /
 !-----------------------------------------------------------------------
@@ -55,7 +59,8 @@
 !-----------------------------------------------------------------------
 /
 !-----------------------------------------------------------------------
-&namp5zmes     !   parameters for mesozooplankton
+&namp6zmes     !   parameters for mesozooplankton for PISCES quota     - ln_p6z
+               !   with explicit diazotrophy
 !-----------------------------------------------------------------------
 /
 !-----------------------------------------------------------------------
@@ -63,7 +68,8 @@
 !-----------------------------------------------------------------------
 /
 !-----------------------------------------------------------------------
-&namp5zzoo     !   parameters for microzooplankton
+&namp6zzoo     !   parameters for microzooplankton for PISCES quota    - ln_p6z
+               !   with explicit diazotrophy
 !-----------------------------------------------------------------------
 /
 !-----------------------------------------------------------------------
@@ -81,7 +87,6 @@
 !-----------------------------------------------------------------------
 &nampispoc     !   parameters for organic particles
 !-----------------------------------------------------------------------
-   jcpoc     =  5        ! Number of lability classes
 /
 !-----------------------------------------------------------------------
 &nampiscal     !   parameters for Calcite chemistry
@@ -90,6 +95,10 @@
 !-----------------------------------------------------------------------
 &nampisbc      !   parameters for inputs deposition
 !-----------------------------------------------------------------------
+   sn_dust     = 'dust.orca.new'       ,     -1            , 'dust'        ,  .true.      , .true. , 'yearly'  , ''       , ''    , ''
+   ln_ironsed  =  .true.   ! boolean for Fe input from sediments
+   ln_ironice  =  .true.   ! boolean for Fe input from sea ice
+   ln_hydrofe  =  .true.   ! boolean for from hydrothermal vents
 /
 !-----------------------------------------------------------------------
 &nampissed     !   parameters for sediments mobilization

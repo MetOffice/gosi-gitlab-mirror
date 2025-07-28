@@ -119,7 +119,7 @@ CONTAINS
       zpisc(jpnh4,1) =  3.22e-7_wp / rno3
       zpisc(jplgw,1) =  1.0e-9_wp
 
-      ! ln_p5z
+      ! ln_p6z
       zpisc(jppic,1) =  9.57e-8_wp
       zpisc(jpnpi,1) =  9.57e-8_wp
       zpisc(jpppi,1) =  9.57e-8_wp
@@ -135,6 +135,11 @@ CONTAINS
       zpisc(jpdop,1) =  2.04e-5_wp
       zpisc(jpgon,1) =  5.23e-8_wp
       zpisc(jpgop,1) =  5.23e-8_wp
+      zpisc(jpdzc,1) =  0.0
+      zpisc(jpdzfe,1) =  0.0
+      zpisc(jpdzch,1) =  0.0
+      zpisc(jpndz,1) =  0.0
+      zpisc(jppdz,1) =  0.0
 
       !--- Arctic specificities (dissolved inorganic & DOM)
       zpisc(jpdic,2) =  1.98e-3_wp 
@@ -163,7 +168,7 @@ CONTAINS
       zpisc(jpnh4,2) =  6.15e-08_wp / rno3 
       zpisc(jplgw,2) =  1.0e-9_wp
 
-      ! ln_p5z
+      ! ln_p6z
       zpisc(jppic,2) =  5.25e-7_wp
       zpisc(jpnpi,2) =  5.25e-7_wp
       zpisc(jpppi,2) =  5.25e-7_wp
@@ -179,6 +184,11 @@ CONTAINS
       zpisc(jpdop,2) =  6.00e-6_wp
       zpisc(jpgon,2) =  2.84e-8_wp
       zpisc(jpgop,2) =  2.84e-8_wp
+      zpisc(jpdzc,2) =  0.0
+      zpisc(jpdzfe,2) =  0.0
+      zpisc(jpdzch,2) =  0.0
+      zpisc(jpndz,2) =  0.0
+      zpisc(jppdz,2) =  0.0
 
       !--- Antarctic specificities (dissolved inorganic & DOM)
       zpisc(jpdic,3) =  2.20e-3_wp  
@@ -207,7 +217,7 @@ CONTAINS
       zpisc(jpnh4,3) =  3.39e-7_wp / rno3  
       zpisc(jplgw,3) =  1.0e-9_wp
 
-      ! ln_p5z
+      ! ln_p6z
       zpisc(jppic,3) =  8.10e-7_wp
       zpisc(jpnpi,3) =  8.10e-7_wp
       zpisc(jpppi,3) =  8.10e-7_wp 
@@ -223,7 +233,11 @@ CONTAINS
       zpisc(jpdop,3) =  7.02e-6_wp
       zpisc(jpgon,3) =  2.89e-8_wp
       zpisc(jpgop,3) =  2.89e-8_wp
-
+      zpisc(jpdzc,3) =  0.0
+      zpisc(jpdzfe,3) =  0.0
+      zpisc(jpdzch,3) =  0.0
+      zpisc(jpndz,3) =  0.0
+      zpisc(jppdz,3) =  0.0
 
       !--- Baltic Sea particular case for ORCA configurations
       zpisc(jpdic,4) = 1.14e-3_wp
@@ -252,7 +266,7 @@ CONTAINS
       zpisc(jpnh4,4) = 7.18e-7_wp / rno3
       zpisc(jplgw,4) = 1.0e-9_wp
 
-      ! ln_p5z
+      ! ln_p6z
       zpisc(jppic,4) =  6.64e-7_wp
       zpisc(jpnpi,4) =  6.64e-7_wp
       zpisc(jpppi,4) =  6.64e-7_wp
@@ -268,6 +282,12 @@ CONTAINS
       zpisc(jpdop,4) =  1.06e-5_wp
       zpisc(jpgon,4) =  1.05e-8_wp
       zpisc(jpgop,4) =  1.05e-8_wp
+      zpisc(jpdzc,4) =  0.0
+      zpisc(jpdzfe,4) =  0.0
+      zpisc(jpdzch,4) =  0.0
+      zpisc(jpndz,4) =  0.0
+      zpisc(jppdz,4) =  0.0
+
 !
 !     ln_ironice and tracers in seaice are redundant. Thus, if tracers in ice
 !     is activated, ln_ironice should be set to false

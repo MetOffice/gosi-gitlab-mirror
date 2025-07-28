@@ -482,7 +482,7 @@ CONTAINS
          WRITE(numsed,*) ' Tolerance for relative order = ', rosrtol
       ENDIF
 
-      IF ( ln_p5z .AND. ln_sed_2way ) CALL ctl_stop( '2 ways coupling with sediment cannot be activated with PISCES-QUOTA' )
+      IF ( ln_p6z .AND. ln_sed_2way ) CALL ctl_stop( '2 ways coupling with sediment cannot be activated with PISCES-QUOTA' )
 
       ! Namelist nam_geom 
       READ_NML_REF(numnamsed,nam_geom)

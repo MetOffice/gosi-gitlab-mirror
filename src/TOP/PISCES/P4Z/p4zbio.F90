@@ -25,11 +25,11 @@ MODULE p4zbio
    USE p4zmort         !  Mortality terms for phytoplankton
    USE p4zmicro        !  Sources and sinks of microzooplankton
    USE p4zmeso         !  Sources and sinks of mesozooplankton
-   USE p5zlim          !  Co-limitations of differents nutrients
-   USE p5zprod         !  Growth rate of the 2 phyto groups
-   USE p5zmort         !  Mortality terms for phytoplankton
-   USE p5zmicro        !  Sources and sinks of microzooplankton
-   USE p5zmeso         !  Sources and sinks of mesozooplankton
+   USE p6zlim          !  Co-limitations of differents nutrients
+   USE p6zprod         !  Growth rate of the 4 phyto groups
+   USE p6zmort         !  Mortality terms for phytoplankton
+   USE p6zmicro        !  Sources and sinks of microzooplankton
+   USE p6zmeso         !  Sources and sinks of mesozooplankton
    USE p4zrem          !  Remineralisation of organic matter
    USE p4zpoc          !  Remineralization of organic particles
    USE p4zagg          !  Aggregation of particles
@@ -100,20 +100,20 @@ CONTAINS
          ! Phytoplankton only sources/sinks terms
                         CALL p4z_lim  ( kt, knt, Kbb, Kmm       )     ! co-limitations by the various nutrients
          IF( ln_prod )  CALL p4z_prod ( kt, knt, Kbb, Kmm, Krhs )     ! phytoplankton growth rate over the global ocean.
-         !                                          ! (for each element : C, Si, Fe, Chl )
+         !                                                            ! (for each element : C, Si, Fe, Chl )
          IF( ln_mort )  CALL p4z_mort ( kt,      Kbb,      Krhs )     ! phytoplankton mortality
          ! zooplankton sources/sinks routines
          IF( ln_micro ) CALL p4z_micro( kt, knt, Kbb,      Krhs )     ! microzooplankton
-         IF( ln_meso ) CALL p4z_meso ( kt, knt, Kbb, Kmm, Krhs )     ! mesozooplankton
-      ELSE  ! PISCES-QUOTA
+         IF( ln_meso )  CALL p4z_meso ( kt, knt, Kbb, Kmm, Krhs )     ! mesozooplankton
+      ELSE ! PISCES-QUOTA Explicit diazotrophy
          ! Phytoplankton only sources/sinks terms
-                        CALL p5z_lim  ( kt, knt, Kbb, Kmm       )     ! co-limitations by the various nutrients
-         IF( ln_prod )  CALL p5z_prod ( kt, knt, Kbb, Kmm, Krhs )     ! phytoplankton growth rate over the global ocean.
-         !                                          ! (for each element : C, Si, Fe, Chl )
-         IF( ln_mort )  CALL p5z_mort ( kt,      Kbb,      Krhs      )     ! phytoplankton mortality
+                        CALL p6z_lim  ( kt, knt, Kbb, Kmm       )     ! co-limitations by the various nutrients
+         IF( ln_prod )  CALL p6z_prod ( kt, knt, Kbb, Kmm, Krhs )     ! phytoplankton growth rate over the global ocean.
+         !                                                            ! (for each element : C, N, P, Si, Fe, Chl )
+         IF( ln_mort )  CALL p6z_mort ( kt,      Kbb,      Krhs )     ! phytoplankton mortality
          !  zooplankton sources/sinks routines
-         IF( ln_micro ) CALL p5z_micro( kt, knt, Kbb,      Krhs )           ! microzooplankton
-         IF( ln_meso  ) CALL p5z_meso ( kt, knt, Kbb, Kmm, Krhs )           ! mesozooplankton
+         IF( ln_micro ) CALL p6z_micro( kt, knt, Kbb,      Krhs )     ! microzooplankton
+         IF( ln_meso  ) CALL p6z_meso ( kt, knt, Kbb, Kmm, Krhs )     ! mesozooplankton     
       ENDIF
       !
       IF( ln_p2z ) THEN
@@ -130,14 +130,16 @@ CONTAINS
       IF( ln_diaz )   CALL p4z_diaz( kt, knt, Kbb, Kmm, Krhs )     ! Diazotrophy
 
       ! Update of the size of the different phytoplankton groups
-      sizen(:,:,:) = MAX(1.0, sizena(:,:,:) )
+      sizen(:,:,:) = MAX( 1.0, sizena(:,:,:) )
       IF( .NOT. ln_p2z ) THEN
-         sized(:,:,:) = MAX(1.0, sizeda(:,:,:) )
-         IF (ln_p5z) THEN
-            sizep(:,:,:) = MAX(1.0, sizepa(:,:,:) )
+         sized(:,:,:) = MAX( 1.0, sizeda(:,:,:) )
+         ! Update the size of phytoplankton groups in PISCES QUOTA
+         IF( ln_p6z ) THEN
+            sizep(:,:,:) = MAX( 1.0, sizepa(:,:,:) )
+            sizedz(:,:,:) = MAX( 1.0, sizedza(:,:,:) )
          ENDIF
       ENDIF
-      !                                                             !
+      !                                                             
       IF(sn_cfctl%l_prttrc)   THEN  ! print mean trends (used for debugging)
          WRITE(charout, FMT="('bio ')")
          CALL prt_ctl_info( charout, cdcomp = 'top' )

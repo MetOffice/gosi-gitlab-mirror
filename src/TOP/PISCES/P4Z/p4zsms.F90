@@ -311,7 +311,7 @@ CONTAINS
          WRITE(numout,*) '      frequency for the biology                 nrdttrc     =', nrdttrc
          WRITE(numout,*) '      POC sinking speed                         wsbio       =', wsbio
          WRITE(numout,*) '      half saturation constant for mortality    xkmort      =', xkmort 
-         IF( ln_p5z ) THEN
+         IF( ln_p6z ) THEN
             WRITE(numout,*) '      N/C in zooplankton                     no3rat3     =', no3rat3
             WRITE(numout,*) '      P/C in zooplankton                     po4rat3     =', po4rat3
          ENDIF
@@ -409,11 +409,11 @@ CONTAINS
          ll_poc_lab = .FALSE.
          IF( iom_varid( numrtr, 'remintpoc', ldstop = .FALSE. ) > 0 ) THEN
             CALL iom_get( numrtr, jpdom_auto, 'remintpoc' , remintpoc(:,:,:)  )
-            IF( ln_p4z .OR. ln_p5z ) &
+            IF( ln_p4z .OR. ln_p6z ) &
             CALL iom_get( numrtr, jpdom_auto, 'remintgoc' , remintgoc(:,:,:)  )
          ELSE
                                      remintpoc(:,:,:) = 0.03_wp
-            IF( ln_p4z .OR. ln_p5z ) remintgoc(:,:,:) = 0.03_wp
+            IF( ln_p4z .OR. ln_p6z ) remintgoc(:,:,:) = 0.03_wp
          ENDIF
 
 
@@ -430,18 +430,23 @@ CONTAINS
          IF( iom_varid( numrtr, 'sizen', ldstop = .FALSE. ) > 0 ) THEN
             CALL iom_get( numrtr, jpdom_auto, 'sizen' , sizen(:,:,:)  )
                sizen(:,:,:) = MAX( 1.0, sizen(:,:,:) )
-            IF( ln_p4z .OR. ln_p5z )THEN
+            IF( ln_p4z .OR. ln_p6z ) THEN
                CALL iom_get( numrtr, jpdom_auto, 'sized' , sized(:,:,:)  )
                sized(:,:,:) = MAX( 1.0, sized(:,:,:) )
             ENDIF
-            IF( ln_p5z ) THEN
+            IF( ln_p6z ) THEN
                CALL iom_get( numrtr, jpdom_auto, 'sizep' , sizep(:,:,:)  )
                sizep(:,:,:) = MAX( 1.0, sizep(:,:,:) )
+               CALL iom_get( numrtr, jpdom_auto, 'sizedz' , sizedz(:,:,:)  )
+               sizedz(:,:,:) = MAX( 1.0, sizedz(:,:,:) )
             ENDIF
          ELSE
-                                     sizen(:,:,:) = 1.
-            IF( ln_p4z .OR. ln_p5z ) sized(:,:,:) = 1.
-            IF( ln_p5z )             sizep(:,:,:) = 1.
+                                                 sizen(:,:,:)  = 1.
+            IF( ln_p4z .OR. ln_p6z )             sized(:,:,:)  = 1.
+            IF( ln_p6z ) THEN            
+               sizep(:,:,:)  = 1.
+               sizedz(:,:,:) = 1.
+            ENDIF
          ENDIF
         !
       ELSEIF( TRIM(cdrw) == 'WRITE' ) THEN
@@ -460,13 +465,16 @@ CONTAINS
 
          CALL iom_rstput( kt, nitrst, numrtw, 'Consfe3'  , consfe3(:,:,:) ) ! Si max concentration
          CALL iom_rstput( kt, nitrst, numrtw, 'remintpoc', remintpoc(:,:,:) ) ! Mean remineralisation rate of POC
-         IF ( ln_p4z .OR. ln_p5z ) THEN
+         IF ( ln_p4z .OR. ln_p6z ) THEN
             CALL iom_rstput( kt, nitrst, numrtw, 'Silicalim', xksi(:,:)    )
             CALL iom_rstput( kt, nitrst, numrtw, 'Silicamax', xksimax(:,:) )
             CALL iom_rstput( kt, nitrst, numrtw, 'remintgoc', remintgoc(:,:,:) ) ! Mean remineralisation rate of GOC
             CALL iom_rstput( kt, nitrst, numrtw, 'sized', sized(:,:,:) )  ! Size of diatoms
          ENDIF
-         IF( ln_p5z ) CALL iom_rstput( kt, nitrst, numrtw, 'sizep', sizep(:,:,:) )  ! Size of picophytoplankton
+         IF( ln_p6z ) THEN 
+            CALL iom_rstput( kt, nitrst, numrtw, 'sizep' , sizep(:,:,:) )   ! Size of picophytoplankton
+            CALL iom_rstput( kt, nitrst, numrtw, 'sizedz', sizedz(:,:,:) )  ! Size of diazotroph phytoplankton
+         ENDIF
       ENDIF
       !
    END SUBROUTINE p4z_rst
@@ -507,7 +515,7 @@ CONTAINS
                ! Correct the trn mean content of NO3
                IF(lwp) WRITE(numout,*) '       NO3N  mean : ', zno3sumn
                tr(:,:,:,jpno3,Kmm) = tr(:,:,:,jpno3,Kmm) * no3mean / zno3sumn
-               IF ( ln_p4z .OR. ln_p5z ) THEN
+               IF ( ln_p4z .OR. ln_p6z ) THEN
                   zpo4sumn = glob_3Dsum( 'p4zsms', tr(:,:,:,jppo4,Kmm) * cvol(:,:,:) ) * zarea * po4r
                   zsilsumn = glob_3Dsum( 'p4zsms', tr(:,:,:,jpsil,Kmm) * cvol(:,:,:) ) * zarea
                   ! Correct the trn mean content of PO4
@@ -586,10 +594,10 @@ CONTAINS
                &             +   tr(ji,jj,jk,jppoc,Kmm) + tr(ji,jj,jk,jpgoc,Kmm)  + tr(ji,jj,jk,jpdoc,Kmm)  &        
                &             +   tr(ji,jj,jk,jpzoo,Kmm) + tr(ji,jj,jk,jpmes,Kmm)  ) * cvol(ji,jj,jk)
             END_3D
-        ELSE
+        ELSE IF( ln_p6z ) THEN
             DO_3D( 0, 0, 0, 0, 1, jpkm1)
             zw3d(ji,jj,jk,2) = ( tr(ji,jj,jk,jpno3,Kmm) + tr(ji,jj,jk,jpnh4,Kmm) + tr(ji,jj,jk,jpnph,Kmm)   &
-               &             +   tr(ji,jj,jk,jpndi,Kmm) + tr(ji,jj,jk,jpnpi,Kmm)                      & 
+               &             +   tr(ji,jj,jk,jpndi,Kmm) + tr(ji,jj,jk,jpnpi,Kmm) + tr(ji,jj,jk,jpndz,Kmm)    &
                &             +   tr(ji,jj,jk,jppon,Kmm) + tr(ji,jj,jk,jpgon,Kmm) + tr(ji,jj,jk,jpdon,Kmm)   &
                &             + ( tr(ji,jj,jk,jpzoo,Kmm) + tr(ji,jj,jk,jpmes,Kmm) ) * no3rat3 ) * cvol(ji,jj,jk)
             END_3D
@@ -608,11 +616,12 @@ CONTAINS
                   &             +     tr(ji,jj,jk,jpbfe,Kmm) + tr(ji,jj,jk,jpsfe,Kmm)                      &
                   &             +     tr(ji,jj,jk,jpzoo,Kmm) * feratz + tr(ji,jj,jk,jpmes,Kmm) * feratm ) * cvol(ji,jj,jk)
             END_3D
-        ELSE
+        ELSE IF( ln_p6z ) THEN
             DO_3D( 0, 0, 0, 0, 1, jpkm1)
-               zw3d(ji,jj,jk,3) =   ( tr(ji,jj,jk,jpfer,Kmm) + tr(ji,jj,jk,jpnfe,Kmm) + tr(ji,jj,jk,jpdfe,Kmm)   &
-                  &             +     tr(ji,jj,jk,jppfe,Kmm) + tr(ji,jj,jk,jpbfe,Kmm) + tr(ji,jj,jk,jpsfe,Kmm)   &
-                  &             +     tr(ji,jj,jk,jpzoo,Kmm) * feratz + tr(ji,jj,jk,jpmes,Kmm) * feratm ) * cvol(ji,jj,jk)
+               zw3d(ji,jj,jk,3) =   ( tr(ji,jj,jk,jpfer,Kmm) + tr(ji,jj,jk,jpnfe,Kmm) + tr(ji,jj,jk,jpdfe,Kmm)  &
+                  &            +     tr(ji,jj,jk,jppfe,Kmm) + tr(ji,jj,jk,jpbfe,Kmm) + tr(ji,jj,jk,jpsfe,Kmm)   &
+                  &            +     tr(ji,jj,jk,jpdzfe,Kmm)                                                    &
+                  &            +     tr(ji,jj,jk,jpzoo,Kmm) * feratz + tr(ji,jj,jk,jpmes,Kmm) * feratm ) * cvol(ji,jj,jk)
             END_3D
         ENDIF
         !
@@ -653,10 +662,10 @@ CONTAINS
                    &             +   tr(ji,jj,jk,jppoc,Kmm) + tr(ji,jj,jk,jpgoc,Kmm)  + tr(ji,jj,jk,jpdoc,Kmm)  &
                    &             +   tr(ji,jj,jk,jpzoo,Kmm) + tr(ji,jj,jk,jpmes,Kmm) ) * cvol(ji,jj,jk)
              END_3D
-           ELSE
+          ELSE IF ( ln_p6z ) THEN
              DO_3D( 0, 0, 0, 0, 1, jpkm1)
                 zw3d(ji,jj,jk,7) = ( tr(ji,jj,jk,jppo4,Kmm) + tr(ji,jj,jk,jppph,Kmm)                      &
-                  &              +   tr(ji,jj,jk,jppdi,Kmm) + tr(ji,jj,jk,jpppi,Kmm)                      &
+                  &              +   tr(ji,jj,jk,jppdi,Kmm) + tr(ji,jj,jk,jpppi,Kmm) + tr(ji,jj,jk,jppdz,Kmm)   &
                   &              +   tr(ji,jj,jk,jppop,Kmm) + tr(ji,jj,jk,jpgop,Kmm) + tr(ji,jj,jk,jpdop,Kmm)   &
                   &              + ( tr(ji,jj,jk,jpzoo,Kmm) + tr(ji,jj,jk,jpmes,Kmm) ) * po4rat3 ) * cvol(ji,jj,jk)
              END_3D

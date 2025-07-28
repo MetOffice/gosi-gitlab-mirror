@@ -68,7 +68,7 @@
     <field id="NH4"          long_name="Ammonium Concentration"                   unit="mmol/m3" />
     <field id="NH4_e3t"      long_name="NH4 * e3t"                                unit="mmol/m2"  > NH4 * e3t </field >
 
-    <!-- PISCES quota : variables available with ln_p5z  -->
+    <!-- PISCES quota : variables available with ln_p6z  -->
 
     <field id="DON"          long_name="Dissolved organic N Concentration"        unit="mmol/m3" />
     <field id="DON_e3t"      long_name="DON * e3t"                                unit="mmol/m2"  > DON * e3t </field >
@@ -100,6 +100,16 @@
     <field id="PFe_e3t"      long_name="PFe * e3t"                                unit="mmol/m2"  > PFe * e3t </field >
     <field id="PCHL"         long_name="Picophytoplankton Chl biomass"            unit="gChl/m3" />
     <field id="PCHL_e3t"     long_name="PCHL * e3t"                               unit="mmol/m2"  > PCHL * e3t </field >
+    <field id="DZC"          long_name="Diazotroph C biomass"                     unit="mmol/m3" />
+    <field id="DZC_e3t"      long_name="DZC * e3t"                                unit="mmol/m2"  > DZC * e3t </field >
+    <field id="DZFe"         long_name="Diazotroph Fe biomass"                    unit="mmol/m3" />
+    <field id="DZFe_e3t"     long_name="DZFe * e3t"                               unit="mmol/m2"  > DZFe * e3t </field >
+    <field id="DZCHL"        long_name="Diazotroph Chl biomass"                   unit="mmol/m3" />
+    <field id="DZCHL_e3t"    long_name="DZCHL * e3t"                              unit="mmol/m2"  > DZCHL * e3t </field >
+    <field id="DZN"          long_name="Diazotroph N biomass"                     unit="mmol/m3" />
+    <field id="DZN_e3t"      long_name="DZN * e3t"                                unit="mmol/m2"  > DZN * e3t </field >
+    <field id="DZP"          long_name="Diazotroph P biomass"                     unit="mmol/m3" />
+    <field id="DZP_e3t"      long_name="DZP * e3t"                                unit="mmol/m2"  > DZP * e3t </field >
 
     <!-- PISCES with ligand parametisation : variables available namelist paramter ln_ligand -->
     <field id="LGW"         long_name="Weak ligands concentration"                unit="mmol/m3" />

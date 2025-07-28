@@ -114,7 +114,7 @@ CONTAINS
             prodgoc(ji,jj,jk) = prodgoc(ji,jj,jk) + zagg + zaggdoc2
             !
          END_3D
-      ELSE    ! ln_p5z
+      ELSE    ! ln_p6z
         ! PISCES-QUOTA part
         !
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )

@@ -70,6 +70,7 @@ CONTAINS
       REAL(wp), DIMENSION(A2D(0),jpk) ::  ze0, ze1, ze2, ze3
       REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) :: zpar
       REAL(wp), ALLOCATABLE, DIMENSION(:,:  ) :: zetmp3
+      REAL(wp), ALLOCATABLE, DIMENSION(:,:  ) :: zetmp4 ! only used for p6z
       !!---------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('p4z_opt')
@@ -95,7 +96,7 @@ CONTAINS
             zchl = ( tr(ji,jj,jk,jpphy,Kbb) * 12.0 * thetanano(ji,jj,jk) + rtrn ) * 1.e6
          ELSE
             zchl =  ( tr(ji,jj,jk,jpnch,Kbb) + tr(ji,jj,jk,jpdch,Kbb) + rtrn ) * 1.e6
-            IF( ln_p5z )       zchl = zchl + tr(ji,jj,jk,jppch,Kbb) * 1.e6
+            IF( ln_p6z )       zchl = zchl + tr(ji,jj,jk,jppch,Kbb) * 1.e6 + tr(ji,jj,jk,jpdzch,Kbb) * 1.e6
          ENDIF
          zchl = MIN(  10. , MAX( 0.05, zchl )  )
          irgb = NINT( 41 + 20.* LOG10( zchl ) + rtrn )
@@ -155,9 +156,14 @@ CONTAINS
                DO_3D( 0, 0, 0, 0, 1, nksr )
                   ediat(ji,jj,jk) =  1.62 * ze1(ji,jj,jk) + 0.74 * ze2(ji,jj,jk) + 0.63 * ze3(ji,jj,jk)
                END_3D
-               IF( ln_p5z ) THEN
+               IF( .NOT. ln_p4z ) THEN
                   DO_3D( 0, 0, 0, 0, 1, nksr )
                      epico(ji,jj,jk) =  1.94 * ze1(ji,jj,jk) + 0.66 * ze2(ji,jj,jk) + 0.4 * ze3(ji,jj,jk)
+                  END_3D
+               ENDIF
+               IF( ln_p6z ) THEN ! Explicit Diazotrophy
+                  DO_3D( 0, 0, 0, 0, 1, nksr )
+                     ediaz(ji,jj,jk) =  1.85 * ze1(ji,jj,jk) + 0.69* ze2(ji,jj,jk) + 0.46 * ze3(ji,jj,jk)
                   END_3D
                ENDIF
             ENDIF
@@ -188,9 +194,14 @@ CONTAINS
                DO_3D( 0, 0, 0, 0, 1, nksr )
                   ediat(ji,jj,jk) =  1.62 * ze1(ji,jj,jk) + 0.74 * ze2(ji,jj,jk) + 0.63 * ze3(ji,jj,jk)
                END_3D
-               IF( ln_p5z ) THEN
+               IF( .NOT. ln_p4z ) THEN
                   DO_3D( 0, 0, 0, 0, 1, nksr )
                      epico(ji,jj,jk) =  1.94 * ze1(ji,jj,jk) + 0.66 * ze2(ji,jj,jk) + 0.4 * ze3(ji,jj,jk)
+                  END_3D
+               ENDIF
+               IF( ln_p6z ) THEN ! Explicit Diazotrophy
+                  DO_3D( 0, 0, 0, 0, 1, nksr )
+                     ediaz(ji,jj,jk) =  1.85 * ze1(ji,jj,jk) + 0.69 * ze2(ji,jj,jk) + 0.46 * ze3(ji,jj,jk)
                   END_3D
                ENDIF
             ENDIF
@@ -237,9 +248,14 @@ CONTAINS
             DO_3D( 0, 0, 0, 0, 1, nksr )
                ediat(ji,jj,jk) =  1.62 * ze1(ji,jj,jk) + 0.74 * ze2(ji,jj,jk) + 0.63 * ze3(ji,jj,jk)
             END_3D
-            IF( ln_p5z ) THEN
+            IF( .NOT. ln_p4z ) THEN
                DO_3D( 0, 0, 0, 0, 1, nksr )
                   epico(ji,jj,jk) =  1.94 * ze1(ji,jj,jk) + 0.66 * ze2(ji,jj,jk) + 0.4 * ze3(ji,jj,jk)
+               END_3D
+            ENDIF
+            IF( ln_p6z ) THEN ! Explicit Diazotrophy
+               DO_3D( 0, 0, 0, 0, 1, nksr )
+                  ediaz(ji,jj,jk) =  1.85 * ze1(ji,jj,jk) + 0.69 * ze2(ji,jj,jk) + 0.46 * ze3(ji,jj,jk)
                END_3D
             ENDIF
          ENDIF
@@ -276,7 +292,7 @@ CONTAINS
          IF( etot_ndcy(ji,jj,jk) * tmask(ji,jj,jk) >=  zqsr100(ji,jj) )  THEN
             neln(ji,jj) = jk+1                    ! Euphotic level : 1rst T-level strictly below Euphotic layer
             !                                     ! nb: ensure the compatibility with nmld_trc definition in trd_mld_trc_zint
-            heup(ji,jj) = gdepw(ji,jj,jk+1,Kmm)     ! Euphotic layer depth
+            heup(ji,jj) = gdepw(ji,jj,jk+1,Kmm)   ! Euphotic layer depth
          ENDIF
          IF( etot_ndcy(ji,jj,jk) * tmask(ji,jj,jk) >= 0.10 )  THEN
             heup_01(ji,jj) = gdepw(ji,jj,jk+1,Kmm)  ! Euphotic layer depth (light level definition)
@@ -331,12 +347,19 @@ CONTAINS
          END_3D
          DEALLOCATE( zetmp3 )
       ENDIF
-      IF( ln_p5z ) THEN
+      IF( ln_p6z ) THEN
          ! Picophytoplankton when using PISCES-QUOTA
          ALLOCATE( zetmp3(A2D(0)) )  ;   zetmp3(:,:) = 0.e0
+         IF( ln_p6z) THEN ! Explicit Diazotroph when using PISCES-QUOTA (P6Z)
+            ALLOCATE( zetmp4(A2D(0)) )  ;   zetmp4 (:,:) = 0.e0
+         ENDIF
+         !
          DO_3D( 0, 0, 0, 0, 1, nksr)
             IF( gdepw(ji,jj,jk+1,Kmm) <= hmld(ji,jj) ) THEN
                zetmp3(ji,jj)  = zetmp3(ji,jj) + epico(ji,jj,jk) * e3t(ji,jj,jk,Kmm)
+               IF( ln_p6z) THEN ! Explicit Diazotroph
+                  zetmp4(ji,jj)  = zetmp4 (ji,jj) + ediaz(ji,jj,jk) * e3t(ji,jj,jk,Kmm)
+               ENDIF
             ENDIF
          END_3D
          !
@@ -344,11 +367,20 @@ CONTAINS
             IF( gdepw(ji,jj,jk+1,Kmm) <= hmld(ji,jj) ) THEN
                z1_dep = 1. / ( zdepmoy(ji,jj) + rtrn )
                epicom(ji,jj,jk) = zetmp3(ji,jj) * z1_dep
+               IF( ln_p6z) THEN ! Explicit Diazotroph
+                  ediazm(ji,jj,jk) = zetmp4(ji,jj) * z1_dep
+               ENDIF
             ELSE
                epicom(ji,jj,jk) = epico(ji,jj,jk)
+               IF( ln_p6z) THEN ! Explicit Diazotroph
+                  ediazm(ji,jj,jk) = ediaz(ji,jj,jk)
+               ENDIF
             ENDIF
          END_3D
          DEALLOCATE( zetmp3 )
+         IF( ln_p6z) THEN ! Explicit Diazotroph
+            DEALLOCATE( zetmp4 )
+         ENDIF
       ENDIF
       !
       IF( knt == nrdttrc ) THEN
@@ -546,7 +578,8 @@ CONTAINS
                          emoy     (:,:,:) = 0._wp
                          enanom   (:,:,:) = 0._wp
       IF( .NOT. ln_p2z)  ediat    (:,:,:) = 0._wp
-      IF( ln_p5z      )  epico    (:,:,:) = 0._wp
+      IF( ln_p6z )       epico    (:,:,:) = 0._wp
+      IF( ln_p6z )       ediaz    (:,:,:) = 0._wp
       IF( ln_qsr_bio  )  etot3    (:,:,:) = 0._wp
       ! 
    END SUBROUTINE p4z_opt_init

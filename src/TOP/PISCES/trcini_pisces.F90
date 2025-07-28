@@ -75,12 +75,13 @@ CONTAINS
       USE p4zdiaz         !  Diazotrophy
       USE p4zpoc          !  Remineralization of organic particles
       USE p4zligand       !  Remineralization of organic ligands
-      USE p5zlim          !  Co-limitations of differents nutrients (QUOTA)
-      USE p5zprod         !  Growth rate of the 3 phyto groups (QUOTA)
-      USE p5zmicro        !  Sources and sinks of microzooplankton (QUOTA)
-      USE p5zmeso         !  Sources and sinks of mesozooplankton (QUOTA)
-      USE p5zmort         !  Mortality terms for phytoplankton (QUOTA)
       USE p2zmicro        !  Sources and sinks of microzooplankton (REDUCED)
+      ! PISCES QUOTA Explicit Diazotrophy
+      USE p6zlim          !  Co-limitations of differents nutrients
+      USE p6zprod         !  Growth rate of the 4 phyto groups
+      USE p6zmicro        !  Sources and sinks of microzooplankton
+      USE p6zmeso         !  Sources and sinks of mesozooplankton
+      USE p6zmort         !  Mortality terms for phytoplankton
       !
       INTEGER, INTENT(in)  ::  Kmm      ! time level indices
       !
@@ -100,8 +101,8 @@ CONTAINS
             WRITE(numout,*) 'p4z_ini :   PISCES biochemical model initialisation'
             WRITE(numout,*) '~~~~~~~     Operationnal version'
          ELSE
-            WRITE(numout,*) 'p5z_ini :   PISCES biochemical model initialisation'
-            WRITE(numout,*) '~~~~~~~     With variable stoichiometry'
+            WRITE(numout,*) 'p6z_ini :   PISCES biochemical model initialisation'
+            WRITE(numout,*) '~~~~~~~     With variable stoichiometry and Explicit Diazotrophy'
          ENDIF
       ENDIF
       !
@@ -120,7 +121,6 @@ CONTAINS
       ierr = ierr +  p4z_opt_alloc()
       ierr = ierr +  p4z_flx_alloc()
       ierr = ierr +  p4z_sed_alloc()
-      ierr = ierr +  p4z_diaz_alloc()
       ierr = ierr +  p2z_lim_alloc()
       IF( ln_p2z ) THEN
          ierr = ierr +  p2z_prod_alloc()
@@ -131,11 +131,11 @@ CONTAINS
          ierr = ierr +  p4z_prod_alloc()
          ierr = ierr +  p4z_meso_alloc()
       ENDIF
-      IF( ln_p5z ) THEN 
-         ! PISCES-QUOTA part
+      IF( ln_p6z ) THEN
+         ! PISCES QUOTA Explicit Diazotroph
          ierr = ierr +  p4z_lim_alloc()
-         ierr = ierr +  p5z_lim_alloc()
-         ierr = ierr +  p5z_meso_alloc()
+         ierr = ierr +  p6z_lim_alloc()
+         ierr = ierr +  p6z_meso_alloc()
       ENDIF
       ierr = ierr +  p4z_rem_alloc()
       !
@@ -190,6 +190,11 @@ CONTAINS
         IF( cltra == 'PCHL'     )   jppch = jn      !: Diatoms Chlorophyll Concentration
         IF( cltra == 'PFe'      )   jppfe = jn      !: Picophytoplankton Fe biomass
         IF( cltra == 'LGW'      )   jplgw = jn      !: Weak ligands
+        IF( cltra == 'DZC'      )   jpdzc = jn      !: Diazotroph C biomass
+        IF( cltra == 'DZFe'     )   jpdzfe = jn     !: Diazotroph Fe biomass
+        IF( cltra == 'DZCHL'    )   jpdzch = jn     !: Diazotroph Chl biomass
+        IF( cltra == 'DZN'      )   jpndz = jn      !: Diazotroph N biomass
+        IF( cltra == 'DZP'      )   jppdz = jn      !: Diazotroph P biomass
       END DO
 
       CALL p4z_sms_init       !  Maint routine
@@ -203,7 +208,7 @@ CONTAINS
       o2ut    = 138._wp / 117._wp   ! O2/C for ammonification
       rdenit  =  ( ( o2ut + o2nit ) * 0.80 - rno3 - rno3 * 0.60 ) / rno3  ! Denitrification
       rdenita =   3._wp /  5._wp    ! Denitrification
-      IF( ln_p5z ) THEN
+      IF( ln_p6z ) THEN
          no3rat3 = no3rat3 / rno3   ! C/N ratio in zooplankton
          po4rat3 = po4rat3 / po4r   ! C/P ratio in zooplankton
       ENDIF
@@ -240,7 +245,7 @@ CONTAINS
          IF( ln_ligand) THEN
             tr(:,:,:,jplgw,Kmm) = 0.6E-9
          ENDIF
-         IF( ln_p5z ) THEN
+         IF( ln_p6z ) THEN
             tr(:,:,:,jpdon,Kmm) = bioma0
             tr(:,:,:,jpdop,Kmm) = bioma0
             tr(:,:,:,jppon,Kmm) = bioma0
@@ -257,21 +262,31 @@ CONTAINS
             tr(:,:,:,jppfe,Kmm) = bioma0 * 5.e-6
             tr(:,:,:,jppch,Kmm) = bioma0 * 12. / 55.
          ENDIF
+         !Explicit Diazotropy
+         IF (ln_p6z) THEN
+            tr(:,:,:,jpdzc,Kmm) = bioma0
+            tr(:,:,:,jpdzfe,Kmm) = bioma0 * 5.e-6
+            tr(:,:,:,jpdzch,Kmm) = bioma0 * 12. / 55.
+            tr(:,:,:,jpndz,Kmm) = bioma0
+            tr(:,:,:,jppdz,Kmm) = bioma0
+         ENDIF
          ! initialize the half saturation constant for silicate
          ! ----------------------------------------------------
          sizen(:,:,:)   = 1.0
          consfe3(:,:,:) = 0._wp
-         IF ( .NOT. ln_p2z ) THEN
+         IF( .NOT. ln_p2z ) THEN
             xksi(:,:)      = 2.e-6
             xksimax(:,:)   = xksi(:,:)
             !
             sized(:,:,:) = 1.0
-            IF( ln_p5z )  sizep(:,:,:) = 1.0
+            IF( ln_p6z ) THEN
+               sizep(:,:,:) = 1.0
+               sizedz(:,:,:) = 1.
+            ENDIF
          ENDIF 
 
          IF( ln_p2z ) thetanano(:,:,:) = 1.0 / 55.0
       END IF
-
 
       ! Initialization of the different PISCES modules
       ! Mainly corresponds to the namelist use
@@ -279,17 +294,17 @@ CONTAINS
       CALL p4z_sink_init         !  vertical flux of particulate organic matter
       CALL p4z_opt_init          !  Optic: PAR in the water column
       IF( ln_p2z ) THEN
-         ! Reduced PISCES part
+         ! PISCES Reduced part
          CALL p2z_lim_init       !  co-limitations by the various nutrients
          CALL p2z_prod_init      !  phytoplankton growth rate over the global ocean.
       ELSE IF( ln_p4z ) THEN
-         ! PISCES part
+         ! PISCES std part
          CALL p4z_lim_init       !  co-limitations by the various nutrients
          CALL p4z_prod_init      !  phytoplankton growth rate over the global ocean.
-      ELSE
-         ! PISCES-QUOTA part
-         CALL p5z_lim_init       !  co-limitations by the various nutrients
-         CALL p5z_prod_init      !  phytoplankton growth rate over the global ocean.
+      ELSE IF( ln_p6z ) THEN
+         ! PISCES QUOTA explicit diazotrophy
+         CALL p6z_lim_init       !  co-limitations by the various nutrients
+         CALL p6z_prod_init      !  phytoplankton growth rate over the globalocean.
       ENDIF
       CALL p4z_bc_init( Kmm )    !  boundary conditions
       CALL p4z_fechem_init       !  Iron chemistry
@@ -305,10 +320,10 @@ CONTAINS
          CALL p4z_mort_init      !  phytoplankton mortality 
          CALL p4z_micro_init     !  microzooplankton
          CALL p4z_meso_init      !  mesozooplankton
-      ELSE ! PISCES-QUOTA
-         CALL p5z_mort_init      !  phytoplankton mortality 
-         CALL p5z_micro_init     !  microzooplankton
-         CALL p5z_meso_init      !  mesozooplankton
+      ELSE IF( ln_p6z ) THEN ! PISCES QUOTA explicit diazotrophy
+         CALL p6z_mort_init      !  phytoplankton mortality
+         CALL p6z_micro_init     !  microzooplankton
+         CALL p6z_meso_init      !  mesozooplankton
       ENDIF
       CALL p4z_diaz_init         ! Diazotrophy
       CALL p4z_lys_init          !  calcite saturation

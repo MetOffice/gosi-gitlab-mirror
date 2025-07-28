@@ -56,6 +56,12 @@ MODULE par_pisces
    INTEGER, PUBLIC ::   jpgon     !: Big nitrogen particles Concentration
    INTEGER, PUBLIC ::   jpgop     !: Big phosphorus particles Concentration
    INTEGER, PUBLIC ::   jplgw     !: Weak Ligands
+   ! Explicit Diazotroph PFT (ln_p6z)
+   INTEGER, PUBLIC ::   jpdzc     !: Diazotroph carbon concentration
+   INTEGER, PUBLIC ::   jpdzfe    !: Diazotroph iron concentration
+   INTEGER, PUBLIC ::   jpdzch    !: Diazotroph chlorophyll concentration
+   INTEGER, PUBLIC ::   jpndz     !: Diazotroph nitrogen concentration
+   INTEGER, PUBLIC ::   jppdz     !: Diazotroph phosphorus concentration
 
    !!---------------------------------------------------------------------
    !!   Default                                   No CFC geochemical model

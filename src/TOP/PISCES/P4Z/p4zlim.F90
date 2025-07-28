@@ -354,7 +354,7 @@ CONTAINS
 
    INTEGER FUNCTION p4z_lim_alloc()
       !!----------------------------------------------------------------------
-      !!                     ***  ROUTINE p5z_lim_alloc  ***
+      !!                     ***  ROUTINE p4z_lim_alloc  ***
       !! 
       !            Allocation of the arrays used in this module
       !!----------------------------------------------------------------------
