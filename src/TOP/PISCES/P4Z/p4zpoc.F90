@@ -146,7 +146,7 @@ CONTAINS
             tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + zofer2
          END_3D
          !
-         IF ( ln_p5z ) THEN
+         IF ( ln_p6z ) THEN
             DO_3D( 0, 0, 0, 0, 1, jpkm1)
                ! POC degradation by bacterial activity. It is a function
                ! of the mean lability and of temperature. This also includes
@@ -232,7 +232,7 @@ CONTAINS
            tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) - zofer
         END_3D
      ENDIF
-     IF ( ln_p5z ) THEN
+     IF( ln_p6z ) THEN
         DO_3D( 0, 0, 0, 0, 1, jpkm1)
            ! POC disaggregation by turbulence and bacterial activity.It is a function
            ! of the mean lability and of temperature  
@@ -501,7 +501,7 @@ CONTAINS
       IF(lwp) THEN                         ! control print
          WRITE(numout,*) '   Namelist : nampispoc'
          WRITE(numout,*) '      remineralisation rate of POC              xremipc   =', xremipc
-         IF( ln_p5z ) THEN 
+         IF( ln_p6z ) THEN 
             WRITE(numout,*) '      remineralisation rate of PON              xremipn   =', xremipn
             WRITE(numout,*) '      remineralisation rate of POP              xremipp   =', xremipp
          ENDIF

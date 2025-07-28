@@ -1,37 +1,40 @@
-MODULE p5zmort
+MODULE p6zmort
    !!======================================================================
-   !!                         ***  MODULE p5zmort  ***
+   !!                         ***  MODULE p6zmort  ***
    !! TOP :   PISCES-QUOTA Compute the mortality terms for phytoplankton
+   !!         including explicit diazotrophy
    !!======================================================================
    !! History :   1.0  !  2002     (O. Aumont)  Original code
    !!             2.0  !  2007-12  (C. Ethe, G. Madec)  F90
    !!             3.6  !  2015-05  (O. Aumont) PISCES quota
    !!----------------------------------------------------------------------
-   !!   p5z_mort       :   Compute the mortality terms for phytoplankton
-   !!   p5z_mort_init  :   Initialize the mortality params for phytoplankton
+   !!   p6z_mort       :   Compute the mortality terms for phytoplankton
+   !!   p6z_mort_init  :   Initialize the mortality params for phytoplankton
    !!----------------------------------------------------------------------
    USE oce_trc         !  shared variables between ocean and passive tracers
    USE trc             !  passive tracers common variables 
    USE sms_pisces      !  PISCES Source Minus Sink variables
    USE p2zlim
    USE p4zlim          !  Phytoplankton limitation terms (p4z)
-   USE p5zlim          !  Phytoplankton limitation terms (p5z)
+   USE p6zlim          !  Phytoplankton limitation terms (p6z)
    USE prtctl          !  print control for debugging
 
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC   p5z_mort           ! Called from p4zbio.F90 
-   PUBLIC   p5z_mort_init      ! Called from trcini_pisces.F90 
+   PUBLIC   p6z_mort           ! Called from p4zbio.F90 
+   PUBLIC   p6z_mort_init      ! Called from trcini_pisces.F90 
 
    !! * Shared module variables
-   REAL(wp), PUBLIC :: wchln   !! Quadratic mortality rate of nanophytoplankton
+   REAL(wp), PUBLIC :: wchln   !: Quadratic mortality rate of nanophytoplankton
    REAL(wp), PUBLIC :: wchlp   !: Quadratic mortality rate of picophytoplankton
    REAL(wp), PUBLIC :: wchld   !: Quadratic mortality rate of diatoms
+   REAL(wp), PUBLIC :: wchldz  !: Quadratic mortality rate of diazotrophs
    REAL(wp), PUBLIC :: mpratn  !: Linear mortality rate of nanophytoplankton
    REAL(wp), PUBLIC :: mpratp  !: Linear mortality rate of picophytoplankton
    REAL(wp), PUBLIC :: mpratd  !: Linear mortality rate of diatoms
-
+   REAL(wp), PUBLIC :: mpratdz !: Linear mortality rate of diazotrophs
+   
    !! * Substitutions
 #  include "do_loop_substitute.h90"
 #  include "read_nml_substitute.h90"
@@ -42,9 +45,9 @@ MODULE p5zmort
 
 CONTAINS
 
-   SUBROUTINE p5z_mort( kt, Kbb, Krhs )
+   SUBROUTINE p6z_mort( kt, Kbb, Krhs )
       !!---------------------------------------------------------------------
-      !!                     ***  ROUTINE p5z_mort  ***
+      !!                     ***  ROUTINE p6z_mort  ***
       !!
       !! ** Purpose :   Calls the different subroutine to compute
       !!                the different phytoplankton mortality terms
@@ -54,17 +57,18 @@ CONTAINS
       INTEGER, INTENT(in) ::   kt ! ocean time step
       INTEGER, INTENT(in) ::   Kbb, Krhs  ! time level indices
       !!---------------------------------------------------------------------
+      
+      CALL p6z_mort_nano( Kbb, Krhs )            ! nanophytoplankton
+      CALL p6z_mort_pico( Kbb, Krhs )            ! picophytoplankton
+      CALL p6z_mort_diat( Kbb, Krhs )            ! diatoms
+      CALL p6z_mort_diazo( Kbb, Krhs )           ! diazotrophs
+      
+   END SUBROUTINE p6z_mort
 
-      CALL p5z_mort_nano( Kbb, Krhs )            ! nanophytoplankton
-      CALL p5z_mort_pico( Kbb, Krhs )            ! picophytoplankton
-      CALL p5z_mort_diat( Kbb, Krhs )            ! diatoms
 
-   END SUBROUTINE p5z_mort
-
-
-   SUBROUTINE p5z_mort_nano( Kbb, Krhs )
+   SUBROUTINE p6z_mort_nano( Kbb, Krhs )
       !!---------------------------------------------------------------------
-      !!                     ***  ROUTINE p5z_mort_nano  ***
+      !!                     ***  ROUTINE p6z_mort_nano  ***
       !!
       !! ** Purpose :   Compute the mortality terms for nanophytoplankton
       !!
@@ -78,7 +82,7 @@ CONTAINS
       CHARACTER (len=25) :: charout
       !!---------------------------------------------------------------------
       !
-      IF( ln_timing )   CALL timing_start('p5z_mort_nano')
+      IF( ln_timing )   CALL timing_start('p6z_mort_nano')
       !
       prodcal(:,:,:) = 0._wp   ! calcite production variable set to zero
       DO_3D( 0, 0, 0, 0, 1, jpkm1)
@@ -128,20 +132,20 @@ CONTAINS
          tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + ztortp * zfactfe
       END_3D
       !
-       IF(sn_cfctl%l_prttrc)   THEN  ! print mean trends (used for debugging)
+      IF(sn_cfctl%l_prttrc)   THEN  ! print mean trends (used for debugging)
          WRITE(charout, FMT="('nano')")
          CALL prt_ctl_info( charout, cdcomp = 'top' )
          CALL prt_ctl(tab4d_1=tr(:,:,:,:,Krhs), mask1=tmask, clinfo=ctrcnm)
-       ENDIF
+      ENDIF
       !
-      IF( ln_timing )   CALL timing_stop('p5z_mort_nano')
+      IF( ln_timing )   CALL timing_stop('p6z_mort_nano')
       !
-   END SUBROUTINE p5z_mort_nano
+   END SUBROUTINE p6z_mort_nano
 
 
-   SUBROUTINE p5z_mort_pico( Kbb, Krhs )
+   SUBROUTINE p6z_mort_pico( Kbb, Krhs )
       !!---------------------------------------------------------------------
-      !!                     ***  ROUTINE p5z_mort_pico  ***
+      !!                     ***  ROUTINE p6z_mort_pico  ***
       !!
       !! ** Purpose :   Compute the mortality terms for picophytoplankton
       !!
@@ -155,7 +159,7 @@ CONTAINS
       CHARACTER (len=25) :: charout
       !!---------------------------------------------------------------------
       !
-      IF( ln_timing )   CALL timing_start('p5z_mort_pico')
+      IF( ln_timing )   CALL timing_start('p6z_mort_pico')
       !
       DO_3D( 0, 0, 0, 0, 1, jpkm1)
          zcompaph = MAX( ( tr(ji,jj,jk,jppic,Kbb) - 1e-9 ), 0.e0 )
@@ -202,14 +206,14 @@ CONTAINS
          CALL prt_ctl(tab4d_1=tr(:,:,:,:,Krhs), mask1=tmask, clinfo=ctrcnm)
        ENDIF
       !
-      IF( ln_timing )   CALL timing_stop('p5z_mort_pico')
+      IF( ln_timing )   CALL timing_stop('p6z_mort_pico')
       !
-   END SUBROUTINE p5z_mort_pico
+   END SUBROUTINE p6z_mort_pico
 
 
-   SUBROUTINE p5z_mort_diat( Kbb, Krhs )
+   SUBROUTINE p6z_mort_diat( Kbb, Krhs )
       !!---------------------------------------------------------------------
-      !!                     ***  ROUTINE p5z_mort_diat  ***
+      !!                     ***  ROUTINE p6z_mort_diat  ***
       !!
       !! ** Purpose :   Compute the mortality terms for diatoms
       !!
@@ -223,11 +227,10 @@ CONTAINS
       CHARACTER (len=25) :: charout
       !!---------------------------------------------------------------------
       !
-      IF( ln_timing )   CALL timing_start('p5z_mort_diat')
+      IF( ln_timing )   CALL timing_start('p6z_mort_diat')
       !
 
       DO_3D( 0, 0, 0, 0, 1, jpkm1)
-
          zcompadi = MAX( ( tr(ji,jj,jk,jpdia,Kbb) - 1E-9), 0. )
 
          !   Aggregation term for diatoms is increased in case of nutrient
@@ -237,8 +240,8 @@ CONTAINS
          !  Phytoplankton squared mortality
          !  -------------------------------
          zlim2   = xlimdia(ji,jj,jk) * xlimdia(ji,jj,jk)
-         zlim1    = 0.0625 / ( 0.0625 + zlim2 ) * tr(ji,jj,jk,jpdia,Kbb)
-         zrespp   = 1.e6 * xstep * wchld * zlim1 * xdiss(ji,jj,jk) * zcompadi
+         zlim1   = 0.0625 / ( 0.0625 + zlim2 ) * tr(ji,jj,jk,jpdia,Kbb)
+         zrespp  = 1.e6 * xstep * wchld * zlim1 * xdiss(ji,jj,jk) * zcompadi
 
          ! Phytoplankton linear mortality
          ! A michaelis-menten like term is introduced to avoid 
@@ -262,7 +265,7 @@ CONTAINS
          tr(ji,jj,jk,jpdfe,Krhs) = tr(ji,jj,jk,jpdfe,Krhs) - zmortp * zfactfe
          tr(ji,jj,jk,jpdsi,Krhs) = tr(ji,jj,jk,jpdsi,Krhs) - zmortp * zfactsi
          tr(ji,jj,jk,jpgsi,Krhs) = tr(ji,jj,jk,jpgsi,Krhs) + zmortp * zfactsi
-         tr(ji,jj,jk,jpgoc,Krhs) = tr(ji,jj,jk,jpgoc,Krhs) + zrespp
+         tr(ji,jj,jk,jpgoc,Krhs) = tr(ji,jj,jk,jpgoc,Krhs) + zrespp 
          tr(ji,jj,jk,jpgon,Krhs) = tr(ji,jj,jk,jpgon,Krhs) + zrespp * zfactn
          tr(ji,jj,jk,jpgop,Krhs) = tr(ji,jj,jk,jpgop,Krhs) + zrespp * zfactp
          tr(ji,jj,jk,jpbfe,Krhs) = tr(ji,jj,jk,jpbfe,Krhs) + zrespp * zfactfe
@@ -279,45 +282,115 @@ CONTAINS
          CALL prt_ctl(tab4d_1=tr(:,:,:,:,Krhs), mask1=tmask, clinfo=ctrcnm)
       ENDIF
       !
-      IF( ln_timing )   CALL timing_stop('p5z_mort_diat')
+      IF( ln_timing )   CALL timing_stop('p6z_mort_diat')
       !
-   END SUBROUTINE p5z_mort_diat
+   END SUBROUTINE p6z_mort_diat
 
+   SUBROUTINE p6z_mort_diazo( Kbb, Krhs )
+      !!---------------------------------------------------------------------
+      !!                     ***  ROUTINE p6z_mort_diazo  ***
+      !!
+      !! ** Purpose :   Compute the mortality terms for diazotrophs
+      !!
+      !! ** Method  : - Both quadratic and simili linear mortality terms
+      !!---------------------------------------------------------------------
+      INTEGER, INTENT(in) ::   Kbb, Krhs  ! time level indices
+      INTEGER  :: ji, jj, jk
+      REAL(wp) :: zcompaph, zlim1, zlim2
+      REAL(wp) :: zfactfe, zfactch, zfactn, zfactp, zprcaca
+      REAL(wp) :: ztortp , zrespp , zmortp
+      CHARACTER (len=25) :: charout
+      !!---------------------------------------------------------------------
+      !
+      IF( ln_timing )   CALL timing_start('p6z_mort_diazo')
+      !
+      DO_3D( 0, 0, 0, 0, 1, jpkm1)
+         zcompaph = MAX( ( tr(ji,jj,jk,jpdzc,Kbb) - 1e-9 ), 0.e0 )
 
-   SUBROUTINE p5z_mort_init
+         ! Quadratic mortality of diatom due to aggregation during
+         ! blooms (Doney et al. 1996)
+         ! -----------------------------------------------------
+         zlim2   = xlimdiaz(ji,jj,jk) * xlimdiaz(ji,jj,jk)
+         zlim1   = 0.0625 / ( 0.0625 + zlim2 ) * tr(ji,jj,jk,jpdzc,Kbb)
+         zrespp = wchldz * 1.e6 * xstep * zlim1 * xdiss(ji,jj,jk) * zcompaph
+
+         ! Phytoplankton linear mortality
+         ! A michaelis-menten like term is introduced to avoid 
+         ! extinction of nanophyto in highly limited areas
+         ! ----------------------------------------------------
+         zlim1  = zlim1 / ( xkmort + tr(ji,jj,jk,jpdzc,Kbb) )
+         ztortp = ( mpratdz * tgfunc(ji,jj,jk) * zlim1 + 0.01 ) * xstep * zcompaph
+         zmortp = zrespp + ztortp
+
+         !   Update the arrays TRA which contains the biological sources and sinks
+         zfactn  = tr(ji,jj,jk,jpndz,Kbb)/(tr(ji,jj,jk,jpdzc,Kbb)+rtrn)
+         zfactp  = tr(ji,jj,jk,jppdz,Kbb)/(tr(ji,jj,jk,jpdzc,Kbb)+rtrn)
+         zfactfe = tr(ji,jj,jk,jpdzfe,Kbb)/(tr(ji,jj,jk,jpdzc,Kbb)+rtrn)
+         zfactch = tr(ji,jj,jk,jpdzch,Kbb)/(tr(ji,jj,jk,jpdzc,Kbb)+rtrn)
+         tr(ji,jj,jk,jpdzc,Krhs)  = tr(ji,jj,jk,jpdzc,Krhs)  - zmortp
+         tr(ji,jj,jk,jpndz,Krhs)  = tr(ji,jj,jk,jpndz,Krhs)  - zmortp * zfactn
+         tr(ji,jj,jk,jppdz,Krhs)  = tr(ji,jj,jk,jppdz,Krhs)  - zmortp * zfactp
+         tr(ji,jj,jk,jpdzch,Krhs) = tr(ji,jj,jk,jpdzch,Krhs) - zmortp * zfactch
+         tr(ji,jj,jk,jpdzfe,Krhs) = tr(ji,jj,jk,jpdzfe,Krhs) - zmortp * zfactfe
+         !
+         tr(ji,jj,jk,jpdoc,Krhs) = tr(ji,jj,jk,jpdoc,Krhs) + ztortp
+         tr(ji,jj,jk,jpdon,Krhs) = tr(ji,jj,jk,jpdon,Krhs) + ztortp * zfactn
+         tr(ji,jj,jk,jpdop,Krhs) = tr(ji,jj,jk,jpdop,Krhs) + ztortp * zfactp
+         tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + ztortp * zfactfe
+         !
+         tr(ji,jj,jk,jpgoc,Krhs) = tr(ji,jj,jk,jpgoc,Krhs) + zrespp
+         tr(ji,jj,jk,jpgon,Krhs) = tr(ji,jj,jk,jpgon,Krhs) + zrespp * zfactn
+         tr(ji,jj,jk,jpgop,Krhs) = tr(ji,jj,jk,jpgop,Krhs) + zrespp * zfactp
+         tr(ji,jj,jk,jpbfe,Krhs) = tr(ji,jj,jk,jpbfe,Krhs) + zrespp * zfactfe
+         prodgoc(ji,jj,jk)       = prodgoc(ji,jj,jk) + zrespp
+      END_3D
+      !
+       IF(sn_cfctl%l_prttrc)   THEN  ! print mean trends (used for debugging)
+         WRITE(charout, FMT="('diazo')")
+         CALL prt_ctl_info( charout, cdcomp = 'top' )
+         CALL prt_ctl(tab4d_1=tr(:,:,:,:,Krhs), mask1=tmask, clinfo=ctrcnm)
+       ENDIF
+      !
+      IF( ln_timing )   CALL timing_stop('p6z_mort_diazo')
+      !
+   END SUBROUTINE p6z_mort_diazo
+   
+   
+   SUBROUTINE p6z_mort_init
       !!----------------------------------------------------------------------
-      !!                  ***  ROUTINE p5z_mort_init  ***
+      !!                  ***  ROUTINE p6z_mort_init  ***
       !!
       !! ** Purpose :   Initialization of phytoplankton mortality parameters
       !!
-      !! ** Method  :   Read the namp5zmort namelist and check the parameters
+      !! ** Method  :   Read the namp6zmort namelist and check the parameters
       !!      called at the first timestep
       !!
-      !! ** input   :   Namelist namp5zmort
+      !! ** input   :   Namelist namp6zmort
       !!
       !!----------------------------------------------------------------------
       INTEGER :: ios   ! Local integer output status for namelist read
       !!
-      NAMELIST/namp5zmort/ wchln, wchlp, wchld, mpratn, mpratp, mpratd
+      NAMELIST/namp6zmort/ wchln, wchlp, wchld, wchldz, mpratn, mpratp, mpratd, mpratdz
       !!----------------------------------------------------------------------
 
-      READ_NML_REF(numnatp,namp5zmort)
-      READ_NML_CFG(numnatp,namp5zmort)
-      IF(lwm) WRITE ( numonp, namp5zmort )
+      READ_NML_REF(numnatp,namp6zmort)
+      READ_NML_CFG(numnatp,namp6zmort)
+      IF(lwm) WRITE ( numonp, namp6zmort )
 
       IF(lwp) THEN                         ! control print
          WRITE(numout,*) ' '
-         WRITE(numout,*) ' Namelist parameters for phytoplankton mortality, namp5zmort'
+         WRITE(numout,*) ' Namelist parameters for phytoplankton mortality, namp6zmort'
          WRITE(numout,*) ' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
          WRITE(numout,*) '    quadratic mortality of phytoplankton      wchln     =', wchln
          WRITE(numout,*) '    quadratic mortality of picophyto.         wchlp     =', wchlp
          WRITE(numout,*) '    quadratic mortality of diatoms            wchld     =', wchld
+         WRITE(numout,*) '    quadratic mortality of diazotrophs        wchldz    =', wchldz
          WRITE(numout,*) '    nanophyto. mortality rate                 mpratn    =', mpratn
          WRITE(numout,*) '    picophyto. mortality rate                 mpratp    =', mpratp
          WRITE(numout,*) '    Diatoms mortality rate                    mpratd    =', mpratd
+         WRITE(numout,*) '    diazotrophs mortality rate                mpratdz   =', mpratdz
       ENDIF
       !
-   END SUBROUTINE p5z_mort_init
-
+   END SUBROUTINE p6z_mort_init
    !!======================================================================
-END MODULE p5zmort
+END MODULE p6zmort

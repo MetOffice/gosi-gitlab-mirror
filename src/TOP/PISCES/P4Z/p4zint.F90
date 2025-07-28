@@ -56,7 +56,7 @@ CONTAINS
       END_3D
 
 
-      IF( ln_p4z .OR. ln_p5z ) THEN
+      IF( .NOT. ln_p2z ) THEN
          ! Computation of the silicon dependant half saturation  constant for silica uptake
          ! This is based on an old study by Pondaven et al. (1998)
          ! --------------------------------------------------------------------------------

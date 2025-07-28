@@ -210,7 +210,7 @@ CONTAINS
 
    INTEGER FUNCTION p2z_lim_alloc()
       !!----------------------------------------------------------------------
-      !!                     ***  ROUTINE p5z_lim_alloc  ***
+      !!                     ***  ROUTINE p2z_lim_alloc  ***
       !! 
       !            Allocation of the arrays used in this module
       !!----------------------------------------------------------------------

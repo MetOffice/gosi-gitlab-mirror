@@ -1,16 +1,16 @@
-MODULE p5zlim
+MODULE p6zlim
    !!======================================================================
-   !!                         ***  MODULE p5zlim  ***
+   !!                         ***  MODULE p6zlim  ***
    !! TOP :   PISCES-QUOTA : Computes the various nutrient limitation terms
-   !!                        of phytoplankton
+   !!                        of phytoplankton includes explicit diazotroph
    !!======================================================================
    !! History :   1.0  !  2004     (O. Aumont) Original code
    !!             2.0  !  2007-12  (C. Ethe, G. Madec)  F90
    !!             3.4  !  2011-04  (O. Aumont, C. Ethe) Limitation for iron modelled in quota 
    !!             3.6  !  2015-05  (O. Aumont) PISCES quota
    !!----------------------------------------------------------------------
-   !!   p5z_lim        :   Compute the nutrients limitation terms 
-   !!   p5z_lim_init   :   Read the namelist 
+   !!   p6z_lim        :   Compute the nutrients limitation terms 
+   !!   p6z_lim_init   :   Read the namelist 
    !!----------------------------------------------------------------------
    USE oce_trc         ! Shared ocean-passive tracers variables
    USE trc             ! Tracers defined
@@ -22,9 +22,9 @@ MODULE p5zlim
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC p5z_lim           ! called in p4zbio.F90  
-   PUBLIC p5z_lim_init      ! called in trcsms_pisces.F90 
-   PUBLIC p5z_lim_alloc     ! called in trcini_pisces.F90
+   PUBLIC p6z_lim           ! called in p4zbio.F90  
+   PUBLIC p6z_lim_init      ! called in trcsms_pisces.F90 
+   PUBLIC p6z_lim_alloc     ! called in trcini_pisces.F90
 
    !! * Shared module variables
    REAL(wp), PUBLIC ::  concpno3    !:  NO3 half saturation for picophyto  
@@ -57,7 +57,21 @@ MODULE p5zlim
    REAL(wp), PUBLIC ::  xpsinh4     !:  respiration cost of NH4 assimilation
    REAL(wp), PUBLIC ::  xpsino3     !:  respiration cost of NO3 assimilation
    REAL(wp), PUBLIC ::  xpsiuptk    !:  Mean respiration cost
-
+   ! Diazotrophy
+   REAL(wp), PUBLIC ::  concdzno3   !:  NO3 half saturation for diazo
+   REAL(wp), PUBLIC ::  concdznh4   !:  NH4 half saturation for diazo
+   REAL(wp), PUBLIC ::  concdzpo4   !:  PO4 half saturation for diazo
+   REAL(wp), PUBLIC ::  concdzfer   !:  Fe half saturation for diazo
+   REAL(wp), PUBLIC ::  xsizerdz    !:  size ratio of diazotrophs
+   REAL(wp), PUBLIC ::  qfdzopt     !:  optimal Fe quota of diazotrophs 
+   REAL(wp), PUBLIC ::  qndzmin     !:  Minimal N quota of diazotrophs
+   REAL(wp), PUBLIC ::  qndzmax     !:  Maximal N quota of diazotrophs
+   REAL(wp), PUBLIC ::  qpdzmin     !:  Minimal P quota of diazotrophs
+   REAL(wp), PUBLIC ::  qpdzmax     !:  Maximal P quota of diazotrophs
+   REAL(wp), PUBLIC ::  qfdzmax     !:  Maximal Fe quota of diazotrophs
+   REAL(wp), PUBLIC ::  xpsinfix    !:  Cost of biosynthesis associated with Nfix
+   REAL(wp), PUBLIC ::  kustkaFe    !:  Diazo Fe limitation based on kustka 2003
+   
    !!*  Allometric variations of the quotas
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE,   DIMENSION(:,:,:)  ::   xqnnmin    !: Minimum N quota of nanophyto
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE,   DIMENSION(:,:,:)  ::   xqnnmax    !: Maximum N quota of nanophyto
@@ -71,7 +85,12 @@ MODULE p5zlim
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE,   DIMENSION(:,:,:)  ::   xqndmax    !: Maximum N quota of diatoms
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE,   DIMENSION(:,:,:)  ::   xqpdmin    !: Minimum P quota of diatoms
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE,   DIMENSION(:,:,:)  ::   xqpdmax    !: Maximum P quota of diatoms
-
+   ! Diazotrophy
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE,   DIMENSION(:,:,:)  ::   xqndzmin   !: Minimum N quota of diazos
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE,   DIMENSION(:,:,:)  ::   xqndzmax   !: Maximum N quota of diazos
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE,   DIMENSION(:,:,:)  ::   xqpdzmin   !: Minimum P quota of diazos
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE,   DIMENSION(:,:,:)  ::   xqpdzmax   !: Maximum P quota of diazos
+   
    !!* Phytoplankton nutrient limitation terms
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   xpicono3   !: Limitation of NO3 uptake by picophyto
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   xpiconh4   !: Limitation of NH4 uptake by picophyto
@@ -90,16 +109,28 @@ MODULE p5zlim
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   fvduptk    !: Maximum potential uptake rate of diatoms
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   xqfuncfecp !: 
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   xlimnpn, xlimnpp, xlimnpd
-   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   ratchlp
-
+   !Diazotrophy
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   xdiazno3   !: Limitation of NO3 uptake by diazos
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   xdiaznh4   !: Limitation of NH4 uptake by diazos
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   xdiazpo4   !: Limitation of PO4 uptake by diazos
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   xdiazdop   !: Limitation of DOP uptake by diazos
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   xdiazfer   !: Limitation of Fe uptake by diazos
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   xlimdiaz   !: Limitation of diazo PP by C and N (P by proxy)
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   xlimdiazfe !: Limitation of diazo PP by Fe
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   fvdiazuptk !: 
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   xlimdiazo  !: Limitation of diazo PP by nutrients
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   xlimnpdiaz !: Limitation of Nfix by N
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   xqfuncfecdiaz   !: 
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)  ::   ratchlp, ratchldz
+   
    ! Coefficient for iron limitation following Flynn and Hipkin (1999)
    REAL(wp) ::  xcoef1   = 0.00167  / 55.85
    REAL(wp) ::  xcoef2   = 1.21E-5 * 14. / 55.85 / 7.625 * 0.5 * 1.5
    REAL(wp) ::  xcoef3   = 1.15E-4 * 14. / 55.85 / 7.625 * 0.5 
-   REAL(wp) ::  rlogfactdp, rlogfactnp
-
-    LOGICAL  :: l_dia_nut_lim, l_dia_iron_lim, l_dia_fracal
-    LOGICAL  :: l_dia_size_lim, l_dia_size_pro
+   REAL(wp) ::  rlogfactdp, rlogfactnp, rlogfactdzp
+   
+   LOGICAL  :: l_dia_nut_lim, l_dia_iron_lim, l_dia_fracal
+   LOGICAL  :: l_dia_size_lim, l_dia_size_pro, l_dia_qfec_min
    !! * Substitutions
 #  include "do_loop_substitute.h90"
 #  include "read_nml_substitute.h90"
@@ -110,9 +141,9 @@ MODULE p5zlim
 
 CONTAINS
 
-   SUBROUTINE p5z_lim( kt, knt, Kbb, Kmm )
+   SUBROUTINE p6z_lim( kt, knt, Kbb, Kmm )
       !!---------------------------------------------------------------------
-      !!                     ***  ROUTINE p5z_lim  ***
+      !!                     ***  ROUTINE p6z_lim  ***
       !!
       !! ** Purpose :   Compute the co-limitations by the various nutrients
       !!                for the various phytoplankton species. Quota based
@@ -120,6 +151,7 @@ CONTAINS
       !!                models proposed by Pahlow and Oschlies (2009) and 
       !!                Flynn (2001). Various adaptations from several 
       !!                publications by these authors have been also adopted. 
+      !!                Explicit Diazotrophy Added 
       !!
       !! ** Method  : Quota based approach. The quota model is derived from 
       !!              theoretical models by Pahlow and Oschlies (2009) and 
@@ -143,26 +175,31 @@ CONTAINS
       REAL(wp) ::   zfvn, zfvp, zfvf, zsizen, zsizep, zsized, znanochl, zpicochl, zdiatchl
       REAL(wp) ::   zqfemn, zqfemp, zqfemd
       REAL(wp) ::   znutlimtot, zlimno3, zlimnh4, zlim1f, ztemp, zrphomin
+      !! Explicit diazotroph PFT
+      REAL(wp) ::   z1_trndiaz, zconc0dz, zconc0dzpo4, zconcdzfe, zconc0dznh4
+      REAL(wp) ::   fadiaz, fadiazp, fadiazf, zsizedz, zdiazchl, zqfemdz, qfenfix
+      REAL(wp) ::   facul
       REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) :: zw3d
       !!---------------------------------------------------------------------
       !
-      IF( ln_timing )   CALL timing_start('p5z_lim')
+      IF( ln_timing )   CALL timing_start('p6z_lim')
 
       IF( kt == nittrc000 )  THEN
-         l_dia_nut_lim  = iom_use( "LNnut"   ) .OR. iom_use( "LDnut" ) .OR. iom_use( "LPnut" )
-         l_dia_iron_lim = iom_use( "LNFe"    ) .OR. iom_use( "LDFe"  ) .OR. iom_use( "LPFe"  )
-         l_dia_size_lim = iom_use( "SIZEN"   ) .OR. iom_use( "SIZED" ) .OR. iom_use( "SIZEP" )
-         l_dia_size_pro = iom_use( "RASSN"   ) .OR. iom_use( "RASSP" ) .OR. iom_use( "RASSP" )
+         l_dia_nut_lim  = iom_use( "LNnut"   ) .OR. iom_use( "LDnut" ) .OR. iom_use( "LPnut" ) .OR. iom_use( "LDZnut" )
+         l_dia_iron_lim = iom_use( "LNFe"    ) .OR. iom_use( "LDFe"  ) .OR. iom_use( "LPFe"  ) .OR. iom_use( "LDZFe" )
+         l_dia_size_lim = iom_use( "SIZEN"   ) .OR. iom_use( "SIZED" ) .OR. iom_use( "SIZEP" ) .OR. iom_use( "SIZEDZ" )
+         l_dia_size_pro = iom_use( "RASSN"   ) .OR. iom_use( "RASSD" ) .OR. iom_use( "RASSP" ) .OR. iom_use( "RASSDZ" )
+         l_dia_qfec_min = iom_use( "QFEMINN" ) .OR. iom_use("QFEMIND") .OR. iom_use("QFEMINP") .OR. iom_use( "QFEMINDZ" )
          l_dia_fracal   = iom_use( "xfracal" )
       ENDIF
       !
-      sizena(:,:,:) = 1.0                    ;  sizepa(:,:,:) = 1.0  
-      sizeda(:,:,:) = 1.0
-      !
+      sizena(:,:,:) = 1.0  ;  sizepa(:,:,:) = 1.0  ;  sizeda(:,:,:) = 1.0 ; sizedza(:,:,:) = 1.0
+
       DO_3D( 0, 0, 0, 0, 1, jpk)
-         logsizen(ji,jj,jk) = LOG( sizen(ji,jj,jk) )
-         logsizep(ji,jj,jk) = LOG( sizep(ji,jj,jk) )
-         logsized(ji,jj,jk) = LOG( sized(ji,jj,jk) )
+         logsizen(ji,jj,jk)  = LOG( sizen (ji,jj,jk) )
+         logsizep(ji,jj,jk)  = LOG( sizep (ji,jj,jk) )
+         logsized(ji,jj,jk)  = LOG( sized (ji,jj,jk) )
+         logsizedz(ji,jj,jk) = LOG( sizedz(ji,jj,jk) )
       END_3D
       !
       DO_3D( 0, 0, 0, 0, 1, jpkm1)
@@ -171,10 +208,12 @@ CONTAINS
          z1_trnphy   = 1. / ( tr(ji,jj,jk,jpphy,Kbb) + rtrn )
          z1_trnpic   = 1. / ( tr(ji,jj,jk,jppic,Kbb) + rtrn )
          z1_trndia   = 1. / ( tr(ji,jj,jk,jpdia,Kbb) + rtrn )
+         z1_trndiaz  = 1. / ( tr(ji,jj,jk,jpdzc,Kbb) + rtrn )
          znanochl = tr(ji,jj,jk,jpnch,Kbb) * z1_trnphy
          zpicochl = tr(ji,jj,jk,jppch,Kbb) * z1_trnpic
          zdiatchl = tr(ji,jj,jk,jpdch,Kbb) * z1_trndia
-
+         zdiazchl = tr(ji,jj,jk,jpdzch,Kbb) * z1_trndiaz
+         
          ! Computation of a variable Ks for the different phytoplankton
          ! group as a function of their relative size. Allometry
          ! from Edwards et al. (2012)
@@ -186,35 +225,45 @@ CONTAINS
          zconc1d           = concdno3 * zsized
          zconc1dnh4        = concdnh4 * zsized
          zconc0dpo4        = concdpo4 * zsized
-
+         
          ! picophytoplankton
          zsizep            = EXP(logsizep(ji,jj,jk)*0.81)
          zconcpfe          = concpfer * zsizep
          zconc0p           = concpno3 * zsizep
          zconc0pnh4        = concpnh4 * zsizep
          zconc0ppo4        = concppo4 * zsizep
-
+         
          ! nanophytoplankton
          zsizen            = EXP(logsizen(ji,jj,jk)*0.81)
          zconcnfe          = concnfer * zsizen
          zconc0n           = concnno3 * zsizen
          zconc0nnh4        = concnnh4 * zsizen
          zconc0npo4        = concnpo4 * zsizen
+         
+         ! diazotrophs
+         zsizedz           = EXP(logsizedz(ji,jj,jk)*0.81)
+         zconcdzfe         = concdzfer * zsizedz
+         zconc0dz          = concdzno3 * zsizedz
+         zconc0dznh4       = concdznh4 * zsizedz
+         zconc0dzpo4       = concdzpo4 * zsizedz
 
-         ! Allometric scaling of the Chl/C ratio
-         ratchln(ji,jj,jk) = ratchl * EXP( -0.078 * ( rlogfactnp + logsizen(ji,jj,jk) ) )
-         ratchlp(ji,jj,jk) = ratchl * EXP( -0.078 * logsizep(ji,jj,jk) )
-         ratchld(ji,jj,jk) = ratchl * EXP( -0.078 * ( rlogfactdp + logsized(ji,jj,jk) ) )
-
+         ! Allometric scaling of the Chl/C content of chloroplast
+         ratchln(ji,jj,jk)  = ratchl * EXP( -0.078 * ( rlogfactnp + logsizen(ji,jj,jk) ) )
+         ratchlp(ji,jj,jk)  = ratchl * EXP( -0.078 * logsizep(ji,jj,jk) )
+         ratchld(ji,jj,jk)  = ratchl * EXP( -0.078 * ( rlogfactdp + logsized(ji,jj,jk) ) )
+         ratchldz(ji,jj,jk) = ratchl * EXP( -0.078 * ( rlogfactdzp + logsizedz(ji,jj,jk) ) )
+         
          ! Allometric variations of the minimum and maximum quotas
          ! From Talmy et al. (2014) and Maranon et al. (2013)
          ! -------------------------------------------------------
-         xqnnmin(ji,jj,jk) = qnnmin * EXP(-0.18 * logsizen(ji,jj,jk) )
-         xqnnmax(ji,jj,jk) = qnnmax
-         xqndmin(ji,jj,jk) = qndmin * EXP(-0.18 * logsized(ji,jj,jk) )
-         xqndmax(ji,jj,jk) = qndmax
-         xqnpmin(ji,jj,jk) = qnpmin * EXP(-0.18 * logsizep(ji,jj,jk) )
-         xqnpmax(ji,jj,jk) = qnpmax
+         xqnnmin(ji,jj,jk)  = qnnmin * EXP(-0.18 * logsizen(ji,jj,jk) )
+         xqnnmax(ji,jj,jk)  = qnnmax
+         xqndmin(ji,jj,jk)  = qndmin * EXP(-0.18 * logsized(ji,jj,jk) )
+         xqndmax(ji,jj,jk)  = qndmax
+         xqnpmin(ji,jj,jk)  = qnpmin * EXP(-0.18 * logsizep(ji,jj,jk) )
+         xqnpmax(ji,jj,jk)  = qnpmax
+         xqndzmin(ji,jj,jk) = qndzmin * EXP(-0.18 * logsizedz(ji,jj,jk) )
+         xqndzmax(ji,jj,jk) = qndzmax
          !
          ! Michaelis-Menten Limitation term for nutrients Small flagellates
          ! -----------------------------------------------
@@ -247,7 +296,15 @@ CONTAINS
          fadiatp = MAX(0.01, MIN(0.99, 1. / ( SQRT(znutlim) + 1.) ) )
          znutlim = biron(ji,jj,jk) / zconcdfe
          fadiatf = MAX(0.01, MIN(0.99, 1. / ( SQRT(znutlim) + 1.) ) )
-
+         
+         ! Diazotrophs
+         znutlim = ztrn / zconc0dz 
+         fadiaz  = MAX(0.01, MIN(0.99, 1. / ( SQRT(znutlim) + 1.) ) )
+         znutlim = ztrp / zconc0dzpo4
+         fadiazp = MAX(0.01, MIN(0.99, 1. / ( SQRT(znutlim) + 1.) ) )
+         znutlim = biron(ji,jj,jk) / zconcdzfe
+         fadiazf = MAX(0.01, MIN(0.99, 1. / ( SQRT(znutlim) + 1.) ) )         
+         
          !
          ! Michaelis-Menten Limitation term by nutrients of
          !  heterotrophic bacteria
@@ -296,7 +353,7 @@ CONTAINS
          !
          zration   = tr(ji,jj,jk,jpnph,Kbb) * z1_trnphy
          zration   = MIN(xqnnmax(ji,jj,jk), MAX( xqnnmin(ji,jj,jk), zration ))
-         fvnuptk(ji,jj,jk) = xpsiuptk / xpsinh4 * xqnnmin(ji,jj,jk) / (zration + rtrn)  &
+         fvnuptk(ji,jj,jk) = xpsiuptk / xpsino3 * xqnnmin(ji,jj,jk) / (zration + rtrn)  &
          &                   * MAX(0., (1. - ratchln(ji,jj,jk) * znanochl / 12. ) )
          !
          zlim1     = (zration - xqnnmin(ji,jj,jk) ) / (xqnnmax(ji,jj,jk) - xqnnmin(ji,jj,jk) )
@@ -311,7 +368,6 @@ CONTAINS
          xlimphy (ji,jj,jk) = MIN( 1., zlim1, zlim3 )
          xlimphys(ji,jj,jk) = MIN( 1., zlim1 / ( zlim1f + rtrn ), zlim3 )
          xlimnpn (ji,jj,jk) = MIN( 1., zlim1 )
-
          !
          ! Michaelis-Menten Limitation term for nutrients picophytoplankton
          ! ----------------------------------------------------------------
@@ -345,8 +401,8 @@ CONTAINS
          !
          zration    = tr(ji,jj,jk,jpnpi,Kbb) * z1_trnpic
          zration    = MIN(xqnpmax(ji,jj,jk), MAX( xqnpmin(ji,jj,jk), zration ))
-         fvpuptk(ji,jj,jk) = xpsiuptk / xpsinh4 * xqnpmin(ji,jj,jk) / (zration + rtrn)  &
-           &                 * MAX(0., (1. - ratchlp(ji,jj,jk) * zpicochl / 12. ) ) 
+         fvpuptk(ji,jj,jk) = xpsiuptk / xpsino3 * xqnpmin(ji,jj,jk) / (zration + rtrn)  &
+         &                   * MAX(0., (1. - ratchlp(ji,jj,jk) * zpicochl / 12. ) ) 
          !
          zlim1      = (zration - xqnpmin(ji,jj,jk) ) / (xqnpmax(ji,jj,jk) - xqnpmin(ji,jj,jk) )
 
@@ -396,7 +452,7 @@ CONTAINS
          !
          zration    = tr(ji,jj,jk,jpndi,Kbb) * z1_trndia
          zration    = MIN(xqndmax(ji,jj,jk), MAX( xqndmin(ji,jj,jk), zration ))
-         fvduptk(ji,jj,jk) = xpsiuptk / xpsinh4 * xqndmin(ji,jj,jk) / (zration + rtrn)   &
+         fvduptk(ji,jj,jk) = xpsiuptk / xpsino3 * xqndmin(ji,jj,jk) / (zration + rtrn)   &
          &                   * MAX(0., (1. - ratchld(ji,jj,jk) * zdiatchl / 12. ) ) 
          !
          zlim1      = (zration - xqndmin(ji,jj,jk) ) / (xqndmax(ji,jj,jk) - xqndmin(ji,jj,jk) )
@@ -412,6 +468,60 @@ CONTAINS
          xlimdias(ji,jj,jk) = MIN( 1., zlim1 / (zlim1f + rtrn ), zlim3, zlim4 )
          xlimsi(ji,jj,jk)   = MIN( 1., zlim1, zlim4 )
          xlimnpd(ji,jj,jk)  = MIN( 1., zlim1 )
+         !
+         ! Michaelis-Menten Limitation term for nutrients diazotrophs
+         ! ----------------------------------------------------------------
+         !
+         ! Limitation of N based nutrients uptake (NO3 and NH4) 
+         zfalim     = (1.-fadiaz) / fadiaz
+         zlimnh4    = tr(ji,jj,jk,jpnh4,Kbb) / ( zconc0dz + tr(ji,jj,jk,jpnh4,Kbb) )
+         zlimno3    = tr(ji,jj,jk,jpno3,Kbb) / ( zconc0dz + tr(ji,jj,jk,jpno3,Kbb) )
+         znutlimtot = (1.0 - fadiaz) * ztrn  / ( zfalim * zconc0dz + ztrn )
+         ztemp      = znutlimtot / ( zlimno3 + 5.0 * zlimnh4 + rtrn )
+         xdiaznh4(ji,jj,jk) = 5.0 * zlimnh4 * ztemp
+         xdiazno3(ji,jj,jk) = zlimno3 * ztemp
+         !
+         ! Limitation of P based nutrients uptake (PO4 and DOP)
+         zfalim     = (1.-fadiazp) / fadiazp
+         zlimpo4    = tr(ji,jj,jk,jppo4,Kbb) / ( tr(ji,jj,jk,jppo4,Kbb) + zconc0dzpo4 )
+         zlimdop    = tr(ji,jj,jk,jpdop,Kbb) / ( tr(ji,jj,jk,jpdop,Kbb) + zconc0dzpo4 )
+         znutlimtot = (1. - fadiazp) * ztrp / ( zfalim * zconc0dzpo4 + ztrp )
+         ztemp      = znutlimtot / ( zlimdop + 100.0 * zlimpo4 + rtrn )
+         xdiazpo4(ji,jj,jk) = 100.0 * zlimpo4 * ztemp
+         xdiazdop(ji,jj,jk) = zlimdop * ztemp
+         !
+         ! Limitation of Fe uptake
+         zfalim     = (1.-fadiazf) / fadiazf
+         xdiazfer(ji,jj,jk) = (1. - fadiazf) * biron(ji,jj,jk) / ( biron(ji,jj,jk) + zfalim * zconcdzfe )
+         !
+         ! The minimum iron quota depends on the size of PSU, respiration
+         ! and the reduction of nitrate following the parameterization 
+         ! proposed by Flynn and Hipkin (1999)
+         zratiof    = tr(ji,jj,jk,jpdzfe,Kbb) * z1_trndiaz
+         
+         facul      = 1.0 - ( xdiazno3(ji,jj,jk) + xdiaznh4(ji,jj,jk) )  ! Diazotroph Facultative term (1 = all nfix, 0 = no nfix)
+
+         qfenfix    = kustkaFe * facul                           ! IUE scales the Fe cost of Nfix based upon Kustka et al. (2003)
+                                                                 ! kustkaFe = 13 umol/mol
+         zqfemdz    = xcoef1 * zdiazchl + xcoef2 + xcoef3 * xdiazno3(ji,jj,jk) + qfenfix
+         xqfuncfecdiaz(ji,jj,jk) = zqfemdz + qfdzopt
+         !
+         zration    = tr(ji,jj,jk,jpndz,Kbb) * z1_trndiaz
+         zration    = MIN(xqndzmax(ji,jj,jk), MAX( xqndzmin(ji,jj,jk), zration ))
+         fvdiazuptk(ji,jj,jk) = xpsiuptk / xpsino3 * xqndzmin(ji,jj,jk) / (zration + rtrn)  &
+         &                   * MAX(0., (1. - ratchldz(ji,jj,jk) * zdiazchl / 12. ) )
+         !
+         zlim1      = (zration - xqndzmin(ji,jj,jk) ) / (xqndzmax(ji,jj,jk) - xqndzmin(ji,jj,jk) )
+         ! The value of the optimal quota in the formulation below
+         ! has been found by solving a non linear equation
+         zlim1f     = ( 1.13 - xqndzmin(ji,jj,jk) ) / (xqndzmax(ji,jj,jk) - xqndzmin(ji,jj,jk) )
+         zlim3      = MAX( 0.,( zratiof - zqfemdz ) / qfdzopt )
+         ! computation of the various limitation terms of nanophyto
+         ! growth and PP
+         xlimdiazfe (ji,jj,jk) = MIN( 1., zlim3 )
+         xlimdiaz   (ji,jj,jk) = MIN( 1., zlim1, zlim3 )
+         xlimdiazo  (ji,jj,jk) = MIN( 1., zlim1 / ( zlim1f + rtrn ), zlim3 )
+         xlimnpdiaz (ji,jj,jk) = MIN( 1., zlim1)
       END_3D
 
       !
@@ -456,6 +566,17 @@ CONTAINS
          xqpdmin(ji,jj,jk) = ( 0.0078 + 0.66 * 0.25 * 0.0783 + zrphomin * 0.0135 ) * 16.
          xqpdmax(ji,jj,jk) = ( zrpho * 0.0135 + zrass * 0.0783 + 0.0078 + 0.022 ) * 16.
          xqpdmax(ji,jj,jk) = MIN( qpdmax, xqpdmax(ji,jj,jk) + 5500 * ztrp )
+
+         ! N/P ratio of diazotrophs
+         ! ------------------------
+         zfuptk   = 0.2 + 0.12 / ( 4.0 * sizedz(ji,jj,jk) + rtrn )
+         ! Computed from Inomura et al. (2020) using Pavlova Lutheri
+         zrpho    = 11.55 * tr(ji,jj,jk,jpdzch,Kbb) / ( tr(ji,jj,jk,jpdzc,Kbb) * 12. + rtrn )
+         zrphomin = 11.55 * 0.0025
+         zrass    = 0.62 * (0.25 + 0.75 * ( 1. - zrpho - zfuptk ) * xlimnpdiaz(ji,jj,jk) )
+         xqpdzmin(ji,jj,jk) = ( 0.0078 + 0.62 * 0.25 * 0.0783 + zrphomin * 0.0089 ) * 16.
+         xqpdzmax(ji,jj,jk) = ( zrpho * 0.0089 + zrass * 0.0783 + 0.0078 + 0.022 ) * 16.
+         xqpdzmax(ji,jj,jk) = MIN( qpdzmax, xqpdzmax(ji,jj,jk) + 4000 * ztrp )
       END_3D
 
       ! Compute the fraction of nanophytoplankton that is made of calcifiers
@@ -472,14 +593,14 @@ CONTAINS
          ztem2  = ts(ji,jj,jk,jp_tem,itt) - 10.
          zetot1 = MAX( 0., etot_ndcy(ji,jj,jk) - 1.) / ( 4. + etot_ndcy(ji,jj,jk) ) * 30. / ( 30. + etot_ndcy(ji,jj,jk) ) 
 
-         xfracal(ji,jj,jk) = caco3r * ztem1 / ( 0.1 + ztem1 )     &
+         xfracal(ji,jj,jk) = caco3r * ztem1 / ( 0.1 + ztem1 )                         &
             &                * MAX( 1., tr(ji,jj,jk,jpphy,Kbb) / xsizephy )           &
             &                * ( 1. + EXP(-ztem2 * ztem2 / 25. ) )                    &
             &                * zetot1 * MIN( 1., 50. / ( hmld(ji,jj) + rtrn ) )
          xfracal(ji,jj,jk) = MAX( 0.02, MIN( 0.8 , xfracal(ji,jj,jk) ) )
       END_3D
       !
-      IF( knt == nrdttrc ) THEN        ! save output diagnostics
+      IF( knt == nrdttrc ) THEN   ! save output diagnostics
         !
         IF( l_dia_fracal ) THEN   ! fraction of calcifiers
           CALL iom_put( "xfracal",  xfracal(:,:,:) * tmask(A2D(0),:) )
@@ -489,18 +610,28 @@ CONTAINS
           CALL iom_put( "LNnut",  xlimphy(:,:,:) * tmask(A2D(0),:) )
           CALL iom_put( "LDnut",  xlimdia(:,:,:) * tmask(A2D(0),:) )
           CALL iom_put( "LPnut",  xlimpic(:,:,:) * tmask(A2D(0),:) )
+          CALL iom_put( "LDZnut", xlimdiaz(:,:,:) * tmask(A2D(0),:) )
+          CALL iom_put( "LDZNP",  xlimnpdiaz(:,:,:) * tmask(A2D(0),:) )
         ENDIF
         !
         IF( l_dia_iron_lim ) THEN   ! Iron limitation term
           CALL iom_put( "LNFe",  xlimnfe(:,:,:) * tmask(A2D(0),:) )
           CALL iom_put( "LDFe",  xlimdfe(:,:,:) * tmask(A2D(0),:) )
           CALL iom_put( "LPFe",  xlimpfe(:,:,:) * tmask(A2D(0),:) )
+          CALL iom_put( "LDZFe", xlimdiazfe(:,:,:) * tmask(A2D(0),:) )
         ENDIF
         !
         IF( l_dia_size_lim ) THEN   ! Size limitation term
           CALL iom_put( "SIZEN",  sizen(:,:,:) * tmask(A2D(0),:) )
           CALL iom_put( "SIZED",  sized(:,:,:) * tmask(A2D(0),:) )
           CALL iom_put( "SIZEP",  sizep(:,:,:) * tmask(A2D(0),:) )
+          CALL iom_put( "SIZEDZ", sizedz(:,:,:) * tmask(A2D(0),:) )
+        ENDIF
+        IF( l_dia_qfec_min ) THEN   ! Minimum Iron/Carbon quota term
+          CALL iom_put( "QFEMINN",  xqfuncfecn(:,:,:) * tmask(A2D(0),:) )
+          CALL iom_put( "QFEMIND",  xqfuncfecd(:,:,:) * tmask(A2D(0),:) )
+          CALL iom_put( "QFEMINP",  xqfuncfecp(:,:,:) * tmask(A2D(0),:) )
+          CALL iom_put( "QFEMINDZ", xqfuncfecdiaz(:,:,:) * tmask(A2D(0),:) )
         ENDIF
         !
         IF( l_dia_size_pro ) THEN   ! Size of the protein machinery
@@ -526,87 +657,103 @@ CONTAINS
              zw3d(ji,jj,jk) = zrass * tmask(ji,jj,jk)
           END_3D
           CALL iom_put( "RASSD",  zw3d)
+          DO_3D( 0, 0, 0, 0, 1, jpkm1)
+             zfuptk = 0.2 + 0.12 / ( 3.0 * sizedz(ji,jj,jk) + rtrn )
+             zrpho  = 11.55 * tr(ji,jj,jk,jpdzch,Kbb) / ( tr(ji,jj,jk,jpdzc,Kbb) * 12. + rtrn )
+             zrass  = 0.62 * ( 0.25 + 0.75 * ( 1. - zrpho - zfuptk ) * xlimnpdiaz(ji,jj,jk) )
+             zw3d(ji,jj,jk) = zrass * tmask(ji,jj,jk)
+          END_3D
+          CALL iom_put( "RASSDZ",  zw3d)
           DEALLOCATE( zw3d )
         ENDIF
         !
       ENDIF
       !
-      IF( ln_timing )  CALL timing_stop('p5z_lim')
+      IF( ln_timing )  CALL timing_stop('p6z_lim')
       !
-   END SUBROUTINE p5z_lim
+   END SUBROUTINE p6z_lim
 
 
-   SUBROUTINE p5z_lim_init
+   SUBROUTINE p6z_lim_init
       !!----------------------------------------------------------------------
-      !!                  ***  ROUTINE p5z_lim_init  ***
+      !!                  ***  ROUTINE p6z_lim_init  ***
       !!
       !! ** Purpose :   Initialization of nutrient limitation parameters
       !!
-      !! ** Method  :   Read the namp5zlim and nampisquota namelists and check
+      !! ** Method  :   Read the namp6zlim and nampisquota namelists and check
       !!      the parameters called at the first timestep (nittrc000)
       !!
-      !! ** input   :   Namelist namp5zlim
+      !! ** input   :   Namelist namp6zlim
       !!
       !!----------------------------------------------------------------------
       INTEGER :: ios                 ! Local integer output status for namelist read
       !!
-      NAMELIST/namp5zlim/ concnno3, concpno3, concdno3, concnnh4, concpnh4, concdnh4,  &
+      NAMELIST/namp6zlim/ concnno3, concpno3, concdno3, concnnh4, concpnh4, concdnh4,  &
          &                concnfer, concpfer, concdfer, concbfe, concnpo4, concppo4,   &
          &                concdpo4, concbno3, concbnh4, concbpo4, xsizedia, xsizepic,  &
          &                xsizephy, xsizern, xsizerp, xsizerd, xksi1, xksi2, xkdoc,    &
-         &                caco3r, oxymin, ratchl
+         &                caco3r, oxymin, ratchl, concdzno3, concdzpo4,concdzfer,      &
+         &                xsizerdz, kustkaFe, concdznh4
          !
-      NAMELIST/namp5zquota/ qnnmin, qnnmax, qpnmin, qpnmax, qnpmin, qnpmax, qppmin,      &
+      NAMELIST/namp6zquota/ qnnmin, qnnmax, qpnmin, qpnmax, qnpmin, qnpmax, qppmin,      &
          &                  qppmax, qndmin, qndmax, qpdmin, qpdmax, qfnmax, qfpmax, qfdmax,  &
-         &                  qfnopt, qfpopt, qfdopt
+         &                  qfnopt, qfpopt, qfdopt, qfdzopt, qndzmin, qndzmax, qpdzmin, qpdzmax, &
+         &                  qfdzmax
       !!----------------------------------------------------------------------
       !
-      READ_NML_REF(numnatp,namp5zlim)
-      READ_NML_CFG(numnatp,namp5zlim)
-      IF(lwm) WRITE ( numonp, namp5zlim )
+      READ_NML_REF(numnatp,namp6zlim)
+      READ_NML_CFG(numnatp,namp6zlim)
+      IF(lwm) WRITE ( numonp, namp6zlim )
       !
       IF(lwp) THEN                         ! control print
          WRITE(numout,*) ' '
-         WRITE(numout,*) ' Namelist parameters for nutrient limitations, namp5zlim'
+         WRITE(numout,*) ' Namelist parameters for nutrient limitations, namp6zlim'
          WRITE(numout,*) ' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
          WRITE(numout,*) '    mean rainratio                           caco3r    = ', caco3r
          WRITE(numout,*) '    C associated with Chlorophyll            ratchl    = ', ratchl
          WRITE(numout,*) '    NO3 half saturation of nanophyto         concnno3  = ', concnno3
          WRITE(numout,*) '    NO3 half saturation of picophyto         concpno3  = ', concpno3
          WRITE(numout,*) '    NO3 half saturation of diatoms           concdno3  = ', concdno3
+         WRITE(numout,*) '    NO3 half saturation of diazotrophs       concdzno3 = ', concdzno3
          WRITE(numout,*) '    NH4 half saturation for phyto            concnnh4  = ', concnnh4
          WRITE(numout,*) '    NH4 half saturation for pico             concpnh4  = ', concpnh4
          WRITE(numout,*) '    NH4 half saturation for diatoms          concdnh4  = ', concdnh4
+         WRITE(numout,*) '    NH4 half saturation for diazotrophs      concdznh4 = ', concdznh4
          WRITE(numout,*) '    PO4 half saturation for phyto            concnpo4  = ', concnpo4
          WRITE(numout,*) '    PO4 half saturation for pico             concppo4  = ', concppo4
          WRITE(numout,*) '    PO4 half saturation for diatoms          concdpo4  = ', concdpo4
+         WRITE(numout,*) '    PO4 half saturation of diazotrophs       concdzpo4 = ', concdzpo4
          WRITE(numout,*) '    half saturation constant for Si uptake   xksi1     = ', xksi1
          WRITE(numout,*) '    half saturation constant for Si/C        xksi2     = ', xksi2
          WRITE(numout,*) '    half-sat. of DOC remineralization        xkdoc     = ', xkdoc
          WRITE(numout,*) '    Iron half saturation for nanophyto       concnfer  = ', concnfer
          WRITE(numout,*) '    Iron half saturation for picophyto       concpfer  = ', concpfer
          WRITE(numout,*) '    Iron half saturation for diatoms         concdfer  = ', concdfer
+         WRITE(numout,*) '    Fe half saturation of diazotrophs        concdzfer = ', concdzfer
          WRITE(numout,*) '    size ratio for nanophytoplankton         xsizern   = ', xsizern
          WRITE(numout,*) '    size ratio for picophytoplankton         xsizerp   = ', xsizerp
          WRITE(numout,*) '    size ratio for diatoms                   xsizerd   = ', xsizerd
          WRITE(numout,*) '    NO3 half saturation of bacteria          concbno3  = ', concbno3
          WRITE(numout,*) '    NH4 half saturation for bacteria         concbnh4  = ', concbnh4
+         WRITE(numout,*) '    PO4 half saturation for bacteria         concbpo4  = ', concbpo4
          WRITE(numout,*) '    Minimum size criteria for diatoms        xsizedia  = ', xsizedia
          WRITE(numout,*) '    Minimum size criteria for picophyto      xsizepic  = ', xsizepic
          WRITE(numout,*) '    Minimum size criteria for nanophyto      xsizephy  = ', xsizephy
          WRITE(numout,*) '    Fe half saturation for bacteria          concbfe   = ', concbfe
          WRITE(numout,*) '    halk saturation constant for anoxia       oxymin   =' , oxymin
+         WRITE(numout,*) '    Size ratio for diazotrophs               xsizerdz  = ', xsizerdz
+         WRITE(numout,*) '    Kustka Fe limitation of diazos           kustkaFe  = ', kustkaFe
       ENDIF
       !
       xksi2_3 = xksi2 * xksi2 * xksi2
       !
-      READ_NML_REF(numnatp,namp5zquota)
-      READ_NML_CFG(numnatp,namp5zquota)
-      IF(lwm) WRITE ( numonp, namp5zquota )
+      READ_NML_REF(numnatp,namp6zquota)
+      READ_NML_CFG(numnatp,namp6zquota)
+      IF(lwm) WRITE ( numonp, namp6zquota )
       !
       IF(lwp) THEN                         ! control print
          WRITE(numout,*) ' '
-         WRITE(numout,*) ' Namelist parameters for nutrient limitations, namp5zquota'
+         WRITE(numout,*) ' Namelist parameters for nutrient limitations, namp6zquota'
          WRITE(numout,*) ' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
          WRITE(numout,*) '    optimal Fe quota for nano.               qfnopt    = ', qfnopt
          WRITE(numout,*) '    optimal Fe quota for pico.               qfpopt    = ', qfpopt
@@ -626,16 +773,24 @@ CONTAINS
          WRITE(numout,*) '    Maximal Fe quota for nanophyto.          qfnmax    = ', qfnmax
          WRITE(numout,*) '    Maximal Fe quota for picophyto.          qfpmax    = ', qfpmax
          WRITE(numout,*) '    Maximal Fe quota for diatoms             qfdmax    = ', qfdmax
+         WRITE(numout,*) '    optimal Fe quota for diazotrophs         qfdzopt   = ', qfdzopt
+         WRITE(numout,*) '    Minimal N quota for diazotrophs          qndzmin   = ', qndzmin
+         WRITE(numout,*) '    Maximal N quota for diazotrophs          qndzmax   = ', qndzmax
+         WRITE(numout,*) '    Minimal P quota for diazotrophs          qpdzmin   = ', qpdzmin
+         WRITE(numout,*) '    Maximal P quota for diazotrophs          qpdzmax   = ', qpdzmax
+         WRITE(numout,*) '    Maximal Fe quota for diazotrophs         qfdzmax   = ', qfdzmax
       ENDIF
       !
       ! Metabolic cost of nitrate and ammonium utilisation
       xpsino3  = 2.3 * rno3
       xpsinh4  = 1.8 * rno3
       xpsiuptk = 1.0 / 6.625
+      ! Diazotrophy (biosynthesis on N2)
+      xpsinfix = (2.0 / 0.7) * 2.3 * rno3
       !
-      !
-      rlogfactnp = LOG( 4.0 / 0.8 )
-      rlogfactdp = LOG( 6.0 / 0.8 )
+      rlogfactnp  = LOG( 4.0 / 0.8 )
+      rlogfactdp  = LOG( 6.0 / 0.8 )
+      rlogfactdzp = LOG( 4.0 / 0.8 )
       !
       xfracal (:,:,jpk) = 0._wp
       xlimphy (:,:,jpk) = 0._wp    ;   xlimdia (:,:,jpk) = 0._wp   ;   xlimpic (:,:,jpk) = 0._wp
@@ -644,19 +799,23 @@ CONTAINS
       xnanonh4(:,:,jpk) = 0._wp    ;   xdiatnh4(:,:,jpk) = 0._wp   ;   xpiconh4(:,:,jpk) = 0._wp
       xnanofer(:,:,jpk) = 0._wp    ;   xdiatfer(:,:,jpk) = 0._wp   ;   xpicofer(:,:,jpk) = 0._wp
       xnanopo4(:,:,jpk) = 0._wp    ;   xdiatpo4(:,:,jpk) = 0._wp   ;   xpicopo4(:,:,jpk) = 0._wp
-      xlimbac (:,:,jpk) = 0._wp    ;   xlimbacl(:,:,jpk) = 0._wp
+      xlimbac (:,:,jpk) = 0._wp    ;   xlimbacl(:,:,jpk) = 0._wp 
       xqfuncfecn(:,:,jpk) = 0._wp  ;   xqfuncfecd(:,:,jpk) = 0._wp ;   xqfuncfecp(:,:,jpk) = 0._wp
       fvnuptk (:,:,jpk) = 0._wp    ;   fvduptk (:,:,jpk) = 0._wp   ;   fvpuptk(:,:,jpk)  = 0._wp
       xlimphys(:,:,jpk) = 0._wp    ;   xlimdias(:,:,jpk) = 0._wp
       xlimnpp (:,:,jpk) = 0._wp    ;   xlimnpn (:,:,jpk) = 0._wp   ;   xlimnpd (:,:,jpk) = 0._wp
       xlimpics(:,:,jpk) = 0._wp   
+      ! Diazotrophy
+      xdiazno3(:,:,jpk) = 0._wp    ;   xdiaznh4(:,:,jpk) = 0._wp
+      xlimdiaz(:,:,jpk) = 0._wp    ;   xlimdiazfe(:,:,jpk) = 0._wp ;   xlimnpdiaz(:,:,jpk) = 0._wp
+      xqfuncfecdiaz(:,:,jpk) = 0._wp
+      
+   END SUBROUTINE p6z_lim_init
 
-   END SUBROUTINE p5z_lim_init
 
-
-   INTEGER FUNCTION p5z_lim_alloc()
+   INTEGER FUNCTION p6z_lim_alloc()
       !!----------------------------------------------------------------------
-      !!                     ***  ROUTINE p5z_lim_alloc  ***
+      !!                     ***  ROUTINE p6z_lim_alloc  ***
       !!----------------------------------------------------------------------
       USE lib_mpp , ONLY: ctl_stop
       INTEGER ::   ierr(3)        ! Local variables
@@ -664,32 +823,40 @@ CONTAINS
       ierr(:) = 0
       !
       !*  Biological arrays for phytoplankton growth
-      ALLOCATE( xpicono3(A2D(0),jpk), xpiconh4(A2D(0),jpk),       &
-         &      xpicopo4(A2D(0),jpk), xpicodop(A2D(0),jpk),       &
-         &      xnanodop(A2D(0),jpk), xdiatdop(A2D(0),jpk),       &
-         &      xpicofer(A2D(0),jpk), xlimpfe (A2D(0),jpk),       &
-         &      fvnuptk (A2D(0),jpk), fvduptk (A2D(0),jpk),       &
-         &      xlimphys(A2D(0),jpk), xlimdias(A2D(0),jpk),       &
-         &      xlimnpp (A2D(0),jpk), xlimnpn (A2D(0),jpk),       &
-         &      xlimnpd (A2D(0),jpk),                              &
-         &      xlimpics(A2D(0),jpk), xqfuncfecp(A2D(0),jpk),     &
-         &      fvpuptk (A2D(0),jpk), xlimpic (A2D(0),jpk),    STAT=ierr(1) )
+      ALLOCATE( xpicono3(A2D(0),jpk)  , xpiconh4  (A2D(0),jpk),      &
+         &      xpicopo4(A2D(0),jpk)  , xpicodop  (A2D(0),jpk),      &
+         &      xnanodop(A2D(0),jpk)  , xdiatdop  (A2D(0),jpk),      &
+         &      xpicofer(A2D(0),jpk)  , xlimpfe   (A2D(0),jpk),      &
+         &      fvnuptk (A2D(0),jpk)  , fvduptk   (A2D(0),jpk),      &
+         &      xlimphys(A2D(0),jpk)  , xlimdias  (A2D(0),jpk),      &
+         &      xlimnpp (A2D(0),jpk)  , xlimnpn   (A2D(0),jpk),      &
+         &      xlimnpd (A2D(0),jpk)  ,                              &
+         &      xlimpics(A2D(0),jpk)  , xqfuncfecp(A2D(0),jpk),      &
+         &      fvpuptk (A2D(0),jpk)  , xlimpic   (A2D(0),jpk),      & 
+         &      xdiazno3(A2D(0),jpk)  , xdiaznh4  (A2D(0),jpk),      &
+         &      xdiazpo4(A2D(0),jpk)  , xdiazdop  (A2D(0),jpk),      &
+         &      xdiazfer(A2D(0),jpk)  , xlimdiaz  (A2D(0),jpk),      &
+         &      xlimdiazfe(A2D(0),jpk), fvdiazuptk(A2D(0),jpk),      &
+         &      xlimdiazo(A2D(0),jpk) , xlimnpdiaz(A2D(0),jpk),      &
+         &      xqfuncfecdiaz(A2D(0),jpk),         STAT=ierr(1) )
          !
       !*  Minimum/maximum quotas of phytoplankton
-      ALLOCATE( xqnnmin (A2D(0),jpk), xqnnmax(A2D(0),jpk),       &
-         &      xqpnmin (A2D(0),jpk), xqpnmax(A2D(0),jpk),       &
-         &      xqnpmin (A2D(0),jpk), xqnpmax(A2D(0),jpk),       &
-         &      xqppmin (A2D(0),jpk), xqppmax(A2D(0),jpk),       &
-         &      xqndmin (A2D(0),jpk), xqndmax(A2D(0),jpk),       &
-         &      xqpdmin (A2D(0),jpk), xqpdmax(A2D(0),jpk),     STAT=ierr(2) )
+      ALLOCATE( xqnnmin (A2D(0),jpk), xqnnmax(A2D(0),jpk),         &
+         &      xqpnmin (A2D(0),jpk), xqpnmax(A2D(0),jpk),         &
+         &      xqnpmin (A2D(0),jpk), xqnpmax(A2D(0),jpk),         &
+         &      xqppmin (A2D(0),jpk), xqppmax(A2D(0),jpk),         &
+         &      xqndmin (A2D(0),jpk), xqndmax(A2D(0),jpk),         &
+         &      xqpdmin (A2D(0),jpk), xqpdmax(A2D(0),jpk),         &
+         &      xqndzmin (A2D(0),jpk), xqndzmax(A2D(0),jpk),       &
+         &      xqpdzmin (A2D(0),jpk), xqpdzmax(A2D(0),jpk), STAT=ierr(2) )
          !
       !*  Chl/C in chloroplast
-      ALLOCATE( ratchlp (A2D(0),jpk),                          STAT=ierr(3) )
+      ALLOCATE( ratchlp (A2D(0),jpk), ratchldz(A2D(0),jpk),  STAT=ierr(3) )
+
+      p6z_lim_alloc = MAXVAL( ierr )
       !
-      p5z_lim_alloc = MAXVAL( ierr )
+      IF( p6z_lim_alloc /= 0 ) CALL ctl_stop( 'STOP', 'p6z_lim_alloc : failed to allocate arrays.' )
       !
-      IF( p5z_lim_alloc /= 0 ) CALL ctl_stop( 'STOP', 'p5z_lim_alloc : failed to allocate arrays.' )
-      !
-   END FUNCTION p5z_lim_alloc
+   END FUNCTION p6z_lim_alloc
    !!======================================================================
-END MODULE p5zlim
+END MODULE p6zlim

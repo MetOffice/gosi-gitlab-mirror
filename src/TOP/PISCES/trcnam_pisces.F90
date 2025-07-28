@@ -43,7 +43,7 @@ CONTAINS
       INTEGER :: ios, ioptio         ! Local integer
       CHARACTER(LEN=20)::   clname
       !!
-      NAMELIST/nampismod/ln_p2z, ln_p4z, ln_p5z, ln_ligand, ln_sediment
+      NAMELIST/nampismod/ln_p2z, ln_p4z, ln_p6z, ln_ligand, ln_sediment
       !!----------------------------------------------------------------------
 
       IF(lwp) WRITE(numout,*)
@@ -63,16 +63,16 @@ CONTAINS
          WRITE(numout,*) '   Namelist : nampismod '
          WRITE(numout,*) '      Flag to use PISCES reduced model     ln_p2z      = ', ln_p2z
          WRITE(numout,*) '      Flag to use PISCES standard model    ln_p4z      = ', ln_p4z
-         WRITE(numout,*) '      Flag to use PISCES quota    model    ln_p5z      = ', ln_p5z
+         WRITE(numout,*) '      Flag to use PISCES quota explicit diazo   ln_p6z = ', ln_p6z
          WRITE(numout,*) '      Flag to ligand                       ln_ligand   = ', ln_ligand
          WRITE(numout,*) '      Flag to use sediment                 ln_sediment = ', ln_sediment
       ENDIF
       !
       IF(lwp) THEN                         ! control print
          WRITE(numout,*)
-         IF( ln_p5z      )  WRITE(numout,*) '   ==>>>   PISCES QUOTA model is used'
          IF( ln_p4z      )  WRITE(numout,*) '   ==>>>   PISCES STANDARD model is used'
          IF( ln_p2z      )  WRITE(numout,*) '   ==>>>   PISCES REDUCED model is used'
+         IF( ln_p6z      )  WRITE(numout,*) '   ==>>>   PISCES QUOTA explicit diazotrophy is used'
          IF( ln_ligand   )  WRITE(numout,*) '   ==>>>   Compute remineralization/dissolution of organic ligands'
          IF( ln_sediment )  WRITE(numout,*) '   ==>>>   Sediment module is used'
       ENDIF
@@ -80,7 +80,7 @@ CONTAINS
       ioptio = 0
       IF( ln_p2z )    ioptio = ioptio + 1
       IF( ln_p4z )    ioptio = ioptio + 1
-      IF( ln_p5z )    ioptio = ioptio + 1
+      IF( ln_p6z )    ioptio = ioptio + 1
       !
       IF( ioptio /= 1 )   CALL ctl_stop( 'Choose ONE PISCES model namelist nampismod' )
        !

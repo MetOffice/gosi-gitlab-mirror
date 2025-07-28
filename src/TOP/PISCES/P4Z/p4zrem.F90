@@ -33,9 +33,9 @@ MODULE p4zrem
    PUBLIC   p4z_rem_alloc   ! called in trcini_pisces.F90
 
    !! * Shared module variables
-   REAL(wp), PUBLIC ::   xremikc    !: remineralisation rate of DOC (p5z) 
-   REAL(wp), PUBLIC ::   xremikn    !: remineralisation rate of DON (p5z) 
-   REAL(wp), PUBLIC ::   xremikp    !: remineralisation rate of DOP (p5z) 
+   REAL(wp), PUBLIC ::   xremikc    !: remineralisation rate of DOC (p6z) 
+   REAL(wp), PUBLIC ::   xremikn    !: remineralisation rate of DON (p6z) 
+   REAL(wp), PUBLIC ::   xremikp    !: remineralisation rate of DOP (p6z) 
    REAL(wp), PUBLIC ::   nitrif     !: NH4 nitrification rate 
    REAL(wp), PUBLIC ::   xsirem     !: remineralisation rate of biogenic silica
    REAL(wp), PUBLIC ::   xsiremlab  !: fast remineralisation rate of BSi
@@ -270,7 +270,7 @@ CONTAINS
             tr(ji,jj,jk,jppo4,Krhs) = tr(ji,jj,jk,jppo4,Krhs) + ztemp
             tr(ji,jj,jk,jpnh4,Krhs) = tr(ji,jj,jk,jpnh4,Krhs) + ztemp
             tr(ji,jj,jk,jptal,Krhs) = tr(ji,jj,jk,jptal,Krhs) + rno3 * ( ztemp + rdenit * denitr(ji,jj,jk) )
-         ELSE  ! PISCES-QUOTA (p5z)
+         ELSE  ! PISCES-QUOTA (p6z)
             zremikn = xremikn / xremikc * tr(ji,jj,jk,jpdon,kbb) / ( tr(ji,jj,jk,jpdoc,Kbb) + rtrn )
             zremikp = xremikp / xremikc * tr(ji,jj,jk,jpdop,Kbb) / ( tr(ji,jj,jk,jpdoc,Kbb) + rtrn )
             tr(ji,jj,jk,jppo4,Krhs) = tr(ji,jj,jk,jppo4,Krhs) + zremikp * ztemp
@@ -421,12 +421,12 @@ CONTAINS
       IF(lwp) THEN                         ! control print
          WRITE(numout,*) '   Namelist parameters for remineralization, nampisrem'
          WRITE(numout,*) '      remineralization rate of DOC              xremikc   =', xremikc
-         IF( ln_p5z ) THEN 
+         IF( ln_p6z ) THEN 
             WRITE(numout,*) '      remineralization rate of DOC              xremikc   =', xremikc
             WRITE(numout,*) '      remineralization rate of DON              xremikn   =', xremikn
             WRITE(numout,*) '      remineralization rate of DOP              xremikp   =', xremikp
          ENDIF
-         IF( ln_p5z .OR. ln_p4z ) THEN
+         IF( ln_p4z .OR. ln_p6z ) THEN
             WRITE(numout,*) '      remineralization rate of Si               xsirem    =', xsirem
             WRITE(numout,*) '      fast remineralization rate of Si          xsiremlab =', xsiremlab
             WRITE(numout,*) '      fraction of labile biogenic silica        xsilab    =', xsilab

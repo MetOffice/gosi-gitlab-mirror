@@ -166,7 +166,7 @@ CONTAINS
       ENDIF
       !
       ! PISCES-QUOTA part
-      IF( ln_p5z ) THEN
+      IF( ln_p6z ) THEN
          !
          CALL trc_sink( kt, Kbb, Kmm, wsbio3, zsinking , jppon, rfact2 )
          CALL trc_sink( kt, Kbb, Kmm, wsbio4, zsinking2, jpgon, rfact2 )
@@ -232,7 +232,7 @@ CONTAINS
       IF( .NOT. ln_p2z ) THEN
          ALLOCATE( sinksilb(A2D(0)), STAT=ierr(2) )                
          !
-         IF( ln_p5z ) ALLOCATE( sinkponb(A2D(0)), sinkpopb(A2D(0)), STAT=ierr(3) )
+         IF( ln_p6z ) ALLOCATE( sinkponb(A2D(0)), sinkpopb(A2D(0)), STAT=ierr(3) )
       ENDIF
       !
       p4z_sink_alloc = MAXVAL( ierr )

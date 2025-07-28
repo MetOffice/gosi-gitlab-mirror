@@ -67,7 +67,7 @@
     <field id="NH4"          long_name="Ammonium Concentration"                   unit="mmol/m3" />
     <field id="NH4_e3t"      long_name="NH4 * e3t"                                unit="mmol/m2"  > NH4 * e3t </field >
 
-    <!-- PISCES quota : variables available with ln_p5z  -->
+    <!-- PISCES quota : variables available with ln_p6z  -->
 
     <field id="DON"          long_name="Dissolved organic N Concentration"        unit="mmol/m3" />
     <field id="DON_e3t"      long_name="DON * e3t"                                unit="mmol/m2"  > DON * e3t </field >
@@ -99,6 +99,16 @@
     <field id="PFe_e3t"      long_name="PFe * e3t"                                unit="mmol/m2"  > PFe * e3t </field >
     <field id="PCHL"         long_name="Picophytoplankton Chl biomass"            unit="gChl/m3" />
     <field id="PCHL_e3t"     long_name="PCHL * e3t"                               unit="mmol/m2"  > PCHL * e3t </field >
+    <field id="DZC"          long_name="Diazotroph C biomass"                     unit="mmol/m3" />
+    <field id="DZC_e3t"      long_name="DZC * e3t"                                unit="mmol/m2"  > DZC * e3t </field >
+    <field id="DZFe"         long_name="Diazotroph Fe biomass"                    unit="mmol/m3" />
+    <field id="DZFe_e3t"     long_name="DZFe * e3t"                               unit="mmol/m2"  > DZFe * e3t </field >
+    <field id="DZCHL"        long_name="Diazotroph Chl biomass"                   unit="mmol/m3" />
+    <field id="DZCHL_e3t"    long_name="DZCHL * e3t"                              unit="mmol/m2"  > DZCHL * e3t </field >
+    <field id="DZN"          long_name="Diazotroph N biomass"                     unit="mmol/m3" />
+    <field id="DZN_e3t"      long_name="DZN * e3t"                                unit="mmol/m2"  > DZN * e3t </field >
+    <field id="DZP"          long_name="Diazotroph P biomass"                     unit="mmol/m3" />
+    <field id="DZP_e3t"      long_name="DZP * e3t"                                unit="mmol/m2"  > DZP * e3t </field >
 
     <!-- PISCES with ligand parametisation : variables available namelist paramter ln_ligand -->
     <field id="LGW"         long_name="Weak ligands concentration"                unit="mmol/m3" />
@@ -236,7 +246,7 @@
       <field id="SIZEP"       long_name="Mean relative size of picophyto."        unit="-"           />
       <field id="SIZED"       long_name="Mean relative size of diatoms"           unit="-"           />
       <field id="THETANANO"   long_name="Diagnostic Chl:C ratio"                  unit="mgChl/mgC"   />
-      <field id="CHL"         long_name="Total Chl"                               unit="gChl/m3"    />
+      <field id="CHL"         long_name="Total Chl"                               unit="gChl/m3"     />
       <field id="RASSD"       long_name="Size of the protein machinery (Diat.)"   unit="-"           />
       <field id="RASSN"       long_name="Size of the protein machinery (Nano.)"   unit="-"           />
       <field id="RASSP"       long_name="Size of the protein machinery (Pico.)"   unit="-"           />
@@ -287,7 +297,24 @@
       <field id="TPP_e3t"     long_name="TPP * e3t"                               unit="mol/m2/s"    > TPP    * e3t </field >
       <field id="TPNEW_e3t"   long_name="TPNEW * e3t"                             unit="mol/m2/s"    > TPNEW  * e3t </field >
       <field id="TPBFE_e3t"   long_name="TPBFE * e3t"                             unit="mol/m2/s"    > TPBFE  * e3t </field >
-    </field_group>     <!-- End of field group for grid_T_3D_inner (diad_T) -->
+     <!-- P6Z additionnal diags -->
+     <field id="PPPHYDZ"      long_name="Primary production of diazotrophs"       unit="molC/m3/s"   />
+     <field id="PPNEWDZ"      long_name="New Primary production of diazotrophs"   unit="molC/m3/s"   />
+     <field id="PFeDZ"        long_name="Biogenic Fe uptake by diazotrophs"       unit="mol/m3/s"    />
+     <field id="MuDZ"         long_name="Realized growth rate for diazos"         unit="s-1"         />
+     <field id="LDZnut"       long_name="Nutrient limitation term in Diazotrophs" unit=""            />
+     <field id="LDZFe"        long_name="Iron limitation term in Diazotroph"      unit=""            />
+     <field id="LDZlight"     long_name="Light limitation term in Diazotroph"     unit=""            />
+     <field id="SIZEDZ"       long_name="Mean relative size of diazotrophs"       unit="-"           />
+     <field id="LDZNP"        long_name="N/P limitation term in Diazotroph"       unit=""            />
+     <field id="QFEMINN"      long_name="QFe min Nano"                            unit=""            />
+     <field id="QFEMINP"      long_name="QFe min Pico"                            unit=""            />
+     <field id="QFEMIND"      long_name="QFe min Diatoms"                         unit=""            />
+     <field id="QFEMINDZ"     long_name="QFe min Diazo"                           unit=""            />
+     <field id="Facul"        long_name="Facul"                                   unit=""            />
+     <field id="RASSDZ"       long_name="Size of the protein machinery (Diazo)"   unit="-"           />
+     <field id="GPPHYDZ"      long_name="Gross Primary production of diazotrophs" unit="molC/m3/s"   />
+     </field_group>     <!-- End of field group for grid_T_3D_inner (diad_T) -->
     
     <field_group id="group_diad_T_2D_inner" grid_ref="grid_T_2D_inner" >  <!-- Start of field group for grid_T_2D_inner (diad_T) -->
       <field id="pdust"       long_name="dust concentration"                      unit="kg/m3"       />
@@ -347,12 +374,12 @@
     <field id="psiltot"         long_name="Global mean silicate concentration"                 unit="mol/m3"   />
     <field id="palktot"         long_name="Global mean alkalinity concentration"               unit="mol/m3"   />
     <field id="pfertot"         long_name="Global mean iron concentration"                     unit="mol/m3"   />
-    <field id="tcflx"           long_name="Total Flux of Carbon out of the ocean"              unit="mol/s"   />
-    <field id="tcflxcum"        long_name="Cumulative total Flux of Carbon out of the ocean"   unit="mol/s"   />
-    <field id="tcexp"           long_name="Total Carbon export at 100m"                        unit="mol/s"   />
-    <field id="tintpp"          long_name="Global total integrated primary production"         unit="mol/s"   />
-    <field id="tnfix"           long_name="Global total nitrogen fixation"                     unit="mol/s"   />
-    <field id="tdenit"          long_name="Total denitrification"                              unit="mol/s"   />
+    <field id="tcflx"           long_name="Total Flux of Carbon out of the ocean"              unit="mol/s"    />
+    <field id="tcflxcum"        long_name="Cumulative total Flux of Carbon out of the ocean"   unit="mol/s"    />
+    <field id="tcexp"           long_name="Total Carbon export at 100m"                        unit="mol/s"    />
+    <field id="tintpp"          long_name="Global total integrated primary production"         unit="mol/s"    />
+    <field id="tnfix"           long_name="Global total nitrogen fixation"                     unit="mol/s"    />
+    <field id="tdenit"          long_name="Total denitrification"                              unit="mol/s"    />
   </field_group>
 
 </field_definition>

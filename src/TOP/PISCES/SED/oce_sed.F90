@@ -40,7 +40,7 @@ MODULE oce_sed
    USE sms_pisces, ONLY : wsbio3    =>   wsbio3          !: sinking flux for GOC
    USE sms_pisces, ONLY : wsbio2    =>   wsbio2          !: sinking flux for calcite
    USE sms_pisces, ONLY : wsbio     =>   wsbio           !: sinking flux for calcite
-   USE sms_pisces, ONLY : ln_p5z    =>   ln_p5z          !: PISCES-QUOTA flag
+   USE sms_pisces, ONLY : ln_p6z    =>   ln_p6z          !: PISCES-QUOTA explicit diazotrophy flag
    USE p4zche, ONLY     : akb3      =>   akb3            !: Chemical constants  
    USE sms_pisces, ONLY : ak13      =>   ak13            !: Chemical constants  
    USE sms_pisces, ONLY : ak23      =>   ak23            !: Chemical constants  

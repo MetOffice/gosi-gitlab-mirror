@@ -19,7 +19,7 @@ MODULE sms_pisces
    !!* Model used
    LOGICAL  ::  ln_p2z            !: Flag to use PISCES  reduced model
    LOGICAL  ::  ln_p4z            !: Flag to use PISCES  model
-   LOGICAL  ::  ln_p5z            !: Flag to use PISCES  quota model
+   LOGICAL  ::  ln_p6z            !: Flag to use PISCES  quota explicit diazotrophy
    LOGICAL  ::  ln_ligand         !: Flag to enable organic ligands
    LOGICAL  ::  ln_sediment       !: Flag to enable sediment module
 
@@ -71,6 +71,8 @@ MODULE sms_pisces
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::  epicom         !: mean PAR for pico
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::  emoy, etotm    !: averaged PAR in the mixed layer
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)   ::  xksi  !:  Half-saturation con,stant for diatoms
+   ! Explicit Diazotroph
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::  ediaz, ediazm  !: PAR for diazotrophs
 
    !!*  Biological fluxes for primary production
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)    ::   xksimax    !: Maximum half-saturation constant over the year (Si)
@@ -103,6 +105,10 @@ MODULE sms_pisces
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   thetanano  !: size of diatomss, after
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   xfecolagg  !: Refractory diagnostic concentration of ligands
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   xcoagfe    !: Coagulation rate of colloidal Fe/ligands
+   ! Explicit Diazotroph
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   sizedz, logsizedz  !: size of diazotrophs
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   sizedza    !: size of diazotrophs, after
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   nitrpot    !: nitrogen fixation by diazotrophs
 
    !!* Variable for chemistry of the CO2 cycle
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   ak13       !: Carbonate chemistry constant
@@ -119,8 +125,6 @@ MODULE sms_pisces
 
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   remintpoc  ! Mean remineralisation rate of POC
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   remintgoc  ! Mean remineralisation rate of GOC
-
-
 
    LOGICAL, SAVE :: lk_sed
 
@@ -155,7 +159,8 @@ CONTAINS
       ALLOCATE( orem     (A2D(0),jpk), xdiss   (A2D(0),jpk),  &
          &      nitrfac  (A2D(0),jpk), nitrfac2(A2D(0),jpk),  &
          &      prodcal  (A2D(0),jpk), prodpoc (A2D(0),jpk),  &
-         &      conspoc  (A2D(0),jpk), xfracal (A2D(0),jpk),   STAT=ierr(3) )
+         &      conspoc  (A2D(0),jpk), xfracal (A2D(0),jpk),  &
+         &      nitrpot  (A2D(0),jpk),                         STAT=ierr(3) )
 
       !* Carbonate chemistry
       ALLOCATE( ak13(A2D(0),jpk),                         &
@@ -183,7 +188,7 @@ CONTAINS
       IF( ln_p2z )   &
          &   ALLOCATE( thetanano (A2D(0),jpk),                 STAT=ierr(11) )
 
-      IF( ln_p4z .OR. ln_p5z ) THEN
+      IF( ln_p4z .OR. ln_p6z ) THEN
          !* Optics
          ALLOCATE(  ediat(A2D(0),jpk) , ediatm(A2D(0),jpk),    STAT=ierr(12) )
 
@@ -204,13 +209,21 @@ CONTAINS
          ! 
       ENDIF
       !
-      IF( ln_p5z ) THEN
+      IF( ln_p6z ) THEN
          ! PISCES-QUOTA specific part      
          ALLOCATE( epico(A2D(0),jpk)   , epicom(A2D(0),jpk),   STAT=ierr(18) ) 
 
          !*  Size of phytoplankton cells
          ALLOCATE( sizep(A2D(0),jpk), sizepa(A2D(0),jpk),      &
             &      logsizep(A2D(0),jpk),                       STAT=ierr(19) )
+      ENDIF
+      !
+      IF( ln_p6z ) THEN
+         ! PISCES QUOTA Explicit Diazotroph
+         ALLOCATE(ediaz(A2D(0),jpk), ediazm(A2D(0),jpk), STAT=ierr(18) )
+         !* size of diazotroph cells
+         ALLOCATE(  sizedz(A2D(0),jpk), sizedza(A2D(0),jpk),   &
+            &       logsizedz(A2D(0),jpk),                     STAT=ierr(19) )
       ENDIF
       !
       sms_pisces_alloc = MAXVAL( ierr )
