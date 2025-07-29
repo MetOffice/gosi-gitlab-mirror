@@ -33,6 +33,26 @@ MODULE dtatsd
    LOGICAL , PUBLIC ::   ln_tsd_init   !: T & S data flag
    LOGICAL , PUBLIC ::   ln_tsd_dmp    !: internal damping toward input data flag
 
+      !                          !!* parameters for HPGE experiment
+   INTEGER , PUBLIC ::   nn_tsd_type   !: 1 = July  North Atlantic on-shelf
+                                       !: 2 = July North Atlantic off-shelf
+                                       !: 3 = Jan North Atlantic on-shelf
+                                       !: 4 = Jan North Atlantic off-shelf
+                                       !: 5 = Siddorn & Furner 2013
+                                       !: 6 = Shchepetkin & McWilliams 2003
+                                       !: 7 = EN4 in front of Gibraltar Strait
+                                       !      (Atlantic side)
+                                       !: 8 =  February Weddell Sea
+                                       !: 9 =  August Weddell Sea
+                                       !: 10 = February Ross Sea
+                                       !: 11 = August Ross Sea
+                                       !: 12 = February Dumont d'Urville Sea
+                                       !: 13 = August Dumont d'Urville Sea
+                                       
+   REAL(wp), PUBLIC ::   rn_sal_sf, rn_mld_sf, rn_maxdep_sf, rn_c0_sf, rn_c1_sf !: Siddorn & Furner 2013
+                                                                                !idealised profile
+
+
    TYPE(FLD), ALLOCATABLE, DIMENSION(:) ::   sf_tsd   ! structure of input SST (file informations, fields read)
 
    !! * Substitutions
@@ -61,7 +81,9 @@ CONTAINS
       TYPE(FLD_N), DIMENSION( jpts) ::   slf_i           ! array of namelist informations on the fields to read
       TYPE(FLD_N)                   ::   sn_tem, sn_sal
       !!
-      NAMELIST/namtsd/   ln_tsd_init, ln_tsd_dmp, cn_dir, sn_tem, sn_sal
+      NAMELIST/namtsd/   ln_tsd_init, ln_tsd_dmp, cn_dir, sn_tem, sn_sal, nn_tsd_type, &
+                      &  rn_sal_sf, rn_mld_sf, rn_maxdep_sf, rn_c0_sf, rn_c1_sf
+
       !!----------------------------------------------------------------------
       !
       !  Initialisation
@@ -86,6 +108,22 @@ CONTAINS
          IF( .NOT.ln_tsd_init .AND. .NOT.ln_tsd_dmp ) THEN
             WRITE(numout,*)
             WRITE(numout,*) '   ===>>   T & S data not used'
+         ENDIF
+         WRITE(numout,*)
+         WRITE(numout,*) 'dta_tsd_init : HPGE test parameters'
+         WRITE(numout,*) '~~~~~~~~~~~~ '
+         WRITE(numout,*) '   Namelist namtsd'
+         WRITE(numout,*) '      Type of intial profile nn_tsd_type = ', nn_tsd_type
+         IF (nn_tsd_type == 5) THEN
+            WRITE(numout,*) '      Siddorn and Furner 2013 idealised initial profile'
+            WRITE(numout,*) '            rn_sal_sf    = ', rn_sal_sf
+            WRITE(numout,*) '            rn_mld_sf    = ', rn_mld_sf
+            WRITE(numout,*) '            rn_maxdep_sf = ', rn_maxdep_sf
+            WRITE(numout,*) '            rn_c0_sf     = ', rn_c0_sf
+            WRITE(numout,*) '            rn_c1_sf     = ', rn_c1_sf
+         ENDIF
+         IF (nn_tsd_type == 6) THEN
+            WRITE(numout,*) '      Shchepetkin and McWilliams 2003 idealised initial profile'
          ENDIF
       ENDIF
       !
