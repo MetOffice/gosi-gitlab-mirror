@@ -106,8 +106,9 @@ CONTAINS
       INTEGER ::   ikbot            ! local integer
       REAL(wp)::   ztmp , ztmpx, ztmpy   ! local scalar
       REAL(wp)::   ztau1, ztau2, ztau3, ztau4    ! local scalar
-      REAL(wp), DIMENSION(T2D(0))     ::   z2d   ! 2D workspace
-      REAL(wp), DIMENSION(T2D(0),jpk) ::   z3d   ! 3D workspace
+      REAL(wp), DIMENSION(T2D(nn_hls)    ) ::   z2dhl  ! 2D workspace with    halos
+      REAL(wp), DIMENSION(T2D(   0  )    ) ::   z2d    ! 2D workspace without halos
+      REAL(wp), DIMENSION(T2D(   0  ),jpk) ::   z3d    ! 3D workspace without halos
       !!----------------------------------------------------------------------
       ! 
       IF( ln_timing )   CALL timing_start('dia_wri')
@@ -520,6 +521,32 @@ CONTAINS
          ENDIF
       ENDIF
 
+      ! Output of surface wind stress
+      !
+      IF ( iom_use("utau") ) THEN
+         IF ( ln_drgice_imp .OR. ln_isfcav ) THEN
+            DO_2D( 0, 0, 0, 0 )
+               jk = mikt(ji,jj)
+               z2dhl(ji,jj) = utau(ji,jj) + 0.5_wp * rho0 * rCdU_top(ji,jj) * ( uu(ji-1,jj,jk,Kmm) + uu(ji,jj,jk,Kmm) )
+            END_2D
+            CALL iom_put(  "utau", z2dhl )   ! use z2dhl to match the shape of utau
+         ELSE
+            CALL iom_put(  "utau", utau  )
+         ENDIF
+      ENDIF
+      !
+      IF ( iom_use("vtau") ) THEN
+         IF ( ln_drgice_imp .OR. ln_isfcav ) THEN
+            DO_2D( 0, 0, 0, 0 )
+               jk = mikt(ji,jj)
+               z2dhl(ji,jj) = vtau(ji,jj) + 0.5_wp * rho0 * rCdU_top(ji,jj) * ( vv(ji,jj-1,jk,Kmm) + vv(ji,jj,jk,Kmm) )
+            END_2D
+            CALL iom_put(  "vtau", z2dhl )   ! use z2dhl to match the shape of vtau
+         ELSE
+            CALL iom_put(  "vtau", vtau  )
+         ENDIF
+      ENDIF
+      !
       IF( ln_timing )   CALL timing_stop('dia_wri')
       !
    END SUBROUTINE dia_wri
