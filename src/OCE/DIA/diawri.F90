@@ -58,7 +58,7 @@ MODULE diawri
 
 #if defined key_si3
    USE icewri 
-   USE ice   
+   USE ice
 #endif
    USE lib_mpp         ! MPP library
    USE timing          ! preformance summary
@@ -108,8 +108,11 @@ CONTAINS
       INTEGER ::   ikbot            ! local integer
       REAL(wp)::   ztmp , ztmpx, ztmpy   ! local scalar
       REAL(wp)::   ztau1, ztau2, ztau3, ztau4    ! local scalar
-      REAL(wp), DIMENSION(T2D(0))     ::   z2d   ! 2D workspace
-      REAL(wp), DIMENSION(T2D(0),jpk) ::   z3d   ! 3D workspace
+#if defined key_RK3
+      REAL(wp), DIMENSION(T2D(nn_hls)    ) ::   z2dhl  ! 2D workspace with    halos
+#endif
+      REAL(wp), DIMENSION(T2D(   0  )    ) ::   z2d    ! 2D workspace without halos
+      REAL(wp), DIMENSION(T2D(   0  ),jpk) ::   z3d    ! 3D workspace without halos
       CHARACTER(len=4),SAVE :: ttype , stype           ! temperature and salinity type
       !!----------------------------------------------------------------------
       ! 
@@ -134,7 +137,7 @@ CONTAINS
          ENDIF
       ENDIF
 
-      ! 
+      !
       IF( .NOT. l_istiled .OR. ntile == 1 )  THEN   ! Do only for the first tile
          ! Output the initial state and forcings
          IF( ninist == 1 ) THEN
@@ -245,7 +248,7 @@ CONTAINS
          END_2D
          CALL iom_put( "sbt_"//ttype, z2d )                ! bottom temperature
       ENDIF
-      
+
       CALL iom_put( "soce_"//stype, ts(:,:,:,jp_sal,Kmm) )    ! 3D salinity
       CALL iom_put(  "sss_"//stype, ts(:,:,1,jp_sal,Kmm) )    ! surface salinity
       IF ( iom_use("sbs_"//stype) ) THEN
@@ -339,7 +342,7 @@ CONTAINS
             CALL iom_put( "sssgrad",  z2d )        ! module of sss gradient
          ENDIF
       ENDIF
-         
+
       IF ( iom_use("sstgrad_"//ttype) .OR. iom_use("sstgrad2_"//ttype) ) THEN
          DO_2D( 0, 0, 0, 0 )                       ! sst gradient
             ztmp  = ts(ji,jj,1,jp_tem,Kmm)
@@ -559,6 +562,35 @@ CONTAINS
          ENDIF
       ENDIF
 
+#if defined key_RK3
+      ! Output of surface wind stress
+      !
+      z2dhl(:,:) = 0._wp                     ! Initialise haloes to 0 to avoid XIOS errors due to uninitialised values
+      IF ( iom_use("utau") ) THEN
+         IF ( ln_drgice_imp .OR. ln_isfcav ) THEN
+            DO_2D( 0, 0, 0, 0 )
+               jk = mikt(ji,jj)
+               z2dhl(ji,jj) = utau(ji,jj) + 0.5_wp * rho0 * rCdU_top(ji,jj) * ( uu(ji-1,jj,jk,Kmm) + uu(ji,jj,jk,Kmm) )
+            END_2D
+            CALL iom_put(  "utau", z2dhl )   ! use z2dhl to match the shape of utau
+         ELSE
+            CALL iom_put(  "utau", utau  )
+         ENDIF
+      ENDIF
+      !
+      IF ( iom_use("vtau") ) THEN
+         IF ( ln_drgice_imp .OR. ln_isfcav ) THEN
+            DO_2D( 0, 0, 0, 0 )
+               jk = mikt(ji,jj)
+               z2dhl(ji,jj) = vtau(ji,jj) + 0.5_wp * rho0 * rCdU_top(ji,jj) * ( vv(ji,jj-1,jk,Kmm) + vv(ji,jj,jk,Kmm) )
+            END_2D
+            CALL iom_put(  "vtau", z2dhl )   ! use z2dhl to match the shape of vtau
+         ELSE
+            CALL iom_put(  "vtau", vtau  )
+         ENDIF
+      ENDIF
+#endif
+      !
       IF( ln_timing )   CALL timing_stop('dia_wri')
       !
    END SUBROUTINE dia_wri

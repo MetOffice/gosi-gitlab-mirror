@@ -49,7 +49,7 @@ MODULE zdfdrg
    LOGICAL          ::   ln_non_lin   ! non-linear  drag: Cd = Cd0_nl |U|
    LOGICAL          ::   ln_loglayer  ! logarithmic drag: Cd = vkarmn/log(z/z0)
    LOGICAL , PUBLIC ::   ln_drgimp    ! implicit top/bottom friction flag
-   LOGICAL , PUBLIC ::   ln_drgice_imp ! implicit ice-ocean drag 
+   LOGICAL , PUBLIC ::   ln_drgice_imp = .FALSE. ! implicit ice-ocean drag, force default to false in case zdf_phy_init is not called by nemogcm
    !                                 !!* Namelist namdrg_top & _bot: TOP or BOTTOM coefficient namelist *
    REAL(wp)         ::   rn_Cd0       !: drag coefficient                                           [ - ]
    REAL(wp)         ::   rn_Uc0       !: characteristic velocity (linear case: tau=rho*Cd0*Uc0*u)   [m/s]
