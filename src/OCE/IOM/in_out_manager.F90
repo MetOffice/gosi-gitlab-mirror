@@ -23,6 +23,8 @@ MODULE in_out_manager
    CHARACTER(lc) ::   cn_exp           !: experiment name used for output filename
    CHARACTER(lc) ::   cn_ocerst_in     !: suffix of ocean restart name (input)
    CHARACTER(lc) ::   cn_ocerst_indir  !: restart input directory
+   CHARACTER(lc) ::   cn_ocerstp_in    !: suffix of ocean restart name (input) - passive T/S
+   CHARACTER(lc) ::   cn_ocerstp_indir !: restart input directory - passive T/S
    CHARACTER(lc) ::   cn_ocerst_out    !: suffix of ocean restart name (output)
    CHARACTER(lc) ::   cn_ocerst_outdir !: restart output directory
    LOGICAL       ::   ln_rstart        !: start from (F) rest or (T) a restart file
@@ -90,6 +92,7 @@ MODULE in_out_manager
    LOGICAL ::   lrst_ice              !: logical to control the ice restart write
    LOGICAL ::   lrst_abl              !: logical to control the abl restart write
    INTEGER ::   numror = 0            !: logical unit for ocean restart (read). Init to 0 is needed for SAS (in daymod.F90)
+   INTEGER ::   numropr = 0           !: logical unit for ocean restart passive versions of T/S fields(read). 
    INTEGER ::   numrir = 0            !: logical unit for ice   restart (read)
    INTEGER ::   numrar = 0            !: logical unit for abl   restart (read)
    INTEGER ::   numrow = 0            !: logical unit for ocean restart (write)

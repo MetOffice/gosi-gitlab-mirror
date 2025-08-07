@@ -72,7 +72,7 @@ MODULE step_diu
          ! Control and restarts 
          !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< 
          IF( kstp == nit000   )   CALL iom_close( numror )     ! close input  ocean restart file 
-         IF( lrst_oce         )   CALL rst_write    ( kstp, Nbb, Nnn )   ! write output ocean restart file
+         IF( lrst_oce         )   CALL rst_write    ( kstp, Nbb, Nnn, ts(:,:,:,1:jpts,:) )   ! write output ocean restart file
      
          IF( ln_timing .AND.  kstp == nit000  )   CALL timing_reset 
       ENDIF

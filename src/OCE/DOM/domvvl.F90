@@ -908,7 +908,7 @@ CONTAINS
          !
          IF( ln_rstart ) THEN                   !==  Read the restart file  ==!
             !
-            CALL rst_read_open                                          !*  open the restart file if necessary
+            CALL rst_read_open(numror, cn_ocerst_indir, cn_ocerst_in )   !*  open the restart file if necessary
             !                                         ! --------- !
             !                                         ! all cases !
             !                                         ! --------- !

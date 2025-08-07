@@ -85,7 +85,8 @@ CONTAINS
       !!              -7- Compute the diagnostics variables (rd,N2, hdiv,w)
       !!              -8- Outputs and diagnostics
       !!----------------------------------------------------------------------
-      INTEGER ::   ji, jj, jk, jtile   ! dummy loop indice
+      INTEGER ::   ji, jj, jk, jtile, ipts, its       ! dummy loop indice
+      REAL(wp), POINTER, DIMENSION(:,:,:,:,:) ::  pts ! pointer to the relevant part of the ts array (active or passive)
       !! ---------------------------------------------------------------------
 #if defined key_agrif
       IF( nstop > 0 ) RETURN   ! avoid to go further if an error was detected during previous time step (child grid)
@@ -111,6 +112,8 @@ CONTAINS
          rDt   = rn_Dt   
          r1_Dt = 1._wp / rDt
       ENDIF
+      ! set pointer to active version of T/S:
+      pts => ts(:,:,:,1:jpts,:)
       !
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       ! update I/O and calendar
@@ -161,16 +164,16 @@ CONTAINS
       ! Update stochastic parameters and random T/S fluctuations
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       IF( ln_sto_eos )   CALL sto_par( kstp )                         ! Stochastic parameters
-      IF( ln_sto_eos )   CALL sto_pts( ts(:,:,:,:,Nnn)  )             ! Random T/S fluctuations
+      IF( ln_sto_eos )   CALL sto_pts( pts(:,:,:,:,Nnn)  )             ! Random T/S fluctuations
 
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       ! Ocean physics update
       !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
       !  THERMODYNAMICS
-                         CALL eos_rab( ts(:,:,:,:,Nbb), rab_b, Nnn )       ! before local thermal/haline expension ratio at T-points
-                         CALL eos_rab( ts(:,:,:,:,Nnn), rab_n, Nnn )       ! now    local thermal/haline expension ratio at T-points
-                         CALL bn2    ( ts(:,:,:,:,Nbb), rab_b, rn2b, Nnn ) ! before Brunt-Vaisala frequency
-                         CALL bn2    ( ts(:,:,:,:,Nnn), rab_n, rn2, Nnn  ) ! now    Brunt-Vaisala frequency
+                         CALL eos_rab( pts(:,:,:,:,Nbb), rab_b, Nnn )       ! before local thermal/haline expension ratio at T-points
+                         CALL eos_rab( pts(:,:,:,:,Nnn), rab_n, Nnn )       ! now    local thermal/haline expension ratio at T-points
+                         CALL bn2    ( pts(:,:,:,:,Nbb), rab_b, rn2b, Nnn ) ! before Brunt-Vaisala frequency
+                         CALL bn2    ( pts(:,:,:,:,Nnn), rab_n, rn2, Nnn  ) ! now    Brunt-Vaisala frequency
 
 
       !  VERTICAL PHYSICS
@@ -184,17 +187,17 @@ CONTAINS
                          CALL zdf_phy( kstp, Nbb, Nnn, Nrhs )   ! vertical physics update (top/bot drag, avt, avs, avm + MLD)
       END DO
       IF( ln_tile ) CALL dom_tile_stop
-
+      
       !  LATERAL  PHYSICS
       !
-      IF( ln_zps .OR. l_ldfslp ) CALL eos( ts(:,:,:,:,Nbb), rhd, gdept_0(:,:,:) )               ! before in situ density
+      IF( ln_zps .OR. l_ldfslp ) CALL eos( pts(:,:,:,:,Nbb), rhd, gdept_0(:,:,:) )               ! before in situ density
 
       IF( ln_zps .AND. .NOT. ln_isfcav)                                    &
-            &            CALL zps_hde    ( kstp, jpts, ts(:,:,:,:,Nbb), gtsu, gtsv,  &  ! Partial steps: before horizontal gradient
+            &            CALL zps_hde    ( kstp, jpts, pts(:,:,:,:,Nbb), gtsu, gtsv,  &  ! Partial steps: before horizontal gradient
             &                                          rhd, gru , grv    )       ! of t, s, rd at the last ocean level
 
       IF( ln_zps .AND.       ln_isfcav)                                                &
-            &            CALL zps_hde_isf( kstp, jpts, ts(:,:,:,:,Nbb), gtsu, gtsv, gtui, gtvi,  &  ! Partial steps for top cell (ISF)
+            &            CALL zps_hde_isf( kstp, jpts, pts(:,:,:,:,Nbb), gtsu, gtsv, gtui, gtvi,  &  ! Partial steps for top cell (ISF)
             &                                          rhd, gru , grv , grui, grvi   )       ! of t, s, rd at the first ocean level
 
       IF( l_ldfslp ) THEN                             ! slope of lateral mixing
@@ -298,7 +301,12 @@ CONTAINS
                          CALL dia_ar5   ( kstp,      Nnn )      ! ar5 diag
                          CALL dia_ptr   ( kstp,      Nnn )      ! Poleward adv/ldf TRansports diagnostics
                          CALL dia_prod  ( kstp,      Nnn )      ! ocean model: products
-                         CALL dia_wri   ( kstp,      Nnn )      ! ocean model: outputs
+      IF( ln_passive_TS ) THEN
+                         ! In this case output the passive T/S fields
+                         CALL dia_wri   ( kstp,      Nbb, Nnn, Naa, ts(:,:,:,jpts+1:jpts*2,:) )      ! ocean model: outputs
+      ELSE
+                         CALL dia_wri   ( kstp,      Nbb, Nnn, Naa, ts(:,:,:,1:jpts,:) )      ! ocean model: outputs
+      ENDIF
       IF( ln_crs     )   CALL crs_fld   ( kstp,      Nnn )      ! ocean model: online field coarsening & output
       IF( lk_diadetide ) CALL dia_detide( kstp )                ! Weights computation for daily detiding of model diagnostics
       IF( lk_diamlr  )   CALL dia_mlr                           ! Update time used in multiple-linear-regression analysis
@@ -315,19 +323,27 @@ CONTAINS
       !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                          ts(:,:,:,:,Nrhs) = 0._wp         ! set tracer trends to zero
 
+                         ipts=1
+                         IF( ln_passive_TS ) ipts=2
+
+      DO its = 1, ipts
+         IF( its .eq. 2 ) THEN
+            pts => ts(:,:,:,jpts+1:jpts*2,:)
+         ENDIF
+            
       IF( ln_tile ) CALL dom_tile_start         ! [tiling] TRA tiling loop (1)
       DO jtile = 1, nijtile
          IF( ln_tile ) CALL dom_tile( ntsi, ntsj, ntei, ntej, ktile = jtile )
 
          IF(  lk_asminc .AND. ln_asmiau .AND. &
-            & ln_trainc )   CALL tra_asm_inc( kstp, Nbb, Nnn, ts, Nrhs )  ! apply tracer assimilation increment
-                            CALL tra_sbc    ( kstp,      Nnn, ts, Nrhs )  ! surface boundary condition
-         IF( ln_traqsr  )   CALL tra_qsr    ( kstp,      Nnn, ts, Nrhs )  ! penetrative solar radiation qsr
-         IF( ln_isf     )   CALL tra_isf    ( kstp,      Nnn, ts, Nrhs )  ! ice shelf heat flux
-         IF( ln_trabbc  )   CALL tra_bbc    ( kstp,      Nnn, ts, Nrhs )  ! bottom heat flux
-         IF( ln_trabbl  )   CALL tra_bbl    ( kstp, Nbb, Nnn, ts, Nrhs )  ! advective (and/or diffusive) bottom boundary layer scheme
-         IF( ln_tradmp  )   CALL tra_dmp    ( kstp, Nbb, Nnn, ts, Nrhs )  ! internal damping trends
-         IF( ln_bdy     )   CALL bdy_tra_dmp( kstp, Nbb,      ts, Nrhs )  ! bdy damping trends
+            & ln_trainc )   CALL tra_asm_inc( kstp, Nbb, Nnn, pts, Nrhs )  ! apply tracer assimilation increment
+                            CALL tra_sbc    ( kstp,      Nnn, pts, Nrhs )  ! surface boundary condition
+         IF( ln_traqsr  )   CALL tra_qsr    ( kstp,      Nnn, pts, Nrhs )  ! penetrative solar radiation qsr
+         IF( ln_isf     )   CALL tra_isf    ( kstp,      Nnn, pts, Nrhs )  ! ice shelf heat flux
+         IF( ln_trabbc  )   CALL tra_bbc    ( kstp,      Nnn, pts, Nrhs )  ! bottom heat flux
+         IF( ln_trabbl  )   CALL tra_bbl    ( kstp, Nbb, Nnn, pts, Nrhs )  ! advective (and/or diffusive) bottom boundary layer scheme
+         IF( ln_tradmp  )   CALL tra_dmp    ( kstp, Nbb, Nnn, pts, Nrhs )  ! internal damping trends
+         IF( ln_bdy     )   CALL bdy_tra_dmp( kstp, Nbb,      pts, Nrhs )  ! bdy damping trends
       END DO
       IF( ln_tile ) CALL dom_tile_stop
 
@@ -342,16 +358,16 @@ CONTAINS
       DO jtile = 1, nijtile
          IF( ln_tile ) CALL dom_tile( ntsi, ntsj, ntei, ntej, ktile = jtile )
 
-                            CALL tra_adv    ( kstp, Nbb, Nnn, ts, Nrhs )  ! hor. + vert. advection	==> RHS
-         IF( ln_zdfmfc  )   CALL tra_mfc    ( kstp, Nbb,      ts, Nrhs )  ! Mass Flux Convection
+                            CALL tra_adv    ( kstp, Nbb, Nnn, pts, Nrhs )  ! hor. + vert. advection	==> RHS
+         IF( ln_zdfmfc  )   CALL tra_mfc    ( kstp, Nbb,      pts, Nrhs )  ! Mass Flux Convection
          IF( ln_zdfosm  ) THEN
-                            CALL tra_osm    ( kstp,      Nnn, ts, Nrhs )  ! OSMOSIS non-local tracer fluxes ==> RHS
+                            CALL tra_osm    ( kstp,      Nnn, pts, Nrhs )  ! OSMOSIS non-local tracer fluxes ==> RHS
             IF( lrst_oce )  CALL osm_rst    ( kstp,      Nnn, 'WRITE'  )  ! write OSMOSIS outputs + ww (so must do here) to restarts
          ENDIF
-                            CALL tra_ldf    ( kstp, Nbb, Nnn, ts, Nrhs )  ! lateral mixing
+                            CALL tra_ldf    ( kstp, Nbb, Nnn, pts, Nrhs )  ! lateral mixing
 
-                            CALL tra_zdf    ( kstp, Nbb, Nnn, Nrhs, ts, Naa  )  ! vertical mixing and after tracer fields
-         IF( ln_zdfnpc  )   CALL tra_npc    ( kstp,      Nnn, Nrhs, ts, Naa  )  ! update after fields by non-penetrative convection
+                            CALL tra_zdf    ( kstp, Nbb, Nnn, Nrhs, pts, Naa  )  ! vertical mixing and after tracer fields
+         IF( ln_zdfnpc  )   CALL tra_npc    ( kstp,      Nnn, Nrhs, pts, Naa  )  ! update after fields by non-penetrative convection
       END DO
       IF( ln_tile ) CALL dom_tile_stop
 
@@ -372,7 +388,8 @@ CONTAINS
 !!    place.
 !!
 !!jc2: dynnxt must be the latest call. e3t(:,:,:,Nbb) are indeed updated in that routine
-                         CALL tra_atf       ( kstp, Nbb, Nnn, Naa, ts )                      ! time filtering of "now" tracer arrays
+                         CALL tra_atf       ( kstp, Nbb, Nnn, Naa, pts )                     ! time filtering of "now" tracer arrays
+      END DO ! its 
                          CALL dyn_atf       ( kstp, Nbb, Nnn, Naa, uu, vv, e3t, e3u, e3v  )  ! time filtering of "now" velocities and scale factors
                          CALL ssh_atf       ( kstp, Nbb, Nnn, Naa, ssh )                     ! time filtering of "now" sea surface height
       !
@@ -391,7 +408,7 @@ CONTAINS
 !!
 !!jc: That would be better, but see comment above
 !!
-      IF( lrst_oce   )   CALL rst_write    ( kstp, Nbb, Nnn )   ! write output ocean restart file
+      IF( lrst_oce   )   CALL rst_write    ( kstp, Nbb, Nnn, pts )   ! write output ocean restart file
       IF( ln_sto_eos )   CALL sto_rst_write( kstp )   ! write restart file for stochastic parameters
 
 #if defined key_agrif
@@ -405,7 +422,7 @@ CONTAINS
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       ! Control
       !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                         CALL stp_ctl      ( kstp, Nnn )
+                         CALL stp_ctl      ( kstp, Nnn, pts )
 
 #if defined key_agrif
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

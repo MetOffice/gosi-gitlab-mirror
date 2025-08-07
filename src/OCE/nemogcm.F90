@@ -253,7 +253,7 @@ CONTAINS
       !!
       NAMELIST/namctl/ sn_cfctl, ln_timing, ln_diacfl, nn_isplt, nn_jsplt , nn_ictls,   &
          &                                             nn_ictle, nn_jctls , nn_jctle
-      NAMELIST/namcfg/ ln_read_cfg, cn_domcfg, ln_closea, ln_write_cfg, cn_domcfg_out, ln_use_jattr
+      NAMELIST/namcfg/ ln_read_cfg, cn_domcfg, ln_closea, ln_write_cfg, cn_domcfg_out, ln_use_jattr, ln_passive_TS
       !!----------------------------------------------------------------------
       !
       cxios_context = 'nemo'

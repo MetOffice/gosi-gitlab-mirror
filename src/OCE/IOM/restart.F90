@@ -158,7 +158,7 @@ CONTAINS
    END SUBROUTINE rst_opn
 
 
-   SUBROUTINE rst_write( kt, Kbb, Kmm )
+   SUBROUTINE rst_write( kt, Kbb, Kmm, pts )
       !!---------------------------------------------------------------------
       !!                   ***  ROUTINE rstwrite  ***
       !!
@@ -172,6 +172,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER, INTENT(in) ::   kt         ! ocean time-step
       INTEGER, INTENT(in) ::   Kbb, Kmm   ! ocean time level indices
+      REAL(dp), DIMENSION(jpi,jpj,jpk,jpts,jpt), INTENT(in) :: pts  ! active tracers and RHS of tracer equation
       !!----------------------------------------------------------------------
       !
          CALL iom_rstput( kt, nitrst, numrow, 'rdt'    , rn_Dt       )   ! dynamics time step
@@ -182,15 +183,15 @@ CONTAINS
          CALL iom_rstput( kt, nitrst, numrow, 'sshb', ssh(:,:        ,Kbb) )     ! before fields
          CALL iom_rstput( kt, nitrst, numrow, 'ub'  , uu(:,:,:       ,Kbb) )
          CALL iom_rstput( kt, nitrst, numrow, 'vb'  , vv(:,:,:       ,Kbb) )
-         CALL iom_rstput( kt, nitrst, numrow, 'tb'  , ts(:,:,:,jp_tem,Kbb) )
-         CALL iom_rstput( kt, nitrst, numrow, 'sb'  , ts(:,:,:,jp_sal,Kbb) )
+         CALL iom_rstput( kt, nitrst, numrow, 'tb'  , pts(:,:,:,jp_tem,Kbb) )
+         CALL iom_rstput( kt, nitrst, numrow, 'sb'  , pts(:,:,:,jp_sal,Kbb) )
          !
 #if ! defined key_RK3
          CALL iom_rstput( kt, nitrst, numrow, 'sshn', ssh(:,:        ,Kmm) )     ! now fields
          CALL iom_rstput( kt, nitrst, numrow, 'un'  , uu(:,:,:       ,Kmm) )
          CALL iom_rstput( kt, nitrst, numrow, 'vn'  , vv(:,:,:       ,Kmm) )
-         CALL iom_rstput( kt, nitrst, numrow, 'tn'  , ts(:,:,:,jp_tem,Kmm) )
-         CALL iom_rstput( kt, nitrst, numrow, 'sn'  , ts(:,:,:,jp_sal,Kmm) )
+         CALL iom_rstput( kt, nitrst, numrow, 'tn'  , pts(:,:,:,jp_tem,Kmm) )
+         CALL iom_rstput( kt, nitrst, numrow, 'sn'  , pts(:,:,:,jp_sal,Kmm) )
          IF( .NOT.lk_SWE )   CALL iom_rstput( kt, nitrst, numrow, 'rhop', rhop )
 #endif
       ENDIF
@@ -218,8 +219,7 @@ CONTAINS
       !
    END SUBROUTINE rst_write
 
-
-   SUBROUTINE rst_read_open
+   SUBROUTINE rst_read_open(num_restart, c_ocerst_indir, c_ocerst_in)
       !!----------------------------------------------------------------------
       !!                   ***  ROUTINE rst_read_open  ***
       !!
@@ -228,12 +228,15 @@ CONTAINS
       !! ** Method  :   Use a non-zero, positive value of numror to assess whether or not
       !!                the file has already been opened
       !!----------------------------------------------------------------------
+      INTEGER, INTENT(INOUT)  ::   num_restart
+      CHARACTER, INTENT(IN)   ::   c_ocerst_indir ! ocean input restart path
+      CHARACTER, INTENT(IN)   ::   c_ocerst_in    ! ocean input restart filename
       LOGICAL             ::   llok
-      CHARACTER(len=lc)   ::   clpath   ! full path to ocean output restart file
+      CHARACTER(len=lc)   ::   clpath   ! full path to ocean input restart file
       CHARACTER(len=lc+2) ::   clpname  ! file name including agrif prefix
       !!----------------------------------------------------------------------
       !
-      IF( numror <= 0 ) THEN
+      IF( num_restart <= 0 ) THEN
          IF(lwp) THEN                                             ! Contol prints
             WRITE(numout,*)
             WRITE(numout,*) 'rst_read : read oce NetCDF restart file'
@@ -241,9 +244,9 @@ CONTAINS
             WRITE(numout,*) '~~~~~~~~'
          ENDIF
          lxios_sini = .FALSE.
-         clpath = TRIM(cn_ocerst_indir)
+         clpath = TRIM(c_ocerst_indir)
          IF( clpath(LEN_TRIM(clpath):) /= '/' ) clpath = TRIM(clpath) // '/'
-         CALL iom_open( TRIM(clpath)//cn_ocerst_in, numror )
+         CALL iom_open( TRIM(clpath)//c_ocerst_in, num_restart )
 ! are we using XIOS to read the data? Part above will have to modified once XIOS
 ! can handle checking if variable is in the restart file (there will be no need to open
 ! restart)
@@ -257,7 +260,7 @@ CONTAINS
 !            ELSE
 !               clpname = TRIM(Agrif_CFixed())//"_"//cn_ocerst_in
 !            ENDIF
-             CALL iom_init( cr_ocerst_cxt, kdid = numror, ld_closedef = .TRUE. )
+             CALL iom_init( cr_ocerst_cxt, kdid = num_restart, ld_closedef = .TRUE. )
              CALL iom_swap(      cxios_context          )
          ENDIF
 
@@ -308,6 +311,10 @@ CONTAINS
       CALL iom_get( numror, jpdom_auto, 'vb', vv(:,:,:       ,Kbb), cd_type = 'V', psgn = -1._wp )
       CALL iom_get( numror, jpdom_auto, 'tb', ts(:,:,:,jp_tem,Kbb) )
       CALL iom_get( numror, jpdom_auto, 'sb', ts(:,:,:,jp_sal,Kbb) )
+      IF(ln_passive_TS) THEN
+         CALL iom_get( numropr, jpdom_auto, 'tb', ts(:,:,:,jp_tem_passive,Kbb) )
+         CALL iom_get( numropr, jpdom_auto, 'sb', ts(:,:,:,jp_sal_passive,Kbb) )
+      ENDIF         
 #else
       !                             !*  Read Kmm fields   (MLF only)
       IF(lwp) WRITE(numout,*)    '           Kmm u, v and T-S fields read in the restart file'
@@ -315,6 +322,10 @@ CONTAINS
       CALL iom_get( numror, jpdom_auto, 'vn', vv(:,:,:       ,Kmm), cd_type = 'V', psgn = -1._dp )
       CALL iom_get( numror, jpdom_auto, 'tn', ts(:,:,:,jp_tem,Kmm) )
       CALL iom_get( numror, jpdom_auto, 'sn', ts(:,:,:,jp_sal,Kmm) )
+      IF(ln_passive_TS) THEN
+         CALL iom_get( numropr, jpdom_auto, 'tn', ts(:,:,:,jp_tem_passive,Kmm) )
+         CALL iom_get( numropr, jpdom_auto, 'sn', ts(:,:,:,jp_sal_passive,Kmm) )
+      ENDIF         
       !
       
       IF ( ln_rst_eos ) THEN
@@ -340,6 +351,10 @@ CONTAINS
          CALL iom_get( numror, jpdom_auto, 'vb', vv(:,:,:       ,Kbb), cd_type = 'V', psgn = -1._dp )
          CALL iom_get( numror, jpdom_auto, 'tb', ts(:,:,:,jp_tem,Kbb) )
          CALL iom_get( numror, jpdom_auto, 'sb', ts(:,:,:,jp_sal,Kbb) )
+         IF(ln_passive_TS) THEN
+            CALL iom_get( numropr, jpdom_auto, 'tb', ts(:,:,:,jp_tem_passive,Kbb) )
+            CALL iom_get( numropr, jpdom_auto, 'sb', ts(:,:,:,jp_sal_passive,Kbb) )
+         ENDIF         
       ENDIF
 #endif
       !
@@ -352,10 +367,10 @@ CONTAINS
             DO jk = 1, jpk
                zgdept(:,:,jk) = gdept(:,:,jk,Kmm)
             END DO
-            CALL eos( ts(:,:,:,:,Kmm), rhd, rhop, zgdept )
+            CALL eos( ts(:,:,:,1:jpts,Kmm), rhd, rhop, zgdept )
             DEALLOCATE( zgdept )
 #else
-            CALL eos( ts(:,:,:,:,Kmm), rhd, rhop, gdept(:,:,:,Kmm) )
+            CALL eos( ts(:,:,:,1:jpts,Kmm), rhd, rhop, gdept(:,:,:,Kmm) )
 #endif
          ENDIF
       ENDIF

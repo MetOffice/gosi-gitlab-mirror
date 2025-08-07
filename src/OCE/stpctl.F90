@@ -44,7 +44,7 @@ MODULE stpctl
 #  include "single_precision_substitute.h90"
 CONTAINS
 
-   SUBROUTINE stp_ctl( kt, Kmm )
+   SUBROUTINE stp_ctl( kt, Kmm, pts )
       !!----------------------------------------------------------------------
       !!                    ***  ROUTINE stp_ctl  ***
       !!
@@ -62,6 +62,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER, INTENT(in   ) ::   kt       ! ocean time-step index
       INTEGER, INTENT(in   ) ::   Kmm      ! ocean time level index
+      REAL(dp), DIMENSION(jpi,jpj,jpk,jpts,jpt), INTENT(in) :: pts  ! active tracers and RHS of tracer equation
       !!
       INTEGER, PARAMETER              ::   jptst = 4
       INTEGER                         ::   ji                                    ! dummy loop indices
@@ -140,11 +141,11 @@ CONTAINS
       llmsk(Nis0:Nie0,Njs0:Nje0,:) = umask(Nis0:Nie0,Njs0:Nje0,:) == 1._wp        ! define only the inner domain
       zmax(2) = MAXVAL(  ABS( uu(:,:,:,Kmm) ), mask = llmsk )                     ! velocity max (zonal only)
       llmsk(Nis0:Nie0,Njs0:Nje0,:) = tmask(Nis0:Nie0,Njs0:Nje0,:) == 1._wp        ! define only the inner domain
-      zmax(3) = MAXVAL( -ts(:,:,:,jp_sal,Kmm), mask = llmsk )                     ! minus salinity max
-      zmax(4) = MAXVAL(  ts(:,:,:,jp_sal,Kmm), mask = llmsk )                     !       salinity max
+      zmax(3) = MAXVAL( -pts(:,:,:,jp_sal,Kmm), mask = llmsk )                     ! minus salinity max
+      zmax(4) = MAXVAL(  pts(:,:,:,jp_sal,Kmm), mask = llmsk )                     !       salinity max
       IF( ll_colruns .OR. jpnij == 1 ) THEN     ! following variables are used only in the netcdf file
-         zmax(5) = MAXVAL( -ts(:,:,:,jp_tem,Kmm), mask = llmsk )                  ! minus temperature max
-         zmax(6) = MAXVAL(  ts(:,:,:,jp_tem,Kmm), mask = llmsk )                  !       temperature max
+         zmax(5) = MAXVAL( -pts(:,:,:,jp_tem,Kmm), mask = llmsk )                  ! minus temperature max
+         zmax(6) = MAXVAL(  pts(:,:,:,jp_tem,Kmm), mask = llmsk )                  !       temperature max
          IF( ln_zad_Aimp ) THEN
             zmax(7) = MAXVAL(   Cu_adv(:,:,:)   , mask = llmsk )                  ! partitioning coeff. max
             llmsk(:,:,:) = wmask(:,:,:) == 1._wp
@@ -211,8 +212,8 @@ CONTAINS
             llmsk(Nis0:Nie0,Njs0:Nje0,:) = umask(Nis0:Nie0,Njs0:Nje0,:) == 1._wp        ! define only the inner domain
  CALL mpp_maxloc( 'stpctl', CASTDP(ABS( uu(:,:,:, Kmm))), llmsk(:,:,:), zzz, iloc(1:3,2) )
             llmsk(Nis0:Nie0,Njs0:Nje0,:) = tmask(Nis0:Nie0,Njs0:Nje0,:) == 1._wp        ! define only the inner domain
-            CALL mpp_minloc( 'stpctl',      ts(:,:,:,jp_sal,Kmm) , llmsk(:,:,:), zzz, iloc(1:3,3) )
-            CALL mpp_maxloc( 'stpctl',      CASTDP(ts(:,:,:,jp_sal,Kmm)) , llmsk(:,:,:), zzz, iloc(1:3,4) )
+            CALL mpp_minloc( 'stpctl',      pts(:,:,:,jp_sal,Kmm) , llmsk(:,:,:), zzz, iloc(1:3,3) )
+            CALL mpp_maxloc( 'stpctl',      CASTDP(pts(:,:,:,jp_sal,Kmm)) , llmsk(:,:,:), zzz, iloc(1:3,4) )
             ! find which subdomain has the max.
             iareamin(:) = jpnij+1   ;   iareamax(:) = 0   ;   iareasum(:) = 0
             DO ji = 1, jptst
@@ -230,8 +231,8 @@ CONTAINS
             llmsk(Nis0:Nie0,Njs0:Nje0,:) = umask(Nis0:Nie0,Njs0:Nje0,:) == 1._wp        ! define only the inner domain
             iloc(1:3,2) = MAXLOC( ABS(  uu(:,:,:,       Kmm)), mask = llmsk(:,:,:) )
             llmsk(Nis0:Nie0,Njs0:Nje0,:) = tmask(Nis0:Nie0,Njs0:Nje0,:) == 1._wp        ! define only the inner domain
-            iloc(1:3,3) = MINLOC(       ts(:,:,:,jp_sal,Kmm) , mask = llmsk(:,:,:) )
-            iloc(1:3,4) = MAXLOC(       ts(:,:,:,jp_sal,Kmm) , mask = llmsk(:,:,:) )
+            iloc(1:3,3) = MINLOC(       pts(:,:,:,jp_sal,Kmm) , mask = llmsk(:,:,:) )
+            iloc(1:3,4) = MAXLOC(       pts(:,:,:,jp_sal,Kmm) , mask = llmsk(:,:,:) )
             DO ji = 1, jptst   ! local domain indices ==> global domain indices, excluding halos
                iloc(1:2,ji) = (/ mig0(iloc(1,ji)), mjg0(iloc(2,ji)) /)
             END DO
@@ -249,7 +250,7 @@ CONTAINS
             WRITE(ctmp6,*) '      ===> output of last computed fields in '//TRIM(Agrif_CFixed())//'_output.abort* files'
          ENDIF
          !
-         CALL dia_wri_state( Kmm, 'output.abort' )     ! create an output.abort file
+         CALL dia_wri_state( Kmm, 'output.abort', pts )     ! create an output.abort file
          !
          IF( ll_colruns .OR. jpnij == 1 ) THEN   ! all processes synchronized -> use lwp to print in opened ocean.output files
             IF(lwp) THEN   ;   CALL ctl_stop( ctmp1, ' ', ctmp2, ctmp3, ctmp4, ctmp5, ' ', ctmp6 )

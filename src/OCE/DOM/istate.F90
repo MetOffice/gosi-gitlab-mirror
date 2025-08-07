@@ -115,7 +115,8 @@ CONTAINS
             !                                    ! Initialization of ocean to zero
             !
             IF( ln_tsd_init ) THEN               
-               CALL dta_tsd( nit000, ts(:,:,:,:,Kbb) )                     ! read 3D T and S data at nit000
+               CALL dta_tsd( nit000, ts(:,:,:,1:jpts,Kbb) )                     ! read 3D T and S data at nit000
+               IF( ln_passive_TS ) ts(:,:,:,3:jpts*2,Kbb) = ts(:,:,:,1:jpts,Kbb)
             ENDIF
             !
             IF( ln_uvd_init .AND. ln_c1d ) THEN               
@@ -130,7 +131,8 @@ CONTAINS
                DO jk = 1, jpk
                   zgdept(:,:,jk) = gdept(:,:,jk,Kbb)
                END DO
-               CALL usr_def_istate( zgdept, tmask, ts(:,:,:,:,Kbb), uu(:,:,:,Kbb), vv(:,:,:,Kbb) )
+               CALL usr_def_istate( zgdept, tmask, ts(:,:,:,1:jpts,Kbb), uu(:,:,:,Kbb), vv(:,:,:,Kbb) )
+               IF( ln_passive_TS ) ts(:,:,:,3:jpts*2,Kbb) = ts(:,:,:,1:jpts,Kbb)
                ! make sure that periodicities are properly applied 
                CALL lbc_lnk( 'istate', ts(:,:,:,jp_tem,Kbb), 'T',  1._dp, ts(:,:,:,jp_sal,Kbb), 'T',  1._dp,   &
                   &                    uu(:,:,:,       Kbb), 'U', -1._dp, vv(:,:,:,       Kbb), 'V', -1._dp )
