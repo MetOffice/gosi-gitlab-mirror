@@ -229,8 +229,8 @@ CONTAINS
       !!                the file has already been opened
       !!----------------------------------------------------------------------
       INTEGER, INTENT(INOUT)  ::   num_restart
-      CHARACTER, INTENT(IN)   ::   c_ocerst_indir ! ocean input restart path
-      CHARACTER, INTENT(IN)   ::   c_ocerst_in    ! ocean input restart filename
+      CHARACTER(len=*), INTENT(IN)   ::   c_ocerst_indir ! ocean input restart path
+      CHARACTER(len=*), INTENT(IN)   ::   c_ocerst_in    ! ocean input restart filename
       LOGICAL             ::   llok
       CHARACTER(len=lc)   ::   clpath   ! full path to ocean input restart file
       CHARACTER(len=lc+2) ::   clpname  ! file name including agrif prefix
