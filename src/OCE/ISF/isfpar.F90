@@ -125,8 +125,8 @@ CONTAINS
       rhisf_tbl_par(:,:)  = 1e-20     ; rfrac_tbl_par(:,:)    = 0.0_wp
       !
       ! define isf tbl tickness, top and bottom indice
-      CALL read_2dcstdta(TRIM(sn_isfpar_zmax%clname), TRIM(sn_isfpar_zmax%clvar), ztblmax)
-      CALL read_2dcstdta(TRIM(sn_isfpar_zmin%clname), TRIM(sn_isfpar_zmin%clvar), ztblmin)
+      CALL read_2dcstdta(TRIM(cn_isfdir)//TRIM(sn_isfpar_zmax%clname), TRIM(sn_isfpar_zmax%clvar), ztblmax)
+      CALL read_2dcstdta(TRIM(cn_isfdir)//TRIM(sn_isfpar_zmin%clname), TRIM(sn_isfpar_zmin%clvar), ztblmin)
       !
       ! mask ice shelf parametrisation location
       ztblmax(:,:) = ztblmax(:,:) * ssmask(:,:)
