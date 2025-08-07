@@ -107,7 +107,7 @@ CONTAINS
    END FUNCTION dia_wri_alloc
 
    
-   SUBROUTINE dia_wri( kt, Kmm )
+   SUBROUTINE dia_wri( kt, Kbb, Kmm, Kaa, pts )
       !!---------------------------------------------------------------------
       !!                  ***  ROUTINE dia_wri  ***
       !!                   
@@ -116,8 +116,9 @@ CONTAINS
       !!
       !! ** Method  :  use iom_put
       !!----------------------------------------------------------------------
-      INTEGER, INTENT( in ) ::   kt      ! ocean time-step index
-      INTEGER, INTENT( in ) ::   Kmm     ! ocean time level index
+      INTEGER, INTENT( in ) ::   kt        ! ocean time-step index
+      INTEGER, INTENT( in ) ::   Kbb, Kmm, Kaa  ! ocean time level indices
+      REAL(dp), DIMENSION(jpi,jpj,jpk,jpts,jpt), INTENT(in) :: pts            ! active tracers and RHS of tracer equation
       !!
       INTEGER ::   ji, jj, jk       ! dummy loop indices
       INTEGER ::   ikbot            ! local integer
@@ -156,7 +157,7 @@ CONTAINS
       ! 
       ! Output the initial state and forcings
       IF( ninist == 1 ) THEN                       
-         CALL dia_wri_state( Kmm, 'output.init' )
+         CALL dia_wri_state( Kmm, 'output.init', pts )
          ninist = 0
       ENDIF
 
@@ -219,7 +220,7 @@ CONTAINS
          IF( ll_wd ) THEN                                ! sea surface height (brought back to the reference used for wetting and drying)
             CALL iom_put( "ssh" , (ssh(:,:,Kmm)+ssh_ref)*ssmask(:,:) )
          ELSE
-            CALL iom_put( "ssh" ,  ssh(:,:,Kmm) )        ! sea surface height
+            CALL iom_put( "ssh"   ,  ssh(:,:,Kmm) )        ! sea surface height
          ENDIF
       ENDIF
 
@@ -233,23 +234,23 @@ CONTAINS
 #endif
 
       ! --- tracers T&S --- !      
-      CALL iom_put( "toce_"//ttype, ts(:,:,:,jp_tem,Kmm) )    ! 3D temperature
-      CALL iom_put(  "sst_"//ttype, ts(:,:,1,jp_tem,Kmm) )    ! surface temperature
+      CALL iom_put( "toce_"//ttype, pts(:,:,:,jp_tem,Kmm) )    ! 3D temperature
+      CALL iom_put(  "sst_"//ttype, pts(:,:,1,jp_tem,Kmm) )    ! surface temperature
 
       IF ( iom_use("sbt_"//ttype) ) THEN
          DO_2D( 0, 0, 0, 0 )
             ikbot = mbkt(ji,jj)
-            z2d(ji,jj) = ts(ji,jj,ikbot,jp_tem,Kmm)
+            z2d(ji,jj) = pts(ji,jj,ikbot,jp_tem,Kmm)
          END_2D
          CALL iom_put( "sbt_"//ttype, z2d )                ! bottom temperature
       ENDIF
       
-      CALL iom_put( "soce_"//stype, ts(:,:,:,jp_sal,Kmm) )    ! 3D salinity
-      CALL iom_put(  "sss_"//stype, ts(:,:,1,jp_sal,Kmm) )    ! surface salinity
+      CALL iom_put( "soce_"//stype, pts(:,:,:,jp_sal,Kmm) )    ! 3D salinity
+      CALL iom_put(  "sss_"//stype, pts(:,:,1,jp_sal,Kmm) )    ! surface salinity
       IF ( iom_use("sbs_"//stype) ) THEN
          DO_2D( 0, 0, 0, 0 )
             ikbot = mbkt(ji,jj)
-            z2d(ji,jj) = ts(ji,jj,ikbot,jp_sal,Kmm)
+            z2d(ji,jj) = pts(ji,jj,ikbot,jp_sal,Kmm)
          END_2D
          CALL iom_put( "sbs_"//stype, z2d )                ! bottom salinity
       ENDIF
@@ -271,7 +272,7 @@ CONTAINS
          CALL iom_put( "taubot", z2d )           
       ENDIF
          
-      CALL iom_put( "uoce", uu(:,:,:,Kmm) )            ! 3D i-current
+      CALL iom_put( "uoce"  , uu(:,:,:,Kmm) )            ! 3D i-current
       CALL iom_put(  "ssu", uu(:,:,1,Kmm) )            ! surface i-current
       IF ( iom_use("sbu") ) THEN
          DO_2D( 0, 0, 0, 0 )
@@ -281,7 +282,7 @@ CONTAINS
          CALL iom_put( "sbu", z2d )                ! bottom i-current
       ENDIF
       
-      CALL iom_put( "voce", vv(:,:,:,Kmm) )            ! 3D j-current
+      CALL iom_put( "voce"  , vv(:,:,:,Kmm) )            ! 3D j-current
       CALL iom_put(  "ssv", vv(:,:,1,Kmm) )            ! surface j-current
       IF ( iom_use("sbv") ) THEN
          DO_2D( 0, 0, 0, 0 )
@@ -328,9 +329,9 @@ CONTAINS
 
       IF ( iom_use("sssgrad") .OR. iom_use("sssgrad2") ) THEN
          DO_2D( 0, 0, 0, 0 )                       ! sss gradient
-            zztmp  = ts(ji,jj,1,jp_sal,Kmm)
-            zztmpx = (ts(ji+1,jj,1,jp_sal,Kmm) - zztmp) * r1_e1u(ji,jj) + (zztmp - ts(ji-1,jj  ,1,jp_sal,Kmm)) * r1_e1u(ji-1,jj)
-            zztmpy = (ts(ji,jj+1,1,jp_sal,Kmm) - zztmp) * r1_e2v(ji,jj) + (zztmp - ts(ji  ,jj-1,1,jp_sal,Kmm)) * r1_e2v(ji,jj-1)
+            zztmp  = pts(ji,jj,1,jp_sal,Kmm)
+            zztmpx = (pts(ji+1,jj,1,jp_sal,Kmm) - zztmp) * r1_e1u(ji,jj) + (zztmp - pts(ji-1,jj  ,1,jp_sal,Kmm)) * r1_e1u(ji-1,jj)
+            zztmpy = (pts(ji,jj+1,1,jp_sal,Kmm) - zztmp) * r1_e2v(ji,jj) + (zztmp - pts(ji  ,jj-1,1,jp_sal,Kmm)) * r1_e2v(ji,jj-1)
             z2d(ji,jj) = 0.25_wp * ( zztmpx * zztmpx + zztmpy * zztmpy )   &
                &                 * umask(ji,jj,1) * umask(ji-1,jj,1) * vmask(ji,jj,1) * vmask(ji,jj-1,1)
          END_2D
@@ -345,9 +346,9 @@ CONTAINS
          
       IF ( iom_use("sstgrad_"//ttype) .OR. iom_use("sstgrad2_"//ttype) ) THEN
          DO_2D( 0, 0, 0, 0 )                       ! sst gradient
-            zztmp  = ts(ji,jj,1,jp_tem,Kmm)
-            zztmpx = ( ts(ji+1,jj,1,jp_tem,Kmm) - zztmp ) * r1_e1u(ji,jj) + ( zztmp - ts(ji-1,jj  ,1,jp_tem,Kmm) ) * r1_e1u(ji-1,jj)
-            zztmpy = ( ts(ji,jj+1,1,jp_tem,Kmm) - zztmp ) * r1_e2v(ji,jj) + ( zztmp - ts(ji  ,jj-1,1,jp_tem,Kmm) ) * r1_e2v(ji,jj-1)
+            zztmp  = pts(ji,jj,1,jp_tem,Kmm)
+            zztmpx = ( pts(ji+1,jj,1,jp_tem,Kmm) - zztmp ) * r1_e1u(ji,jj) + ( zztmp - pts(ji-1,jj  ,1,jp_tem,Kmm) ) * r1_e1u(ji-1,jj)
+            zztmpy = ( pts(ji,jj+1,1,jp_tem,Kmm) - zztmp ) * r1_e2v(ji,jj) + ( zztmp - pts(ji  ,jj-1,1,jp_tem,Kmm) ) * r1_e2v(ji,jj-1)
             z2d(ji,jj) = 0.25_wp * ( zztmpx * zztmpx + zztmpy * zztmpy )   &
                &                 * umask(ji,jj,1) * umask(ji-1,jj,1) * vmask(ji,jj,1) * vmask(ji,jj-1,1)
          END_2D
@@ -364,7 +365,7 @@ CONTAINS
       IF( iom_use("heatc") ) THEN
          z2d(:,:)  = 0._wp 
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-            z2d(ji,jj) = z2d(ji,jj) + e3t(ji,jj,jk,Kmm) * ts(ji,jj,jk,jp_tem,Kmm) * tmask(ji,jj,jk)
+            z2d(ji,jj) = z2d(ji,jj) + e3t(ji,jj,jk,Kmm) * pts(ji,jj,jk,jp_tem,Kmm) * tmask(ji,jj,jk)
          END_3D
          CALL iom_put( "heatc", rho0_rcp * z2d )   ! vertically integrated heat content (J/m2)
       ENDIF
@@ -372,7 +373,7 @@ CONTAINS
       IF( iom_use("saltc") ) THEN
          z2d(:,:)  = 0._wp 
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-            z2d(ji,jj) = z2d(ji,jj) + e3t(ji,jj,jk,Kmm) * ts(ji,jj,jk,jp_sal,Kmm) * tmask(ji,jj,jk)
+            z2d(ji,jj) = z2d(ji,jj) + e3t(ji,jj,jk,Kmm) * pts(ji,jj,jk,jp_sal,Kmm) * tmask(ji,jj,jk)
          END_3D
          CALL iom_put( "saltc", rho0 * z2d )       ! vertically integrated salt content (PSU*kg/m2)
       ENDIF
@@ -380,7 +381,7 @@ CONTAINS
       IF( iom_use("salt2c") ) THEN
          z2d(:,:)  = 0._wp 
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-            z2d(ji,jj) = z2d(ji,jj) + e3t(ji,jj,jk,Kmm) * ts(ji,jj,jk,jp_sal,Kmm) * ts(ji,jj,jk,jp_sal,Kmm) * tmask(ji,jj,jk)
+            z2d(ji,jj) = z2d(ji,jj) + e3t(ji,jj,jk,Kmm) * pts(ji,jj,jk,jp_sal,Kmm) * pts(ji,jj,jk,jp_sal,Kmm) * tmask(ji,jj,jk)
          END_3D
          CALL iom_put( "salt2c", rho0 * z2d )      ! vertically integrated square of salt content (PSU2*kg/m2)
       ENDIF
@@ -444,14 +445,14 @@ CONTAINS
             z2d(:,:) = 0._wp 
             zztmp = 0.5_wp * rcp
             DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-               z2d(ji,jj) = z2d(ji,jj) + zztmp * z3d(ji,jj,jk) * ( ts(ji,jj,jk,jp_tem,Kmm) + ts(ji+1,jj,jk,jp_tem,Kmm) )
+               z2d(ji,jj) = z2d(ji,jj) + zztmp * z3d(ji,jj,jk) * ( pts(ji,jj,jk,jp_tem,Kmm) + pts(ji+1,jj,jk,jp_tem,Kmm) )
             END_3D
             CALL iom_put( "u_heattr", z2d )        ! heat transport in i-direction
          ENDIF
          IF( iom_use("u_salttr") ) THEN
             z2d(:,:) = 0._wp 
             DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-               z2d(ji,jj) = z2d(ji,jj) +   0.5 * z3d(ji,jj,jk) * ( ts(ji,jj,jk,jp_sal,Kmm) + ts(ji+1,jj,jk,jp_sal,Kmm) )
+               z2d(ji,jj) = z2d(ji,jj) +   0.5 * z3d(ji,jj,jk) * ( pts(ji,jj,jk,jp_sal,Kmm) + pts(ji+1,jj,jk,jp_sal,Kmm) )
             END_3D
             CALL iom_put( "u_salttr", z2d )        ! heat transport in i-direction
          ENDIF
@@ -469,14 +470,14 @@ CONTAINS
             z2d(:,:) = 0._wp
             zztmp = 0.5_wp * rcp
             DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-               z2d(ji,jj) = z2d(ji,jj) + zztmp * z3d(ji,jj,jk) * ( ts(ji,jj,jk,jp_tem,Kmm) + ts(ji,jj+1,jk,jp_tem,Kmm) )
+               z2d(ji,jj) = z2d(ji,jj) + zztmp * z3d(ji,jj,jk) * ( pts(ji,jj,jk,jp_tem,Kmm) + pts(ji,jj+1,jk,jp_tem,Kmm) )
             END_3D
             CALL iom_put( "v_heattr", z2d )        !  heat transport in j-direction
          ENDIF
          IF( iom_use("v_salttr") ) THEN
             z2d(:,:) = 0._wp 
             DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-               z2d(ji,jj) = z2d(ji,jj) +   0.5 * z3d(ji,jj,jk) * ( ts(ji,jj,jk,jp_sal,Kmm) + ts(ji,jj+1,jk,jp_sal,Kmm) )
+               z2d(ji,jj) = z2d(ji,jj) +   0.5 * z3d(ji,jj,jk) * ( pts(ji,jj,jk,jp_sal,Kmm) + pts(ji,jj+1,jk,jp_sal,Kmm) )
             END_3D
             CALL iom_put( "v_salttr", z2d )        !  heat transport in j-direction
          ENDIF
@@ -495,14 +496,14 @@ CONTAINS
       IF( iom_use("tosmint_"//ttype) ) THEN
          z2d(:,:) = 0._wp
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-            z2d(ji,jj) = z2d(ji,jj) + rho0 * e3t(ji,jj,jk,Kmm) * ts(ji,jj,jk,jp_tem,Kmm)
+            z2d(ji,jj) = z2d(ji,jj) + rho0 * e3t(ji,jj,jk,Kmm) * pts(ji,jj,jk,jp_tem,Kmm)
          END_3D
          CALL iom_put( "tosmint_"//ttype, z2d )            ! Vertical integral of temperature
       ENDIF
       IF( iom_use("somint_"//stype) ) THEN
          z2d(:,:) = 0._wp
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-            z2d(ji,jj) = z2d(ji,jj) + rho0 * e3t(ji,jj,jk,Kmm) * ts(ji,jj,jk,jp_sal,Kmm)
+            z2d(ji,jj) = z2d(ji,jj) + rho0 * e3t(ji,jj,jk,Kmm) * pts(ji,jj,jk,jp_sal,Kmm)
          END_3D
          CALL iom_put( "somint_"//stype, z2d )             ! Vertical integral of salinity
       ENDIF
@@ -624,7 +625,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       !
       IF( ninist == 1 ) THEN     !==  Output the initial state and forcings  ==!
-         CALL dia_wri_state( Kmm, 'output.init' )
+         CALL dia_wri_state( Kmm, 'output.init', ts )
          ninist = 0
       ENDIF
       !
@@ -1144,7 +1145,7 @@ CONTAINS
    END SUBROUTINE dia_wri
 #endif
 
-   SUBROUTINE dia_wri_state( Kmm, cdfile_name )
+   SUBROUTINE dia_wri_state( Kmm, cdfile_name, pts )
       !!---------------------------------------------------------------------
       !!                 ***  ROUTINE dia_wri_state  ***
       !!        
@@ -1159,6 +1160,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER           , INTENT( in ) ::   Kmm              ! time level index
       CHARACTER (len=* ), INTENT( in ) ::   cdfile_name      ! name of the file created
+      REAL(dp), DIMENSION(jpi,jpj,jpk,jpts,jpt), INTENT(in) :: pts  ! active tracers and RHS of tracer equation
       !!
       INTEGER ::   ji, jj, jk       ! dummy loop indices
       INTEGER ::   inum
@@ -1175,8 +1177,8 @@ CONTAINS
       !
       CALL iom_open( TRIM(cdfile_name), inum, ldwrt = .TRUE. )
       !
-      CALL iom_rstput( 0, 0, inum, 'votemper', ts(:,:,:,jp_tem,Kmm) )    ! now temperature
-      CALL iom_rstput( 0, 0, inum, 'vosaline', ts(:,:,:,jp_sal,Kmm) )    ! now salinity
+      CALL iom_rstput( 0, 0, inum, 'votemper', pts(:,:,:,jp_tem,Kmm) )    ! now temperature
+      CALL iom_rstput( 0, 0, inum, 'vosaline', pts(:,:,:,jp_sal,Kmm) )    ! now salinity
       CALL iom_rstput( 0, 0, inum, 'sossheig', ssh(:,:,Kmm)         )    ! sea surface height
       CALL iom_rstput( 0, 0, inum, 'vozocrtx', uu(:,:,:,Kmm)        )    ! now i-velocity
       CALL iom_rstput( 0, 0, inum, 'vomecrty', vv(:,:,:,Kmm)        )    ! now j-velocity
