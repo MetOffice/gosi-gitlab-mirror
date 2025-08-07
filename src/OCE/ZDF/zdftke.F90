@@ -593,16 +593,23 @@ CONTAINS
                END_2D
                !
             CASE( 2 )                      ! scaling with mean sea-ice thickness
-               DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
+               IF( nn_ice > 0 ) THEN
+                  DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
 #if defined key_si3
-                  zmxlm(ji,jj,1) = ( ( 1._wp - fr_i(ji,jj) ) * zraug * taum(ji,jj) + &
-                     &                         fr_i(ji,jj)   * hm_i(ji,jj) * 2._wp ) * tmask(ji,jj,1)
+                     zmxlm(ji,jj,1) = ( ( 1._wp - fr_i(ji,jj) ) * zraug * taum(ji,jj) + &
+                        &                         fr_i(ji,jj)   * hm_i(ji,jj) * 2._wp ) * tmask(ji,jj,1)
 #elif defined key_cice
-                  zmaxice = MAXVAL( h_i(ji,jj,:) )
-                  zmxlm(ji,jj,1) = ( ( 1._wp - fr_i(ji,jj) ) * zraug * taum(ji,jj) + &
-                     &                         fr_i(ji,jj)   * zmaxice             ) * tmask(ji,jj,1)
+                     zmaxice = MAXVAL( h_i(ji,jj,:) )
+                     zmxlm(ji,jj,1) = ( ( 1._wp - fr_i(ji,jj) ) * zraug * taum(ji,jj) + &
+                        &                         fr_i(ji,jj)   * zmaxice             ) * tmask(ji,jj,1)
 #endif
-               END_2D
+                  END_2D
+               ELSE IF( ln_flx ) THEN
+                  DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
+                     zmxlm(ji,jj,1) = ( ( 1._wp - fr_i(ji,jj) ) * zraug * taum(ji,jj) + &
+                          &                         fr_i(ji,jj)   * th_i(ji,jj) * 2._wp ) * tmask(ji,jj,1)
+                  END_2D
+               ENDIF
                !
             CASE( 3 )                      ! scaling with max sea-ice thickness
                DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
@@ -702,6 +709,10 @@ CONTAINS
          END_3D
       ENDIF
       !
+      CALL iom_put("tkemxl", zmxlm(:,:,:) * wmask(:,:,:) )
+      CALL iom_put("tketke", en(:,:,:) * wmask(:,:,:) )
+      CALL iom_put("tkepdlr",apdlr(:,:,:) * wmask(:,:,:) )
+
       IF(sn_cfctl%l_prtctl) THEN
          CALL prt_ctl( tab3d_1=CASTDP(en) , clinfo1=' tke  - e: ', tab3d_2=CASTDP(p_avt), clinfo2=' t: ' )
          CALL prt_ctl( tab3d_1=CASTDP(p_avm), clinfo1=' tke  - m: ' )
@@ -775,7 +786,7 @@ CONTAINS
             CASE DEFAULT
                CALL ctl_stop( 'zdf_tke_init: wrong value for nn_mxlice, should be 0,1,2,3 or 4')
             END SELECT
-            IF     ( (nn_mxlice>0).AND.(nn_ice==0) ) THEN
+            IF     ( (nn_mxlice>0).AND.(nn_ice==0).AND.(.NOT.ln_flx) ) THEN
                CALL ctl_stop( 'zdf_tke_init: with no ice at all, nn_mxlice must be 0 ') 
             ELSEIF ( (nn_mxlice>1).AND.(nn_ice==1) ) THEN
                CALL ctl_stop( 'zdf_tke_init: with no ice model, nn_mxlice must be 0 or 1')

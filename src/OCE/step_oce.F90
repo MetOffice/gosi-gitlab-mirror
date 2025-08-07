@@ -36,6 +36,7 @@ MODULE step_oce
    !                                                      (dom_vvl_sf_swp routine)
    
    USE divhor          ! horizontal divergence            (div_hor routine)
+   USE dyndta          ! read dynamics from files         (dyn_dta routine)
    USE dynadv          ! advection                        (dyn_adv routine)
    USE dynvor          ! vorticity term                   (dyn_vor routine)
    USE dynhpg          ! hydrostatic pressure grad.       (dyn_hpg routine)

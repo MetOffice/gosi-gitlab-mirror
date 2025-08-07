@@ -811,7 +811,6 @@ CONTAINS
          ENDIF
       ENDIF
 
-
       zpsi_uw(:,:, 1 ) = 0._wp   ;   zpsi_vw(:,:, 1 ) = 0._wp
       zpsi_uw(:,:,jpk) = 0._wp   ;   zpsi_vw(:,:,jpk) = 0._wp
       !
@@ -821,6 +820,8 @@ CONTAINS
          zpsi_vw(ji,jj,jk) = - r1_4 * e1v(ji,jj) * ( wslpj(ji,jj,jk  ) + wslpj(ji,jj+1,jk) )   &
             &                                    * ( aeiv (ji,jj,jk-1) + aeiv (ji,jj  ,jk) ) * wvmask(ji,jj,jk)
       END_3D
+      CALL iom_put("psi_eiv_uw", zpsi_uw(:,:,:) )
+      CALL iom_put("psi_eiv_vw", zpsi_vw(:,:,:) )
       !
       DO_3D_OVR( nn_hls, nn_hls-1, nn_hls, nn_hls-1, 1, jpkm1 )
          pu(ji,jj,jk) = pu(ji,jj,jk) - ( zpsi_uw(ji,jj,jk) - zpsi_uw(ji,jj,jk+1) )

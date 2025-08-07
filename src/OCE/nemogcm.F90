@@ -53,6 +53,7 @@ MODULE nemogcm
    USE icbini         ! handle bergs, initialisation
    USE icbstp  , ONLY : icb_end     ! handle bergs, close iceberg files
    USE cpl_oasis3     ! OASIS3 coupling
+   USE dyndta         ! ln_dyndta = T
    USE dyndmp         ! Momentum damping (C1D only)
    USE step_diu       ! diurnal bulk SST timestepping (called from here if run offline)
    USE crsini         ! initialise grid coarsening utility
@@ -461,12 +462,16 @@ CONTAINS
                            CALL tra_ldf_init      ! lateral mixing
 
       !                                      ! Dynamics
+      IF( ln_dyndta    ) THEN
+                           CALL dyn_dta_init         !
+      ELSE
       IF( ln_c1d       )   CALL dyn_dmp_init         ! internal momentum damping
                            CALL dyn_adv_init         ! advection (vector or flux form)
                            CALL dyn_vor_init         ! vorticity term including Coriolis
                            CALL dyn_ldf_init         ! lateral mixing
                            CALL dyn_hpg_init( Nnn )  ! horizontal gradient of Hydrostatic pressure
                            CALL dyn_spg_init         ! surface pressure gradient
+      ENDIF ! ln_dyndta
 
       !                                      ! Icebergs
                            CALL icb_init( rn_Dt, nit000)   ! initialise icebergs instance

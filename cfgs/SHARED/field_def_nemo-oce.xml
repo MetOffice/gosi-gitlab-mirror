@@ -109,7 +109,12 @@ that are available in the tidal-forcing implementation (see
   <!-- T grid -->
 
   <field_group id="grid_T" grid_ref="grid_T_2D" >
+    <field id="sst_tr_adv"   long_name="SST trend after advection"                                                 unit="K/s"  />
+    <field id="sst_tr_ldf"   long_name="SST trend after lateral diffusion"                                         unit="K/s"  />
+    <field id="sst_a_zdf"    long_name="SST after vertical diffusion"                                              unit="K"  />
     <field id="e3t"          long_name="T-cell thickness"                    standard_name="cell_thickness"        unit="m"   grid_ref="grid_T_3D"  />
+    <field id="e3t_b"        long_name="T-cell thickness before"             standard_name="cell_thickness"        unit="m"   grid_ref="grid_T_3D"  />
+    <field id="e3t_a"        long_name="T-cell thickness after"              standard_name="cell_thickness"        unit="m"   grid_ref="grid_T_3D"  />
     <field id="e3ts"         long_name="T-cell thickness"   field_ref="e3t"  standard_name="cell_thickness"        unit="m"   grid_ref="grid_T_SFC"/>
     <field id="e3t_0"        long_name="Initial T-cell thickness"            standard_name="ref_cell_thickness"    unit="m"   grid_ref="grid_T_3D" />
     <field id="e3tb"         long_name="bottom T-cell thickness"             standard_name="bottom_cell_thickness" unit="m"   grid_ref="grid_T_2D"/>
@@ -225,6 +230,8 @@ that are available in the tidal-forcing implementation (see
 
     <field id="ht"           long_name="water column height at T point"                     standard_name="water_column_height_T"                      unit="m" />
     <field id="ssh"          long_name="sea surface height"                                 standard_name="sea_surface_height_above_geoid"             unit="m" />
+    <field id="ssh_b"        long_name="before sea surface height"                          standard_name="sea_surface_height_above_geoid"             unit="m" />
+    <field id="ssh_a"        long_name="after sea surface height"                           standard_name="sea_surface_height_above_geoid"             unit="m" />
     <field id="ssh2"         long_name="square of sea surface height"                       standard_name="square_of_sea_surface_height_above_geoid"   unit="m2" > ssh * ssh </field >
     <field id="wetdep"       long_name="wet depth"                                          standard_name="wet_depth"                                  unit="m" />
     <field id="sshmax"       long_name="max of sea surface height"        field_ref="ssh"   operation="maximum"                                                 />
@@ -536,6 +543,15 @@ that are available in the tidal-forcing implementation (see
       <field id="vtau_oce"     long_name="Wind Stress along j-axis over open ocean (T-points)"  standard_name="surf_down_y_stress_open_oce_Tpoints"        unit="N/m2"    />
 
       <!-- variables computed by the bulk parameterization algorithms (ln_blk) -->
+      <field id="Tair10m"     long_name="air temperature at 10m"                   />
+      <field id="qair10m"     long_name="specific humidity at 10m"                   />
+      <field id="uwind10m"    long_name="u wind at 10m"                   />
+      <field id="vwind10m"    long_name="v wind at 10m"                   />
+      <field id="sw_down"     long_name="downwelling SW"                   />
+      <field id="lw_down"     long_name="downwelling LW"                   />
+      <field id="precip"      long_name="precip"                   />
+      <field id="snow"        long_name="snow"                   />
+      <field id="slp"         long_name="sea level pressure"                   />
       <field id="Cd_oce"      long_name="Drag coefficient over open ocean"              standard_name="drag_coefficient_water"                unit=""  />
       <field id="Ce_oce"      long_name="Evaporaion coefficient over open ocean"        standard_name="evap_coefficient_water"                unit=""  />
       <field id="Ch_oce"      long_name="Sensible heat coefficient over open ocean"     standard_name="sensible_heat_coefficient_water"       unit=""  />
@@ -679,6 +695,8 @@ that are available in the tidal-forcing implementation (see
     <field id="utau"          long_name="Wind Stress along i-axis"                               standard_name="surface_downward_x_stress"   unit="N/m2"                            />
     <field id="uoce"          long_name="ocean current along i-axis"                             standard_name="sea_water_x_velocity"        unit="m/s"        grid_ref="grid_U_3D" />
     <field id="uoce_e3u"      long_name="ocean current along i-axis  (thickness weighted)"                                                   unit="m/s"        grid_ref="grid_U_3D"  > uoce * e3u </field>
+    <field id="uoce_a"          long_name="after ocean current along i-axis"                             standard_name="sea_water_x_velocity"        unit="m/s"        grid_ref="grid_U_3D" />
+    <field id="uoce_a_e3u"      long_name="after ocean current along i-axis  (thickness weighted)"                                                   unit="m/s"        grid_ref="grid_U_3D"  > uoce_a * e3u </field>
     <field id="uoce_e3u_vsum" long_name="ocean current along i-axis * e3u summed on the vertical"  field_ref="uoce_e3u"    unit="m3/s"       grid_ref="grid_U_vsum"/>
     <field id="uocetr_vsum"   long_name="ocean transport along i-axis  summed on the vertical"         field_ref="e2u"       unit="m3/s"> this * uoce_e3u_vsum  </field>
 
@@ -691,6 +709,7 @@ that are available in the tidal-forcing implementation (see
     <field id="sbu"          long_name="ocean bottom current along i-axis"                                                                  unit="m/s"  grid_ref="grid_U_2D_inner" />
     <field id="ubar"         long_name="ocean barotropic current along i-axis"                                                              unit="m/s"                             />
     <field id="uocetr_eff"   long_name="Effective ocean transport along i-axis"                 standard_name="ocean_volume_x_transport"    unit="m3/s"       grid_ref="grid_U_3D" />
+    <field id="uslp"         long_name="Isopycnal slop along i-axis"                                                                        unit="1"          grid_ref="grid_U_3D" />
     <field id="uocet"        long_name="ocean transport along i-axis times temperature (CRS)"                                               unit="degC*m/s"   grid_ref="grid_U_3D" />
     <field id="uoces"        long_name="ocean transport along i-axis times salinity (CRS)"                                                  unit="1e-3*m/s"   grid_ref="grid_U_3D" />
     <field id="ssuww"        long_name="ocean surface wind work along i-axis"                   standard_name="surface_x_wind_work"         unit="N/m*s"                            > utau * ssu </field>
@@ -702,6 +721,7 @@ that are available in the tidal-forcing implementation (see
     <!-- u-eiv diffusivity coefficients (available if ln_ldfeiv=F) -->
     <field id="aeiu_2d"      long_name=" surface u-EIV coefficient"                unit="m2/s" />
     <field id="aeiu_3d"      long_name=" 3D u-EIV coefficient"                     unit="m2/s"              grid_ref="grid_U_3D"/>
+    <field id="psi_eiv_uw"   long_name=" 3D uw-EIV streamfunction"                 unit="m2/s"              grid_ref="grid_U_3D"/>
 
     <!-- variables available with MLE (ln_mle=T) -->
     <field id="psiu_mle"     long_name="MLE streamfunction along i-axis"   unit="m3/s"   grid_ref="grid_U_3D" />
@@ -747,12 +767,15 @@ that are available in the tidal-forcing implementation (see
     <field id="vtau"         long_name="Wind Stress along j-axis"                               standard_name="surface_downward_y_stress"   unit="N/m2"                            />
     <field id="voce"         long_name="ocean current along j-axis"                             standard_name="sea_water_y_velocity"        unit="m/s"        grid_ref="grid_V_3D" />
     <field id="voce_e3v"     long_name="ocean current along j-axis  (thickness weighted)"                                                   unit="m/s"        grid_ref="grid_V_3D"  > voce * e3v </field>
+    <field id="voce_a"         long_name="after ocean current along j-axis"                             standard_name="sea_water_y_velocity"        unit="m/s"        grid_ref="grid_V_3D" />
+    <field id="voce_a_e3v"     long_name="after ocean current along j-axis  (thickness weighted)"                                                   unit="m/s"        grid_ref="grid_V_3D"  > voce_a * e3v </field>
 
     <field id="voce2_e3v"    long_name="ocean current along j-axis squared (thickness weighted)"                                            unit="m3/s2"      grid_ref="grid_V_3D"  > voce * voce * e3v </field>
     <field id="ssv"          long_name="ocean surface current along j-axis"                                                                 unit="m/s"                             />
     <field id="sbv"          long_name="ocean bottom current along j-axis"                                                                  unit="m/s"  grid_ref="grid_V_2D_inner" />
     <field id="vbar"         long_name="ocean barotropic current along j-axis"                                                              unit="m/s"                             />
     <field id="vocetr_eff"   long_name="Effective ocean transport along j-axis"                 standard_name="ocean_volume_y_transport"    unit="m3/s"       grid_ref="grid_V_3D" />
+    <field id="vslp"         long_name="Isopycnal slop along j-axis"                                                                        unit="1"          grid_ref="grid_V_3D" />
     <field id="vocet"        long_name="ocean transport along j-axis times temperature (CRS)"                                               unit="degC*m/s"   grid_ref="grid_V_3D" />
     <field id="voces"        long_name="ocean transport along j-axis times salinity (CRS)"                                                  unit="1e-3*m/s"   grid_ref="grid_V_3D" />
     <field id="ssvww"        long_name="ocean surface wind work along j-axis"                   standard_name="surface_y_wind_work"         unit="N/m*s"                            > vtau * ssv </field>
@@ -763,7 +786,8 @@ that are available in the tidal-forcing implementation (see
     <field id="ahtv_3d"      long_name=" 3D v-eddy diffusivity coefficient"          unit="m2/s or (m4/s)^1/2"           grid_ref="grid_V_3D"/>
     <!-- v-eiv diffusivity coefficients (available if ln_ldfeiv=F) -->
     <field id="aeiv_2d"      long_name=" surface v-EIV coefficient"                  unit="m2/s" />
-    <field id="aeiv_3d"      long_name=" 3D v-EIV coefficient"                       unit="m2/s"                         grid_ref="grid_V_3D" />
+    <field id="aeiv_3d"      long_name=" 3D v-EIV coefficient"                       unit="m2/s"              grid_ref="grid_V_3D" />
+    <field id="psi_eiv_vw"   long_name=" 3D vw-EIV streamfunction"                   unit="m2/s"              grid_ref="grid_V_3D"/>
 
     <!-- variables available with MLE (ln_mle=T) -->
     <field id="psiv_mle"     long_name="MLE streamfunction along j-axis"   unit="m3/s"   grid_ref="grid_V_3D" />
@@ -806,6 +830,8 @@ that are available in the tidal-forcing implementation (see
     <field id="woce"         long_name="ocean vertical velocity"                       standard_name="upward_sea_water_velocity"              unit="m/s"  />
     <field id="woce_e3w"     long_name="ocean vertical velocity * e3w"                                                                        unit="m2/s"  > woce * e3w </field>
     <field id="wocetr_eff"   long_name="effective ocean vertical transport"                                                                   unit="m3/s" />
+    <field id="wslpi"        long_name="Isopycnal slope along i-axis"                                                                         unit="1"    />
+    <field id="wslpj"        long_name="Isopycnal slope along j-axis"                                                                         unit="1"    />
 
     <!-- woce_eiv: available with EIV  (ln_ldfeiv=T and ln_ldfeiv_dia=T)  -->
     <field id="woce_eiv"     long_name="EIV ocean vertical velocity"                    standard_name="bolus_upward_sea_water_velocity"       unit="m/s"  />
@@ -814,6 +840,7 @@ that are available in the tidal-forcing implementation (see
     <field id="weiv_salttr3d" long_name="ocean bolus salt transport"    standard_name="ocean_salt_z_transport_due_to_bolus_advection"   unit="kg"   />
 
     <field id="avt"          long_name="vertical eddy diffusivity"                      standard_name="ocean_vertical_heat_diffusivity"       unit="m2/s" />
+    <field id="avtp"         long_name="pure vertical eddy diffusivity"                 standard_name="ocean_vertical_heat_diffusivity"       unit="m2/s" />
     <field id="avt_e3w"      long_name="vertical heat diffusivity * e3w"                unit="m3/s" > avt * e3w </field>
     <field id="logavt"       long_name="logarithm of vertical eddy diffusivity"         standard_name="ocean_vertical_heat_diffusivity"       unit="m2/s" />
     <field id="avm"          long_name="vertical eddy viscosity"                        standard_name="ocean_vertical_momentum_diffusivity"   unit="m2/s" />
@@ -821,6 +848,7 @@ that are available in the tidal-forcing implementation (see
 
     <!-- avs: /= avt with ln_zdfddm=T -->
     <field id="avs"          long_name="salt vertical eddy diffusivity"                 standard_name="ocean_vertical_salt_diffusivity"       unit="m2/s" />
+    <field id="avsp"         long_name="pure vertical eddy diffusivity"                 standard_name="ocean_vertical_heat_diffusivity"       unit="m2/s" />
     <field id="avs_e3w"      long_name="vertical salt diffusivity * e3w"   unit="m3/s" > avs * e3w </field>
     <field id="logavs"       long_name="logarithm of salt vertical eddy diffusivity"    standard_name="ocean_vertical_heat_diffusivity"       unit="m2/s" />
 
@@ -828,6 +856,11 @@ that are available in the tidal-forcing implementation (see
     <field id="avt_evd"      long_name="convective enhancement of vertical diffusivity" standard_name="ocean_vertical_tracer_diffusivity_due_to_convection"     unit="m2/s" />
     <field id="avt_evd_e3w"  long_name="convective enhancement to vertical diffusivity * e3w "    unit="m3/s" > avt_evd * e3w </field>
     <field id="avm_evd"      long_name="convective enhancement of vertical viscosity"   standard_name="ocean_vertical_momentum_diffusivity_due_to_convection"   unit="m2/s" />
+
+    <!-- TKE variables: available with ln_zdftke -->
+    <field id="tkemxl"      long_name="mixing length"          unit="m"      grid_ref="grid_W_3D" />
+    <field id="tketke"      long_name="vertical TKE"           unit="m2/s2"  grid_ref="grid_W_3D" />
+    <field id="tkepdlr"     long_name="inverse Prandtl number"   unit="1"    grid_ref="grid_W_3D" />
 
     <!-- mf_app and mf_wp: available with ln_zdfmfc -->
     <field id="mf_app"      long_name="convective area"        standard_name="mf_convective_area"    unit="%"      grid_ref="grid_W_3D" />

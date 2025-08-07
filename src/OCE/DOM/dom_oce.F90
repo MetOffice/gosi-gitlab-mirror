@@ -38,6 +38,7 @@ MODULE dom_oce
    LOGICAL , PUBLIC ::   ln_1st_euler   !: =T start with forward time step or not (=F)
    LOGICAL , PUBLIC ::   ln_crs         !: Apply grid coarsening to dynamical model output or online passive tracers
    LOGICAL , PUBLIC ::   ln_c1d         !: =T  single column domain (1x1 pt)
+   LOGICAL , PUBLIC ::   ln_dyndta      !: =T  read in dynamics fields (u,v,ssh) from file
 
    !! Free surface parameters
    !! =======================

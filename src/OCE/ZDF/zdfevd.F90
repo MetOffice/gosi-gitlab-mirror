@@ -39,7 +39,7 @@ MODULE zdfevd
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE zdf_evd( kt, Kmm, Krhs, p_avm, p_avt )
+   SUBROUTINE zdf_evd( kt, Kmm, Krhs, p_avm, p_avt, p_avs )
       !!----------------------------------------------------------------------
       !!                  ***  ROUTINE zdf_evd  ***
       !!                   
@@ -59,6 +59,7 @@ CONTAINS
       INTEGER                    , INTENT(in   ) ::   kt             ! ocean time-step indexocean time step
       INTEGER                    , INTENT(in   ) ::   Kmm, Krhs      ! time level indices
       REAL(wp), DIMENSION(:,:,:) , INTENT(inout) ::   p_avm, p_avt   !  momentum and tracer Kz (w-points)
+      REAL(wp), DIMENSION(:,:,:) , INTENT(inout), OPTIONAL ::   p_avs   !  salinity Kz (w-points)
       !
       INTEGER ::   ji, jj, jk   ! dummy loop indices
       ! NOTE: [tiling] use a SAVE array to store diagnostics, then send after all tiles are finished. This is necessary because p_avt/p_avm are modified on adjacent tiles when using nn_hls > 1. zavt_evd/zavm_evd are then zero on some points when subsequently calculated for these tiles.
@@ -99,6 +100,7 @@ CONTAINS
          DO_3D_OVR( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 1, jpkm1 )
             IF(  MIN( rn2(ji,jj,jk), rn2b(ji,jj,jk) ) <= -1.e-12 ) THEN
                p_avt(ji,jj,jk) = rn_evd * wmask(ji,jj,jk)
+               IF( PRESENT(p_avs) ) p_avs(ji,jj,jk) = rn_evd * wmask(ji,jj,jk)
                p_avm(ji,jj,jk) = rn_evd * wmask(ji,jj,jk)
             ENDIF
          END_3D
@@ -120,6 +122,7 @@ CONTAINS
          DO_3D_OVR( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 1, jpkm1 )
             IF(  MIN( rn2(ji,jj,jk), rn2b(ji,jj,jk) ) <= -1.e-12 )   &
                p_avt(ji,jj,jk) = rn_evd * wmask(ji,jj,jk)
+               IF( PRESENT(p_avs) ) p_avs(ji,jj,jk) = rn_evd * wmask(ji,jj,jk)
          END_3D
          !
       END SELECT 

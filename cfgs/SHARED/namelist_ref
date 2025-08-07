@@ -66,6 +66,7 @@
    ln_xios_read = .false.,  !  use XIOS to read restart file (only for a single file restart)
    nn_wxios = 0      !  use XIOS to write restart file 0 - no, 1 - single file output, 2 - multiple file output
    ln_rst_eos = .TRUE.,     ! check if the equation of state used to produce the restart is consistent with model
+   ln_dyndta = .false.,     ! dynamical fields (u,v,ssh) read in from files instead of calculated.
 /
 !-----------------------------------------------------------------------
 &namdom        !   time and space domain
@@ -251,6 +252,7 @@
    sn_qtot     = 'qtot'                  ,        24.        , 'qtot'    , .false.     , .false., 'yearly'  , ''               , ''       , ''
    sn_qsr      = 'qsr'                   ,        24.        , 'qsr'     , .false.     , .false., 'yearly'  , ''               , ''       , ''
    sn_emp      = 'emp'                   ,        24.        , 'emp'     , .false.     , .false., 'yearly'  , ''               , ''       , ''
+   sn_sfx      = 'sfx'                   ,        24.        , 'emp'     , .false.     , .false., 'yearly'  , ''               , ''       , ''
 /
 !-----------------------------------------------------------------------
 &namsbc_blk    !   namsbc_blk  generic Bulk formula          (ln_blk =T)
@@ -990,6 +992,7 @@
 !!                      ***  Dynamics namelists  ***                  !!
 !!                                                                    !!
 !!   nam_vvl       vertical coordinate options                          (default: z-star)
+!!   namdyn_dta    read in dynamical fields                             (default: OFF)
 !!   namdyn_adv    formulation of the momentum advection                (default: NO selection)
 !!   namdyn_vor    advection scheme                                     (default: NO selection)
 !!   namdyn_hpg    hydrostatic pressure gradient                        (default: NO selection)
@@ -1015,6 +1018,17 @@
                                     !  =0 linear even at the bottom (old)
                                     !  =1 linear with bottom correction
                                     !  =2 proportionnal to scale factors at rest ("qco" like)
+/
+!-----------------------------------------------------------------------
+&namdyn_dta    !   read in dynamics fields from files (ln_dyndta = T)
+!-----------------------------------------------------------------------
+cn_dir      = './'      !  root directory for the fluxes data location
+!___________!_________________________!___________________!___________!_____________!________!___________!__________________!__________!_______________!
+!           !  file name              ! frequency (hours) ! variable  ! time interp.!  clim  ! 'yearly'/ ! weights filename ! rotation ! land/sea mask !
+!           !                         !  (if <0  months)  !   name    !   (logical) !  (T/F) ! 'monthly' !                  ! pairing  !    filename   !
+   sn_ssh    = 'ssh'                  ,        24.        , 'zos'        , .false.     , .false., 'yearly'  , ''               , ''       , ''
+   sn_uu     = 'uo'                   ,        24.        , 'uo'         , .false.     , .false., 'yearly'  , ''               , ''       , ''
+   sn_vv     = 'vo'                   ,        24.        , 'vo'         , .false.     , .false., 'yearly'  , ''               , ''       , ''
 /
 !-----------------------------------------------------------------------
 &namdyn_adv    !   formulation of the momentum advection                (default: NO selection)

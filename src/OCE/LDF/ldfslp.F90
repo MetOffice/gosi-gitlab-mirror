@@ -32,6 +32,7 @@ MODULE ldfslp
    USE lbclnk         ! ocean lateral boundary conditions (or mpp link)
    USE lib_mpp        ! distribued memory computing library
    USE lib_fortran    ! Fortran utilities (allows no signed zero when 'key_nosignedzero' defined)
+   USE iom
    USE timing         ! Timing
 
    IMPLICIT NONE
@@ -319,6 +320,11 @@ CONTAINS
       ! IV. Lateral boundary conditions
       ! ===============================
       CALL lbc_lnk( 'ldfslp', uslp , 'U', -1.0_wp , vslp , 'V', -1.0_wp , wslpi, 'W', -1.0_wp, wslpj, 'W', -1.0_wp )
+
+      CALL iom_put( 'uslp', uslp(:,:,:) )
+      CALL iom_put( 'vslp', vslp(:,:,:) )
+      CALL iom_put( 'wslpi', wslpi(:,:,:) )
+      CALL iom_put( 'wslpj', wslpj(:,:,:) )
 
       IF(sn_cfctl%l_prtctl) THEN
          CALL prt_ctl(tab3d_1=CASTDP(uslp), clinfo1=' slp  - u : ', tab3d_2=CASTDP(vslp),  clinfo2=' v : ')

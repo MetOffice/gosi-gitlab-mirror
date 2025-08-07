@@ -34,8 +34,10 @@ MODULE sbcflx
    INTEGER , PARAMETER ::   jp_qtot = 3   ! index of total (non solar+solar) heat file
    INTEGER , PARAMETER ::   jp_qsr  = 4   ! index of solar heat file
    INTEGER , PARAMETER ::   jp_emp  = 5   ! index of evaporation-precipation file
- !!INTEGER , PARAMETER ::   jp_sfx  = 6   ! index of salt flux flux
-   INTEGER , PARAMETER ::   jpfld   = 5 !! 6 ! maximum number of files to read
+   INTEGER , PARAMETER ::   jp_sfx  = 6   ! index of salt flux flux
+   INTEGER , PARAMETER ::   jp_icefr  = 7   ! index of ice fraction
+   INTEGER , PARAMETER ::   jp_iceth  = 8   ! index of ice thickness
+   INTEGER , PARAMETER ::   jpfld   = 8   ! maximum number of files to read
    TYPE(FLD), ALLOCATABLE, DIMENSION(:) ::   sf    ! structure of input fields (file informations, fields read)
 
    !! * Substitutions
@@ -61,6 +63,8 @@ CONTAINS
       !!                   net downward radiative flux            qsr   (watt/m2)
       !!                   net upward freshwater (evapo - precip) emp   (kg/m2/s)
       !!                   salt flux                              sfx   (pss*dh*rho/dt => g/m2/s)
+      !!                   ice fraction                           fr_i  
+      !!                   ice thickness                          th_i  (m)
       !!
       !!      CAUTION :  - never mask the surface stress fields
       !!                 - the stress is assumed to be in the (i,j) mesh referential
@@ -87,8 +91,8 @@ CONTAINS
       !!
       CHARACTER(len=100) ::  cn_dir                               ! Root directory for location of flx files
       TYPE(FLD_N), DIMENSION(jpfld) ::   slf_i                    ! array of namelist information structures
-      TYPE(FLD_N) ::   sn_utau, sn_vtau, sn_qtot, sn_qsr, sn_emp !!, sn_sfx ! informations about the fields to be read
-      NAMELIST/namsbc_flx/ cn_dir, sn_utau, sn_vtau, sn_qtot, sn_qsr, sn_emp !!, sn_sfx
+      TYPE(FLD_N) ::   sn_utau, sn_vtau, sn_qtot, sn_qsr, sn_emp, sn_sfx, sn_icefr, sn_iceth ! informations about the fields to be read
+      NAMELIST/namsbc_flx/ cn_dir, sn_utau, sn_vtau, sn_qtot, sn_qsr, sn_emp, sn_sfx, sn_icefr, sn_iceth
       !!---------------------------------------------------------------------
       !
       IF( kt == nit000 ) THEN                ! First call kt=nit000
@@ -105,9 +109,10 @@ CONTAINS
             &   CALL ctl_stop( 'sbc_blk_core: ln_dm2dc can be activated only with daily short-wave forcing' )
          !
          !                                         ! store namelist information in an array
-         slf_i(jp_utau) = sn_utau   ;   slf_i(jp_vtau) = sn_vtau
-         slf_i(jp_qtot) = sn_qtot   ;   slf_i(jp_qsr ) = sn_qsr
-         slf_i(jp_emp ) = sn_emp !! ;   slf_i(jp_sfx ) = sn_sfx
+         slf_i(jp_utau) = sn_utau     ;   slf_i(jp_vtau) = sn_vtau
+         slf_i(jp_qtot) = sn_qtot     ;   slf_i(jp_qsr ) = sn_qsr
+         slf_i(jp_emp ) = sn_emp      ;   slf_i(jp_sfx ) = sn_sfx
+         slf_i(jp_icefr ) = sn_icefr  ;   slf_i(jp_iceth ) = sn_iceth
          !
          ALLOCATE( sf(jpfld), STAT=ierror )        ! set sf structure
          IF( ierror > 0 ) THEN
@@ -124,7 +129,11 @@ CONTAINS
          !
       ENDIF
 
+      IF(lwp) WRITE(numout,*) "Calling fld_read"
+      FLUSH(numout)
       CALL fld_read( kt, nn_fsbc, sf )                            ! input fields provided at the current time-step
+      IF(lwp) WRITE(numout,*) "Back from fld_read"
+      FLUSH(numout)
 
       IF( MOD( kt-1, nn_fsbc ) == 0 ) THEN                        ! update ocean fluxes at each SBC frequency
 
@@ -151,8 +160,12 @@ CONTAINS
             vtau(ji,jj) =   sf(jp_vtau)%fnow(ji,jj,1)                              * vmask(ji,jj,1)
             qns (ji,jj) = ( sf(jp_qtot)%fnow(ji,jj,1) - sf(jp_qsr)%fnow(ji,jj,1) ) * tmask(ji,jj,1)
             emp (ji,jj) =   sf(jp_emp )%fnow(ji,jj,1)                              * tmask(ji,jj,1)
-            !!sfx (ji,jj) = sf(jp_sfx )%fnow(ji,jj,1)                              * tmask(ji,jj,1)
+            sfx (ji,jj) =   sf(jp_sfx )%fnow(ji,jj,1)                              * tmask(ji,jj,1)
+            fr_i(ji,jj) =   sf(jp_icefr )%fnow(ji,jj,1)                            * tmask(ji,jj,1)
+            th_i(ji,jj) =   sf(jp_iceth )%fnow(ji,jj,1)                            * tmask(ji,jj,1)
          END_2D
+         IF(lwp) WRITE(numout,*) "Filled in the model fields."
+         FLUSH(numout)
          !                                                        ! add to qns the heat due to e-p
          !!clem: I do not think it is needed
          !!qns(:,:) = qns(:,:) - emp(:,:) * sst_m(:,:) * rcp        ! mass flux is at SST

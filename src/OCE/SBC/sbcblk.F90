@@ -514,6 +514,15 @@ CONTAINS
       !!----------------------------------------------------------------------
       !
       CALL fld_read( kt, nn_fsbc, sf )             ! input fields provided at the current time-step
+      IF( iom_use('uwind10m') )   CALL iom_put("uwind10m", sf(jp_wndi)%fnow(:,:,1) )
+      IF( iom_use('vwind10m') )   CALL iom_put("vwind10m", sf(jp_wndj)%fnow(:,:,1) )
+      IF( iom_use('Tair10m') )   CALL iom_put("Tair10m", sf(jp_tair)%fnow(:,:,1) )
+      IF( iom_use('qair10m') )   CALL iom_put("qair10m", sf(jp_humi)%fnow(:,:,1) )
+      IF( iom_use('sw_down') )   CALL iom_put("sw_down", sf(jp_qsr)%fnow(:,:,1) )
+      IF( iom_use('lw_down') )   CALL iom_put("lw_down", sf(jp_qlw)%fnow(:,:,1) )
+      IF( iom_use('precip') )    CALL iom_put("precip",  sf(jp_prec)%fnow(:,:,1) )
+      IF( iom_use('snow') )      CALL iom_put("snow",    sf(jp_snow)%fnow(:,:,1) )
+      IF( iom_use('slp') )       CALL iom_put("slp",     sf(jp_slp)%fnow(:,:,1) )
 
       ! Sanity/consistence test on humidity at first time step to detect potential screw-up:
       IF( kt == nit000 ) THEN

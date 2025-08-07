@@ -229,7 +229,7 @@ CONTAINS
       ENDIF
       !
       IF( nn_ice == 0 ) THEN        !* No sea-ice in the domain : ice fraction is always zero
-         IF( nn_components /= jp_iam_oce )   fr_i(:,:) = 0._wp    ! except for OCE in SAS-OCE coupled case
+         IF( nn_components /= jp_iam_oce )   fr_i(:,:) = 0._wp ; th_i(:,:) = 0._wp    ! except for OCE in SAS-OCE coupled case
       ENDIF
       !
       sfx   (:,:) = 0._wp           !* salt flux due to freezing/melting

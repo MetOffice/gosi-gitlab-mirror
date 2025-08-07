@@ -273,7 +273,7 @@ CONTAINS
          &             nn_no   , cn_exp   , cn_ocerst_in, cn_ocerst_out, ln_rstart , ln_rstdate, nn_rstctl ,     &
          &             nn_it000, nn_itend , nn_date0    , nn_time0     , nn_leapy  , nn_istate ,     &
          &             nn_stock, nn_write , ln_mskland  , ln_clobber   , nn_chunksz, ln_1st_euler  , &
-         &             ln_cfmeta, ln_xios_read, nn_wxios, ln_rst_eos
+         &             ln_cfmeta, ln_xios_read, nn_wxios, ln_rst_eos   , ln_dyndta
       NAMELIST/namdom/ ln_linssh, rn_Dt, rn_atfp, ln_crs, ln_c1d, ln_meshmask
       NAMELIST/namtile/ ln_tile, nn_ltile_i, nn_ltile_j
 #if defined key_netcdf4
@@ -382,6 +382,7 @@ CONTAINS
          WRITE(numout,*) '      overwrite an existing file      ln_clobber      = ', ln_clobber
          WRITE(numout,*) '      NetCDF chunksize (bytes)        nn_chunksz      = ', nn_chunksz
          WRITE(numout,*) '      check restart equation of state ln_rst_eos      = ', ln_rst_eos
+         WRITE(numout,*) '      read in dynamics fields         ln_dyndta       = ', ln_dyndta
          IF( TRIM(Agrif_CFixed()) == '0' ) THEN
             WRITE(numout,*) '      READ restart for a single file using XIOS ln_xios_read =', ln_xios_read
             WRITE(numout,*) '      Write restart using XIOS        nn_wxios   = ', nn_wxios

@@ -107,7 +107,7 @@ CONTAINS
    END FUNCTION dia_wri_alloc
 
    
-   SUBROUTINE dia_wri( kt, Kmm )
+   SUBROUTINE dia_wri( kt, Kbb, Kmm, Kaa )
       !!---------------------------------------------------------------------
       !!                  ***  ROUTINE dia_wri  ***
       !!                   
@@ -116,8 +116,8 @@ CONTAINS
       !!
       !! ** Method  :  use iom_put
       !!----------------------------------------------------------------------
-      INTEGER, INTENT( in ) ::   kt      ! ocean time-step index
-      INTEGER, INTENT( in ) ::   Kmm     ! ocean time level index
+      INTEGER, INTENT( in ) ::   kt        ! ocean time-step index
+      INTEGER, INTENT( in ) ::   Kbb, Kmm, Kaa  ! ocean time level indices
       !!
       INTEGER ::   ji, jj, jk       ! dummy loop indices
       INTEGER ::   ikbot            ! local integer
@@ -190,6 +190,18 @@ CONTAINS
             CALL iom_put( "e3tdef", z3d ) 
          ENDIF
       ENDIF 
+      IF ( iom_use("e3t_b") ) THEN  
+         DO_3D( 0, 0, 0, 0, 1, jpk )
+            z3d(ji,jj,jk) =  e3t(ji,jj,jk,Kbb)
+         END_3D 
+         CALL iom_put( "e3u" , z3d )
+      ENDIF
+      IF ( iom_use("e3t_a") ) THEN   
+         DO_3D( 0, 0, 0, 0, 1, jpk )
+            z3d(ji,jj,jk) =  e3t(ji,jj,jk,Kaa)
+         END_3D 
+         CALL iom_put( "e3u" , z3d )
+      ENDIF
       IF ( iom_use("e3u") ) THEN                         ! time-varying e3u
          DO_3D( 0, 0, 0, 0, 1, jpk )
             z3d(ji,jj,jk) =  e3u(ji,jj,jk,Kmm)
@@ -215,11 +227,13 @@ CONTAINS
          CALL iom_put( "e3f" , z3d )
       ENDIF
 
-      IF ( iom_use("ssh") ) THEN
+      IF ( iom_use("ssh") .or. iom_use("ssh_a") ) THEN
          IF( ll_wd ) THEN                                ! sea surface height (brought back to the reference used for wetting and drying)
             CALL iom_put( "ssh" , (ssh(:,:,Kmm)+ssh_ref)*ssmask(:,:) )
          ELSE
-            CALL iom_put( "ssh" ,  ssh(:,:,Kmm) )        ! sea surface height
+            CALL iom_put( "ssh"   ,  ssh(:,:,Kmm) )        ! sea surface height
+            CALL iom_put( "ssh_b" ,  ssh(:,:,Kbb) )        ! before sea surface height
+            CALL iom_put( "ssh_a" ,  ssh(:,:,Kaa) )        ! after sea surface height
          ENDIF
       ENDIF
 
@@ -271,7 +285,8 @@ CONTAINS
          CALL iom_put( "taubot", z2d )           
       ENDIF
          
-      CALL iom_put( "uoce", uu(:,:,:,Kmm) )            ! 3D i-current
+      CALL iom_put( "uoce"  , uu(:,:,:,Kmm) )            ! 3D i-current
+      CALL iom_put( "uoce_a", uu(:,:,:,Kaa) )            ! 3D i-current
       CALL iom_put(  "ssu", uu(:,:,1,Kmm) )            ! surface i-current
       IF ( iom_use("sbu") ) THEN
          DO_2D( 0, 0, 0, 0 )
@@ -281,7 +296,8 @@ CONTAINS
          CALL iom_put( "sbu", z2d )                ! bottom i-current
       ENDIF
       
-      CALL iom_put( "voce", vv(:,:,:,Kmm) )            ! 3D j-current
+      CALL iom_put( "voce"  , vv(:,:,:,Kmm) )            ! 3D j-current
+      CALL iom_put( "voce_a", vv(:,:,:,Kaa) )            ! 3D j-current
       CALL iom_put(  "ssv", vv(:,:,1,Kmm) )            ! surface j-current
       IF ( iom_use("sbv") ) THEN
          DO_2D( 0, 0, 0, 0 )

@@ -44,7 +44,8 @@ MODULE step
    !!   stp             : OCE system time-stepping
    !!----------------------------------------------------------------------
    USE step_oce         ! time stepping definition modules
-
+   USE zdfevd
+   
    IMPLICIT NONE
    PRIVATE
 
@@ -184,7 +185,7 @@ CONTAINS
                          CALL zdf_phy( kstp, Nbb, Nnn, Nrhs )   ! vertical physics update (top/bot drag, avt, avs, avm + MLD)
       END DO
       IF( ln_tile ) CALL dom_tile_stop
-
+      
       !  LATERAL  PHYSICS
       !
       IF( ln_zps .OR. l_ldfslp ) CALL eos( ts(:,:,:,:,Nbb), rhd, gdept_0(:,:,:) )               ! before in situ density
@@ -197,6 +198,7 @@ CONTAINS
             &            CALL zps_hde_isf( kstp, jpts, ts(:,:,:,:,Nbb), gtsu, gtsv, gtui, gtvi,  &  ! Partial steps for top cell (ISF)
             &                                          rhd, gru , grv , grui, grvi   )       ! of t, s, rd at the first ocean level
 
+      IF( .not. ln_dyndta ) THEN
       IF( l_ldfslp ) THEN                             ! slope of lateral mixing
          IF( ln_traldf_triad ) THEN
                          CALL ldf_slp_triad( kstp, Nbb, Nnn )             ! before slope for triad operator
@@ -207,7 +209,8 @@ CONTAINS
       !                                                                        ! eddy diffusivity coeff.
       IF( l_ldftra_time .OR. l_ldfeiv_time )   CALL ldf_tra( kstp, Nbb, Nnn )  !       and/or eiv coeff.
       IF( l_ldfdyn_time                    )   CALL ldf_dyn( kstp, Nbb )       ! eddy viscosity coeff.
-
+      ENDIF ! .not. ln_dyndta
+      
       !  BBL coefficients
       !
       IF( ln_trabbl )   CALL bbl( kstp, nit000, Nbb, Nnn )   ! BBL diffusion coefficients and transports
@@ -216,16 +219,32 @@ CONTAINS
       !  Ocean dynamics : hdiv, ssh, e3, u, v, w
       !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
+      IF( ln_dyndta ) THEN
+                         ! update "after" value of ssh and "now" values of uu, vv, ww (=effective volume transports), avt, avs from external files
+                         CALL dyn_dta       ( kstp, Nbb, Nnn, Naa ) 
+                         CALL div_hor       ( kstp, Nbb, Nnn )                 ! Horizontal divergence
+       IF( ln_zdfevd )   CALL zdf_evd       ( kstp, Nnn, Nrhs, avm, avt, avs ) !* convection: enhanced vertical eddy diffusivity
+                         CALL iom_put( 'uslp', uslp(:,:,:) )
+                         CALL iom_put( 'vslp', vslp(:,:,:) )
+                         CALL iom_put( 'wslpi', wslpi(:,:,:) )
+                         CALL iom_put( 'wslpj', wslpj(:,:,:) )
+                         CALL iom_put( "aeiu_2d", aeiu(:,:,1) )   ! surface u-eddy diffusivity coeff.
+                         CALL iom_put( "aeiv_2d", aeiv(:,:,1) )   ! surface v-eddy diffusivity coeff.
+                         CALL iom_put( "aeiu_3d", aeiu(:,:,:) )   ! 3D      u-eddy diffusivity coeff.
+                         CALL iom_put( "aeiv_3d", aeiv(:,:,:) )   ! 3D      v-eddy diffusivity coeff.
+      ELSE
                          CALL ssh_nxt       ( kstp, Nbb, Nnn, ssh, Naa )   ! after ssh (includes call to div_hor)
+      ENDIF
       IF( .NOT.ln_linssh )   &
                        & CALL dom_vvl_sf_nxt( kstp, Nbb, Nnn,      Naa )   ! after vertical scale factors
                          CALL wzv           ( kstp, Nbb, Nnn, Naa, ww  )   ! now cross-level velocity
       IF( ln_zad_Aimp )  CALL wAimp         ( kstp,      Nnn           )   ! Adaptive-implicit vertical advection partitioning
                          CALL eos    ( ts(:,:,:,:,Nnn), rhd, rhop, gdept(:,:,:,Nnn) )  ! now in situ density for hpg computation
 
-
                          uu(:,:,:,Nrhs) = 0._wp            ! set dynamics trends to zero
                          vv(:,:,:,Nrhs) = 0._wp
+      
+      IF( .not. ln_dyndta ) THEN                ! Most of DYN calculation cut out with ln_dyndta             
 
       IF( ln_tile ) CALL dom_tile_start         ! [tiling] DYN tiling loop (1)
       DO jtile = 1, nijtile
@@ -282,6 +301,7 @@ CONTAINS
          IF( ln_zad_Aimp )  CALL wAimp      ( kstp,      Nnn )                      ! Adaptive-implicit vertical advection partitioning
       ENDIF
 
+      ENDIF ! .not. ln_dyndta
 
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       ! cool skin
@@ -298,7 +318,7 @@ CONTAINS
                          CALL dia_ar5   ( kstp,      Nnn )      ! ar5 diag
                          CALL dia_ptr   ( kstp,      Nnn )      ! Poleward adv/ldf TRansports diagnostics
                          CALL dia_prod  ( kstp,      Nnn )      ! ocean model: products
-                         CALL dia_wri   ( kstp,      Nnn )      ! ocean model: outputs
+                         CALL dia_wri   ( kstp,      Nbb, Nnn, Naa )      ! ocean model: outputs
       IF( ln_crs     )   CALL crs_fld   ( kstp,      Nnn )      ! ocean model: online field coarsening & output
       IF( lk_diadetide ) CALL dia_detide( kstp )                ! Weights computation for daily detiding of model diagnostics
       IF( lk_diamlr  )   CALL dia_mlr                           ! Update time used in multiple-linear-regression analysis
@@ -343,14 +363,17 @@ CONTAINS
          IF( ln_tile ) CALL dom_tile( ntsi, ntsj, ntei, ntej, ktile = jtile )
 
                             CALL tra_adv    ( kstp, Nbb, Nnn, ts, Nrhs )  ! hor. + vert. advection	==> RHS
+                            CALL iom_put    ( "sst_tr_adv", ts(:,:,1,jp_tem,Nrhs) )
          IF( ln_zdfmfc  )   CALL tra_mfc    ( kstp, Nbb,      ts, Nrhs )  ! Mass Flux Convection
          IF( ln_zdfosm  ) THEN
                             CALL tra_osm    ( kstp,      Nnn, ts, Nrhs )  ! OSMOSIS non-local tracer fluxes ==> RHS
             IF( lrst_oce )  CALL osm_rst    ( kstp,      Nnn, 'WRITE'  )  ! write OSMOSIS outputs + ww (so must do here) to restarts
          ENDIF
                             CALL tra_ldf    ( kstp, Nbb, Nnn, ts, Nrhs )  ! lateral mixing
+                            CALL iom_put    ( "sst_tr_ldf", ts(:,:,1,jp_tem,Nrhs) )
 
                             CALL tra_zdf    ( kstp, Nbb, Nnn, Nrhs, ts, Naa  )  ! vertical mixing and after tracer fields
+                            CALL iom_put    ( "sst_a_zdf", ts(:,:,1,jp_tem,Naa) )
          IF( ln_zdfnpc  )   CALL tra_npc    ( kstp,      Nnn, Nrhs, ts, Naa  )  ! update after fields by non-penetrative convection
       END DO
       IF( ln_tile ) CALL dom_tile_stop
