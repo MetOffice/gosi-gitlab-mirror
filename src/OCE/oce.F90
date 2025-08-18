@@ -24,7 +24,8 @@ MODULE oce
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)     ::   ww             !: vertical velocity            [m/s]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)     ::   wi             !: vertical vel. (adaptive-implicit) [m/s]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)     ::   hdiv           !: horizontal divergence        [s-1]
-   REAL(dp), PUBLIC, ALLOCATABLE, SAVE, TARGET, DIMENSION(:,:,:,:,:) ::   ts             !: 4D T-S fields                  [Celsius,psu]
+   REAL(dp), PUBLIC, ALLOCATABLE, SAVE, TARGET, DIMENSION(:,:,:,:,:) ::   ts             !: 4D T-S fields                    [Celsius,psu]
+   REAL(dp), PUBLIC, ALLOCATABLE, SAVE, TARGET, DIMENSION(:,:,:,:,:) ::   tsp            !: 4D T-S fields - passive versions [Celsius,psu]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:,:)   ::   rab_b,  rab_n  !: thermal/haline expansion coef. [Celsius-1,psu-1]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)     ::   rn2b ,  rn2    !: brunt-vaisala frequency**2     [s-2]
    !
@@ -88,22 +89,17 @@ CONTAINS
       !!                   ***  FUNCTION oce_alloc  ***
       !!----------------------------------------------------------------------
       INTEGER :: ierr(6)
-      INTEGER :: ipts   ! total number of T/S tracers (dependent on ln_passive_TS)
       !!----------------------------------------------------------------------
       !
       ierr(:) = 0 
-      IF( ln_passive_TS ) THEN
-         ipts = jpts * 2
-      ELSE
-         ipts = jpts
-      ENDIF
       ALLOCATE( uu   (jpi,jpj,jpk,jpt)  , vv   (jpi,jpj,jpk,jpt)           ,     &          
          &      ww   (jpi,jpj,jpk)      , hdiv(jpi,jpj,jpk)                ,     &
-         &      ts   (jpi,jpj,jpk,ipts,jpt)                                ,     &
+         &      ts   (jpi,jpj,jpk,jpts,jpt)                                ,     &
          &      rab_b(jpi,jpj,jpk,jpts) , rab_n(jpi,jpj,jpk,jpts)          ,     &
          &      rn2b (jpi,jpj,jpk)      , rn2  (jpi,jpj,jpk)               ,     &
          &      rhd  (jpi,jpj,jpk)      , rhop (jpi,jpj,jpk)               , STAT=ierr(1) )
          !
+      IF( ln_passive_TS ) ALLOCATE( tsp(jpi,jpj,jpk,jpts,jpt) )
       ALLOCATE( ssh (jpi,jpj,jpt)  , uu_b(jpi,jpj,jpt) , vv_b(jpi,jpj,jpt) ,     &
          &      ssh_frc(jpi,jpj)                                           ,     &
          &      gtsu(jpi,jpj,jpts) , gtsv(jpi,jpj,jpts)                    ,     &

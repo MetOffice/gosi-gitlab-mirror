@@ -80,8 +80,6 @@ MODULE par_oce
    INTEGER, PUBLIC, PARAMETER ::   jpts   = 2    !: Number of active tracers (=2, i.e. T & S )
    INTEGER, PUBLIC, PARAMETER ::   jp_tem = 1    !: indice for temperature
    INTEGER, PUBLIC, PARAMETER ::   jp_sal = 2    !: indice for salinity
-   INTEGER, PUBLIC, PARAMETER ::   jp_tem_passive = 3   !: indice for temperature - passive version
-   INTEGER, PUBLIC, PARAMETER ::   jp_sal_passive = 4   !: indice for salinity - passive version
 
    !!----------------------------------------------------------------------
    !!   Domain decomposition

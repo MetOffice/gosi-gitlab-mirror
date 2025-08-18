@@ -77,7 +77,7 @@ MODULE traqsr
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE tra_qsr( kt, Kmm, pts, Krhs )
+   SUBROUTINE tra_qsr( kt, Kmm, pts, Krhs, l_passive_TS )
       !!----------------------------------------------------------------------
       !!                  ***  ROUTINE tra_qsr  ***
       !!
@@ -106,6 +106,7 @@ CONTAINS
       INTEGER,                                   INTENT(in   ) :: kt            ! ocean time-step
       INTEGER,                                   INTENT(in   ) :: Kmm, Krhs     ! time level indices
       REAL(dp), DIMENSION(jpi,jpj,jpk,jpts,jpt), INTENT(inout) :: pts           ! active tracers and RHS of tracer equation
+      LOGICAL,                                   INTENT(in)    :: l_passive_TS  ! =T : call to update passive versions of T & S.
       !
       INTEGER  ::   ji, jj, jk               ! dummy loop indices
       INTEGER  ::   irgb                     ! local integers
@@ -136,6 +137,9 @@ CONTAINS
       !                         !-----------------------------------!
       !                         !  before qsr induced heat content  !
       !                         !-----------------------------------!
+      z1_2 = 0.5_wp
+      IF( .NOT. l_passive_TS ) THEN
+      !! Many calculations not required the second time round...
       IF( kt == nit000 ) THEN          !==  1st time step  ==!
          IF( ln_rstart .AND. .NOT.l_1st_euler ) THEN    ! read in restart
             z1_2 = 0.5_wp
@@ -276,6 +280,8 @@ CONTAINS
          !
       END SELECT
       !
+      ENDIF ! NOT l_passive_TS
+      !
       !                          !-----------------------------!
       !                          !  update to the temp. trend  !
       !                          !-----------------------------!
@@ -285,6 +291,8 @@ CONTAINS
             &                             / e3t(ji,jj,jk,Kmm)
       END_3D
       !
+      IF( .NOT. l_passive_TS ) THEN
+      !! not required the second time round
       ! sea-ice: store the 1st ocean level attenuation coefficient
       DO_2D_OVR( nn_hls, nn_hls, nn_hls, nn_hls )
          zz0 = r1_rho0_rcp * qsr(ji,jj)   ! test zz0 and not qsr for rounding errors in single precision
@@ -309,6 +317,8 @@ CONTAINS
             CALL iom_rstput( kt, nitrst, numrow, 'fraqsr_1lev', fraqsr_1lev )
          ENDIF
       ENDIF
+      !!
+      ENDIF ! NOT l_passive_TS
       !
       IF( l_trdtra ) THEN     ! qsr tracers trends saved for diagnostics
          ztrdt(:,:,:) = pts(:,:,:,jp_tem,Krhs) - ztrdt(:,:,:)

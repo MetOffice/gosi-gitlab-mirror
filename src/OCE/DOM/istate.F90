@@ -80,6 +80,7 @@ CONTAINS
       IF( ln_c1d) CALL dta_uvd_init     ! Initialisation of U & V input data (c1d only)
 
       ts   (:,:,:,:,Kaa) = 0._wp   ;   rn2  (:,:,:  ) = 0._wp         ! set one for all to 0 at levels 1 and jpk
+      IF ( ln_passive_ts ) tsp (:,:,:,:,Kaa) = 0._wp
       IF ( ALLOCATED( rhd ) ) THEN                                    ! SWE, for example, will not have allocated these
          rhd  (:,:,:      ) = 0._wp   ;   rhop (:,:,:  ) = 0._wp      ! set one for all to 0 at level jpk
          rn2b (:,:,:      ) = 0._wp                                   ! set one for all to 0 at level jpk
@@ -98,6 +99,7 @@ CONTAINS
          CALL agrif_istate_oce( Kbb, Kmm, Kaa )   ! Interp from parent
          !
          ts (:,:,:,:,Kmm) = ts (:,:,:,:,Kbb)
+         IF( ln_passive_TS ) tsp (:,:,:,:,Kmm) = tsp (:,:,:,:,Kbb)
          uu (:,:,:  ,Kmm) = uu (:,:,:  ,Kbb)
          vv (:,:,:  ,Kmm) = vv (:,:,:  ,Kbb)
       ELSE
@@ -115,8 +117,8 @@ CONTAINS
             !                                    ! Initialization of ocean to zero
             !
             IF( ln_tsd_init ) THEN               
-               CALL dta_tsd( nit000, ts(:,:,:,1:jpts,Kbb) )                     ! read 3D T and S data at nit000
-               IF( ln_passive_TS ) ts(:,:,:,3:jpts*2,Kbb) = ts(:,:,:,1:jpts,Kbb)
+               CALL dta_tsd( nit000, ts(:,:,:,:,Kbb) )                     ! read 3D T and S data at nit000
+               IF( ln_passive_TS ) tsp(:,:,:,:,Kbb) = ts(:,:,:,:,Kbb)
             ENDIF
             !
             IF( ln_uvd_init .AND. ln_c1d ) THEN               
@@ -131,13 +133,15 @@ CONTAINS
                DO jk = 1, jpk
                   zgdept(:,:,jk) = gdept(:,:,jk,Kbb)
                END DO
-               CALL usr_def_istate( zgdept, tmask, ts(:,:,:,1:jpts,Kbb), uu(:,:,:,Kbb), vv(:,:,:,Kbb) )
-               IF( ln_passive_TS ) ts(:,:,:,3:jpts*2,Kbb) = ts(:,:,:,1:jpts,Kbb)
+               CALL usr_def_istate( zgdept, tmask, ts(:,:,:,:,Kbb), uu(:,:,:,Kbb), vv(:,:,:,Kbb) )
+               IF( ln_passive_TS ) tsp(:,:,:,:,Kbb) = ts(:,:,:,:,Kbb)
                ! make sure that periodicities are properly applied 
                CALL lbc_lnk( 'istate', ts(:,:,:,jp_tem,Kbb), 'T',  1._dp, ts(:,:,:,jp_sal,Kbb), 'T',  1._dp,   &
                   &                    uu(:,:,:,       Kbb), 'U', -1._dp, vv(:,:,:,       Kbb), 'V', -1._dp )
+               IF( ln_passive_TS ) CALL lbc_lnk( 'istate', tsp(:,:,:,jp_tem,Kbb), 'T',  1._dp, tsp(:,:,:,jp_sal,Kbb), 'T',  1._dp )
             ENDIF
             ts  (:,:,:,:,Kmm) = ts (:,:,:,:,Kbb)       ! set now values from to before ones
+            IF( ln_passive_TS ) tsp  (:,:,:,:,Kmm) = tsp (:,:,:,:,Kbb) 
             uu    (:,:,:,Kmm) = uu   (:,:,:,Kbb)
             vv    (:,:,:,Kmm) = vv   (:,:,:,Kbb)
 

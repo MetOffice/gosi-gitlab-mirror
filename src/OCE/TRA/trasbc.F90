@@ -50,7 +50,7 @@ MODULE trasbc
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE tra_sbc ( kt, Kmm, pts, Krhs )
+   SUBROUTINE tra_sbc ( kt, Kmm, pts, Krhs, l_passive_TS )
       !!----------------------------------------------------------------------
       !!                  ***  ROUTINE tra_sbc  ***
       !!
@@ -74,6 +74,7 @@ CONTAINS
       INTEGER,                                   INTENT(in   ) ::   kt         ! ocean time-step index
       INTEGER,                                   INTENT(in   ) ::   Kmm, Krhs  ! time level indices
       REAL(dp), DIMENSION(jpi,jpj,jpk,jpts,jpt), INTENT(inout) ::   pts        ! active tracers and RHS of tracer Eq.
+      LOGICAL,                                   INTENT(in)    :: l_passive_TS  ! =T : call to update passive versions of T & S.
       !
       INTEGER  ::   ji, jj, jk, jn               ! dummy loop indices
       INTEGER  ::   ikt, ikb                     ! local integers
@@ -108,6 +109,9 @@ CONTAINS
       !----------------------------------------
       !        EMP, SFX and QNS effects
       !----------------------------------------
+      zfact=0.5_wp
+      IF( .NOT. l_passive_TS) THEN
+      !! don't need to update sbc_tsc type fields in this case
       !                             !==  Set before sbc tracer content fields  ==!
       IF( kt == nit000 ) THEN             !* 1st time-step
          IF( ln_rstart .AND. .NOT.l_1st_euler ) THEN      ! Restart: read in restart file
@@ -145,6 +149,8 @@ CONTAINS
          IF( iom_use('emp_x_sss') )   CALL iom_put( "emp_x_sss", emp (:,:) * pts(:,:,1,jp_sal,Kmm) )
       ENDIF
       !
+      ENDIF ! NOT l_passive_TS
+      !
       DO jn = 1, jpts               !==  update tracer trend  ==!
          DO_2D( 0, 0, 0, 0 )
             pts(ji,jj,1,jn,Krhs) = pts(ji,jj,1,jn,Krhs) + zfact * ( sbc_tsc_b(ji,jj,jn) + sbc_tsc(ji,jj,jn) )    &
@@ -152,12 +158,14 @@ CONTAINS
          END_2D
       END DO
       !
+      IF( .NOT. l_passive_TS ) THEN
       IF( .NOT. l_istiled .OR. ntile == nijtile )  THEN                ! Do only on the last tile
          IF( lrst_oce ) THEN           !==  write sbc_tsc in the ocean restart file  ==!
             CALL iom_rstput( kt, nitrst, numrow, 'sbc_hc_b', sbc_tsc(:,:,jp_tem) )
             CALL iom_rstput( kt, nitrst, numrow, 'sbc_sc_b', sbc_tsc(:,:,jp_sal) )
          ENDIF
       ENDIF
+      ENDIF ! NOT l_passive_TS
       !
       !----------------------------------------
       !        River Runoff effects

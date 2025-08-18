@@ -312,8 +312,8 @@ CONTAINS
       CALL iom_get( numror, jpdom_auto, 'tb', ts(:,:,:,jp_tem,Kbb) )
       CALL iom_get( numror, jpdom_auto, 'sb', ts(:,:,:,jp_sal,Kbb) )
       IF(ln_passive_TS) THEN
-         CALL iom_get( numropr, jpdom_auto, 'tb', ts(:,:,:,jp_tem_passive,Kbb) )
-         CALL iom_get( numropr, jpdom_auto, 'sb', ts(:,:,:,jp_sal_passive,Kbb) )
+         CALL iom_get( numropr, jpdom_auto, 'tb', tsp(:,:,:,jp_tem,Kbb) )
+         CALL iom_get( numropr, jpdom_auto, 'sb', tsp(:,:,:,jp_sal,Kbb) )
       ENDIF         
 #else
       !                             !*  Read Kmm fields   (MLF only)
@@ -323,8 +323,8 @@ CONTAINS
       CALL iom_get( numror, jpdom_auto, 'tn', ts(:,:,:,jp_tem,Kmm) )
       CALL iom_get( numror, jpdom_auto, 'sn', ts(:,:,:,jp_sal,Kmm) )
       IF(ln_passive_TS) THEN
-         CALL iom_get( numropr, jpdom_auto, 'tn', ts(:,:,:,jp_tem_passive,Kmm) )
-         CALL iom_get( numropr, jpdom_auto, 'sn', ts(:,:,:,jp_sal_passive,Kmm) )
+         CALL iom_get( numropr, jpdom_auto, 'tn', tsp(:,:,:,jp_tem,Kmm) )
+         CALL iom_get( numropr, jpdom_auto, 'sn', tsp(:,:,:,jp_sal,Kmm) )
       ENDIF         
       !
       
@@ -352,8 +352,8 @@ CONTAINS
          CALL iom_get( numror, jpdom_auto, 'tb', ts(:,:,:,jp_tem,Kbb) )
          CALL iom_get( numror, jpdom_auto, 'sb', ts(:,:,:,jp_sal,Kbb) )
          IF(ln_passive_TS) THEN
-            CALL iom_get( numropr, jpdom_auto, 'tb', ts(:,:,:,jp_tem_passive,Kbb) )
-            CALL iom_get( numropr, jpdom_auto, 'sb', ts(:,:,:,jp_sal_passive,Kbb) )
+            CALL iom_get( numropr, jpdom_auto, 'tb', tsp(:,:,:,jp_tem,Kbb) )
+            CALL iom_get( numropr, jpdom_auto, 'sb', tsp(:,:,:,jp_sal,Kbb) )
          ENDIF         
       ENDIF
 #endif
