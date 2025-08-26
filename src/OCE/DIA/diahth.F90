@@ -127,9 +127,6 @@ CONTAINS
       IF( l_hth ) THEN
          !
          ! initialization
-         IF( iom_use( 'tinv'   ) )   ztinv  (:,:) = 0._wp  
-         IF( iom_use( 'depti'  ) )   zdepinv(:,:) = 0._wp  
-         IF( iom_use( 'mlddzt' ) .OR. iom_use( 'maxdzT' ) )   zmaxdzT(:,:) = 0._wp  
          IF( iom_use( 'mlddzt' ) .OR. iom_use( 'mld_dt02' ) .OR. iom_use( 'topthdep' ) .OR.   &
            & iom_use( 'maxdzT' ) .OR. iom_use( 'mldr10_3' ) .OR. iom_use( 'pycndep'  ) ) THEN
             DO_2D( 1, 1, 1, 1 )
@@ -158,6 +155,7 @@ CONTAINS
             ! MLD: rho = rho(1) + zrho3                                     !
             ! MLD: rho = rho(1) + zrho1                                     !
             ! ------------------------------------------------------------- !
+            zmaxdzT(:,:) = 0._wp
             DO_3DS( 1, 1, 1, 1, jpkm1, 2, -1 )   ! loop from bottom to 2
                !
                zzdep = gdepw(ji,jj,jk,Kmm)
@@ -215,6 +213,8 @@ CONTAINS
             ! temperature inversion: max( 0, max of tn - tn(10m) )          !
             ! depth of temperature inversion                                !
             ! ------------------------------------------------------------- !
+            ztinv  (:,:) = 0._wp  
+            zdepinv(:,:) = 0._wp 
             DO_3DS( 1, 1, 1, 1, jpkm1, nlb10, -1 )   ! loop from bottom to nlb10
                !
                zzdep = gdepw(ji,jj,jk,Kmm) * tmask(ji,jj,1)
