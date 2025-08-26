@@ -155,6 +155,8 @@ CONTAINS
       ncplmodel = kcplmodel
       IF( kcplmodel > nmaxcpl )   &
          CALL oasis_abort ( ncomp_id, 'cpl_define', 'ncplmodel is larger than nmaxcpl, increase nmaxcpl')
+      nrcv = krcv   ! needed by cpl_freq. defined here to avoid circular dependency
+      nsnd = ksnd   ! needed by cpl_freq. defined here to avoid circular dependency
       !
       ! ... Define the shape for the area that excludes the halo as we don't want them to be "seen" by oasis
       !

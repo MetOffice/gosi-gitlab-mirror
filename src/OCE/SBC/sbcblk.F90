@@ -114,7 +114,7 @@ MODULE sbcblk
    LOGICAL          ::   ln_Cx_ice_AN05   ! air-ice bulk transfer coefficients based on Andreas et al., 2005
    LOGICAL          ::   ln_Cx_ice_LU12   ! air-ice bulk transfer coefficients based on Lupkes et al., 2012
    LOGICAL          ::   ln_Cx_ice_LG15   ! air-ice bulk transfer coefficients based on Lupkes & Gryanik, 2015
-   LOGICAL , PUBLIC ::   ln_Cx_ice_frm    !: use form drags
+   LOGICAL , PUBLIC ::   ln_Cx_ice_frm = .FALSE.   !: use form drags, force default to false as sbcblk not called in coupled mode
    INTEGER , PUBLIC ::   nn_frm           !: = 1 : affects momentum and heat transfer coefficient 
                                           !:       for ocean-ice and atmos-ice (default)
                                           !: = 2 : affects only momentum transfer coefficient 
