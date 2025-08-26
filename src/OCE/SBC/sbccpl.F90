@@ -796,7 +796,7 @@ CONTAINS
       ! Need to calculate oceanic albedo if
       !     1. sending mixed oce-ice albedo or
       !     2. receiving mixed oce-ice solar radiation
-      IF( TRIM ( sn_snd_alb%cldes ) == 'mixed oce-ice' .OR. TRIM ( sn_rcv_qsr%cldes ) == 'mixed oce-ice' ) THEN
+      IF( sn_snd_alb%cldes == 'mixed oce-ice' .OR. sn_snd_alb%cldes == 'ice' .OR. sn_rcv_qsr%cldes == 'mixed oce-ice' ) THEN
          CALL oce_alb( zaos, zacs )
          ! Due to lack of information on nebulosity : mean clear/overcast sky
          alb_oce_mix(A2D(0)) = ( zacs(A2D(0)) + zaos(A2D(0)) ) * 0.5
