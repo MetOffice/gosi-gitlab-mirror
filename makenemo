@@ -280,6 +280,8 @@ if [[ ${DO_NEW:-0} -eq 1 || -z "${NEW_CONF}" ]]; then
     elif [ ${REF_NB} -eq 0 ]; then
       echo -e "Please choose at least one reference configuration (-r) or testcase (-a) from:"
       ${COMPIL_DIR}/Flist_cfgs.sh ${MAIN_DIR}; exit 2
+    elif [[ ${REF_NB} -eq 1 && -z "${REF_CMP}" ]]; then
+      echo -e "Reference configuration/testcase not found in ref/demo_cfgs.txt file"; exit 2
     fi
   else
     echo -e "Please choose at least one reference configuration (-r) or testcase (-a) from:"
