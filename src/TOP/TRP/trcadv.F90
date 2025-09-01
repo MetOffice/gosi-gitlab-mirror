@@ -132,7 +132,7 @@ CONTAINS
             !
             ALLOCATE( zuu(T2D(nn_hls),jpk), zvv(T2D(nn_hls),jpk), zww(T2D(nn_hls),jpk))            
             !
-            IF( ln_wave .AND. ln_sdw )  THEN
+            IF( ln_sdw )  THEN
                DO_3D( nn_hls, nn_hls-1, nn_hls, nn_hls-1, 1, jpkm1 )                            ! eulerian transport + Stokes Drift
                   zuu(ji,jj,jk) = e2u(ji,jj) * e3u(ji,jj,jk,Kmm) * ( zptu(ji,jj,jk) + usd(ji,jj,jk) )
                   zvv(ji,jj,jk) = e1v(ji,jj) * e3v(ji,jj,jk,Kmm) * ( zptv(ji,jj,jk) + vsd(ji,jj,jk) )

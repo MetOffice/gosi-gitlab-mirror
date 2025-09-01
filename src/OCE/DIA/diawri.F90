@@ -818,7 +818,7 @@ CONTAINS
          !                                                                                      !!! nid_U : 3D
          CALL histdef( nid_U, "vozocrtx", "Zonal Current"                      , "m/s"    ,   &  ! uu(:,:,:,Kmm)
             &          jpi, jpj, nh_U, jpk, 1, jpk, nz_U, 32, clop, zsto, zout )
-         IF( ln_wave .AND. ln_sdw) THEN
+         IF( ln_sdw) THEN
             CALL histdef( nid_U, "sdzocrtx", "Stokes Drift Zonal Current"         , "m/s"    ,   &  ! usd
                &          jpi, jpj, nh_U, jpk, 1, jpk, nz_U, 32, clop, zsto, zout )
          ENDIF
@@ -828,7 +828,7 @@ CONTAINS
          !                                                                                      !!! nid_V : 3D
          CALL histdef( nid_V, "vomecrty", "Meridional Current"                 , "m/s"    ,   &  ! vv(:,:,:,Kmm)
             &          jpi, jpj, nh_V, jpk, 1, jpk, nz_V, 32, clop, zsto, zout )
-         IF( ln_wave .AND. ln_sdw) THEN
+         IF( ln_sdw) THEN
             CALL histdef( nid_V, "sdmecrty", "Stokes Drift Meridional Current"    , "m/s"    ,   &  ! vsd
                &          jpi, jpj, nh_V, jpk, 1, jpk, nz_V, 32, clop, zsto, zout )
          ENDIF
@@ -848,7 +848,7 @@ CONTAINS
                &          jpi, jpj, nh_W, jpk, 1, jpk, nz_W, 32, clop, zsto, zout )
          ENDIF
          
-         IF( ln_wave .AND. ln_sdw) THEN
+         IF( ln_sdw) THEN
             CALL histdef( nid_W, "sdvecrtz", "Stokes Drift Vertical Current"   , "m/s"    ,   &  ! wsd
                &          jpi, jpj, nh_W, jpk, 1, jpk, nz_W, 32, clop, zsto, zout )
          ENDIF
@@ -1010,7 +1010,7 @@ CONTAINS
          CALL histwrite( nid_W, "voddmavs", kt, z3d         , 1, (/-1/) )    ! S vert. eddy diff. coef.
       ENDIF
 
-      IF( ln_wave .AND. ln_sdw ) THEN
+      IF( ln_sdw ) THEN
          CALL histwrite( nid_U, "sdzocrtx", kt, usd         , 1, (/-1/) )    ! i-StokesDrift-current
          CALL histwrite( nid_V, "sdmecrty", kt, vsd         , 1, (/-1/) )    ! j-StokesDrift-current
          CALL histwrite( nid_W, "sdvecrtz", kt, wsd         , 1, (/-1/) )    ! StokesDrift vert. current
@@ -1126,7 +1126,7 @@ CONTAINS
          END_3D
          CALL iom_rstput( 0, 0, inum, 'vovvle3t', z3d            )    !  T-cell thickness
       END IF
-      IF( ln_wave .AND. ln_sdw ) THEN
+      IF( ln_sdw ) THEN
          CALL iom_rstput( 0, 0, inum, 'sdzocrtx', usd            )    ! now StokesDrift i-velocity
          CALL iom_rstput( 0, 0, inum, 'sdmecrty', vsd            )    ! now StokesDrift j-velocity
          CALL iom_rstput( 0, 0, inum, 'sdvecrtz', wsd            )    ! now StokesDrift k-velocity
