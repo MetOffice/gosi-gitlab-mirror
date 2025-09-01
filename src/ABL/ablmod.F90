@@ -283,7 +283,7 @@ CONTAINS
 
             IF( ln_pga_abl ) THEN
 
-               DO_3D( 0, 0, 0, 0, 0, jpka)
+               DO_3D( 0, 0, 0, 0, 1, jpka)
                   zpabl(ji,jj,jk) = pres_temp( tq_abl(ji,jj,jk,nt_n,jp_qa), pslp_dta(ji,jj), ght_abl(jk), ptpot=tq_abl(ji,jj,jk,nt_n,jp_ta) )
                   zpdta(ji,jj,jk) = pres_temp( pq_dta(ji,jj,jk)           , pslp_dta(ji,jj), ght_abl(jk), ptpot=pt_dta(ji,jj,jk)            )
                   zpdif(ji,jj,jk) = zpabl(ji,jj,jk) - zpdta(ji,jj,jk)
@@ -397,7 +397,7 @@ CONTAINS
                z_elem_a( ji,     jpka )       = 0._wp
                z_elem_c( ji,     jpka )       = 0._wp
                z_elem_b( ji,     jpka )       = e3t_abl( jpka )
-               u_abl   ( ji, jj, jpka, nt_a ) = e3t_abl( jpka ) * pu_dta(ji,jj,jk)
+               u_abl   ( ji, jj, jpka, nt_a ) = e3t_abl( jpka ) * pu_dta(ji,jj,jpka)
             !ENDIF
 
          END_1D
@@ -471,7 +471,7 @@ CONTAINS
                z_elem_a( ji,     jpka )       = 0._wp
                z_elem_c( ji,     jpka )       = 0._wp
                z_elem_b( ji,     jpka )       = e3t_abl( jpka )
-               v_abl   ( ji, jj, jpka, nt_a ) = e3t_abl( jpka ) * pv_dta(ji,jj,jk)
+               v_abl   ( ji, jj, jpka, nt_a ) = e3t_abl( jpka ) * pv_dta(ji,jj,jpka)
             !ENDIF
 
          END_1D
@@ -906,19 +906,12 @@ CONTAINS
                END_1D
             END DO
             !
-!            DO jk = 1, jpka
-!               DO_1Di(0,0)
-!                  mxlm_abl( ji, jj, jk ) = SQRT( zldw( ji, jk ) * zlup( ji, jk ) )
-!                  mxld_abl( ji, jj, jk ) = MIN ( zldw( ji, jk ),  zlup( ji, jk ) )
-!               END_1D
-!            END DO
-            !
             DO jk = 1, jpka
                DO_1Di(0,0)
 !                  zcff = 2.*SQRT(2.)*(  zldw( ji, jk )**(-2._wp/3._wp) + zlup( ji, jk )**(-2._wp/3._wp)  )**(-3._wp/2._wp)
                   zcff = SQRT( zldw( ji, jk ) * zlup( ji, jk ) )
-                  mxlm_abl( ji, jj, jk ) = MAX( zcff, mxl_min )
-                  mxld_abl( ji, jj, jk ) = MAX( MIN( zldw( ji, jk ),  zlup( ji, jk ) ), mxl_min )
+                  mxlm_abl( ji, jj, jk ) = MAX( MIN( zldw( ji, jk ),  zlup( ji, jk ) ), mxl_min )
+                  mxld_abl( ji, jj, jk ) = MAX( zcff, mxl_min )
                END_1D
             END DO
             !
@@ -975,12 +968,10 @@ CONTAINS
             !
             DO jk = 1, jpka
                DO_1Di( 0, 0 )
-                  !mxlm_abl( ji, jj, jk ) = SQRT( zldw( ji, jk ) * zlup( ji, jk ) )
                   !zcff = 2.*SQRT(2.)*(  zldw( ji, jk )**(-2._wp/3._wp) + zlup( ji, jk )**(-2._wp/3._wp)  )**(-3._wp/2._wp)
                   zcff = SQRT( zldw( ji, jk ) * zlup( ji, jk ) )
-                  mxlm_abl( ji, jj, jk ) = MAX( zcff, mxl_min )
-                  !mxld_abl( ji, jj, jk ) = MIN( zldw( ji, jk ), zlup( ji, jk ) )
-                  mxld_abl( ji, jj, jk ) = MAX( MIN( zldw( ji, jk ),  zlup( ji, jk ) ), mxl_min )
+                  mxlm_abl( ji, jj, jk ) = MAX( MIN( zldw( ji, jk ),  zlup( ji, jk ) ), mxl_min )
+                  mxld_abl( ji, jj, jk ) = MAX( zcff, mxl_min )
                END_1D
             END DO
             !
@@ -1077,8 +1068,8 @@ CONTAINS
             DO_1Di( 0, 0 )
                !zcff = 2.*SQRT(2.)*(  zldw( ji, jk )**(-2._wp/3._wp) + zlup( ji, jk )**(-2._wp/3._wp)  )**(-3._wp/2._wp)
                zcff = SQRT( zldw( ji, jk ) * zlup( ji, jk ) )
-               mxlm_abl( ji, jj, jk ) = MAX( zcff, mxl_min )
-               mxld_abl( ji, jj, jk ) = MAX( MIN( zldw( ji, jk ),  zlup( ji, jk ) ), mxl_min )
+               mxlm_abl( ji, jj, jk ) = MAX( MIN( zldw( ji, jk ),  zlup( ji, jk ) ), mxl_min )
+               mxld_abl( ji, jj, jk ) = MAX( zcff, mxl_min )
             END_1D
          END DO
 
@@ -1194,8 +1185,8 @@ CONTAINS
             DO_1Di( 0, 0 )
                !zcff = 2.*SQRT(2.)*(  zldw( ji, jk )**(-2._wp/3._wp) + zlup( ji, jk )**(-2._wp/3._wp)  )**(-3._wp/2._wp)
                zcff = SQRT( zldw( ji, jk ) * zlup( ji, jk ) )
-               mxlm_abl( ji, jj, jk ) = MAX( zcff, mxl_min )
-               mxld_abl( ji, jj, jk ) = MAX(  MIN( zldw( ji, jk ),  zlup( ji, jk ) ), mxl_min )
+               mxlm_abl( ji, jj, jk ) = MAX(  MIN( zldw( ji, jk ),  zlup( ji, jk ) ), mxl_min )
+               mxld_abl( ji, jj, jk ) = MAX( zcff, mxl_min )
             END_1D
          END DO
 
