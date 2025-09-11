@@ -127,7 +127,7 @@ CONTAINS
       ! Ligand production. ln_ligand should be set .true. to activate
       IF( ln_ligand ) CALL p4z_ligand( kt, knt, Kbb,      Krhs )
 
-      IF( ln_diaz )   CALL p4z_diaz( kt, knt, Kbb, Kmm, Krhs )     ! Diazotrophy
+      IF( .NOT. ln_p6z .AND. ln_diaz )   CALL p4z_diaz( kt, knt, Kbb, Kmm, Krhs )     ! Diazotrophy
 
       ! Update of the size of the different phytoplankton groups
       sizen(:,:,:) = MAX( 1.0, sizena(:,:,:) )
