@@ -65,7 +65,7 @@ CONTAINS
       INTEGER  ::   ji, jj, jk, itt
       !
       REAL(wp) ::  ztrfer, ztrpo4s, ztrdp, zwdust, zmudia
-      REAL(wp) ::  zsoufer, zlight, ztrpo4, ztrdop, zratpo4
+      REAL(wp) ::  zlight, ztrpo4, ztrdop, zratpo4
       REAL(wp) ::  zfact, ztemp, zdiano3, zdianh4
       !
       CHARACTER (len=25) :: charout
@@ -83,26 +83,22 @@ CONTAINS
       DO_3D( 0, 0, 0, 0, 1, jpkm1)
          zlight  =  ( 1.- EXP( -etot_ndcy(ji,jj,jk) / diazolight ) ) * ( 1. - fr_i(ji,jj) )
          !
-         IF ( .NOT. ln_p6z ) THEN
-            ztemp = ts(ji,jj,jk,jp_tem,itt)
-            zmudia = MAX( 0.,-0.001096*ztemp*ztemp + 0.057*ztemp -0.637 ) / rno3
-            !       Potential nitrogen fixation dependant on temperature and iron
-            IF( ln_p2z ) THEN
-               zdiano3 = tr(ji,jj,jk,jpno3,Kbb) / ( concnno3 + tr(ji,jj,jk,jpno3,Kbb) )
-               zfact   = ( 1. - zdiano3 ) * rfact2
-               ztrfer  = biron(ji,jj,jk) / ( concfediaz + biron(ji,jj,jk) )
-               nitrpot(ji,jj,jk) =  zmudia * r1_rday * zfact * ztrfer * zlight
-            ELSE
-               zdianh4 = tr(ji,jj,jk,jpnh4,Kbb) / ( concnnh4 + tr(ji,jj,jk,jpnh4,Kbb) )
-               zdiano3 = tr(ji,jj,jk,jpno3,Kbb) / ( concnno3 + tr(ji,jj,jk,jpno3,Kbb) ) * (1. - zdianh4)
-               zfact   = ( 1. - zdiano3 - zdianh4 ) * rfact2
-               ztrfer  = biron(ji,jj,jk) / ( concfediaz + biron(ji,jj,jk) )
-               ztrpo4  = tr(ji,jj,jk,jppo4,Kbb) / ( 1E-6 + tr(ji,jj,jk,jppo4,Kbb) )
-               nitrpot(ji,jj,jk) =  zmudia * r1_rday * zfact * MIN( ztrfer, ztrpo4 ) * zlight
-            ENDIF
+         ztemp = ts(ji,jj,jk,jp_tem,itt)
+         zmudia = MAX( 0.,-0.001096*ztemp*ztemp + 0.057*ztemp -0.637 ) / rno3
+         !       Potential nitrogen fixation dependant on temperature and iron
+         IF( ln_p2z ) THEN
+            zdiano3 = tr(ji,jj,jk,jpno3,Kbb) / ( concnno3 + tr(ji,jj,jk,jpno3,Kbb) )
+            zfact   = ( 1. - zdiano3 ) * rfact2
+            ztrfer  = biron(ji,jj,jk) / ( concfediaz + biron(ji,jj,jk) )
+            nitrpot(ji,jj,jk) =  zmudia * r1_rday * zfact * ztrfer * zlight
+         ELSE
+            zdianh4 = tr(ji,jj,jk,jpnh4,Kbb) / ( concnnh4 + tr(ji,jj,jk,jpnh4,Kbb) )
+            zdiano3 = tr(ji,jj,jk,jpno3,Kbb) / ( concnno3 + tr(ji,jj,jk,jpno3,Kbb) ) * (1. - zdianh4)
+            zfact   = ( 1. - zdiano3 - zdianh4 ) * rfact2
+            ztrfer  = biron(ji,jj,jk) / ( concfediaz + biron(ji,jj,jk) )
+            ztrpo4  = tr(ji,jj,jk,jppo4,Kbb) / ( 1E-6 + tr(ji,jj,jk,jppo4,Kbb) )
+            nitrpot(ji,jj,jk) =  zmudia * r1_rday * zfact * MIN( ztrfer, ztrpo4 ) * zlight
          ENDIF
-         zsoufer = zlight * 1.5E-11**2 / ( 1.5E-11**2 + biron(ji,jj,jk)**2 )
-         tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + 0.01 * 4E-10 * zsoufer * rfact2 / rday
       END_3D
       !
       ! Nitrogen change due to nitrogen fixation

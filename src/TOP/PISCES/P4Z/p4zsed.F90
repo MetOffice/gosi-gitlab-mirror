@@ -14,6 +14,7 @@ MODULE p4zsed
    USE trc             !  passive tracers common variables 
    USE sms_pisces      !  PISCES Source Minus Sink variables
    USE p4zsink         !  Sinking fluxes
+   USE p4zdiaz         !  Diazotrophy
    USE sed             !  Sediment module
    USE iom             !  I/O manager
    USE prtctl          !  print control for debugging
@@ -34,7 +35,7 @@ MODULE p4zsed
    REAL(wp) :: sedfactcalvar  !: Variable  value for dissolving calcite at the bottom
    !
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:  ) :: sdenit     !: Nitrate reduction in the sediments
-   LOGICAL  ::  l_dia_sed, l_dia_sdenit, l_dia_nfix
+   LOGICAL  ::  l_dia_sed, l_dia_sdenit
 
    !! * Substitutions
 #  include "do_loop_substitute.h90"
@@ -65,6 +66,7 @@ CONTAINS
       REAL(wp) ::  zo2, zno3, zpdenit, z1pdenit, zolimit
       REAL(wp) ::  zsiloss, zsiloss2, zcaloss, zdep
       REAL(wp) ::  zwstpoc, zwstpon, zwstpop
+      REAL(wp) ::  zlight, zsoufer 
       !
       CHARACTER (len=25) :: charout
       REAL(wp), DIMENSION(A2D(0)) :: zdenit2d, zrivno3, zrivalk, zrivsil
@@ -73,12 +75,19 @@ CONTAINS
       IF( ln_timing )  CALL timing_start('p4z_sed')
       !
       IF( kt == nittrc000 )  THEN
-         IF( .NOT. ln_p6z ) THEN
-            l_dia_nfix   = iom_use( "Nfix" )
-         ENDIF
          l_dia_sdenit = iom_use( "Sdenit" )
          l_dia_sed    = iom_use( "SedC" ) .OR. iom_use( "SedCal" ) .OR. iom_use( "SedSi" ) 
       ENDIF
+      !
+      ! Nitrogen fixation process
+      ! Small source iron from particulate inorganic iron
+      DO_3D( 0, 0, 0, 0, 1, jpkm1)
+         !
+         zlight  =  ( 1.- EXP( -etot_ndcy(ji,jj,jk) / diazolight ) ) * ( 1. - fr_i(ji,jj) )
+         zsoufer = zlight * 1.5E-11**2 / ( 1.5E-11**2 + biron(ji,jj,jk)**2 )
+         tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + 0.01 * 4E-10 * zsoufer * rfact2 / rday
+         !
+      END_3D
       !
       zdenit2d(:,:) = 0.e0
       zrivno3 (:,:) = 0.e0
