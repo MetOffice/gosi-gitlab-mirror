@@ -459,7 +459,7 @@ else
     case "$ftncomp" in
         intel|oneapi)
             command -v lscpu >/dev/null 2>&1 && AMD_FLAG=( $(lscpu | grep -o "AuthenticAMD") ) || AMD_FLAG=( $(cat /proc/cpuinfo | tail -28 | grep -o "AuthenticAMD") )
-            if [ -n "${AMD_FLAG}" ]; then
+            if [[ ${#AMD_FLAG[@]} > 0 ]]; then
               command -v lscpu >/dev/null 2>&1 && AVX_FLAGS=( $(lscpu | grep -o "avx[^ ]*") ) || AVX_FLAGS=( $(cat /proc/cpuinfo | tail -28 | grep -o "avx[^ ]*") )
               [[ ${AVX_FLAGS[-1]:-""} == "avx2"    ]] && AVX_FCFLAG="-march=core-avx2"
               [[ ${AVX_FLAGS[-1]:-""} == "avx512"* ]] && AVX_FCFLAG="-axCORE-AVX512"
