@@ -63,7 +63,7 @@ CONTAINS
       !!--------------------------------------------------------------------
       !
       DO jk = 2, jpkm1                 !* Shear production at uw- and vw-points (energy conserving form)
-         IF ( cpl_sdrftx .AND. ln_stshear )  THEN       ! Surface Stokes Drift available  ===>>>  shear + stokes drift contibution
+         IF ( cpl_sdrft .AND. ln_stshear )  THEN       ! Surface Stokes Drift available  ===>>>  shear + stokes drift contibution
             DO_2D( 1, 0, 1, 0 )
                zsh2u(ji,jj) =  ( p_avm(ji+1,jj,jk) + p_avm(ji,jj,jk) )            &
                   & * (  0.5_wp * ( uu (ji,jj,jk-1,Kbb) -   uu (ji,jj,jk,Kbb)     &

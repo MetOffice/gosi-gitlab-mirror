@@ -202,8 +202,8 @@ MODULE sbccpl
    !                                   ! Send to waves
    TYPE(FLD_C) ::   sn_snd_ifrac, sn_snd_crtw, sn_snd_wlev
    !                                   ! Received from waves
-   TYPE(FLD_C) ::   sn_rcv_hsig, sn_rcv_phioc, sn_rcv_sdrfx, sn_rcv_sdrfy, sn_rcv_wper, sn_rcv_wnum, &
-      &             sn_rcv_wstrf, sn_rcv_wdrag, sn_rcv_charn, sn_rcv_taw, sn_rcv_bhd, sn_rcv_tusd, sn_rcv_tvsd
+   TYPE(FLD_C) ::   sn_rcv_hsig, sn_rcv_phioc, sn_rcv_sdrf, sn_rcv_wper, sn_rcv_wnum, &
+      &             sn_rcv_wstrf, sn_rcv_wdrag, sn_rcv_charn, sn_rcv_taw, sn_rcv_bhd, sn_rcv_tsd
    !                                   ! Other namelist parameters
    INTEGER     ::   nn_cplmodel           ! Maximum number of models to/from which NEMO is potentialy sending/receiving data
    LOGICAL     ::   ln_usecplmask         !  use a coupling mask file to merge data received from several models
@@ -271,16 +271,15 @@ CONTAINS
       INTEGER ::   ios, inum   ! Local integer
       REAL(wp), DIMENSION(A2D(0)) ::   zacs, zaos
       !!
-      NAMELIST/namsbc_cpl/  nn_cplmodel  , ln_usecplmask, nn_cats_cpl , ln_scale_ice_flux,             &
-         &                  sn_snd_temp  , sn_snd_alb   , sn_snd_thick, sn_snd_crt   , sn_snd_co2   ,  &
-         &                  sn_snd_ttilyr, sn_snd_cond  , sn_snd_mpnd , sn_snd_sstfrz, sn_snd_thick1,  &
-         &                  sn_snd_ifrac , sn_snd_crtw  , sn_snd_wlev , sn_rcv_hsig  , sn_rcv_phioc ,  &
-         &                  sn_rcv_w10m  , sn_rcv_taumod, sn_rcv_tau  , sn_rcv_dqnsdt, sn_rcv_qsr   ,  &
-         &                  sn_rcv_sdrfx , sn_rcv_sdrfy , sn_rcv_wper , sn_rcv_wnum  , sn_rcv_wstrf ,  &
-         &                  sn_rcv_charn , sn_rcv_taw   , sn_rcv_bhd  , sn_rcv_tusd  , sn_rcv_tvsd,    &
-         &                  sn_rcv_wdrag , sn_rcv_qns   , sn_rcv_emp  , sn_rcv_rnf   , sn_rcv_cal  ,   &
-         &                  sn_rcv_iceflx, sn_rcv_co2   , sn_rcv_icb  , sn_rcv_isf   , sn_rcv_ts_ice, sn_rcv_qtrice, &
-         &                  sn_rcv_mslp
+      NAMELIST/namsbc_cpl/  nn_cplmodel  , ln_usecplmask, nn_cats_cpl  , ln_scale_ice_flux,             &
+         &                  sn_snd_temp  , sn_snd_alb   , sn_snd_thick , sn_snd_crt   , sn_snd_co2   ,  &
+         &                  sn_snd_ttilyr, sn_snd_cond  , sn_snd_mpnd  , sn_snd_sstfrz, sn_snd_thick1,  &
+         &                  sn_snd_ifrac , sn_snd_crtw  , sn_snd_wlev  , sn_rcv_hsig  , sn_rcv_phioc ,  &
+         &                  sn_rcv_w10m  , sn_rcv_taumod, sn_rcv_tau   , sn_rcv_dqnsdt, sn_rcv_qsr   ,  &
+         &                  sn_rcv_sdrf  , sn_rcv_wper  , sn_rcv_wnum  , sn_rcv_wstrf , sn_rcv_charn ,  &
+         &                  sn_rcv_taw   , sn_rcv_bhd   , sn_rcv_tsd   , sn_rcv_wdrag , sn_rcv_qns   ,  &
+         &                  sn_rcv_emp   , sn_rcv_rnf   , sn_rcv_cal   , sn_rcv_iceflx, sn_rcv_co2   ,  &
+         &                  sn_rcv_icb   , sn_rcv_isf   , sn_rcv_ts_ice, sn_rcv_qtrice, sn_rcv_mslp
 
       !!---------------------------------------------------------------------
       !
@@ -321,10 +320,9 @@ CONTAINS
          WRITE(numout,*)'      atm co2                         = ', TRIM(sn_rcv_co2%cldes   ), ' (', TRIM(sn_rcv_co2%clcat   ), ')'
          WRITE(numout,*)'      Sea ice surface skin temperature= ', TRIM(sn_rcv_ts_ice%cldes), ' (', TRIM(sn_rcv_ts_ice%clcat), ')'
          WRITE(numout,*)'      surface waves:'
-         WRITE(numout,*)'      significant wave heigth         = ', TRIM(sn_rcv_hsig%cldes  ), ' (', TRIM(sn_rcv_hsig%clcat  ), ')'
+         WRITE(numout,*)'      significant wave height         = ', TRIM(sn_rcv_hsig%cldes  ), ' (', TRIM(sn_rcv_hsig%clcat  ), ')'
          WRITE(numout,*)'      wave to oce energy flux         = ', TRIM(sn_rcv_phioc%cldes ), ' (', TRIM(sn_rcv_phioc%clcat ), ')'
-         WRITE(numout,*)'      Surface Stokes drift grid u     = ', TRIM(sn_rcv_sdrfx%cldes ), ' (', TRIM(sn_rcv_sdrfx%clcat ), ')'
-         WRITE(numout,*)'      Surface Stokes drift grid v     = ', TRIM(sn_rcv_sdrfy%cldes ), ' (', TRIM(sn_rcv_sdrfy%clcat ), ')'
+         WRITE(numout,*)'      Surface Stokes drift            = ', TRIM(sn_rcv_sdrf%cldes  ), ' (', TRIM(sn_rcv_sdrf%clcat  ), ')'
          WRITE(numout,*)'      Mean wave period                = ', TRIM(sn_rcv_wper%cldes  ), ' (', TRIM(sn_rcv_wper%clcat  ), ')'
          WRITE(numout,*)'      Mean wave number                = ', TRIM(sn_rcv_wnum%cldes  ), ' (', TRIM(sn_rcv_wnum%clcat  ), ')'
          WRITE(numout,*)'      Stress frac adsorbed by waves   = ', TRIM(sn_rcv_wstrf%cldes ), ' (', TRIM(sn_rcv_wstrf%clcat ), ')'
@@ -352,19 +350,17 @@ CONTAINS
          WRITE(numout,*)'                      - mesh          = ', sn_snd_crtw%clvgrd
       ENDIF
       IF( lwp .AND. ln_wave) THEN                        ! control print
-         WRITE(numout,*)'      surface waves:'
-         WRITE(numout,*)'      Significant wave heigth         = ', TRIM(sn_rcv_hsig%cldes  ), ' (', TRIM(sn_rcv_hsig%clcat  ), ')'
+         WRITE(numout,*)'      Surface waves:'
+         WRITE(numout,*)'      Significant wave height         = ', TRIM(sn_rcv_hsig%cldes  ), ' (', TRIM(sn_rcv_hsig%clcat  ), ')'
          WRITE(numout,*)'      Wave to oce energy flux         = ', TRIM(sn_rcv_phioc%cldes ), ' (', TRIM(sn_rcv_phioc%clcat ), ')'
-         WRITE(numout,*)'      Surface Stokes drift grid u     = ', TRIM(sn_rcv_sdrfx%cldes ), ' (', TRIM(sn_rcv_sdrfx%clcat ), ')'
-         WRITE(numout,*)'      Surface Stokes drift grid v     = ', TRIM(sn_rcv_sdrfy%cldes ), ' (', TRIM(sn_rcv_sdrfy%clcat ), ')'
+         WRITE(numout,*)'      Surface Stokes drift            = ', TRIM(sn_rcv_sdrf%cldes  ), ' (', TRIM(sn_rcv_sdrf%clcat  ), ')'
          WRITE(numout,*)'      Mean wave period                = ', TRIM(sn_rcv_wper%cldes  ), ' (', TRIM(sn_rcv_wper%clcat  ), ')'
          WRITE(numout,*)'      Mean wave number                = ', TRIM(sn_rcv_wnum%cldes  ), ' (', TRIM(sn_rcv_wnum%clcat  ), ')'
          WRITE(numout,*)'      Stress frac adsorbed by waves   = ', TRIM(sn_rcv_wstrf%cldes ), ' (', TRIM(sn_rcv_wstrf%clcat ), ')'
          WRITE(numout,*)'      Neutral surf drag coefficient   = ', TRIM(sn_rcv_wdrag%cldes ), ' (', TRIM(sn_rcv_wdrag%clcat ), ')'
          WRITE(numout,*)'      Charnock coefficient            = ', TRIM(sn_rcv_charn%cldes ), ' (', TRIM(sn_rcv_charn%clcat ), ')'
-         WRITE(numout,*)' Transport associated to Stokes drift u = ', TRIM(sn_rcv_tusd%cldes ), ' (', TRIM(sn_rcv_tusd%clcat ), ')'
-         WRITE(numout,*)' Transport associated to Stokes drift v = ', TRIM(sn_rcv_tvsd%cldes ), ' (', TRIM(sn_rcv_tvsd%clcat ), ')'
-         WRITE(numout,*)'      Bernouilli pressure head        = ', TRIM(sn_rcv_bhd%cldes   ), ' (', TRIM(sn_rcv_bhd%clcat  ), ')'
+         WRITE(numout,*)' Transport associated to Stokes drift = ', TRIM(sn_rcv_tsd%cldes   ), ' (', TRIM(sn_rcv_tsd%clcat   ), ')'
+         WRITE(numout,*)'      Bernoulli pressure head         = ', TRIM(sn_rcv_bhd%cldes   ), ' (', TRIM(sn_rcv_bhd%clcat   ), ')'
          WRITE(numout,*)'Wave to ocean momentum flux and Net wave-supported stress = ', TRIM(sn_rcv_taw%cldes ), ' (', TRIM(sn_rcv_taw%clcat ), ')'
          WRITE(numout,*)'      Surface current to waves        = ', TRIM(sn_snd_crtw%cldes  ), ' (', TRIM(sn_snd_crtw%clcat  ), ')'
          WRITE(numout,*)'                      - referential   = ', sn_snd_crtw%clvref
@@ -588,14 +584,11 @@ CONTAINS
          cpl_phioc = .TRUE.
       ENDIF
       srcv(nmodsbc)%fld(jpr_sdrftx)%clname = 'O_Sdrfx'    ! Stokes drift in the u direction
-      IF( TRIM(sn_rcv_sdrfx%cldes ) == 'coupled' )  THEN
-         srcv(nmodsbc)%fld(jpr_sdrftx)%laction = .TRUE.
-         cpl_sdrftx = .TRUE.
-      ENDIF
       srcv(nmodsbc)%fld(jpr_sdrfty)%clname = 'O_Sdrfy'    ! Stokes drift in the v direction
-      IF( TRIM(sn_rcv_sdrfy%cldes ) == 'coupled' )  THEN
+      IF( TRIM(sn_rcv_sdrf%cldes ) == 'coupled' )  THEN
+         srcv(nmodsbc)%fld(jpr_sdrftx)%laction = .TRUE.
          srcv(nmodsbc)%fld(jpr_sdrfty)%laction = .TRUE.
-         cpl_sdrfty = .TRUE.
+         cpl_sdrft = .TRUE.
       ENDIF
       srcv(nmodsbc)%fld(jpr_wper)%clname = 'O_WPer'       ! mean wave period
       IF( TRIM(sn_rcv_wper%cldes  ) == 'coupled' )  THEN
@@ -628,14 +621,11 @@ CONTAINS
          cpl_bhd = .TRUE.
       ENDIF
       srcv(nmodsbc)%fld(jpr_tusd)%clname = 'O_Tusd'     ! zonal stokes transport
-      IF( TRIM(sn_rcv_tusd%cldes ) == 'coupled' )  THEN
+      srcv(nmodsbc)%fld(jpr_tvsd)%clname = 'O_Tvsd'     ! meridional stokes transport
+      IF( TRIM(sn_rcv_tsd%cldes ) == 'coupled' )  THEN
          srcv(nmodsbc)%fld(jpr_tusd)%laction = .TRUE.
-         cpl_tusd = .TRUE.
-      ENDIF
-      srcv(nmodsbc)%fld(jpr_tvsd)%clname = 'O_Tvsd'     ! meridional stokes tranmport
-      IF( TRIM(sn_rcv_tvsd%cldes ) == 'coupled' )  THEN
          srcv(nmodsbc)%fld(jpr_tvsd)%laction = .TRUE.
-         cpl_tvsd = .TRUE.
+         cpl_tsd = .TRUE.
       ENDIF
 
       srcv(nmodsbc)%fld(jpr_twox)%clname = 'O_Twox'     ! wave to ocean momentum flux in the u direction
@@ -1279,8 +1269,11 @@ CONTAINS
       !                                                      ! ========================= !
          IF( srcv(nmodsbc)%fld(jpr_sdrftx)%laction ) THEN
             ut0sd(A2D(0)) = frcv(jpr_sdrftx)%z3(A2D(0),1)
+            CALL lbc_lnk( 'sbccpl', ut0sd, 'T', -1.0_wp, ldfull = .TRUE. )
+         ENDIF
+         IF( srcv(nmodsbc)%fld(jpr_sdrfty)%laction ) THEN
             vt0sd(A2D(0)) = frcv(jpr_sdrfty)%z3(A2D(0),1)
-            CALL lbc_lnk( 'sbccpl', ut0sd, 'T', -1.0_wp, vt0sd, 'T', -1.0_wp, ldfull = .TRUE. )
+            CALL lbc_lnk( 'sbccpl', vt0sd, 'T', -1.0_wp, ldfull = .TRUE. )
          ENDIF
       !
       !                                                      ! ========================= !
@@ -1354,8 +1347,11 @@ CONTAINS
       !                                                      ! ========================= !
       IF( srcv(nmodsbc)%fld(jpr_tusd)%laction .AND. ln_breivikFV_2016 ) THEN
          tusd(A2D(0)) = frcv(jpr_tusd)%z3(A2D(0),1)
+         CALL lbc_lnk( 'sbccpl', tusd, 'T', -1.0_wp, ldfull = .TRUE. )
+      ENDIF
+      IF( srcv(nmodsbc)%fld(jpr_tvsd)%laction .AND. ln_breivikFV_2016 ) THEN
          tvsd(A2D(0)) = frcv(jpr_tvsd)%z3(A2D(0),1)
-         CALL lbc_lnk( 'sbccpl', tusd, 'T', -1.0_wp, tvsd, 'T', -1.0_wp, ldfull = .TRUE. )
+         CALL lbc_lnk( 'sbccpl', tvsd, 'T', -1.0_wp, ldfull = .TRUE. )
       ENDIF
       !
       !  Fields received by SAS when OASIS coupling

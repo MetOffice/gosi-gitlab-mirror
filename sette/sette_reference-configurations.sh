@@ -457,7 +457,6 @@ if [ ${config} == "ORCA2_ICE_PISCES" ] ; then
         set_namelist namelist_cfg ln_wave .true.
         set_namelist namelist_cfg ln_cdgw .false.
         set_namelist namelist_cfg ln_sdw  .true.
-        set_namelist namelist_cfg ln_stcor .true.
         if [ ${USING_ABL} == "yes" ]; then
             set_namelist namelist_cfg nn_date0 20130101
             set_namelist namelist_cfg ln_blk .false.

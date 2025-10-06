@@ -342,24 +342,7 @@ CONTAINS
 #endif
       IF( nn_ice == 3 )   CALL cice_sbc_init( nsbc, Kbb, Kmm )   ! CICE initialization
       !
-      IF( ln_wave     ) THEN
                           CALL sbc_wave_init                     ! surface wave initialisation
-      ELSE
-                          IF(lwp) WRITE(numout,*)
-                          IF(lwp) WRITE(numout,*) '   No surface waves : all wave related logical set to false'
-                          ln_sdw       = .false.
-                          ln_stcor     = .false.
-                          ln_cdgw      = .false.
-                          ln_tauoc     = .false.
-                          ln_wave_test = .false.
-                          ln_charn     = .false.
-                          ln_taw       = .false.
-                          ln_phioc     = .false.
-                          ln_bern_srfc = .false.
-                          ln_breivikFV_2016 = .false.
-                          ln_vortex_force = .false.
-                          ln_stshear  = .false.
-      ENDIF
       !
    END SUBROUTINE sbc_init
 
@@ -426,7 +409,7 @@ CONTAINS
       !
       IF( ln_mixcpl )          CALL sbc_cpl_rcv   ( kt, nn_fsbc, nn_ice, Kbb, Kmm )   ! forced-coupled mixed formulation after forcing
       !
-      IF( ln_wave .AND. ln_tauoc ) THEN             ! Wave stress reduction
+      IF( ln_tauoc ) THEN                           ! Wave stress reduction
          !
          DO_2D( 0, 0, 0, 0 )
             utau(ji,jj) = utau(ji,jj) * tauoc_wave(ji,jj)
@@ -437,7 +420,7 @@ CONTAINS
          IF( kt == nit000 )   CALL ctl_warn( 'sbc: You are subtracting the wave stress to the ocean.',   &
             &                                'If not requested select ln_tauoc=.false.' )
          !
-      ELSEIF( ln_wave .AND. ln_taw ) THEN           ! Wave stress reduction
+      ELSEIF( ln_taw ) THEN                         ! Wave stress reduction
          DO_2D( 0, 0, 0, 0 )
             utau(ji,jj) = utau(ji,jj) - ( tawx(ji,jj) - twox(ji,jj) )
             vtau(ji,jj) = vtau(ji,jj) - ( tawy(ji,jj) - twoy(ji,jj) )
