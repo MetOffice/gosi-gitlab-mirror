@@ -175,7 +175,6 @@
 &namsbc_wave   ! External fields from wave model                        (ln_wave=T)
 !-----------------------------------------------------------------------
    ln_sdw      = .false.    !  get the 2D Surf Stokes Drift & Compute the 3D stokes drift
-   ln_stcor    = .false.    !  add Stokes Coriolis and tracer advection terms
    ln_cdgw     = .false.    !  Neutral drag coefficient read from wave model
    ln_tauoc    = .false.    !  ocean stress is modified by wave induced stress
    ln_wave_test= .false.    !  Test case with constant wave fields

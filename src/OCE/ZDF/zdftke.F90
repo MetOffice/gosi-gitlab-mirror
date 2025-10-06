@@ -307,7 +307,7 @@ CONTAINS
             !
             !                       !* Langmuir velocity scale
             !
-            IF ( cpl_sdrftx )  THEN       ! Surface Stokes Drift available
+            IF ( cpl_sdrft )  THEN       ! Surface Stokes Drift available
                !                                ! Craik-Leibovich velocity scale Wlc = ( u* u_s )^1/2    with u* = (taum/rho0)^1/2
                !                                ! associated kinetic energy : 1/2 (Wlc)^2 = u* u_s
                !                                ! more precisely, it is the dot product that must be used :

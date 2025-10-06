@@ -101,7 +101,7 @@ CONTAINS
       IF(      ln_apr_dyn                                                &   ! atmos. pressure
          .OR.  ( .NOT.ln_dynspg_ts .AND. (ln_tide_pot .AND. ln_tide) )   &   ! tide potential (no time slitting)
          .OR.  ln_ice_embd                                               &   ! embedded sea-ice
-         .OR.  ( ln_wave .and. ln_bern_srfc ) ) THEN                         ! depth-independent Bernoulli head
+         .OR.  ln_bern_srfc ) THEN                                           ! depth-independent Bernoulli head
          !
          DO_2D( 0, 0, 0, 0 )
             zpgu(ji,jj) = 0._wp
@@ -155,7 +155,7 @@ CONTAINS
 #endif
          ENDIF
          !
-         IF( ln_wave .and. ln_bern_srfc ) THEN          !== Add J terms: depth-independent Bernoulli head
+         IF( ln_bern_srfc ) THEN             !== Add J terms: depth-independent Bernoulli head
             DO_2D( 0, 0, 0, 0 )
                zpgu(ji,jj) = zpgu(ji,jj) + ( bhd_wave(ji+1,jj) - bhd_wave(ji,jj) ) * r1_e1u(ji,jj)   !++ bhd_wave from wave model in m2/s2 [BHD parameters in WW3]
                zpgv(ji,jj) = zpgv(ji,jj) + ( bhd_wave(ji,jj+1) - bhd_wave(ji,jj) ) * r1_e2v(ji,jj)

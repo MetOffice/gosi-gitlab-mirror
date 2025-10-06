@@ -2593,7 +2593,7 @@ CONTAINS
       !                              ! Check wave coupling settings !
       !                         ! Further work needed - see ticket #2447 !
       IF ( nn_osm_wave == 2 ) THEN
-         IF (.NOT. ( ln_wave .AND. ln_sdw )) &
+         IF (.NOT. ln_sdw ) &
             & CALL ctl_stop( 'zdf_osm_init : ln_zdfosm and nn_osm_wave=2, ln_wave and ln_sdw must be true' )
       END IF
       !

@@ -16,7 +16,7 @@ MODULE dynvor
    !!            3.3  ! 2010-10  (C. Ethe, G. Madec)  reorganisation of initialisation phase
    !!            3.7  ! 2014-04  (G. Madec)  trend simplification: suppress jpdyn_trd_dat vorticity
    !!             -   ! 2014-06  (G. Madec)  suppression of velocity curl from in-core memory
-   !!             -   ! 2016-12  (G. Madec, E. Clementi) add Stokes-Coriolis trends (ln_stcor=T)
+   !!             -   ! 2016-12  (G. Madec, E. Clementi) add Stokes-Coriolis trends 
    !!            4.0  ! 2017-07  (G. Madec)  linear dynamics + trends diag. with Stokes-Coriolis
    !!             -   ! 2018-03  (G. Madec)  add two new schemes (ln_dynvor_enT and ln_dynvor_eet)
    !!             -   ! 2018-04  (G. Madec)  add pre-computed gradient for metric term calculation
@@ -41,7 +41,7 @@ MODULE dynvor
    USE trd_oce        ! trends: ocean variables
    USE trddyn         ! trend manager: dynamics
    USE sbcwave        ! Surface Waves (add Stokes-Coriolis force)
-   USE sbc_oce,  ONLY : ln_stcor, ln_vortex_force   ! use Stoke-Coriolis force
+   USE sbc_oce,  ONLY : ln_sdw, ln_vortex_force   ! use Stoke-Coriolis force
    !
    USE lbclnk         ! ocean lateral boundary conditions (or mpp link)
    USE prtctl         ! Print control
@@ -161,31 +161,31 @@ CONTAINS
          SELECT CASE ( nvor_scheme )      !==  vorticity trend added to the general trend  ==!
          CASE( np_ENT )                        !* energy conserving scheme  (T-pts)
                              CALL vor_enT( kt, Kmm, ntot, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! total vorticity trend
-            IF( ln_stcor .AND. .NOT. ln_vortex_force )  THEN
+            IF( ln_sdw .AND. .NOT. ln_vortex_force )  THEN
                              CALL vor_enT( kt, Kmm, ncor, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! add the Stokes-Coriolis trend
-            ELSE IF( ln_stcor .AND. ln_vortex_force )   THEN
+            ELSE IF( ln_sdw .AND. ln_vortex_force )   THEN
                              CALL vor_enT( kt, Kmm, ntot, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! add the Stokes-Coriolis trend and vortex force
             ENDIF
          CASE( np_ENE )                        !* energy conserving scheme
                              CALL vor_ene( kt, Kmm, ntot, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! total vorticity trend
-            IF( ln_stcor .AND. .NOT. ln_vortex_force )  THEN
+            IF( ln_sdw .AND. .NOT. ln_vortex_force )  THEN
                              CALL vor_ene( kt, Kmm, ncor, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! add the Stokes-Coriolis trend
-            ELSE IF( ln_stcor .AND. ln_vortex_force )   THEN
+            ELSE IF( ln_sdw .AND. ln_vortex_force )   THEN
                              CALL vor_ene( kt, Kmm, ntot, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! add the Stokes-Coriolis trend and vortex force
             ENDIF
          CASE( np_ENS )                        !* enstrophy conserving scheme
                              CALL vor_ens( kt, Kmm, ntot, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )  ! total vorticity trend
 
-            IF( ln_stcor .AND. .NOT. ln_vortex_force )  THEN
+            IF( ln_sdw .AND. .NOT. ln_vortex_force )  THEN
                              CALL vor_ens( kt, Kmm, ncor, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )  ! add the Stokes-Coriolis trend
-            ELSE IF( ln_stcor .AND. ln_vortex_force )   THEN
+            ELSE IF( ln_sdw .AND. ln_vortex_force )   THEN
                              CALL vor_ens( kt, Kmm, ntot, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )  ! add the Stokes-Coriolis trend and vortex force
             ENDIF
          CASE( np_EEN )                        !* energy and enstrophy conserving scheme
                              CALL vor_een( kt, Kmm, ntot, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! total vorticity trend
-               IF( ln_stcor .AND. .NOT. ln_vortex_force )  THEN
+               IF( ln_sdw .AND. .NOT. ln_vortex_force )  THEN
                              CALL vor_een( kt, Kmm, ncor, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! add the Stokes-Coriolis trend
-               ELSE IF( ln_stcor .AND. ln_vortex_force )   THEN
+               ELSE IF( ln_sdw .AND. ln_vortex_force )   THEN
                              CALL vor_een( kt, Kmm, ntot, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! add the Stokes-Coriolis trend and vortex force
                ENDIF
          END SELECT
@@ -228,31 +228,31 @@ CONTAINS
          SELECT CASE ( nvor_scheme )      !==  vorticity trend added to the general trend  ==!
          CASE( np_ENT )                        !* energy conserving scheme  (T-pts)
                              CALL vor_enT( kt, Kmm, knoco, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! total vorticity trend
-            IF( ln_stcor .AND. .NOT. ln_vortex_force )  THEN
+            IF( ln_sdw .AND. .NOT. ln_vortex_force )  THEN
                              CALL vor_enT( kt, Kmm, ncor, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! add the Stokes-Coriolis trend
-            ELSE IF( ln_stcor .AND. ln_vortex_force )   THEN
+            ELSE IF( ln_sdw .AND. ln_vortex_force )   THEN
                              CALL vor_enT( kt, Kmm, ntot, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! add the Stokes-Coriolis trend and vortex force
             ENDIF
          CASE( np_ENE )                        !* energy conserving scheme
                              CALL vor_ene( kt, Kmm, knoco, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! total vorticity trend
-            IF( ln_stcor .AND. .NOT. ln_vortex_force )  THEN
+            IF( ln_sdw .AND. .NOT. ln_vortex_force )  THEN
                              CALL vor_ene( kt, Kmm, ncor, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! add the Stokes-Coriolis trend
-            ELSE IF( ln_stcor .AND. ln_vortex_force )   THEN
+            ELSE IF( ln_sdw .AND. ln_vortex_force )   THEN
                              CALL vor_ene( kt, Kmm, ntot, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! add the Stokes-Coriolis trend and vortex force
             ENDIF
          CASE( np_ENS )                        !* enstrophy conserving scheme
                              CALL vor_ens( kt, Kmm, knoco, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )  ! total vorticity trend
 
-            IF( ln_stcor .AND. .NOT. ln_vortex_force )  THEN
+            IF( ln_sdw .AND. .NOT. ln_vortex_force )  THEN
                              CALL vor_ens( kt, Kmm, ncor, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )  ! add the Stokes-Coriolis trend
-            ELSE IF( ln_stcor .AND. ln_vortex_force )   THEN
+            ELSE IF( ln_sdw .AND. ln_vortex_force )   THEN
                              CALL vor_ens( kt, Kmm, ntot, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )  ! add the Stokes-Coriolis trend and vortex force
             ENDIF
          CASE( np_EEN )                        !* energy and enstrophy conserving scheme
                              CALL vor_een( kt, Kmm, knoco, puu(:,:,:,Kmm) , pvv(:,:,:,Kmm) , puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! total vorticity trend
-            IF( ln_stcor .AND. .NOT. ln_vortex_force )  THEN
+            IF( ln_sdw .AND. .NOT. ln_vortex_force )  THEN
                              CALL vor_een( kt, Kmm, ncor, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! add the Stokes-Coriolis trend
-            ELSE IF( ln_stcor .AND. ln_vortex_force )   THEN
+            ELSE IF( ln_sdw .AND. ln_vortex_force )   THEN
                              CALL vor_een( kt, Kmm, ntot, usd, vsd, puu(:,:,:,Krhs), pvv(:,:,:,Krhs) )   ! add the Stokes-Coriolis trend and vortex force
             ENDIF
          END SELECT

@@ -190,7 +190,7 @@ CONTAINS
          !
       ENDIF
       !
-      IF( ln_wave .AND. ln_sdw )  THEN
+      IF( ln_sdw )  THEN
          ll_Fw = .true.
          !
          DO_3D( nn_hls, nn_hls-1, nn_hls, nn_hls-1, 1, jpkm1 )                   ! At all stages : Add the Stokes Drift

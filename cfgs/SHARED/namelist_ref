@@ -370,8 +370,7 @@
    sn_rcv_icb    =   'none'                 ,    'no'    ,     ''      ,         ''           ,   ''
    sn_rcv_hsig   =   'none'                 ,    'no'    ,     ''      ,         ''           ,   ''
    sn_rcv_phioc  =   'none'                 ,    'no'    ,     ''      ,         ''           ,   ''
-   sn_rcv_sdrfx  =   'none'                 ,    'no'    ,     ''      ,         ''           ,   ''
-   sn_rcv_sdrfy  =   'none'                 ,    'no'    ,     ''      ,         ''           ,   ''
+   sn_rcv_sdrf   =   'none'                 ,    'no'    ,     ''      ,         ''           ,   ''
    sn_rcv_wper   =   'none'                 ,    'no'    ,     ''      ,         ''           ,   ''
    sn_rcv_wnum   =   'none'                 ,    'no'    ,     ''      ,         ''           ,   ''
    sn_rcv_wstrf  =   'none'                 ,    'no'    ,     ''      ,         ''           ,   ''
@@ -379,8 +378,7 @@
    sn_rcv_charn  =   'none'                 ,    'no'    ,     ''      ,         ''           ,   ''
    sn_rcv_taw    =   'none'                 ,    'no'    ,     ''      ,         ''           ,   ''
    sn_rcv_bhd    =   'none'                 ,    'no'    ,     ''      ,         ''           ,   ''
-   sn_rcv_tusd   =   'none'                 ,    'no'    ,     ''      ,         ''           ,   ''
-   sn_rcv_tvsd   =   'none'                 ,    'no'    ,     ''      ,         ''           ,   ''
+   sn_rcv_tsd    =   'none'                 ,    'no'    ,     ''      ,         ''           ,   ''
 /
 !-----------------------------------------------------------------------
 &namsbc_sas    !   Stand-Alone Surface module: ocean data               (SAS_SRC  only)
@@ -581,17 +579,15 @@
 &namsbc_wave   ! External fields from wave model                        (ln_wave=T)
 !-----------------------------------------------------------------------
    ln_sdw      = .false.       !  get the 2D Surf Stokes Drift & Compute the 3D stokes drift
-   ln_stcor    = .false.       !  add Stokes Coriolis and tracer advection terms
-   ln_cdgw     = .false.       !  Neutral drag coefficient read from wave model
-   ln_tauoc    = .false.       !  ocean stress is modified by wave induced stress
    ln_wave_test= .false.       !  Test case with constant wave fields
-!
-   ln_charn    = .false.       !  Charnock coefficient read from wave model (IFS only)
-   ln_taw      = .false.       !  ocean stress is modified by wave induced stress (coupled mode)
-   ln_phioc    = .false.       !  TKE flux from wave model
-   ln_bern_srfc= .false.       !  wave induced pressure. Bernoulli head J term
    ln_breivikFV_2016 = .false. !  breivik 2016 vertical stokes profile
    ln_vortex_force = .false.   !  Vortex Force term 
+   ln_bern_srfc= .false.       !  wave induced pressure. Bernoulli head J term
+   ln_cdgw     = .false.       !  Neutral drag coefficient read from wave model
+   ln_charn    = .false.       !  Charnock coefficient read from wave model (IFS only)
+   ln_tauoc    = .false.       !  ocean stress is modified by wave induced stress
+   ln_taw      = .false.       !  ocean stress is modified by wave induced stress (coupled mode)
+   ln_phioc    = .false.       !  TKE flux from wave model
    ln_stshear  = .false.       !  include stokes shear in EKE computation
 !
    cn_dir      = './'      !  root directory for the waves data location
