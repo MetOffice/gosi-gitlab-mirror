@@ -5,5 +5,5 @@
 
 include:
   - project: 'ofcs/nit'
-    ref: main
+    ref: '678-add-cpl_oasis-testcase-support-in-sette-ci'
     file: '.gitlab-ci.yml'

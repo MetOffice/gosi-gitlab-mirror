@@ -94,6 +94,7 @@ MPI_FLAG=$4
 JOB_FILE=$5
 NXIO_PROC=$6
 NEMO_VALID=$7
+NATM_PROC=$8
 
 # export EXE_DIR. This directory is used to execute model 
 #
@@ -159,6 +160,11 @@ if [ "$(cat ${SETTE_DIR}/$INPUTARFILE | wc -w)" -ne 0 ] ; then
        fi
        # Tarfile and input dir ar there, only check the links
        cd ${FORCING_DIR}/${dir_conf_forc}
+       # CPL_OASIS exception because OASIS modify input files
+       [[ ${INPUTARFILE} == *"CPL_OASIS"* ]] && for fida in *.nc
+       do
+         rm -f ${EXE_DIR}/${fida} && cp ${FORCING_DIR}/${dir_conf_forc}/${fida} ${EXE_DIR}/.
+       done
        for fida in *
        do
            [ -f ${EXE_DIR}/${fida} ] || ln -sf ${FORCING_DIR}/${dir_conf_forc}/${fida} ${EXE_DIR}/.
@@ -251,13 +257,6 @@ fi
                         X64_JEANZAY*) #Setup for Jean-Zay
                                 export GROUP_IDRIS=`echo ${IDRPROJ}`
                                 ;;
-                        X64_KARA*)
-                                NB_PROC_NODE=32
-                                NB_NODES=$( echo $NB_PROC | awk '{print $1 - $1 % $NB_PROC_NODE }' | awk '{print $1 / $NB_PROC_NODE }' )
-                                if [ ${NB_PROC} -le 128 ] ; then
-                                      QUEUE=multi
-                                fi
-                                ;;
 			*)
 				NB_NODES=${NB_PROC}
 				;;
@@ -265,13 +264,15 @@ fi
 #
 # Pass settings into job file by using sed to edit predefined strings
 #
-        TOTAL_NPROCS=$(( $NB_PROC + $NXIO_PROC ))
+        TOTAL_NPROCS=$(( $NB_PROC + $NXIO_PROC + NATM_PROC ))
         cat ${SETTE_DIR}/job_batch_template | sed -e"s/\(=\| \)NODES/\1${NB_NODES}/" \
              -e"s/TOTAL_NPROCS/${TOTAL_NPROCS}/" \
              -e"s/NPROCS/${NB_PROC}/" \
              -e"s/NXIOPROCS/${NXIO_PROC}/" \
+             -e"s/NATMPROCS/${NATM_PROC:-0}/" \
              -e"s:DEF_SETTE_DIR:${SETTE_DIR}:" -e"s:DEF_INPUT_DIR:${INPUT_DIR}:" \
              -e"s:DEF_EXE_DIR:${EXE_DIR}:" \
+             -e"s:DEF_TOYATM_DIR:${TOYATM_DIR}:" \
              -e"s:DEF_CONFIG_DIR:${CMP_DIR:-${CONFIG_DIR0}}:" \
              -e"s:DEF_TOOLS_DIR:${TOOLS_DIR}:" \
              -e"s:MPI_FLAG:${MPI_FLAG}:" \
@@ -279,11 +280,6 @@ fi
              -e"s:DEF_CMP_NAM:${CMP_NAM}:" -e"s:DEF_TEST_NAME:${TEST_NAME}:" > run_sette_test.job
 
         case ${COMPILER} in
-              X64_KARA*)
-                    cat run_sette_test.job | sed -e"s/NPROC_NODE/${NB_PROC_NODE}/" \
-                                                 -e"s:QUEUE:${QUEUE}:" > run_sette_test1.job
-                    mv run_sette_test1.job run_sette_test.job
-                    ;;
               XC40_METO*)
                     cat run_sette_test.job | sed -e"s/SELECT/${SELECT}/" > run_sette_test1.job
                     mv run_sette_test1.job run_sette_test.job
@@ -311,4 +307,3 @@ fi
 	
 	chmod a+x $JOB_FILE ; echo "$JOB_FILE is ready"
 
-#fi

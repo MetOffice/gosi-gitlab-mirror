@@ -62,8 +62,8 @@ PROGRAM TOYATM
   ! NEMO namelist parameters
   INTEGER                       :: numnam_cfg=80, nn_it000, nn_itend
   INTEGER                       :: nn_stocklist, nn_rstctl, nn_no
-  LOGICAL                       :: ln_rst_list, ln_mskland  , ln_clobber,ln_cfmeta, ln_iscpl, ln_xios_read
-  LOGICAL                       :: ln_rstart, nn_date0, nn_time0, nn_leapy  , nn_istate, nn_stock, nn_write ,nn_chunksz, nn_euler,nn_wxios
+  LOGICAL                       :: ln_rst_list, ln_mskland  , ln_clobber,ln_cfmeta, ln_iscpl, ln_xios_read, ln_rstart
+  INTEGER                       :: nn_date0, nn_time0, nn_leapy, nn_istate, nn_stock, nn_write ,nn_chunksz, nn_euler, nn_wxios
   CHARACTER (len=256)           :: cn_exp , cn_ocerst_in, cn_ocerst_indir, cn_ocerst_out, cn_ocerst_outdir
   REAL (kind=wp)                :: rn_Dt
   LOGICAL                       :: ln_linssh, ln_crs, ln_meshmask

@@ -124,16 +124,18 @@ CMP_NAM_L=$(echo ${CMP_NAM} | tr '[:upper:]' '[:lower:]')
 # Copy job_batch_COMPILER file for specific compiler into job_batch_template
 cd ${SETTE_DIR}
 cp BATCH_TEMPLATE/${JOB_PREFIX}-${COMPILER} job_batch_template || exit 1
+
 # Description of configuration tested:
 # OVERFLOW       : TEST s-coordinates : (tracers) Advection schemes: FCT2, FCT4, ubs 
 #                                     & (dynamics) advection schemes: flux form (ubs, centered), vector form (een)
-#                       zps-coordinates : (tracers) Advection schemes: FCT2, FCT4, ubs
+#                     zps-coordinates : (tracers) Advection schemes: FCT2, FCT4, ubs
 #                                     & (dynamics) advection schemes: flux form (ubs, centered), vector form (een, and een + Hollingsworth correction)
 # LOCK_EXCHANGE  : 
 # VORTEX         : 
 # ICE_AGRIF      : 
-# ISOMIP+         : 
-# WAD
+# ISOMIP+        :
+# WAD            :
+# CPL_OASIS      : ORCA2 coupled to TOYATM tool using OASIS
 
 . ./all_functions.sh
 for config in ${TEST_CONFIGS[@]}
@@ -147,6 +149,7 @@ do
         DO_REPRO_2=${DO_REPRO}
         DO_PHYOPTS_0=${DO_PHYOPTS}
         DO_ROTSYM_0=${DO_ROTSYM}
+        DO_COUPLING_0=${DO_COUPLING}
         TRANSFORM_OPT=""
         if [[ ${DO_TRANSFORM} == "1" ]] ; then
             # Ensure reference run for TRANSFORM test
@@ -164,6 +167,7 @@ do
                 DO_REPRO_2="0"
                 DO_PHYOPTS_0="0"
                 DO_ROTSYM_0="0"
+                DO_COUPLING_0="0"
             fi
         fi
 
@@ -985,7 +989,92 @@ if [ ${config} == "SWG" ] && [ ${USING_QCO} == "yes" ] ;  then
 
 fi
 
-#----
+# ---------
+# CPL_OASIS
+# ---------
+if [ ${config} == "CPL_OASIS" ] ;  then
+
+    ARCH_FILE=$(find ../arch/ -name arch-${CMP_NAM}.fcm)
+    # generate archfile if compiler is set to "auto"
+    if [[ -z "${ARCH_FILE}" && ${CMP_NAM} == "auto" ]]; then
+      ENV_FILE=$(find ../arch/ -name arch-${CMP_NAM}.env)
+      [ -n "${ENV_FILE}" ] && source ${ENV_FILE}
+      ../arch/build_arch-auto.sh
+      ARCH_FILE=$(find ../arch/ -name arch-${CMP_NAM}.fcm)
+    fi
+    # test if OASIS is defined in archfile and if OASIS directory exists
+    OASIS_DIR=$(sed -rn "/^%OASIS_(PREFIX|HOME) /s/%OASIS_(PREFIX|HOME) +(.*)/\2/p" ${ARCH_FILE})
+    [ ! -d ${OASIS_DIR} ] && echo "WARNING: OASIS directory not found in arch-${CMP_NAM}.fcm file -> CPL_OASIS testcase skipped !" && break
+    # TOYATM PATH
+    export TOYATM_DIR="${MAIN_DIR}/tools/TOYATM/BLD/bin"
+
+    SETTE_CONFIG=${config}${CONFIG_SUFFIX}
+    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
+    then
+        ITEND=16
+    else
+        ITEND=160
+    fi
+
+    if [ ${DO_COMPILE} == "1" ] ;  then
+        cd ${MAIN_DIR}
+        #
+        # syncronisation if target directory/file exist (not done by makenemo)
+        clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
+        sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
+        #
+        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -a ${config} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+                   -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
+        ./tools/maketools -m ${CMP_NAM} -n TOYATM
+    fi
+
+    # Default test-run configuration
+    if [ ${DO_COUPLING_0} == "1" ] ;  then
+        export TEST_NAME="EXP00"
+        EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/${TEST_NAME}
+        cd ${EXE_DIR}
+        # copy namcouple to EXP00 (not done by makenemo)
+        cp -av ${CONFIG_DIR0}/${config}/EXPREF/namcouple .
+        set_namelist namelist_cfg cn_exp \"CPLOASIS\"
+        set_namelist namelist_cfg nn_it000 1
+        set_namelist namelist_cfg nn_itend ${ITEND}
+        set_namelist namelist_cfg nn_stock ${ITEND}
+        set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist_opt namelist_cfg ln_timing ${USING_TIMING} .true. .false.
+        set_namelist_opt namelist_cfg nn_hls ${USING_EXTRA_HALO} 3 2
+        set_namelist_opt namelist_cfg nn_comm ${USING_COLLECTIVES} 2 1
+        set_namelist_opt namelist_cfg ln_tile ${USING_TILING} .true. .false.
+        set_namelist namelist_top_cfg ln_trcbc  .false.
+        set_namelist namelist_top_cfg ln_trcdta .false.
+        # put ln_ironsed, ln_hydrofe to false
+        # if not you need input files, and for tests is not necessary
+        set_namelist namelist_pisces_cfg ln_varpar .false.
+        set_namelist namelist_pisces_cfg ln_ironsed .false.
+        set_namelist namelist_pisces_cfg ln_ironice .false.
+        set_namelist namelist_pisces_cfg ln_hydrofe .false.
+        # put ln_pisdmp to false : no restoring to global mean value
+        set_namelist namelist_pisces_cfg ln_pisdmp .false.
+        set_xio_using_server iodef.xml ${USING_MPMD}
+
+        cd ${SETTE_DIR}
+        . ./prepare_exe_dir.sh
+        JOB_FILE=${EXE_DIR}/run_job.sh
+        if [ -f ${JOB_FILE} ] ; then \rm ${JOB_FILE} ; fi
+
+        set_valid_dir
+        clean_valid_dir
+        cd ${EXE_DIR}
+        set_namelist namelist_cfg cn_exp \"CPLOASIS_LONG\"
+        set_namelist_rst namelist ${ITEND}
+        cd ${SETTE_DIR}
+        # 28 NEMO + 1 XIOS + 1 TOYATM
+        NPROC=30
+        . ./prepare_job.sh input_CPL_OASIS.cfg 28 ${TEST_NAME} ${MPIRUN_FLAG} ${JOB_FILE} 1 ${NEMO_VALID} 1
+        cd ${SETTE_DIR}
+        . ./fcm_job.sh $NPROC ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
+    fi
+fi
+
     done
 done
 #

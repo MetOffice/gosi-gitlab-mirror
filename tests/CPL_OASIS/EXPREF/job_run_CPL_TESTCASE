@@ -37,24 +37,23 @@ for file in $DATA1DIR/*
 do
 ln -s $file . || exit 2
 done
-# Get input namelist  and xml files
-for file in $CONFIG_DIR/*namelist*_ref $CONFIG_DIR/*namelist*_cfg $CONFIG_DIR/*.xml
+# Get input namelists, namcouple and xml files
+for file in $CONFIG_DIR/namcouple $CONFIG_DIR/*namelist*_ref $CONFIG_DIR/*namelist*_cfg $CONFIG_DIR/*.xml
 do
     cp $file . || exit 3
 done
 ##
-## Get input files for TOYATM, including the namcouple file
+## Get input files for TOYATM
 ##
-TOYATM_DIR=$CONFIG_DIR/../../../tools/TOYATM/EXP
-for file in $TOYATM_DIR/*
-do
-    cp $file . || exit 4
-done
+wget https://gws-access.jasmin.ac.uk/public/nemo/sette_inputs/r5.0.0/CPL_OASIS_v5.0.0.tar.gz
+tar xvfz CPL_OASIS_v5.0.0.tar.gz
+mv CPL_OASIS_v5.0.0/*nc . 
+rm -rf CPL_OASIS_v5.0.0
 ##
 ## Get Executables
 ##
 cp $CONFIG_DIR/nemo nemo.exe  || exit 5
-cp $TOYATM_DIR/toyatm.exe . || exit 5
+cp $CONFIG_DIR/../../../tools/TOYATM/toyatm.exe . || exit 5
 cp $XIOS_DIR/bin/xios_server.exe . || exit 5
 ##
 ## Get script generating summary report

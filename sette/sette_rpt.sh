@@ -843,6 +843,8 @@ function runtest(){
              [ $phyopt == 1 ] && PHYOPT_EC=1             #    further PHYOPTS test variants to be tested
           elif [ $phyopt == 1 ]; then
              printf "${format_field1} %s %s\n" "${naml2}" "ocean.output phyopts         passed  :" $dorv
+          else
+             printf "${format_field1} %s %s\n" "${naml2}" "ocean.output                 passed  :" $dorv
           fi
        fi
     done
@@ -910,7 +912,11 @@ function identictest(){
   SETTE_DIR=$(cd $(dirname "$0"); pwd)
   MAIN_DIR=$(dirname $SETTE_DIR)
   . ./param.default
-  [ -f ./param.cfg ] && . ./param.cfg || echo "warning: \"param.cfg\" file not found; SETTE will use default paramaters from \"param.default\" file"
+  if [ -f ./param.cfg ]; then
+     . ./param.cfg
+  else
+     echo "warning: \"param.cfg\" file not found; SETTE will use default paramaters from \"param.default\" file"
+  fi
   TEST_CONFIGS_AVAILABLE=${TEST_CONFIGS_AVAILABLE[@]:-${TEST_CONFIGS[@]}}     # Workaround for some dated param.cfgs files
   if [ -z $USER_INPUT ] ; then USER_INPUT='yes' ; fi        # Default: yes => request user input on decisions.
                                                             # (but may br inherited/imported from sette.sh)
@@ -944,6 +950,7 @@ rev=""; sha=""
              [[ ${TEST_TYPES[*]} =~ .*PHYOPTS.*   ]] && export DO_PHYOPTS=1   || DO_PHYOPTS=0
              [[ ${TEST_TYPES[*]} =~ .*ROTSYM.*    ]] && export DO_ROTSYM=1    || DO_ROTSYM=0
              [[ ${TEST_TYPES[*]} =~ .*TRANSFORM.* ]] && export DO_TRANSFORM=1 || DO_TRANSFORM=0
+             [[ ${TEST_TYPES[*]} =~ .*COUPLING.*  ]] && export DO_COUPLING=1  || DO_COUPLING=0
              [[ ${TEST_TYPES[*]} =~ .*COMPARE.*   ]] && export DO_COMPARE=1   || DO_COMPARE=0
              echo "-x: will check ${TEST_TYPES[*]} test(s) for current report"
              echo "";;
@@ -1116,7 +1123,9 @@ do
   if [ ${DO_RESTART} -eq 1 ]; then
     echo ""
     echo "   !----restart----!   "
-    for restart_test in ${TEST_CONFIGS[@]/ORCA2_ICE_OBS}
+    RESTART_CONFIGS=(${TEST_CONFIGS[@]/ORCA2_ICE_OBS})
+    RESTART_CONFIGS=(${RESTART_CONFIGS[@]/CPL_OASIS})
+    for restart_test in ${RESTART_CONFIGS[@]}
     do
       [ "${restart_test}" != "ORCA2_ICE_OBS" ] && resttest $NEMO_VALID $restart_test $pass
     done
@@ -1126,7 +1135,9 @@ do
   if [ ${DO_REPRO} -eq 1 ]; then 
     echo ""
     echo "   !----repro----!   "
-    for repro_test in ${TEST_CONFIGS[@]/C1D*}
+    REPRO_CONFIGS=(${TEST_CONFIGS[@]/C1D*})
+    REPRO_CONFIGS=(${REPRO_CONFIGS[@]/CPL_OASIS})
+    for repro_test in ${REPRO_CONFIGS[@]}
     do
       if [[ ${repro_test} != *"OVERFLOW"* && ${repro_test} != *"LOCK_EXCHANGE"* && ${repro_test} != *"IWAVE"* ]]; then
          reprotest $NEMO_VALID $repro_test $pass
@@ -1153,6 +1164,16 @@ do
     done
   fi
 
+  # Coupling test
+  if [ ${DO_COUPLING} -eq 1 ]; then
+     echo ""
+     echo "   !----coupling----!   "
+     COUPLING_CONFIGS=( "CPL_OASIS" )
+     for coupling_test in ${COUPLING_CONFIGS[@]}
+     do
+        runtest $NEMO_VALID ${coupling_test} $pass "EXP00"
+     done
+  fi
   # AGRIF special check to ensure results are unchanged with and without key_agrif
   if [[ ${TEST_CONFIGS[@]} =~ "AGRIF_DEMO" && ${DO_CORRUPT} -eq 1 ]]; then
      echo ""
