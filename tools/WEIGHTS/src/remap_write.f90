@@ -75,8 +75,6 @@
       ,  nc_file_id            & ! id for netCDF file
       ,  nc_srcgrdsize_id      & ! id for source grid size
       ,  nc_dstgrdsize_id      & ! id for destination grid size
-      ,  nc_srcgrdcorn_id      & ! id for number of source grid corners
-      ,  nc_dstgrdcorn_id      & ! id for number of dest grid corners
       ,  nc_srcgrdrank_id      & ! id for source grid rank
       ,  nc_dstgrdrank_id      & ! id for dest grid rank
       ,  nc_numlinks_id        & ! id for number of links in mapping
@@ -89,12 +87,6 @@
       ,  nc_dstgrdcntrlon_id   & ! id for dest grid center longitude
       ,  nc_srcgrdimask_id     & ! id for source grid mask
       ,  nc_dstgrdimask_id     & ! id for dest grid mask
-      ,  nc_srcgrdcrnrlat_id   & ! id for latitude of source grid corners
-      ,  nc_srcgrdcrnrlon_id   & ! id for longitude of source grid corners
-      ,  nc_dstgrdcrnrlat_id   & ! id for latitude of dest grid corners
-      ,  nc_dstgrdcrnrlon_id   & ! id for longitude of dest grid corners
-      ,  nc_srcgrdarea_id      & ! id for area of source grid cells
-      ,  nc_dstgrdarea_id      & ! id for area of dest grid cells
       ,  nc_srcgrdfrac_id      & ! id for area fraction on source grid
       ,  nc_dstgrdfrac_id      & ! id for area fraction on dest grid
       ,  nc_srcadd_id          & ! id for map source address
@@ -349,26 +341,6 @@
       call netcdf_error_handler(ncstat)
 
       !***
-      !*** define grid corner dimension
-      !***
-
-      if (direction == 1) then
-        itmp1 = grid1_corners
-        itmp2 = grid2_corners
-      else
-        itmp1 = grid2_corners
-        itmp2 = grid1_corners
-      endif
-
-      ncstat = nf_def_dim (nc_file_id, 'src_grid_corners',  &
-                           itmp1, nc_srcgrdcorn_id)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_def_dim (nc_file_id, 'dst_grid_corners',  &
-                           itmp2, nc_dstgrdcorn_id)
-      call netcdf_error_handler(ncstat)
-
-      !***
       !*** define grid rank dimension
       !***
 
@@ -453,36 +425,6 @@
       call netcdf_error_handler(ncstat)
 
       !***
-      !*** define grid corner lat/lon arrays
-      !***
-
-      nc_dims2_id(1) = nc_srcgrdcorn_id
-      nc_dims2_id(2) = nc_srcgrdsize_id
-
-      ncstat = nf_def_var (nc_file_id, 'src_grid_corner_lat',  &
-                           NF_DOUBLE, 2, nc_dims2_id,  &
-                           nc_srcgrdcrnrlat_id)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_def_var (nc_file_id, 'src_grid_corner_lon',  &
-                           NF_DOUBLE, 2, nc_dims2_id,  &
-                           nc_srcgrdcrnrlon_id)
-      call netcdf_error_handler(ncstat)
-
-      nc_dims2_id(1) = nc_dstgrdcorn_id
-      nc_dims2_id(2) = nc_dstgrdsize_id
-
-      ncstat = nf_def_var (nc_file_id, 'dst_grid_corner_lat',  &
-                           NF_DOUBLE, 2, nc_dims2_id,  &
-                           nc_dstgrdcrnrlat_id)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_def_var (nc_file_id, 'dst_grid_corner_lon',  &
-                           NF_DOUBLE, 2, nc_dims2_id,  &
-                           nc_dstgrdcrnrlon_id)
-      call netcdf_error_handler(ncstat)
-
-      !***
       !*** define units for all coordinate arrays
       !***
 
@@ -510,22 +452,6 @@
                                 'units', 7, grid2_ctmp)
       call netcdf_error_handler(ncstat)
 
-      ncstat = nf_put_att_text (nc_file_id, nc_srcgrdcrnrlat_id,  &
-                                'units', 7, grid1_ctmp)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_put_att_text (nc_file_id, nc_srcgrdcrnrlon_id,  &
-                                'units', 7, grid1_ctmp)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_put_att_text (nc_file_id, nc_dstgrdcrnrlat_id,  &
-                                'units', 7, grid2_ctmp)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_put_att_text (nc_file_id, nc_dstgrdcrnrlon_id,  &
-                                'units', 7, grid2_ctmp)
-      call netcdf_error_handler(ncstat)
-
       !***
       !*** define grid mask
       !***
@@ -544,28 +470,6 @@
 
       ncstat = nf_put_att_text (nc_file_id, nc_dstgrdimask_id,  &
                                 'units', 8, 'unitless')
-      call netcdf_error_handler(ncstat)
-
-      !***
-      !*** define grid area arrays
-      !***
-
-      ncstat = nf_def_var (nc_file_id, 'src_grid_area',  &
-                           NF_DOUBLE, 1, nc_srcgrdsize_id,  &
-                           nc_srcgrdarea_id)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_put_att_text (nc_file_id, nc_srcgrdarea_id,  &
-                                'units', 14, 'square radians')
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_def_var (nc_file_id, 'dst_grid_area',  &
-                           NF_DOUBLE, 1, nc_dstgrdsize_id,  &
-                           nc_dstgrdarea_id)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_put_att_text (nc_file_id, nc_dstgrdarea_id,  &
-                                'units', 14, 'square radians')
       call netcdf_error_handler(ncstat)
 
       !***
@@ -667,15 +571,11 @@
       if (grid1_units(1:7) == 'degrees' .and. direction == 1) then
         grid1_center_lat = grid1_center_lat/deg2rad
         grid1_center_lon = grid1_center_lon/deg2rad
-        grid1_corner_lat = grid1_corner_lat/deg2rad
-        grid1_corner_lon = grid1_corner_lon/deg2rad
       endif
 
       if (grid2_units(1:7) == 'degrees' .and. direction == 1) then
         grid2_center_lat = grid2_center_lat/deg2rad
         grid2_center_lon = grid2_center_lon/deg2rad
-        grid2_corner_lat = grid2_corner_lat/deg2rad
-        grid2_corner_lon = grid2_corner_lon/deg2rad
       endif
 
 !-----------------------------------------------------------------------
@@ -711,13 +611,9 @@
       if (direction == 1) then
         itmp1 = nc_srcgrdcntrlat_id
         itmp2 = nc_srcgrdcntrlon_id
-        itmp3 = nc_srcgrdcrnrlat_id
-        itmp4 = nc_srcgrdcrnrlon_id
       else
         itmp1 = nc_dstgrdcntrlat_id
         itmp2 = nc_dstgrdcntrlon_id
-        itmp3 = nc_dstgrdcrnrlat_id
-        itmp4 = nc_dstgrdcrnrlon_id
       endif
 
       ncstat = nf_put_var_double(nc_file_id, itmp1, grid1_center_lat)
@@ -726,22 +622,12 @@
       ncstat = nf_put_var_double(nc_file_id, itmp2, grid1_center_lon)
       call netcdf_error_handler(ncstat)
 
-      ncstat = nf_put_var_double(nc_file_id, itmp3, grid1_corner_lat)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_put_var_double(nc_file_id, itmp4, grid1_corner_lon)
-      call netcdf_error_handler(ncstat)
-
       if (direction == 1) then
         itmp1 = nc_dstgrdcntrlat_id
         itmp2 = nc_dstgrdcntrlon_id
-        itmp3 = nc_dstgrdcrnrlat_id
-        itmp4 = nc_dstgrdcrnrlon_id
       else
         itmp1 = nc_srcgrdcntrlat_id
         itmp2 = nc_srcgrdcntrlon_id
-        itmp3 = nc_srcgrdcrnrlat_id
-        itmp4 = nc_srcgrdcrnrlon_id
       endif
 
       ncstat = nf_put_var_double(nc_file_id, itmp1, grid2_center_lat)
@@ -750,39 +636,15 @@
       ncstat = nf_put_var_double(nc_file_id, itmp2, grid2_center_lon)
       call netcdf_error_handler(ncstat)
 
-      ncstat = nf_put_var_double(nc_file_id, itmp3, grid2_corner_lat)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_put_var_double(nc_file_id, itmp4, grid2_corner_lon)
-      call netcdf_error_handler(ncstat)
-
       if (direction == 1) then
-        itmp1 = nc_srcgrdarea_id
         itmp2 = nc_srcgrdfrac_id
-        itmp3 = nc_dstgrdarea_id
         itmp4 = nc_dstgrdfrac_id
       else
-        itmp1 = nc_dstgrdarea_id
         itmp2 = nc_dstgrdfrac_id
-        itmp3 = nc_srcgrdarea_id
         itmp4 = nc_srcgrdfrac_id
       endif
 
-      if (luse_grid1_area) then
-        ncstat = nf_put_var_double(nc_file_id, itmp1, grid1_area_in)
-      else
-        ncstat = nf_put_var_double(nc_file_id, itmp1, grid1_area)
-      endif
-      call netcdf_error_handler(ncstat)
-
       ncstat = nf_put_var_double(nc_file_id, itmp2, grid1_frac)
-      call netcdf_error_handler(ncstat)
-
-      if (luse_grid2_area) then
-        ncstat = nf_put_var_double(nc_file_id, itmp3, grid2_area_in)
-      else
-        ncstat = nf_put_var_double(nc_file_id, itmp3, grid2_area)
-      endif
       call netcdf_error_handler(ncstat)
 
       ncstat = nf_put_var_double(nc_file_id, itmp4, grid2_frac)
@@ -963,24 +825,6 @@
       call netcdf_error_handler(ncstat)
 
       !***
-      !*** define grid corner dimension
-      !***
-
-      if (direction == 1) then
-        itmp1 = grid1_corners
-        itmp2 = grid2_corners
-      else
-        itmp1 = grid2_corners
-        itmp2 = grid1_corners
-      endif
-
-      ncstat = nf_def_dim (nc_file_id, 'nv_a', itmp1, nc_srcgrdcorn_id)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_def_dim (nc_file_id, 'nv_b', itmp2, nc_dstgrdcorn_id)
-      call netcdf_error_handler(ncstat)
-
-      !***
       !*** define grid rank dimension
       !***
 
@@ -1114,36 +958,6 @@
       call netcdf_error_handler(ncstat)
 
       !***
-      !*** define grid corner lat/lon arrays
-      !***
-
-      nc_dims2_id(1) = nc_srcgrdcorn_id
-      nc_dims2_id(2) = nc_srcgrdsize_id
-
-      ncstat = nf_def_var (nc_file_id, 'yv_a',  &
-                           NF_DOUBLE, 2, nc_dims2_id,  &
-                           nc_srcgrdcrnrlat_id)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_def_var (nc_file_id, 'xv_a',  &
-                           NF_DOUBLE, 2, nc_dims2_id,  &
-                           nc_srcgrdcrnrlon_id)
-      call netcdf_error_handler(ncstat)
-
-      nc_dims2_id(1) = nc_dstgrdcorn_id
-      nc_dims2_id(2) = nc_dstgrdsize_id
-
-      ncstat = nf_def_var (nc_file_id, 'yv_b',  &
-                           NF_DOUBLE, 2, nc_dims2_id,  &
-                           nc_dstgrdcrnrlat_id)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_def_var (nc_file_id, 'xv_b',  &
-                           NF_DOUBLE, 2, nc_dims2_id,  &
-                           nc_dstgrdcrnrlon_id)
-      call netcdf_error_handler(ncstat)
-
-      !***
       !*** CSM wants all in degrees
       !***
 
@@ -1174,22 +988,6 @@
                                 'units', 7, grid2_ctmp)
       call netcdf_error_handler(ncstat)
 
-      ncstat = nf_put_att_text (nc_file_id, nc_srcgrdcrnrlat_id,  &
-                                'units', 7, grid1_ctmp)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_put_att_text (nc_file_id, nc_srcgrdcrnrlon_id,  &
-                                'units', 7, grid1_ctmp)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_put_att_text (nc_file_id, nc_dstgrdcrnrlat_id,  &
-                                'units', 7, grid2_ctmp)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_put_att_text (nc_file_id, nc_dstgrdcrnrlon_id,  &
-                                'units', 7, grid2_ctmp)
-      call netcdf_error_handler(ncstat)
-
       !***
       !*** define grid mask
       !***
@@ -1208,28 +1006,6 @@
 
       ncstat = nf_put_att_text (nc_file_id, nc_dstgrdimask_id,  &
                                 'units', 8, 'unitless')
-      call netcdf_error_handler(ncstat)
-
-      !***
-      !*** define grid area arrays
-      !***
-
-      ncstat = nf_def_var (nc_file_id, 'area_a',  &
-                           NF_DOUBLE, 1, nc_srcgrdsize_id,  &
-                           nc_srcgrdarea_id)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_put_att_text (nc_file_id, nc_srcgrdarea_id,  &
-                                'units', 14, 'square radians')
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_def_var (nc_file_id, 'area_b',  &
-                           NF_DOUBLE, 1, nc_dstgrdsize_id,  &
-                           nc_dstgrdarea_id)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_put_att_text (nc_file_id, nc_dstgrdarea_id,  &
-                                'units', 14, 'square radians')
       call netcdf_error_handler(ncstat)
 
       !***
@@ -1339,15 +1115,11 @@
       if (grid1_units(1:7) == 'degrees' .and. direction == 1) then
         grid1_center_lat = grid1_center_lat/deg2rad
         grid1_center_lon = grid1_center_lon/deg2rad
-        grid1_corner_lat = grid1_corner_lat/deg2rad
-        grid1_corner_lon = grid1_corner_lon/deg2rad
       endif
 
       if (grid2_units(1:7) == 'degrees' .and. direction == 1) then
         grid2_center_lat = grid2_center_lat/deg2rad
         grid2_center_lon = grid2_center_lon/deg2rad
-        grid2_corner_lat = grid2_corner_lat/deg2rad
-        grid2_corner_lon = grid2_corner_lon/deg2rad
       endif
 
 !-----------------------------------------------------------------------
@@ -1383,13 +1155,9 @@
       if (direction == 1) then
         itmp1 = nc_srcgrdcntrlat_id
         itmp2 = nc_srcgrdcntrlon_id
-        itmp3 = nc_srcgrdcrnrlat_id
-        itmp4 = nc_srcgrdcrnrlon_id
       else
         itmp1 = nc_dstgrdcntrlat_id
         itmp2 = nc_dstgrdcntrlon_id
-        itmp3 = nc_dstgrdcrnrlat_id
-        itmp4 = nc_dstgrdcrnrlon_id
       endif
 
       ncstat = nf_put_var_double(nc_file_id, itmp1, grid1_center_lat)
@@ -1398,22 +1166,12 @@
       ncstat = nf_put_var_double(nc_file_id, itmp2, grid1_center_lon)
       call netcdf_error_handler(ncstat)
 
-      ncstat = nf_put_var_double(nc_file_id, itmp3, grid1_corner_lat)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_put_var_double(nc_file_id, itmp4, grid1_corner_lon)
-      call netcdf_error_handler(ncstat)
-
       if (direction == 1) then
         itmp1 = nc_dstgrdcntrlat_id
         itmp2 = nc_dstgrdcntrlon_id
-        itmp3 = nc_dstgrdcrnrlat_id
-        itmp4 = nc_dstgrdcrnrlon_id
       else
         itmp1 = nc_srcgrdcntrlat_id
         itmp2 = nc_srcgrdcntrlon_id
-        itmp3 = nc_srcgrdcrnrlat_id
-        itmp4 = nc_srcgrdcrnrlon_id
       endif
 
       ncstat = nf_put_var_double(nc_file_id, itmp1, grid2_center_lat)
@@ -1422,39 +1180,15 @@
       ncstat = nf_put_var_double(nc_file_id, itmp2, grid2_center_lon)
       call netcdf_error_handler(ncstat)
 
-      ncstat = nf_put_var_double(nc_file_id, itmp3, grid2_corner_lat)
-      call netcdf_error_handler(ncstat)
-
-      ncstat = nf_put_var_double(nc_file_id, itmp4, grid2_corner_lon)
-      call netcdf_error_handler(ncstat)
-
       if (direction == 1) then
-        itmp1 = nc_srcgrdarea_id
         itmp2 = nc_srcgrdfrac_id
-        itmp3 = nc_dstgrdarea_id
         itmp4 = nc_dstgrdfrac_id
       else
-        itmp1 = nc_dstgrdarea_id
         itmp2 = nc_dstgrdfrac_id
-        itmp3 = nc_srcgrdarea_id
         itmp4 = nc_srcgrdfrac_id
       endif
 
-      if (luse_grid1_area) then
-        ncstat = nf_put_var_double(nc_file_id, itmp1, grid1_area_in)
-      else
-        ncstat = nf_put_var_double(nc_file_id, itmp1, grid1_area)
-      endif
-      call netcdf_error_handler(ncstat)
-
       ncstat = nf_put_var_double(nc_file_id, itmp2, grid1_frac)
-      call netcdf_error_handler(ncstat)
-
-      if (luse_grid2_area) then
-        ncstat = nf_put_var_double(nc_file_id, itmp3, grid2_area)
-      else
-        ncstat = nf_put_var_double(nc_file_id, itmp3, grid2_area)
-      endif
       call netcdf_error_handler(ncstat)
 
       ncstat = nf_put_var_double(nc_file_id, itmp4, grid2_frac)

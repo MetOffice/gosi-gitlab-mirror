@@ -719,6 +719,9 @@
 !
 !-----------------------------------------------------------------------
 
+      ! automatic definition of num_srch_bins
+      num_srch_bins = MIN(grid1_dims(2), grid2_dims(2))      
+      
       select case (restrict_type)
 
       case ('latitude')

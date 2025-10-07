@@ -44,7 +44,6 @@
       use timers                     ! CPU timers
       use grids                      ! module with grid information
       use remap_vars                 ! common remapping variables
-      use remap_conservative         ! routines for conservative remap
       use remap_distance_weight      ! routines for dist-weight remap
       use remap_bilinear             ! routines for bilinear interp
       use remap_bicubic              ! routines for bicubic  interp
@@ -76,8 +75,7 @@
          interp_file1, interp_file2,                   &
          map1_name, map2_name, num_maps,               &
          luse_grid1_area, luse_grid2_area,             &
-         map_method, normalize_opt, output_opt,        &
-         restrict_type, num_srch_bins
+         map_method, normalize_opt, output_opt
 
 !-----------------------------------------------------------------------
 !
@@ -124,10 +122,9 @@
       luse_grid2_area = .false.
       num_maps      = 2
       map_type      = 1
-      normalize_opt = 'fracarea'
+      normalize_opt = 'none'
       output_opt    = 'scrip'
       restrict_type = 'latitude'
-      num_srch_bins = 900
 
       call get_unit(iunit)
       open(iunit, file=nm_in, status='old', form='formatted')
@@ -135,9 +132,6 @@
       call release_unit(iunit)
 
       select case(map_method)
-      case ('conservative')
-        map_type = map_type_conserv
-        luse_grid_centers = .false.
       case ('bilinear')
         map_type = map_type_bilinear
         luse_grid_centers = .true.
@@ -189,8 +183,6 @@
 !-----------------------------------------------------------------------
 
       select case(map_type)
-      case(map_type_conserv)
-        call remap_conserv
       case(map_type_bilinear)
         call remap_bilin
       case(map_type_distwgt)
