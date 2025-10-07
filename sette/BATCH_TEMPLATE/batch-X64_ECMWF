@@ -19,18 +19,10 @@ set +x
   echo " ";
   OCORES=NPROCS
   XCORES=NXIOPROCS
-  O_PER_NODE=32
-  X_PER_NODE=8
-  if [ $XCORES -le $X_PER_NODE ]; then X_PER_NODE=$XCORES; fi
-  if [ $OCORES -le $O_PER_NODE ]; then O_PER_NODE=$OCORES; fi
-  export SETTE_DIR=DEF_SETTE_DIR
-
+  ACORES=NATMPROCS
+  TCORES=$((OCORES+XCORES+ACORES))
+#
 ###############################################################
-#
-#
-# load sette functions (only post_test_tidyup needed)
-#
-  . ${SETTE_DIR}/all_functions.sh
 ###############################################################
 #
 # Don't remove neither change the following line
@@ -42,25 +34,29 @@ set +x
 #
 # These variables are needed by post_test_tidyup function in all_functions.sh
 #
+  export SETTE_DIR="DEF_SETTE_DIR"
   export MPIRUN="srun"
-  export INPUT_DIR=DEF_INPUT_DIR
-  export CONFIG_DIR=DEF_CONFIG_DIR
-  export TOOLS_DIR=DEF_TOOLS_DIR
-  export NEMO_VALIDATION_DIR=DEF_NEMO_VALIDATION
-  export NEW_CONF=DEF_NEW_CONF
-  export CMP_NAM=DEF_CMP_NAM
-  export TEST_NAME=DEF_TEST_NAME
-  export EXE_DIR=DEF_EXE_DIR
-
-  # Load environment if exists
+  export CONFIG_DIR="DEF_CONFIG_DIR"
+  export TOOLS_DIR="DEF_TOOLS_DIR"
+  export NEMO_VALIDATION_DIR="DEF_NEMO_VALIDATION"
+  export NEW_CONF="DEF_NEW_CONF"
+  export CMP_NAM="DEF_CMP_NAM"
+  export TEST_NAME="DEF_TEST_NAME"
+  export EXE_DIR="DEF_EXE_DIR"
+  export TOYATM_DIR="DEF_TOYATM_DIR"
+#
+# load sette functions (only post_test_tidyup needed)
+  . ${SETTE_DIR}/all_functions.sh
+#
+# Load environment if exists
   env_file=`find ${TOOLS_DIR}/../arch -name arch-${CMP_NAM}.env`
   if [ -f "${env_file}" ] ; then
      echo "Load environment file arch-${CMP_NAM}.env"
      . ${env_file}
   fi
 
-  ulimit -a
   ulimit -s unlimited
+  ulimit -a
 #
 # end of set up
 ###############################################################
@@ -68,9 +64,6 @@ set +x
 # change to the working directory 
 #
   cd ${EXE_DIR}
-  if [[ ${NEW_CONF} =~ "ICE_AGRIF" ]]; then
-    sed -i'' -e 's/detect_missing_value="true"/detect_missing_value="false"/' field_def_nemo-ice.xml
-  fi
   echo Running on host `hostname`
   echo Time is `date`
   echo Directory is `pwd`
@@ -79,26 +72,55 @@ set +x
 #
   echo "Running time ${MPIRUN} ./nemo"
 #
+# ICE_AGRIF bug with XIOS
+  if [[ ${NEW_CONF} =~ "ICE_AGRIF" ]]; then
+    sed -i'' -e 's/detect_missing_value="true"/detect_missing_value="false"/' field_def_nemo-ice.xml
+  fi
+#
   if [ $XCORES -gt 0 ]; then
 #
 #  Run MPMD case
 #
-     #XIOS will run on a separate node so will run in parallel queue
-     if [ $XCORES -gt 0 ] && [ -f ${XIOS_DIR}/bin/xios_server.exe ]; then
-        cp -a ${XIOS_DIR}/bin/xios_server.exe .
+     # XIOS
+     if [ $XCORES -gt 0 ] && [ -f ${XIOS_DIR:-${XIOS_prefix}}/bin/xios_server.exe ]; then
+        cp -a ${XIOS_DIR:-${XIOS_prefix}}/bin/xios_server.exe .
         sed -i "s/one_file/multiple_file/" file_def_nemo-*.xml
      fi
 
-     cat > ./config.file <<-EOF
+     # TOYATM
+     if [ $ACORES -gt 0 ]; then
+        if [ -f ${TOYATM_DIR}/toyatm.exe ]; then
+           cp -a ${TOYATM_DIR}/toyatm.exe .
+        else
+           echo "ERROR: TOYATM not found !" && exit 1
+        fi
+     fi
+
+     # CONFIG FILE
+     if [ $ACORES -eq 0 ]; then
+        cat > ./config.file <<-EOF
 0-$((OCORES-1)) ./nemo
-${OCORES}-$((TOTAL_NPROCS-1)) ./xios_server.exe
+${OCORES}-$((TCORES-1)) ./xios_server.exe
 EOF
-     $MPIRUN --ntasks=TOTAL_NPROCS --multi-prog config.file
+     else
+        cat > ./config.file <<-EOF
+0-$((OCORES-1)) ./nemo
+${OCORES}-$((OCORES+ACORES-1)) ./toyatm.exe
+$((OCORES+ACORES))-$((TCORES-1)) ./xios_server.exe
+EOF
+     fi
+
+     $MPIRUN --ntasks=$TCORES --multi-prog config.file
+
   else
 #
 # Run SPMD case
 #
-    $MPIRUN --ntasks=TOTAL_NPROCS ./nemo
+     if [ $ACORES -eq 0 ]; then
+        $MPIRUN --ntasks=$TCORES ./nemo
+     else
+        echo "SPMD mode not supported with OASIS" && exit 1
+     fi
   fi
 #
 
