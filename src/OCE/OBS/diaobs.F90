@@ -587,7 +587,7 @@ CONTAINS
                      IF ( sobsgroups(jgroup)%ssurfdataqc%nsstpmpp(1) > 0 ) THEN
                         DO jobs = sobsgroups(jgroup)%ssurfdataqc%nsurfup + 1, &
                            &      sobsgroups(jgroup)%ssurfdataqc%nsurfup + sobsgroups(jgroup)%ssurfdataqc%nsstp(1)
-                           sobsgroups(jgroup)%ssurfdata%nqc(jobs) = IBSET(sobsgroups(jgroup)%ssurfdata%nqc(jobs),13)
+                           sobsgroups(jgroup)%ssurfdataqc%nqc(jobs) = IBSET(sobsgroups(jgroup)%ssurfdataqc%nqc(jobs),13)
                         END DO
                         IF ( lwp ) THEN
                            CALL ctl_warn( TRIM(sobsgroups(jgroup)%cobstypes(jvar))// &
