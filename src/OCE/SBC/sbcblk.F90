@@ -229,6 +229,7 @@ CONTAINS
       INTEGER  ::   ios, ierror, ioptio   ! Local integer
       !!
       CHARACTER(len=100)            ::   cn_dir                ! Root directory for location of atmospheric forcing files
+      REAL(wp)   , DIMENSION(jpfld) ::   zdefault              ! default value of the input data
       TYPE(FLD_N), DIMENSION(jpfld) ::   slf_i                 ! array of namelist informations on the fields to read
       TYPE(FLD_N) ::   sn_wndi, sn_wndj , sn_humi, sn_qsr      ! informations about the fields to be read
       TYPE(FLD_N) ::   sn_qlw , sn_tair , sn_prec, sn_snow     !       "                        "
@@ -362,6 +363,17 @@ CONTAINS
       slf_i(jp_uoatm) = sn_uoatm   ;   slf_i(jp_voatm) = sn_voatm
       slf_i(jp_hpgi ) = sn_hpgi    ;   slf_i(jp_hpgj ) = sn_hpgj
       !
+      ! define the default values
+      zdefault(:) = 0._wp              ! most common default value: 0.
+      zdefault(jp_tair) = 288.15_wp    ! 15degC
+      zdefault(jp_slp ) = 101325._wp   ! 1 standard atmosphere
+      zdefault(jp_cc  ) = pp_cldf
+      SELECT CASE( nhumi )             ! provide acceptable humidity value...
+      CASE( np_humi_sph )   ;   zdefault(jp_humi) = 0.01_wp   ! saturation at 15degC : 0.01062
+      CASE( np_humi_dpt )   ;   zdefault(jp_humi) = 283._wp   ! dew-point temperature (75% humidity, tair 15°C)
+      CASE( np_humi_rlh )   ;   zdefault(jp_humi) = 75._wp    ! relative humidity
+      END SELECT
+      !
       IF( .NOT. ln_abl ) THEN   ! force to not use jp_hpgi and jp_hpgj, should already be done in namelist_* but we never know...
          slf_i(jp_hpgi)%clname = 'NOT USED'
          slf_i(jp_hpgj)%clname = 'NOT USED'
@@ -372,7 +384,7 @@ CONTAINS
       IF( ierror > 0 )   CALL ctl_stop( 'STOP', 'sbc_blk_init: unable to allocate sf structure' )
       !
       !                                      !- fill the bulk structure with namelist informations
-      CALL fld_fill( sf, slf_i, cn_dir, 'sbc_blk_init', 'surface boundary condition -- bulk formulae', 'namsbc_blk' )
+      CALL fld_fill( sf, slf_i, cn_dir, 'sbc_blk_init', 'surface boundary condition -- bulk formulae', 'namsbc_blk', pdefault = zdefault )
       sf(jp_wndi )%zsgn = -1._wp   ;   sf(jp_wndj )%zsgn = -1._wp   ! vector field at T point: overwrite default definition of zsgn
       sf(jp_uoatm)%zsgn = -1._wp   ;   sf(jp_voatm)%zsgn = -1._wp   ! vector field at T point: overwrite default definition of zsgn
       sf(jp_hpgi )%zsgn = -1._wp   ;   sf(jp_hpgj )%zsgn = -1._wp   ! vector field at T point: overwrite default definition of zsgn
@@ -389,27 +401,12 @@ CONTAINS
          !
          ALLOCATE( sf(jfpr)%fnow(A2D(0),ipka) )
          !
-         IF( TRIM(sf(jfpr)%clrootname) == 'NOT USED' ) THEN    !--  not used field  --!   (only now allocated and set to default)
-            IF(     jfpr == jp_slp ) THEN
-               sf(jfpr)%fnow(:,:,1:ipka) = 101325._wp   ! use standard pressure in Pa
-            ELSEIF( jfpr == jp_prec .OR. jfpr == jp_snow .OR. jfpr == jp_uoatm .OR. jfpr == jp_voatm ) THEN
-               sf(jfpr)%fnow(:,:,1:ipka) = 0._wp        ! no precip or no snow or no surface currents
-            ELSEIF( jfpr == jp_wndi .OR. jfpr == jp_wndj ) THEN
-               sf(jfpr)%fnow(:,:,1:ipka) = 0._wp
-            ELSEIF( jfpr == jp_hpgi .OR. jfpr == jp_hpgj ) THEN
-               IF( .NOT. ln_abl ) THEN
-                  DEALLOCATE( sf(jfpr)%fnow )   ! deallocate as not used in this case
-               ELSE
-                  sf(jfpr)%fnow(:,:,1:ipka) = 0._wp
-               ENDIF
-            ELSEIF( jfpr == jp_cc  ) THEN
-               sf(jp_cc)%fnow(:,:,1:ipka) = pp_cldf
-            ELSEIF( jfpr ==jp_qsr .OR. jfpr==jp_qlw ) THEN
-               sf(jfpr)%fnow(:,:,1:ipka) = 0._wp
+         IF( TRIM(sf(jfpr)%clrootname) == 'NOT USED' ) THEN    !--  not used field  --!   (only now allocated and set to zdefault)
+            IF( ( jfpr == jp_hpgi .OR. jfpr == jp_hpgj ) .AND. .NOT. ln_abl ) THEN
+               DEALLOCATE( sf(jfpr)%fnow )                  ! deallocate as not used in this case
             ELSE
-               WRITE(ctmp1,*) 'sbc_blk_init: no default value defined for field number', jfpr
-               CALL ctl_stop( ctmp1 )
-            ENDIF
+               sf(jfpr)%fnow(:,:,1:ipka) = zdefault(jfpr)   ! set to the default value
+            ENDIF         
          ELSE                                                  !-- used field  --!
             IF( sf(jfpr)%ln_tint )   ALLOCATE( sf(jfpr)%fdta(A2D(0),ipka,2) )   ! allocate array for temporal interpolation
             !

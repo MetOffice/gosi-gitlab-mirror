@@ -79,20 +79,20 @@ for i in range(len(listcfg)):
 		f2=open("namelist_new","w+")
 		with open(namelist,"r") as f:
 			for line in f:
-				match = re.search('nemo_file',line)
-				match2 = re.search('input_file',line)
-				match3 = re.search('input_lon',line)
-				match4 = re.search('input_lat',line)
+				match  = re.search('grid2_grid_in',line)
+				match2 = re.search('grid1_grid_in',line)
+				match3 = re.search('grid1_lon',line)
+				match4 = re.search('grid1_lat',line)
 				match5 = re.search('output_file',line)
 				match6 = re.search('output_name',line)
-				if match != None :
-					line='nemo_file=''\''+listcfg[i]+'\''"\n"
+				if match  != None :
+					line='grid2_grid_in=''\''+listcfg[i]+'\''"\n"
 				if match2 != None :
-					line='input_file=''\''+myfilename+'\''"\n"
+					line='grid1_grid_in=''\''+myfilename+'\''"\n"
 				if match3 != None :
-					line='input_lon=''\''+mylon+'\''"\n"
+					line='grid1_lon=''\''+mylon+'\''"\n"
 				if match4 != None :
-					line='input_lat=''\''+mylat+'\''"\n"
+					line='grid1_lat=''\''+mylat+'\''"\n"
 				if match5 != None :
 					line='output_file=''\''+wfile+'\''"\n"
 			#	if match5 != None :

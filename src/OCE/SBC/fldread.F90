@@ -81,6 +81,7 @@ MODULE fldread
       REAL(wp), POINTER, DIMENSION(:,:,:  ) ::   fnow   ! input fields interpolated to now time step
       REAL(wp), POINTER, DIMENSION(:,:,:,:) ::   fdta   ! 2 consecutive record of input fields
       CHARACTER(len = 256)            ::   wgtname      ! current name of the NetCDF weight file acting as a key
+      REAL(wp)                        ::   vdefault     ! default value for non-interpolated points when wgtname is provided
       !                                                 ! into the WGTLIST structure
       CHARACTER(len = 34)             ::   vcomp        ! symbolic name for a vector component that needs rotation
       LOGICAL, DIMENSION(2)           ::   rotn         ! flag to indicate whether before/after field has been rotated
@@ -108,12 +109,14 @@ MODULE fldread
       INTEGER , DIMENSION(2)                  ::   topright     ! top right corner of box 
       INTEGER                                 ::   jpiwgt       ! width of box on input grid
       INTEGER                                 ::   jpjwgt       ! height of box on input grid
-      INTEGER                                 ::   numwgt       ! number of weights (4=bilinear, 16=bicubic)
+      INTEGER                                 ::   numnei       ! max number of neighbours used for interpolations
+      INTEGER                                 ::   numwgt       ! max number of interpolation weights (16=bicubic, numnei=other)
       INTEGER                                 ::   nestid       ! for agrif, keep track of nest we're in
       INTEGER                                 ::   overlap      ! =0 when cyclic grid has no overlapping EW columns
       !                                                         ! =>1 when they have one or more overlapping columns      
       !                                                         ! =-1 not cyclic
       LOGICAL                                 ::   cyclic       ! east-west cyclic or not
+      LOGICAL,  DIMENSION(:,:  ), POINTER     ::   lnointerp    ! true if non-interpolated point
       INTEGER,  DIMENSION(:,:,:), POINTER     ::   data_jpi     ! array of source integers
       INTEGER,  DIMENSION(:,:,:), POINTER     ::   data_jpj     ! array of source integers
       REAL(wp), DIMENSION(:,:,:), POINTER     ::   data_wgt     ! array of weights on model grid
@@ -383,7 +386,7 @@ CONTAINS
             &          sdjf%imap, sdjf%igrd, sdjf%ibdy, sdjf%ltotvel, sdjf%lzint, Kmm )
       ELSE IF( LEN(TRIM(sdjf%wgtname)) > 0 ) THEN   ! On-the-fly interpolation
          CALL wgt_list( sdjf, iw )
-         CALL fld_interp( sdjf%num, sdjf%clvar, iw, ipk, dta_alias(:,:,:), sdjf%nrec(1,iaa), sdjf%lsmname )
+         CALL fld_interp( sdjf%num, sdjf%clvar, iw, ipk, dta_alias(:,:,:), sdjf%nrec(1,iaa), sdjf%lsmname, sdjf%vdefault )
          CALL lbc_lnk( 'fldread', dta_alias(:,:,:), sdjf%cltype, zsgn, kfillmode = jpfillcopy )
       ELSE                                          ! default case
          idvar  = iom_varid( sdjf%num, sdjf%clvar )
@@ -969,7 +972,7 @@ CONTAINS
    END SUBROUTINE fld_clopn
 
 
-   SUBROUTINE fld_fill( sdf, sdf_n, cdir, cdcaller, cdtitle, cdnam, knoprint )
+   SUBROUTINE fld_fill( sdf, sdf_n, cdir, cdcaller, cdtitle, cdnam, knoprint, pdefault )
       !!---------------------------------------------------------------------
       !!                    ***  ROUTINE fld_fill  ***
       !!
@@ -983,6 +986,7 @@ CONTAINS
       CHARACTER(len=*)                   , INTENT(in   ) ::   cdtitle    ! description of the calling routine 
       CHARACTER(len=*)                   , INTENT(in   ) ::   cdnam      ! name of the namelist from which sdf_n comes
       INTEGER                  , OPTIONAL, INTENT(in   ) ::   knoprint   ! no calling routine information printed
+      REAL(wp), DIMENSION(:)   , OPTIONAL, INTENT(in   ) ::   pdefault   ! default value used for non-interpolated points
       !
       INTEGER  ::   jf   ! dummy indices
       !!---------------------------------------------------------------------
@@ -1011,8 +1015,14 @@ CONTAINS
          sdf(jf)%num        = -1
          sdf(jf)%nbb        = 1  ! start with before data in 1
          sdf(jf)%naa        = 2  ! start with after  data in 2
-         sdf(jf)%wgtname    = " "
-         IF( LEN( TRIM(sdf_n(jf)%wname) ) > 0 )   sdf(jf)%wgtname = TRIM( cdir )//sdf_n(jf)%wname
+         IF( LEN_TRIM(sdf_n(jf)%wname) > 0 ) THEN
+            IF( PRESENT(pdefault) ) THEN   ;   sdf(jf)%vdefault = pdefault(jf)
+            ELSE                           ;   sdf(jf)%vdefault = HUGE(1._wp)   ! flag value
+            ENDIF
+            sdf(jf)%wgtname = TRIM( cdir )//sdf_n(jf)%wname
+         ELSE
+            sdf(jf)%wgtname = " "
+         ENDIF
          sdf(jf)%lsmname = " "
          IF( LEN( TRIM(sdf_n(jf)%lname) ) > 0 )   sdf(jf)%lsmname = TRIM( cdir )//sdf_n(jf)%lname
          sdf(jf)%vcomp      = sdf_n(jf)%vcomp
@@ -1176,24 +1186,30 @@ CONTAINS
          ref_wgts(nxt_wgt)%cyclic = cyclical
          ref_wgts(nxt_wgt)%nestid = Agrif_Fixed()
 
-         !! weights file is stored as a set of weights (wgt01->wgt04 or wgt01->wgt16)
-         !! for each weight wgtNN there is an integer array srcNN which gives the point in
-         !! the input data grid which is to be multiplied by the weight
-         !! they are both arrays on the model grid so the result of the multiplication is
-         !! added into an output array on the model grid as a running sum
+         ! find the maximum nulber of neighbours: look for srcXX variables with XX ranging from 01 to 08
+         ref_wgts(nxt_wgt)%numnei = 0
+         DO jn = 1,8   ! try up to a max of 8 neighbours, e.g. for distance weighted average remapping, could be less or more than 8
+            WRITE(clname,'(a3,i2.2)') 'src', jn
+            id = iom_varid(inum, clname, ldstop=.FALSE.)
+            IF( id <= 0 ) EXIT
+            ref_wgts(nxt_wgt)%numnei = ref_wgts(nxt_wgt)%numnei + 1
+         END DO
 
-         !! two possible cases: bilinear (4 weights) or bicubic (16 weights)
-         id = iom_varid(inum, 'src05', ldstop=.FALSE.)
-         IF( id <= 0 ) THEN   ;   ref_wgts(nxt_wgt)%numwgt = 4
-         ELSE                 ;   ref_wgts(nxt_wgt)%numwgt = 16
+         ! do we do bicubic interpolation ?
+         id = iom_varid(inum, 'wgt16', ldstop=.FALSE.)
+         IF( id > 0 ) THEN
+            ref_wgts(nxt_wgt)%numnei = 4   ! bicubic uses only 4 neighbours (even if duplicated neighbours are defined in the file)
+            ref_wgts(nxt_wgt)%numwgt = 16
+         ELSE
+            ref_wgts(nxt_wgt)%numwgt = ref_wgts(nxt_wgt)%numnei
          ENDIF
 
-         ALLOCATE( ref_wgts(nxt_wgt)%data_jpi(A2D(0),4) )
-         ALLOCATE( ref_wgts(nxt_wgt)%data_jpj(A2D(0),4) )
+         ALLOCATE( ref_wgts(nxt_wgt)%data_jpi(A2D(0),ref_wgts(nxt_wgt)%numnei) )
+         ALLOCATE( ref_wgts(nxt_wgt)%data_jpj(A2D(0),ref_wgts(nxt_wgt)%numnei) )
          ALLOCATE( ref_wgts(nxt_wgt)%data_wgt(A2D(0),ref_wgts(nxt_wgt)%numwgt) )
 
-         DO jn = 1,4
-            WRITE(clname,'(a3,i2.2)') 'src',jn
+         DO jn = 1,ref_wgts(nxt_wgt)%numnei
+            WRITE(clname,'(a3,i2.2)') 'src', jn
             CALL iom_get ( inum, jpdom_global, clname, data_tmp(:,:), cd_type = 'Z' )   !  no call to lbc_lnk
             DO_2D( 0, 0, 0, 0 )
                isrc = NINT(data_tmp(ji,jj)) - 1
@@ -1210,12 +1226,16 @@ CONTAINS
             END_2D
          END DO
          CALL iom_close (inum)
- 
-         ! find min and max indices in grid
-         ref_wgts(nxt_wgt)%botleft( 1) = MINVAL(ref_wgts(nxt_wgt)%data_jpi(:,:,:))
-         ref_wgts(nxt_wgt)%botleft( 2) = MINVAL(ref_wgts(nxt_wgt)%data_jpj(:,:,:))
-         ref_wgts(nxt_wgt)%topright(1) = MAXVAL(ref_wgts(nxt_wgt)%data_jpi(:,:,:))
-         ref_wgts(nxt_wgt)%topright(2) = MAXVAL(ref_wgts(nxt_wgt)%data_jpj(:,:,:))
+        
+         ! find min and max indices in grid. Do not take into account points with a 0 weight that can have -1 as src address
+         ref_wgts(nxt_wgt)%botleft( 1) =   &
+            &   MINVAL(ref_wgts(nxt_wgt)%data_jpi(:,:,:), mask = ref_wgts(nxt_wgt)%data_wgt(:,:,1:ref_wgts(nxt_wgt)%numnei) /= 0.)
+         ref_wgts(nxt_wgt)%botleft( 2) =   &
+            &   MINVAL(ref_wgts(nxt_wgt)%data_jpj(:,:,:), mask = ref_wgts(nxt_wgt)%data_wgt(:,:,1:ref_wgts(nxt_wgt)%numnei) /= 0.)
+         ref_wgts(nxt_wgt)%topright(1) =   &
+            &   MAXVAL(ref_wgts(nxt_wgt)%data_jpi(:,:,:), mask = ref_wgts(nxt_wgt)%data_wgt(:,:,1:ref_wgts(nxt_wgt)%numnei) /= 0.)
+         ref_wgts(nxt_wgt)%topright(2) =    &
+            &   MAXVAL(ref_wgts(nxt_wgt)%data_jpj(:,:,:), mask = ref_wgts(nxt_wgt)%data_wgt(:,:,1:ref_wgts(nxt_wgt)%numnei) /= 0.)
 
          ! and therefore dimensions of the input box
          ref_wgts(nxt_wgt)%jpiwgt = ref_wgts(nxt_wgt)%topright(1) - ref_wgts(nxt_wgt)%botleft(1) + 1
@@ -1224,6 +1244,21 @@ CONTAINS
          ! shift indexing of source grid
          ref_wgts(nxt_wgt)%data_jpi(:,:,:) = ref_wgts(nxt_wgt)%data_jpi(:,:,:) - ref_wgts(nxt_wgt)%botleft(1) + 1
          ref_wgts(nxt_wgt)%data_jpj(:,:,:) = ref_wgts(nxt_wgt)%data_jpj(:,:,:) - ref_wgts(nxt_wgt)%botleft(2) + 1
+
+         ! set a default address for points with 0 weight. Will be used in fld_interp with the addresses 1, 2 or 3
+         WHERE( ref_wgts(nxt_wgt)%data_wgt(:,:,1:ref_wgts(nxt_wgt)%numnei) == 0. )
+            ref_wgts(nxt_wgt)%data_jpi(:,:,:) = 1
+            ref_wgts(nxt_wgt)%data_jpj(:,:,:) = 1
+         END WHERE
+
+         ! look for points whith no interpolated values (i.e. sum of weights = 0)
+         ALLOCATE( ref_wgts(nxt_wgt)%lnointerp(A2D(0)) )
+         ref_wgts(nxt_wgt)%lnointerp(A2D(0)) = SUM(ref_wgts(nxt_wgt)%data_wgt(A2D(0),1:ref_wgts(nxt_wgt)%numnei), dim = 3) == 0.
+         IF( COUNT(ref_wgts(nxt_wgt)%lnointerp) > 0 ) THEN
+            IF(lwp)   WRITE(numout,*) '   weight ', TRIM(ref_wgts(nxt_wgt)%wgtname),' contains non-interpolated points'
+         ELSE
+            DEALLOCATE(ref_wgts(nxt_wgt)%lnointerp)   ! no missing point -> deallocate
+         ENDIF
 
          ! create input grid, give it a halo to allow gradient calculations
          ! SA: +3 stencil is a patch to avoid out-of-bound computation in some configuration. 
@@ -1346,20 +1381,21 @@ CONTAINS
    END SUBROUTINE seaoverland
 
 
-   SUBROUTINE fld_interp( num, clvar, kw, kk, dta, nrec, lsmfile)      
+   SUBROUTINE fld_interp( num, clvar, kw, kk, dta, nrec, lsmfile, pdefault )      
       !!---------------------------------------------------------------------
       !!                    ***  ROUTINE fld_interp  ***
       !!
       !! ** Purpose :   apply weights to input gridded data to create data
       !!                on model grid
       !!----------------------------------------------------------------------
-      INTEGER                   , INTENT(in   ) ::   num     ! stream number
-      CHARACTER(LEN=*)          , INTENT(in   ) ::   clvar   ! variable name
-      INTEGER                   , INTENT(in   ) ::   kw      ! weights number
-      INTEGER                   , INTENT(in   ) ::   kk      ! vertical dimension of kk
-      REAL(wp), DIMENSION(:,:,:), INTENT(inout) ::   dta     ! output field on model grid
-      INTEGER                   , INTENT(in   ) ::   nrec    ! record number to read (ie time slice)
-      CHARACTER(LEN=*)          , INTENT(in   ) ::   lsmfile ! land sea mask file name
+      INTEGER                   , INTENT(in   ) ::   num      ! stream number
+      CHARACTER(LEN=*)          , INTENT(in   ) ::   clvar    ! variable name
+      INTEGER                   , INTENT(in   ) ::   kw       ! weights number
+      INTEGER                   , INTENT(in   ) ::   kk       ! vertical dimension of kk
+      REAL(wp), DIMENSION(:,:,:), INTENT(inout) ::   dta      ! output field on model grid
+      INTEGER                   , INTENT(in   ) ::   nrec     ! record number to read (ie time slice)
+      CHARACTER(LEN=*)          , INTENT(in   ) ::   lsmfile  ! land sea mask file name
+      REAL(wp)                  , INTENT(in   ) ::   pdefault ! default value used for non-interpolated points
       !
       INTEGER, DIMENSION(3) ::   rec1, recn           ! temporary arrays for start and length
       INTEGER, DIMENSION(3) ::   rec1_lsm, recn_lsm   ! temporary arrays for start and length in case of seaoverland
@@ -1384,10 +1420,9 @@ CONTAINS
       iisht = ( jpi - ipi ) / 2
       ijsht = ( jpj - ipj ) / 2
       !
-      !! for weighted interpolation we have weights at four corners of a box surrounding 
-      !! a model grid point, each weight is multiplied by a grid value (bilinear case)
+      !! for weighted interpolation we have weights at neighbours surrounding 
+      !! a model grid point, each weight is multiplied by a grid value (bilinear or distwgt case)
       !! or by a grid value and gradients at the corner point (bicubic case) 
-      !! so we need to have a 4 by 4 subgrid surrounding each model point to cover both cases
 
       !! sub grid from non-model input grid which encloses all grid points in this nemo process
       jpimin = ref_wgts(kw)%botleft(1)
@@ -1433,7 +1468,6 @@ CONTAINS
          jpi2_lsm = jpi1_lsm + recn_lsm(1) - 1
          jpj2_lsm = jpj1_lsm + recn_lsm(2) - 1
 
-
          itmpi=jpi2_lsm-jpi1_lsm+1
          itmpj=jpj2_lsm-jpj1_lsm+1
          itmpz=kk
@@ -1473,7 +1507,7 @@ CONTAINS
       !! data_jpi, data_jpj have already been shifted to (1,1) corresponding to botleft
       !! note that we have to offset by 1 into fly_dta array because of halo added to fly_dta (rec1 definition)
       dta(:,:,:) = 0._wp
-      DO jn = 1,4
+      DO jn = 1,ref_wgts(kw)%numnei
          DO_3D( 0, 0, 0, 0, 1,ipk )
             ni = ref_wgts(kw)%data_jpi(ji,jj,jn) + 1
             nj = ref_wgts(kw)%data_jpj(ji,jj,jn) + 1
@@ -1483,7 +1517,7 @@ CONTAINS
          END_3D
       END DO
 
-      IF(ref_wgts(kw)%numwgt .EQ. 16) THEN
+      IF(ref_wgts(kw)%numwgt .EQ. 16) THEN   ! this is bicubic interpolation
 
          !! fix up halo points that we couldnt read from file
          IF( jpi1 == 2 ) THEN
@@ -1518,26 +1552,6 @@ CONTAINS
                ref_wgts(kw)%fly_dta(jpi2+1,jpj1:jpj2,:) = ref_wgts(kw)%col(1,jpj1:jpj2,:)
             ENDIF
          ENDIF
-         !
-!!$         DO jn = 1,4
-!!$            DO_3D( 0, 0, 0, 0, 1,ipk )
-!!$               ni = ref_wgts(kw)%data_jpi(ji,jj,jn) + 1
-!!$               nj = ref_wgts(kw)%data_jpj(ji,jj,jn) + 1
-!!$               ii = ji - iisht
-!!$               ij = jj - ijsht
-!!$               dta(ii,ij,jk) = dta(ii,ij,jk)   &
-!!$                  ! gradient in the i direction
-!!$                  &            + ref_wgts(kw)%data_wgt(ji,jj,jn+4) * 0.5_wp *                                    &
-!!$                  &                (ref_wgts(kw)%fly_dta(ni+1,nj  ,jk) - ref_wgts(kw)%fly_dta(ni-1,nj  ,jk))     &
-!!$                  ! gradient in the j direction
-!!$                  &            + ref_wgts(kw)%data_wgt(ji,jj,jn+8) * 0.5_wp *                                    &
-!!$                  &                (ref_wgts(kw)%fly_dta(ni  ,nj+1,jk) - ref_wgts(kw)%fly_dta(ni  ,nj-1,jk))     &
-!!$                  ! gradient in the ij direction
-!!$                  &            + ref_wgts(kw)%data_wgt(ji,jj,jn+12) * 0.25_wp *                                  &
-!!$                  &               ((ref_wgts(kw)%fly_dta(ni+1,nj+1,jk) - ref_wgts(kw)%fly_dta(ni-1,nj+1,jk)) -   &
-!!$                  &                (ref_wgts(kw)%fly_dta(ni+1,nj-1,jk) - ref_wgts(kw)%fly_dta(ni-1,nj-1,jk)))
-!!$            END_3D
-!!$         END DO
          !
          DO jn = 1,4
             DO_3D( 0, 0, 0, 0, 1,ipk )
@@ -1574,6 +1588,12 @@ CONTAINS
             END_3D
          END DO
          !
+      ENDIF
+      !
+      IF( ASSOCIATED(ref_wgts(kw)%lnointerp) ) THEN   ! set non-interpolated points to their default value
+         DO_3D( 0, 0, 0, 0, 1,ipk )
+            IF( ref_wgts(kw)%lnointerp(ji,jj) )   dta(ji-iisht,jj-ijsht,jk) = pdefault
+         END_3D
       ENDIF
       !
    END SUBROUTINE fld_interp
