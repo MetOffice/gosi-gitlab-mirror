@@ -350,7 +350,7 @@ CONTAINS
       ! Now we know the dimensions of the grid and numout has been set: we can allocate arrays
       CALL nemo_alloc()
 
-      IF( lk_oasis     )   CALL cpl_domain   ! Define grid for coupling
+      IF( lk_oasis     )   CALL cpl_domdef   ! Define grid for coupling
       !
       ! Initialise time level indices
       Nbb = 1; Nnn = 2; Naa = 3; Nrhs = Naa
@@ -393,7 +393,7 @@ CONTAINS
                            CALL bdy_init
       ! ==>
                            CALL icb_init( rn_Dt, nit000, Nnn)   ! initialise icebergs instance
-      IF( lk_oasis     )   CALL cpl_define                      ! terminate coupling initialization
+      IF( lk_oasis     )   CALL cpl_enddef                      ! terminate coupling initialization
    
       ! compatibility check
       IF( ln_icebergs .AND. ln_M2016 ) THEN

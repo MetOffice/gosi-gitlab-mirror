@@ -227,7 +227,7 @@ CONTAINS
       ! Now we know the dimensions of the grid and numout has been set: we can allocate arrays
       CALL nemo_alloc()
       
-      IF( lk_oasis     )   CALL cpl_domain   ! Define grid for coupling
+      IF( lk_oasis     )   CALL cpl_domdef   ! Define grid for coupling
       !
       !                             !-------------------------------!
       !                             !  NEMO general initialization  !
@@ -248,7 +248,7 @@ CONTAINS
          &                 CALL prt_ctl_init       ! Print control
 
                            CALL istate_init        ! ocean initial state (Dynamics and tracers)
-      IF( lk_oasis     )   CALL cpl_define         ! terminate coupling initialization                           
+      IF( lk_oasis     )   CALL cpl_enddef         ! terminate coupling initialization                           
       IF( ln_timing    )   CALL timing_stop( 'nemo_init' )
                            
   END SUBROUTINE nemo_init

@@ -18,9 +18,9 @@ MODULE cpl_oasis3
    !!   'key_oasis3'                    coupled Ocean/Atmosphere via OASIS3-MCT
    !!----------------------------------------------------------------------
    !!   cpl_init     : initialization of coupled mode communication
-   !!   cpl_domain   : definition of grid
-   !!   cpl_var      : definition of fields
-   !!   cpl_define   : finalize definition
+   !!   cpl_domdef   : definition of grid
+   !!   cpl_vardef   : definition of fields
+   !!   cpl_enddef   : finalize definition
    !!   cpl_snd      : snd out fields in coupled mode
    !!   cpl_rcv      : receive fields in coupled mode
    !!   cpl_finalize : finalize the coupled mode communication
@@ -40,9 +40,9 @@ MODULE cpl_oasis3
    PRIVATE
 
    PUBLIC   cpl_init
-   PUBLIC   cpl_domain
-   PUBLIC   cpl_var
-   PUBLIC   cpl_define
+   PUBLIC   cpl_domdef
+   PUBLIC   cpl_vardef
+   PUBLIC   cpl_enddef
    PUBLIC   cpl_snd
    PUBLIC   cpl_rcv
    PUBLIC   cpl_freq
@@ -86,32 +86,26 @@ MODULE cpl_oasis3
    LOGICAL, PUBLIC            ::   lk_oasis = .TRUE.  !: OASIS used
 #endif
 
-   INTEGER                    ::   ncplmodel    ! Maximum number of models to/from which NEMO is potentialy sending/receiving data
-   INTEGER, PUBLIC, PARAMETER ::   nmaxcat=5    ! Maximum number of coupling fields
-   INTEGER, PUBLIC, PARAMETER ::   nmaxcpl=5    ! Maximum number of coupling fields
-   INTEGER, PUBLIC, PARAMETER ::   nmodmax=1    ! Maximum number of identified modules   
-   INTEGER, PUBLIC, PARAMETER ::   nmodsbc=1    ! module ID #1 : surface boundary condition
+   INTEGER, PUBLIC, PARAMETER ::   midmax=1    ! Maximum number of identified modules   
+   INTEGER, PUBLIC, PARAMETER ::   midcpl=1    ! module ID #1 : surface boundary condition
 
    TYPE, PUBLIC ::   FLD_CPL               !: Type for coupling field information
       LOGICAL               ::   laction   ! To be coupled or not
       CHARACTER(len = 8)    ::   clname    ! Name of the coupling field
       CHARACTER(len = 1)    ::   clgrid    ! Grid type
       REAL(wp)              ::   nsgn      ! Control of the sign change
-      INTEGER, DIMENSION(nmaxcat,nmaxcpl) ::   nid   ! Id of the field (no more than 9 categories and 9 extrena models)
       INTEGER               ::   nct       ! Number of categories in field
       INTEGER               ::   ncplmodel ! Maximum number of models to/from which this variable may be sent/received
       INTEGER               ::   nlvl      ! number of depth levels (size of third dimension for 3D coupling)
+      INTEGER , POINTER, DIMENSION(:,:  ) ::   nid => NULL()   ! Id of the field (no more than 99 categories and 99 extrenal models)
+      REAL(wp), POINTER, DIMENSION(:,:,:) ::   z3  => NULL()   ! data received from OASIS
    END TYPE FLD_CPL
 
    TYPE, PUBLIC :: MOD_FLD_CPL             !: Type to sort coupling field information between calling modules
       TYPE(FLD_CPL), DIMENSION(:), ALLOCATABLE,  PUBLIC :: fld
    END TYPE MOD_FLD_CPL
 
-   TYPE(MOD_FLD_CPL), DIMENSION(:), ALLOCATABLE, PUBLIC ::  srcv, ssnd   !: Coupling field informations
-
-   TYPE, PUBLIC ::   DYNARR                           !: Type to create batches of coupled fields
-      REAL(wp), POINTER, DIMENSION(:,:,:) ::   z3 
-   END TYPE DYNARR
+   TYPE(MOD_FLD_CPL), DIMENSION(midmax), PUBLIC ::  srcv, ssnd   !: Coupling field informations
 
    REAL(wp), DIMENSION(:,:,:), ALLOCATABLE ::   exfld   ! Temporary buffer for receiving
 
@@ -152,17 +146,12 @@ CONTAINS
       IF( nerror /= OASIS_Ok ) &
          CALL oasis_abort (ncomp_id, 'cpl_init','Failure in oasis_get_localcomm' )
 
-      !------------------------------------------------------------------
-      ! 3rd Initialize coupling information arrays
-      !------------------------------------------------------------------
-      ALLOCATE( srcv(nmodmax) , ssnd(nmodmax) )
-      !
    END SUBROUTINE cpl_init
 
 
-   SUBROUTINE cpl_domain
+   SUBROUTINE cpl_domdef
       !!-------------------------------------------------------------------
-      !!             ***  ROUTINE cpl_domain  ***
+      !!             ***  ROUTINE cpl_domdef  ***
       !!
       !! ** Purpose :   Define grid information for ocean
       !!    exchange between AGCM, OGCM and COUPLER. (OASIS3 software)
@@ -183,7 +172,7 @@ CONTAINS
       !
       ALLOCATE(exfld(Ni_0, Nj_0, jpk), stat = nerror)        ! allocate only inner domain (without halos)
       IF( nerror > 0 ) THEN
-         CALL oasis_abort ( ncomp_id, 'cpl_domain', 'Failure in allocating exfld')   ;   RETURN
+         CALL oasis_abort ( ncomp_id, 'cpl_domdef', 'Failure in allocating exfld')   ;   RETURN
       ENDIF
 
       !
@@ -206,20 +195,18 @@ CONTAINS
       !
       CALL oasis_def_partition ( nid_part, paral, nerror, Ni0glo*Nj0glo )   ! global number of points, excluding halos
       !
-   END SUBROUTINE cpl_domain
+   END SUBROUTINE cpl_domdef
 
 
-   SUBROUTINE cpl_var( krcv, ksnd, kcplmodel, kmod )
+   SUBROUTINE cpl_vardef( kmod )
       !!-------------------------------------------------------------------
-      !!             ***  ROUTINE cpl_var  ***
+      !!             ***  ROUTINE cpl_vardef  ***
       !!
       !! ** Purpose :   Define field information for ocean
       !!    exchange between AGCM, OGCM and COUPLER. (OASIS3 software)
       !!
       !! ** Method  :   OASIS3 MPI communication
       !!--------------------------------------------------------------------
-      INTEGER, INTENT(in) ::   krcv, ksnd     ! Number of received and sent coupling fields
-      INTEGER, INTENT(in) ::   kcplmodel      ! Maximum number of models to/from which NEMO is potentialy sending/receiving data
       INTEGER, INTENT(in) ::   kmod           ! calling module ID
       !
       INTEGER :: ji,jc,jm       ! local loop indicees
@@ -227,131 +214,120 @@ CONTAINS
       CHARACTER(LEN=64) :: zclname
       CHARACTER(LEN=2) :: cli2
       !!--------------------------------------------------------------------
-
+      !
       IF(lwp) THEN
          WRITE(numout,*)
-         IF( kmod == nmodsbc ) WRITE(numout,*) 'cpl_var : initialization in coupled ocean/atmosphere case'
+         IF( kmod == midcpl ) WRITE(numout,*) 'cpl_vardef : initialization in coupled ocean/atmosphere case'
          WRITE(numout,*) '~~~~~~~'
       END IF
-
-      ncplmodel = kcplmodel
-      IF( kcplmodel > nmaxcpl ) THEN
-         CALL oasis_abort ( ncomp_id, 'cpl_var', 'ncplmodel is larger than nmaxcpl, increase nmaxcpl')   ;   RETURN
-      ENDIF
       !
       ! ... Announce send variables.
       !
       isnd = 0
-      ssnd(kmod)%fld(:)%ncplmodel = kcplmodel
-      !
-      DO ji = 1, ksnd
-         IF( ssnd(kmod)%fld(ji)%laction ) THEN
+      IF( ALLOCATED(ssnd(kmod)%fld) ) THEN
+         !
+         DO ji = 1, SIZE(ssnd(kmod)%fld)
+            IF( ssnd(kmod)%fld(ji)%laction ) THEN
 
-            IF( ssnd(kmod)%fld(ji)%nct > nmaxcat ) THEN
-               CALL oasis_abort ( ncomp_id, 'cpl_var', 'Number of categories of '//   &
-                  &               TRIM(ssnd(kmod)%fld(ji)%clname)//' is larger than nmaxcat, increase nmaxcat' )
-               RETURN
-            ENDIF
+               ALLOCATE( ssnd(kmod)%fld(ji)%nid(ssnd(kmod)%fld(ji)%nct,ssnd(kmod)%fld(ji)%ncplmodel) )
 
-            DO jc = 1, ssnd(kmod)%fld(ji)%nct
-               DO jm = 1, kcplmodel
-
-                  IF( ssnd(kmod)%fld(ji)%nct .GT. 1 ) THEN
-                     WRITE(cli2,'(i2.2)') jc
-                     zclname = TRIM(ssnd(kmod)%fld(ji)%clname)//'_cat'//cli2
-                  ELSE
-                     zclname = ssnd(kmod)%fld(ji)%clname
-                  ENDIF
-                  IF( kcplmodel  > 1 ) THEN
-                     WRITE(cli2,'(i2.2)') jm
-                     zclname = 'model'//cli2//'_'//TRIM(zclname)
-                  ENDIF
+               DO jc = 1, ssnd(kmod)%fld(ji)%nct
+                  DO jm = 1, ssnd(kmod)%fld(ji)%ncplmodel
+                     !
+                     IF( ssnd(kmod)%fld(ji)%nct > 1 ) THEN
+                        WRITE(cli2,'(i2.2)') jc
+                        zclname = TRIM(ssnd(kmod)%fld(ji)%clname)//'_cat'//cli2
+                     ELSE
+                        zclname = ssnd(kmod)%fld(ji)%clname
+                     ENDIF
+                     IF( ssnd(kmod)%fld(ji)%ncplmodel > 1 ) THEN
+                        WRITE(cli2,'(i2.2)') jm
+                        zclname = 'model'//cli2//'_'//TRIM(zclname)
+                     ENDIF
 #if defined key_agrif
-                  IF( agrif_fixed() /= 0 ) THEN
-                     zclname=TRIM(Agrif_CFixed())//'_'//TRIM(zclname)
-                  ENDIF
+                     IF( agrif_fixed() /= 0 ) THEN
+                        zclname=TRIM(Agrif_CFixed())//'_'//TRIM(zclname)
+                     ENDIF
 #endif
-                  IF( sn_cfctl%l_oasout ) WRITE(numout,*) "Define", ji, jc, jm, " "//TRIM(zclname), " for ", OASIS_Out
-                  CALL oasis_def_var (ssnd(kmod)%fld(ji)%nid(jc,jm), zclname, nid_part   , (/ 2, ssnd(kmod)%fld(ji)%nlvl /),   &
-                     &                OASIS_Out          , nishape , OASIS_REAL, nerror )
-                  IF( nerror /= OASIS_Ok ) THEN
-                     WRITE(numout,*) 'Failed to define transient ', ji, jc, jm, " "//TRIM(zclname)
-                     CALL oasis_abort ( ssnd(kmod)%fld(ji)%nid(jc,jm), 'cpl_var', 'Failure in oasis_def_var' )
-                  ENDIF
-                  IF( ssnd(kmod)%fld(ji)%nid(jc,jm) /= -1 ) THEN
-                     IF( sn_cfctl%l_oasout ) WRITE(numout,*) "Variable defined in the namcouple"
-                     isnd = isnd + 1
-                  ELSEIF( ssnd(kmod)%fld(ji)%nid(jc,jm) == -1 ) THEN
-                     IF(lwp) WRITE(numout,*) "   "//TRIM(ssnd(kmod)%fld(ji)%clname)//" NOT defined in the namcouple, coupling disabled"
-                     ssnd(kmod)%fld(ji)%laction = .FALSE. 
-                  ENDIF
-               END DO
-            END DO
-         ENDIF
-      END DO
+                     IF( sn_cfctl%l_oasout ) WRITE(numout,*) "Define", ji, jc, jm, " "//TRIM(zclname), " for ", OASIS_Out
+                     CALL oasis_def_var (ssnd(kmod)%fld(ji)%nid(jc,jm), zclname, nid_part, (/ 2, ssnd(kmod)%fld(ji)%nlvl /),   &
+                        &                OASIS_Out, nishape, OASIS_REAL, nerror )
+                     IF( nerror /= OASIS_Ok ) THEN
+                        WRITE(numout,*) 'Failed to define transient ', ji, jc, jm, " "//TRIM(zclname)
+                        CALL oasis_abort ( ssnd(kmod)%fld(ji)%nid(jc,jm), 'cpl_vardef', 'Failure in oasis_def_var' )
+                     ENDIF
+                     IF( sn_cfctl%l_oasout .AND. ssnd(kmod)%fld(ji)%nid(jc,jm) /= -1 ) THEN
+                        WRITE(numout,*) "--> variable defined in the namcouple"
+                        isnd = isnd + 1
+                     ENDIF
+                     IF( sn_cfctl%l_oasout .AND. ssnd(kmod)%fld(ji)%nid(jc,jm) == -1 ) WRITE(numout,*) "--> variable NOT defined in the namcouple"
+                     !
+                 END DO
+              END DO
+
+            ENDIF
+         END DO
+      ENDIF
       !
       ! ... Announce received variables.
       !
       ircv = 0
-      srcv(kmod)%fld(:)%ncplmodel = kcplmodel
-      !
-      DO ji = 1, krcv
-         IF( srcv(kmod)%fld(ji)%laction ) THEN
+      IF( ALLOCATED(srcv(kmod)%fld) ) THEN
+         !
+         DO ji = 1, SIZE(srcv(kmod)%fld)
+            IF( srcv(kmod)%fld(ji)%laction ) THEN
 
-            IF( srcv(kmod)%fld(ji)%nct > nmaxcat ) THEN
-               CALL oasis_abort ( ncomp_id, 'cpl_var', 'Number of categories of '//   &
-                  &               TRIM(srcv(kmod)%fld(ji)%clname)//' is larger than nmaxcat, increase nmaxcat' )
-               RETURN
-            ENDIF
+               ALLOCATE( srcv(kmod)%fld(ji)%nid(srcv(kmod)%fld(ji)%nct,srcv(kmod)%fld(ji)%ncplmodel) )
 
-            DO jc = 1, srcv(kmod)%fld(ji)%nct
-               DO jm = 1, kcplmodel
-
-                  IF( srcv(kmod)%fld(ji)%nct .GT. 1 ) THEN
-                     WRITE(cli2,'(i2.2)') jc
-                     zclname = TRIM(srcv(kmod)%fld(ji)%clname)//'_cat'//cli2
-                  ELSE
-                     zclname = srcv(kmod)%fld(ji)%clname
-                  ENDIF
-                  IF( kcplmodel  > 1 ) THEN
-                     WRITE(cli2,'(i2.2)') jm
-                     zclname = 'model'//cli2//'_'//TRIM(zclname)
-                  ENDIF
+               DO jc = 1, srcv(kmod)%fld(ji)%nct
+                  DO jm = 1, srcv(kmod)%fld(ji)%ncplmodel
+                     !
+                     IF( srcv(kmod)%fld(ji)%nct > 1 ) THEN
+                        WRITE(cli2,'(i2.2)') jc
+                        zclname = TRIM(srcv(kmod)%fld(ji)%clname)//'_cat'//cli2
+                     ELSE
+                        zclname = srcv(kmod)%fld(ji)%clname
+                     ENDIF
+                     IF( srcv(kmod)%fld(ji)%ncplmodel > 1 ) THEN
+                        WRITE(cli2,'(i2.2)') jm
+                        zclname = 'model'//cli2//'_'//TRIM(zclname)
+                     ENDIF
 #if defined key_agrif
-                  IF( agrif_fixed() /= 0 ) THEN
-                     zclname=TRIM(Agrif_CFixed())//'_'//TRIM(zclname)
-                  ENDIF
+                     IF( agrif_fixed() /= 0 ) THEN
+                        zclname=TRIM(Agrif_CFixed())//'_'//TRIM(zclname)
+                     ENDIF
 #endif
-                  IF( sn_cfctl%l_oasout ) WRITE(numout,*) "Define", ji, jc, jm, " "//TRIM(zclname), " for ", OASIS_In
-                  CALL oasis_def_var (srcv(kmod)%fld(ji)%nid(jc,jm), zclname, nid_part   , (/ 2, srcv(kmod)%fld(ji)%nlvl /),   &
-                     &                OASIS_In           , nishape , OASIS_REAL, nerror )
-                  IF( nerror /= OASIS_Ok ) THEN
-                     WRITE(numout,*) 'Failed to define transient ', ji, jc, jm, " "//TRIM(zclname)
-                     CALL oasis_abort ( srcv(kmod)%fld(ji)%nid(jc,jm), 'cpl_var', 'Failure in oasis_def_var' )
-                  ENDIF
-                  IF( srcv(kmod)%fld(ji)%nid(jc,jm) /= -1 ) THEN
-                     IF( sn_cfctl%l_oasout ) WRITE(numout,*) "Variable defined in the namcouple"
-                     ircv = ircv + 1
-                  ELSEIF( srcv(kmod)%fld(ji)%nid(jc,jm) == -1 ) THEN 
-                     IF(lwp) WRITE(numout,*) "   "//TRIM(srcv(kmod)%fld(ji)%clname)//" NOT defined in the namcouple, coupling disabled"
-                     srcv(kmod)%fld(ji)%laction = .FALSE.
-                  ENDIF                  
+                     IF( sn_cfctl%l_oasout ) WRITE(numout,*) "Define", ji, jc, jm, " "//TRIM(zclname), " for ", OASIS_In
+                     CALL oasis_def_var (srcv(kmod)%fld(ji)%nid(jc,jm), zclname, nid_part, (/ 2, srcv(kmod)%fld(ji)%nlvl /),   &
+                        &                OASIS_In, nishape, OASIS_REAL, nerror )
+                     IF( nerror /= OASIS_Ok ) THEN
+                        WRITE(numout,*) 'Failed to define transient ', ji, jc, jm, " "//TRIM(zclname)
+                        CALL oasis_abort ( srcv(kmod)%fld(ji)%nid(jc,jm), 'cpl_vardef', 'Failure in oasis_def_var' )
+                     ENDIF
+                     IF( sn_cfctl%l_oasout .AND. srcv(kmod)%fld(ji)%nid(jc,jm) /= -1 ) THEN
+                        WRITE(numout,*) "--> variable defined in the namcouple"
+                        ircv = ircv + 1
+                     ENDIF
+                     IF( sn_cfctl%l_oasout .AND. srcv(kmod)%fld(ji)%nid(jc,jm) == -1 ) WRITE(numout,*) "--> variable NOT defined in the namcouple"
+                     !
+                  END DO
                END DO
-            END DO
-         ENDIF
-      END DO
+
+            ENDIF
+         END DO
+      ENDIF
       !
       IF(lwp) THEN
          WRITE(numout,*) '   Number of variables to receive: ', ircv
          WRITE(numout,*) '   Number of variables to send: ', isnd
       END IF  
       !      
-   END SUBROUTINE cpl_var
+   END SUBROUTINE cpl_vardef
 
 
-   SUBROUTINE cpl_define
+   SUBROUTINE cpl_enddef
       !!-------------------------------------------------------------------
-      !!             ***  ROUTINE cpl_define  ***
+      !!             ***  ROUTINE cpl_enddef  ***
       !!
       !! ** Purpose :   Finalize definition for ocean
       !!    exchange between AGCM, OGCM and COUPLER. (OASIS3 software)
@@ -377,10 +353,14 @@ CONTAINS
          CALL xios_oasis_enddef()   ! see "Joint_usage_OASIS3-MCT_XIOS.pdf" on XIOS wiki page
 #endif
          CALL oasis_enddef(nerror)
-         IF( nerror /= OASIS_Ok )   CALL oasis_abort ( ncomp_id, 'cpl_define', 'Failure in oasis_enddef')
+         IF( nerror == OASIS_Ok ) THEN
+            IF( sn_cfctl%l_oasout )   WRITE(numout,*) 'cpl_enddef OK'
+         ELSE
+            CALL oasis_abort ( ncomp_id, 'cpl_enddef', 'Failure in oasis_enddef')
+         ENDIF
       ENDIF
       !
-   END SUBROUTINE cpl_define
+   END SUBROUTINE cpl_enddef
 
 
    SUBROUTINE cpl_snd( kmod, kid, kstep, pdata, kinfo )
@@ -560,30 +540,34 @@ CONTAINS
       cpl_freq = 0   ! defaut definition
       id = -1        ! defaut definition
       !
-      DO ji = 1, SIZE(ssnd(kmod)%fld)
-         IF(ssnd(kmod)%fld(ji)%laction ) THEN
-            DO jm = 1, ncplmodel
-               IF( ssnd(kmod)%fld(ji)%nid(1,jm) /= -1 ) THEN
-                  IF( TRIM(cdfieldname) == TRIM(ssnd(kmod)%fld(ji)%clname) ) THEN
-                     id = ssnd(kmod)%fld(ji)%nid(1,jm)
-                     mop = OASIS_Out
+      IF( ALLOCATED(ssnd(kmod)%fld) ) THEN
+         DO ji = 1, SIZE(ssnd(kmod)%fld)
+            IF( ssnd(kmod)%fld(ji)%laction ) THEN
+               DO jm = 1, ssnd(kmod)%fld(ji)%ncplmodel
+                  IF( ssnd(kmod)%fld(ji)%nid(1,jm) /= -1 ) THEN
+                     IF( TRIM(cdfieldname) == TRIM(ssnd(kmod)%fld(ji)%clname) ) THEN
+                        id = ssnd(kmod)%fld(ji)%nid(1,jm)
+                        mop = OASIS_Out
+                     ENDIF
                   ENDIF
-               ENDIF
-            ENDDO
-         ENDIF
-      ENDDO
-      DO ji = 1, SIZE(srcv(kmod)%fld)
-         IF(srcv(kmod)%fld(ji)%laction ) THEN
-            DO jm = 1, ncplmodel
-               IF( srcv(kmod)%fld(ji)%nid(1,jm) /= -1 ) THEN
-                  IF( TRIM(cdfieldname) == TRIM(srcv(kmod)%fld(ji)%clname) ) THEN
-                     id = srcv(kmod)%fld(ji)%nid(1,jm)
-                     mop = OASIS_In
+               ENDDO
+            ENDIF
+         ENDDO
+      ENDIF
+      IF( ALLOCATED(srcv(kmod)%fld) ) THEN
+         DO ji = 1, SIZE(srcv(kmod)%fld)
+            IF( srcv(kmod)%fld(ji)%laction ) THEN
+               DO jm = 1, srcv(kmod)%fld(ji)%ncplmodel
+                  IF( srcv(kmod)%fld(ji)%nid(1,jm) /= -1 ) THEN
+                     IF( TRIM(cdfieldname) == TRIM(srcv(kmod)%fld(ji)%clname) ) THEN
+                        id = srcv(kmod)%fld(ji)%nid(1,jm)
+                        mop = OASIS_In
+                     ENDIF
                   ENDIF
-               ENDIF
-            ENDDO
-         ENDIF
-      ENDDO
+               ENDDO
+            ENDIF
+         ENDDO
+      ENDIF
       !
       IF( id /= -1 ) THEN
 #if ! defined key_oa3mct_v1v2
@@ -606,7 +590,7 @@ CONTAINS
       !!      MPI communication.
       !!----------------------------------------------------------------------
       !
-      DEALLOCATE( exfld , ssnd , srcv )
+      DEALLOCATE( exfld )
       IF(nstop == 0) THEN
          CALL oasis_terminate( nerror )
       ELSE
