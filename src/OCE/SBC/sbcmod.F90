@@ -276,13 +276,13 @@ CONTAINS
       !
       !                             !* OASIS initialization
       !
-      IF( lk_oasis )   CALL sbc_cpl_init( nn_ice )   ! Must be done before: (1) first time step
+      IF( ln_cpl )   CALL sbc_cpl_init( nn_ice )   ! Must be done before: (1) first time step
       !                                              !                      (2) the use of nn_fsbc
       !     nn_fsbc initialization if OCE-SAS coupling via OASIS
       !     SAS time-step has to be declared in OASIS (mandatory) -> nn_fsbc has to be modified accordingly
       IF( nn_components /= jp_iam_nemo ) THEN
-         IF( nn_components == jp_iam_oce )   nn_fsbc = cpl_freq('O_SFLX',nmodsbc) / NINT(rn_Dt)
-         IF( nn_components == jp_iam_sas )   nn_fsbc = cpl_freq('I_SFLX',nmodsbc) / NINT(rn_Dt)
+         IF( nn_components == jp_iam_oce )   nn_fsbc = cpl_freq('O_SFLX',midcpl) / NINT(rn_Dt)
+         IF( nn_components == jp_iam_sas )   nn_fsbc = cpl_freq('I_SFLX',midcpl) / NINT(rn_Dt)
          !
          IF(lwp)THEN
             WRITE(numout,*)
@@ -391,6 +391,7 @@ CONTAINS
       IF( ln_blk .OR. ln_abl ) THEN
          IF( ll_sas  )         CALL sbc_cpl_rcv ( kt, nn_fsbc, nn_ice, Kbb, Kmm )   ! OCE-SAS coupling: SAS receiving fields from OCE
          IF( ln_wave ) THEN
+            ! Seb: we should not use lk_oasis here -> to be rewritten with splitting sbccpl.F90
             IF ( lk_oasis )    CALL sbc_cpl_rcv ( kt, nn_fsbc, nn_ice, Kbb, Kmm )   ! OCE-wave coupling
                                CALL sbc_wave ( kt, Kmm )
          ENDIF
