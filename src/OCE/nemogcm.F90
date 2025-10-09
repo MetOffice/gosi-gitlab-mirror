@@ -405,8 +405,8 @@ CONTAINS
          CALL     sbc_init( Nbb, Nnn, Naa )         ! Forcings : surface module
          CALL tra_qsr_init                          ! penetrative solar radiation qsr
          IF( ln_diaobs ) THEN                       ! Observation & model comparison
-            CALL dia_obs_init( Nnn )                ! Initialize observational data
-            CALL dia_obs( nit000 - 1, Nnn )         ! Observation operator for restart
+            CALL dia_obs_init( Nbb )                ! Initialize observational data
+            CALL dia_obs( nit000 - 1, Nbb )         ! Observation operator for restart
          ENDIF
          IF( lk_asminc )   CALL asm_inc_init( Nbb, Nnn, Nrhs )   ! Assimilation increments
          !
@@ -466,10 +466,10 @@ CONTAINS
       IF( ln_diacfl    )   CALL dia_cfl_init    ! Initialise CFL diagnostics
                            CALL dia_dct_init    ! Sections tranports
                            CALL     trd_init( Nnn )    ! Mixed-layer/Vorticity/Integral constraints trends
-                           CALL dia_obs_init( Nnn )    ! Initialize observational data
+                           CALL dia_obs_init( Nbb )    ! Initialize observational data
       ! move to stprk3 !   CALL dia_25h_init( Nbb )    ! 25h mean  outputs
                            CALL dia_detide_init ! Weights computation for daily detiding of model diagnostics
-      IF( ln_diaobs    )   CALL dia_obs( nit000-1, Nnn )   ! Observation operator for restart
+      IF( ln_diaobs    )   CALL dia_obs( nit000-1, Nbb )   ! Observation operator for restart
                            CALL dia_mlr_init    ! Initialisation of IOM context management for multiple-linear-regression analysis
 
       !                                      ! Assimilation increments

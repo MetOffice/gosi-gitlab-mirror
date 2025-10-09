@@ -280,7 +280,7 @@ CONTAINS
 
 #endif
       IF( ln_diaobs .AND. nstop == 0 )   &
-         &               CALL dia_obs( kstp, Nnn )  ! obs-minus-model (assimilation) diags (after dynamics update)
+         &               CALL dia_obs( kstp, Nbb )  ! obs-minus-model (assimilation) diags (after dynamics update)
 
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       ! File manipulation at the end of the first time step
