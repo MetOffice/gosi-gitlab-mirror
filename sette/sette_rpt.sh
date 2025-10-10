@@ -12,8 +12,8 @@
 # report format
 format_field1="%-35s"
 
-# exit codes
-declare -i {REPRO_EC,RESTA_EC,TRANSFORM_EC,REFCMP_EC,CPUCMP_EC,OCEOUT_EC,AGRIF_EC,ROT_EC,PHYOPT_EC}=0
+# exit codes and warning flags
+declare -i {REPRO_EC,RESTA_EC,TRANSFORM_EC,REFCMP_EC,CPUCMP_EC,OCEOUT_EC,AGRIF_EC,ROT_EC,PHYOPT_EC,MD_WARN}=0
 
 function get_dorv() {
   if [ $lastchange == 'old' ] ; then
@@ -48,9 +48,9 @@ function rottest() {
 #
 # check if directory is here
   if [ ! -d $vdir/$mach/$dorv/$nam ]; then
-    printf "${format_field1} %s %s\n" $nam  " directory                  MISSING : " $dorv
-    echo " please check $vdir/$mach/$dorv/$nam"
+    printf "${format_field1} %s %s\n" $nam  "directory                    MISSING :" $dorv
     ROT_EC=1
+    MD_WARN=1
     return
   fi
 
@@ -231,9 +231,9 @@ function resttest() {
 #
 # check if directory is here
   if [ ! -d $vdir/$mach/$dorv/$nam ]; then
-    printf "${format_field1} %s %s\n" $nam  " directory                    MISSING :" $dorv
-    echo " please check $vdir/$mach/$dorv/$nam"
+    printf "${format_field1} %s %s\n" $nam  "directory                    MISSING :" $dorv
     RESTA_EC=1
+    MD_WARN=1
     return
   fi
 
@@ -380,9 +380,9 @@ function reprotest(){
 #
 # check if directory is here
   if [ ! -d $vdir/$mach/$dorv/$nam ]; then
-    printf "${format_field1} %s %s\n" $nam  " directory                    MISSING :" $dorv
-    echo " please check $vdir/$mach/$dorv/$nam"
+    printf "${format_field1} %s %s\n" $nam  "directory                    MISSING :" $dorv
     REPRO_EC=R1
+    MD_WARN=1
     return
   fi
 #
@@ -648,6 +648,7 @@ function runcmpres(){
     printf "${format_field1} %s\n" $nam "VALID     directory at $dorv is MISSING"
     echo " please check $vdir/$mach/$dorv/$nam"
     REFCMP_EC=1
+    MD_WARN=1
     return
   fi
 
@@ -808,8 +809,10 @@ function runtest(){
   pass=$3                                                   # pass (0 or 1)
   ttype=$4                                                  # test-run type: test-run name,
   phyopt=0
+  cpl=0
   [[ $ttype == 'RST' ]] && ttype="LONG|SHORT"               #    'RST' (checks both 'LONG' and 'SHORT' test runs), or
   [[ $ttype == 'EXP' ]] && ttype="^EXP-"      && phyopt=1   #    'EXP' (checks PHYOPTS test runs)
+  [[ $ttype == 'CPL' ]] && ttype="^CPL"       && cpl=1      #    'CPL' (checks COUPLING test runs)
 #
 # get $dorv
   get_dorv
@@ -843,8 +846,8 @@ function runtest(){
              [ $phyopt == 1 ] && PHYOPT_EC=1             #    further PHYOPTS test variants to be tested
           elif [ $phyopt == 1 ]; then
              printf "${format_field1} %s %s\n" "${naml2}" "ocean.output phyopts         passed  :" $dorv
-          else
-             printf "${format_field1} %s %s\n" "${naml2}" "ocean.output                 passed  :" $dorv
+          elif [ ${cpl} == 1 ]; then
+             printf "${format_field1} %s %s\n" "${naml2}" "ocean.output coupling        passed  :" $dorv
           fi
        fi
     done
@@ -852,6 +855,7 @@ function runtest(){
      if [ $pass == 0 ]; then printf "${format_field1} %s %s\n" ${naml} "directory                    MISSING :" $dorv ; fi
      [ $phyopt == 0 ] && OCEOUT_EC=1
      [ $phyopt == 1 ] && PHYOPT_EC=1
+     MD_WARN=1
      return
   fi
 }
@@ -985,7 +989,9 @@ rev=""; sha=""
                  echo ' -S REFERENCE commit short (8-digits) SHA :'
                  echo '     compare sette results against the specified SHA (use to over-ride value set in param.cfg)'
                  echo ' -x test :'
-                 echo '     select specific tests to be reported (RESTART, REPRO, PHYOPTS, CORRUPT, TRANSFORM, COMPARE)'
+                 echo '     select specific tests to be reported (RESTART, REPRO, PHYOPTS, CORRUPT, TRANSFORM, COMPARE, COUPLING)'
+                 echo ' -n test configuration :'
+                 echo '     select specific test configurations to be included in the test report'
                  echo ' -v sub_dir :'
                  echo '     validation sub-directory below NEMO_VALIDATION_DIR'
                  echo ' -V sub_dir2 :'
@@ -1171,7 +1177,7 @@ do
      COUPLING_CONFIGS=( "CPL_OASIS" )
      for coupling_test in ${COUPLING_CONFIGS[@]}
      do
-        runtest $NEMO_VALID ${coupling_test} $pass "EXP00"
+        runtest $NEMO_VALID ${coupling_test} $pass "CPL"
      done
   fi
   # AGRIF special check to ensure results are unchanged with and without key_agrif
@@ -1214,6 +1220,23 @@ do
 
 done
 
+if [[ ${MD_WARN} -ge 1 ]]; then
+    get_dorv
+    echo
+    echo "WARNING: Some test failures are due to missing validation directories"
+    echo
+    echo "  In case some SETTE test runs associated with this report have yet to complete"
+    echo "  or are still scheduled to run, the associated validation output may become"
+    echo "  eventually available at"
+    echo "  ${NEMO_VALID}/${mach}/${dorv}"
+    echo
+    echo "  It is also possible to exclude specific SETTE tests or SETTE configurations"
+    echo "  from the SETTE report using command-line options ('-x' and '-n',"
+    echo "  respectively), environment variables ('SETTE_TEST_TYPES' and"
+    echo "  'SETTE_TEST_CONFIGS', respectively), or settings in configuration file"
+    echo "  'param.cfg' ('TEST_TYPES' and 'TEST_CONFIG_AVAILABLE', respectively)."
+    echo
+fi
 # error code
 SETTE_EC=$((REPRO_EC+RESTA_EC+TRANSFORM_EC+REFCMP_EC+CPUCMP_EC+OCEOUT_EC+AGRIF_EC+PHYOPT_EC+ROT_EC))
 echo ""
