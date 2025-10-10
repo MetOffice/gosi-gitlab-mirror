@@ -17,11 +17,9 @@ MODULE icethd_pnd
    USE par_ice        ! SI3 parameters
    USE par_oce
    USE phycst         ! physical constants
-   USE ice1D          ! sea-ice: thermodynamics variables
    USE ice            ! sea-ice: variables
    USE sbc_ice , ONLY : qsr_ice, qns_ice
    USE sbc_oce , ONLY : tprecip, sprecip
-   USE icetab         ! sea-ice: 2D <==> 1D
    USE icectl         ! sea-ice: control prints
 
    USE in_out_manager ! I/O manager
@@ -72,10 +70,6 @@ MODULE icethd_pnd
    REAL(wp), ALLOCATABLE, DIMENSION(:,:) ::   diag_dvpn_drn       ! pond volume lost by drainage     [-]
    REAL(wp), ALLOCATABLE, DIMENSION(:,:) ::   diag_dvpn_lid       ! exchange with lid / refreezing   [-]
    REAL(wp), ALLOCATABLE, DIMENSION(:,:) ::   diag_dvpn_rnf       ! meltwater pond lost to runoff    [-]
-   REAL(wp), ALLOCATABLE, DIMENSION(:)   ::   diag_dvpn_mlt_1d    ! meltwater pond volume input      [-]
-   REAL(wp), ALLOCATABLE, DIMENSION(:)   ::   diag_dvpn_drn_1d    ! pond volume lost by drainage     [-]
-   REAL(wp), ALLOCATABLE, DIMENSION(:)   ::   diag_dvpn_lid_1d    ! exchange with lid / refreezing   [-]
-   REAL(wp), ALLOCATABLE, DIMENSION(:)   ::   diag_dvpn_rnf_1d    ! meltwater pond lost to runoff    [-]
 
    !! * Substitutions
 #  include "do_loop_substitute.h90"
@@ -91,7 +85,6 @@ CONTAINS
       !!                ***  ROUTINE ice_thd_pnd_alloc ***
       !!-------------------------------------------------------------------
       ALLOCATE( diag_dvpn_mlt   (A2D(0)), diag_dvpn_lid   (A2D(0)), diag_dvpn_drn   (A2D(0)), diag_dvpn_rnf(A2D(0)) , &
-         &      diag_dvpn_mlt_1d(jpij)  , diag_dvpn_lid_1d(jpij)  , diag_dvpn_drn_1d(jpij)  , diag_dvpn_rnf_1d(jpij), &
          &      STAT=ice_thd_pnd_alloc )
       
       CALL mpp_sum ( 'icethd_pnd', ice_thd_pnd_alloc )
@@ -112,6 +105,7 @@ CONTAINS
       !!              The current diagnostics lacks a contribution from drainage
       !!-------------------------------------------------------------------
       INTEGER ::   ji, jj, jl        ! loop indices
+      INTEGER :: npti                ! Counter for number of ice points
       !!-------------------------------------------------------------------
       IF( ln_timing )   CALL timing_start('icethd_pnd')
 
@@ -121,8 +115,6 @@ CONTAINS
       IF( ll_diag_pnd ) THEN
          diag_dvpn_mlt (:,:) = 0._wp   ;   diag_dvpn_drn (:,:) = 0._wp
          diag_dvpn_lid (:,:) = 0._wp   ;   diag_dvpn_rnf (:,:) = 0._wp
-         diag_dvpn_mlt_1d(:) = 0._wp   ;   diag_dvpn_drn_1d(:) = 0._wp
-         diag_dvpn_lid_1d(:) = 0._wp   ;   diag_dvpn_rnf_1d(:) = 0._wp
       ENDIF
       
       !-------------------------------------
@@ -147,22 +139,12 @@ CONTAINS
       !------------------------------
       !  Identify grid cells with ice
       !------------------------------
-#if defined key_si3_1D      
-      DO_2D( 0, 0, 0, 0 )
-         npti = 0   ;   nptidx(:) = 0
-         IF( at_i(ji,jj) >= epsi10 ) THEN
-            npti = 1
-            nptidx( npti ) = (jj - 1) * jpi + ji
-         ENDIF
-#else
-      npti = 0   ;   nptidx(:) = 0
+      npti = 0
       DO_2D( 0, 0, 0, 0 )
          IF( at_i(ji,jj) >= epsi10 ) THEN
             npti = npti + 1
-            nptidx( npti ) = (jj - 1) * jpi + ji
          ENDIF
       END_2D
-#endif
       !------------------------------------
       !  Select melt pond scheme to be used
       !------------------------------------
@@ -220,46 +202,32 @@ CONTAINS
       !!
       !! ** References : Bush, G.W., and Trump, D.J. (2017)
       !!-------------------------------------------------------------------
-      INTEGER  ::   ii, jl    ! loop indices
-      REAL(wp) ::   zdv_pnd   ! Amount of water going into the ponds & lids
+      INTEGER  ::   ji, jj, jl    ! loop indices
+      REAL(wp)   ::   zdv_pnd   ! Amount of water going into the ponds & lids
       !!-------------------------------------------------------------------
       DO jl = 1, jpl
 
-         CALL tab_2d_1d( npti, nptidx(1:npti), a_i_1d    (1:npti), a_i    (:,:,jl) )
-         CALL tab_2d_1d( npti, nptidx(1:npti), t_su_1d   (1:npti), t_su   (:,:,jl) )
-         CALL tab_2d_1d( npti, nptidx(1:npti), a_ip_1d   (1:npti), a_ip   (:,:,jl) )
-         CALL tab_2d_1d( npti, nptidx(1:npti), h_ip_1d   (1:npti), h_ip   (:,:,jl) )
-         CALL tab_2d_1d( npti, nptidx(1:npti), h_il_1d   (1:npti), h_il   (:,:,jl) )
-         CALL tab_2d_1d( npti, nptidx(1:npti), wfx_pnd_1d(1:npti), wfx_pnd(:,:)    )
-
-         DO ii = 1, npti
+         DO_2D(0, 0, 0, 0)
             !
-            zdv_pnd = ( h_ip_1d(ii) + h_il_1d(ii) ) * a_ip_1d(ii)
+            zdv_pnd = ( h_ip(ji,jj,jl) + h_il(ji,jj,jl) ) * a_ip(ji,jj,jl)
             !
-            IF( a_i_1d(ii) >= 0.01_wp .AND. t_su_1d(ii) >= rt0 ) THEN
-               h_ip_1d(ii)      = rn_hpnd
-               a_ip_1d(ii)      = rn_apnd * a_i_1d(ii)
-               h_il_1d(ii)      = 0._wp    ! no pond lids whatsoever
+            IF( a_i(ji,jj,jl) >= 0.01_wp .AND. t_su(ji,jj,jl) >= rt0 ) THEN
+               h_ip(ji,jj,jl)      = rn_hpnd
+               a_ip(ji,jj,jl)      = rn_apnd * a_i(ji,jj,jl)
+               h_il(ji,jj,jl)      = 0._wp    ! no pond lids whatsoever
             ELSE
-               h_ip_1d(ii)      = 0._wp
-               a_ip_1d(ii)      = 0._wp
-               h_il_1d(ii)      = 0._wp
+               h_ip(ji,jj,jl)      = 0._wp
+               a_ip(ji,jj,jl)      = 0._wp
+               h_il(ji,jj,jl)      = 0._wp
             ENDIF
             !
-            v_ip_1d(ii) = h_ip_1d(ii) * a_ip_1d(ii)
-            v_il_1d(ii) = h_il_1d(ii) * a_ip_1d(ii)
+            v_ip(ji,jj,jl) = h_ip(ji,jj,jl) * a_ip(ji,jj,jl)
+            v_il(ji,jj,jl) = h_il(ji,jj,jl) * a_ip(ji,jj,jl)
             !
-            zdv_pnd = ( h_ip_1d(ii) + h_il_1d(ii) ) * a_ip_1d(ii) - zdv_pnd
-            wfx_pnd_1d(ii) = wfx_pnd_1d(ii) - zdv_pnd * rhow * r1_Dt_ice
+            zdv_pnd = ( h_ip(ji,jj,jl) + h_il(ji,jj,jl) ) * a_ip(ji,jj,jl) - zdv_pnd
+            wfx_pnd(ji,jj) = wfx_pnd(ji,jj) - zdv_pnd * rhow * r1_Dt_ice
             !
-         END DO
-
-         CALL tab_1d_2d( npti, nptidx(1:npti), a_ip_1d   (1:npti), a_ip   (:,:,jl) )
-         CALL tab_1d_2d( npti, nptidx(1:npti), h_ip_1d   (1:npti), h_ip   (:,:,jl) )
-         CALL tab_1d_2d( npti, nptidx(1:npti), h_il_1d   (1:npti), h_il   (:,:,jl) )
-         CALL tab_1d_2d( npti, nptidx(1:npti), v_ip_1d   (1:npti), v_ip   (:,:,jl) )
-         CALL tab_1d_2d( npti, nptidx(1:npti), v_il_1d   (1:npti), v_il   (:,:,jl) )
-         CALL tab_1d_2d( npti, nptidx(1:npti), wfx_pnd_1d(1:npti), wfx_pnd(:,:)    )
+         END_2D
 
       END DO
       !
@@ -336,188 +304,147 @@ CONTAINS
       REAL(wp) ::   zdum, zperm                       ! permeability of sea ice
       REAL(wp) ::   z1_rhow, z1_aspect, z1_Tp         ! inverse
       !!
-      INTEGER  ::   ii, jk, jl                        ! loop indices
+      INTEGER  ::   ji, jj, jk, jl                        ! loop indices
       !!-------------------------------------------------------------------
       z1_rhow   = 1._wp / rhow
       z1_aspect = 1._wp / zaspect
       z1_Tp     = 1._wp / zTp
 
-      CALL tab_2d_1d( npti, nptidx(1:npti), at_i_1d          (1:npti), at_i          )
-      CALL tab_2d_1d( npti, nptidx(1:npti), wfx_pnd_1d       (1:npti), wfx_pnd       )
-      IF( ll_diag_pnd ) THEN
-         CALL tab_2d_1d( npti, nptidx(1:npti), diag_dvpn_mlt_1d (1:npti), diag_dvpn_mlt )
-         CALL tab_2d_1d( npti, nptidx(1:npti), diag_dvpn_drn_1d (1:npti), diag_dvpn_drn )
-         CALL tab_2d_1d( npti, nptidx(1:npti), diag_dvpn_lid_1d (1:npti), diag_dvpn_lid )
-         CALL tab_2d_1d( npti, nptidx(1:npti), diag_dvpn_rnf_1d (1:npti), diag_dvpn_rnf )
-      ENDIF
       DO jl = 1, jpl
-
-         CALL tab_2d_1d( npti, nptidx(1:npti), a_i_1d  (1:npti), a_i (:,:,jl) )
-         CALL tab_2d_1d( npti, nptidx(1:npti), h_i_1d  (1:npti), h_i (:,:,jl) )
-         CALL tab_2d_1d( npti, nptidx(1:npti), t_su_1d (1:npti), t_su(:,:,jl) )
-         CALL tab_2d_1d( npti, nptidx(1:npti), a_ip_1d (1:npti), a_ip(:,:,jl) )
-         CALL tab_2d_1d( npti, nptidx(1:npti), h_ip_1d (1:npti), h_ip(:,:,jl) )
-         CALL tab_2d_1d( npti, nptidx(1:npti), h_il_1d (1:npti), h_il(:,:,jl) )
-
-         CALL tab_2d_1d( npti, nptidx(1:npti), dh_i_sum(1:npti), dh_i_sum_2d(:,:,jl) )
-         CALL tab_2d_1d( npti, nptidx(1:npti), dh_s_sum(1:npti), dh_s_sum_2d(:,:,jl) )
-
-         DO jk = 1, nlay_i
-            CALL tab_2d_1d( npti, nptidx(1:npti), sz_i_1d(1:npti,jk), sz_i(:,:,jk,jl) )
-            CALL tab_2d_1d( npti, nptidx(1:npti), t_i_1d (1:npti,jk), t_i (:,:,jk,jl) )
-         END DO
 
          !-----------------------
          ! Melt pond calculations
          !-----------------------
-         DO ii = 1, npti
+         DO_2D(0, 0, 0, 0)
             !
-            zdv_pnd = ( h_ip_1d(ii) + h_il_1d(ii) ) * a_ip_1d(ii)
+            zdv_pnd = ( h_ip(ji,jj,jl) + h_il(ji,jj,jl) ) * a_ip(ji,jj,jl)
             !                                                            !----------------------------------------------------!
-            IF( h_i_1d(ii) < rn_himin .OR. a_i_1d(ii) < 0.01_wp ) THEN   ! Case ice thickness < rn_himin or tiny ice fraction !
+            IF( h_i(ji,jj,jl) < rn_himin .OR. a_i(ji,jj,jl) < 0.01_wp ) THEN   ! Case ice thickness < rn_himin or tiny ice fraction !
                !                                                         !----------------------------------------------------!
                !--- Remove ponds on thin ice or tiny ice fractions
-               a_ip_1d(ii) = 0._wp
-               h_ip_1d(ii) = 0._wp
-               h_il_1d(ii) = 0._wp
+               a_ip(ji,jj,jl) = 0._wp
+               h_ip(ji,jj,jl) = 0._wp
+               h_il(ji,jj,jl) = 0._wp
                !                                                         !--------------------------------!
             ELSE                                                         ! Case ice thickness >= rn_himin !
                !                                                         !--------------------------------!
-               v_ip_1d(ii) = h_ip_1d(ii) * a_ip_1d(ii)   ! retrieve volume from thickness
-               v_il_1d(ii) = h_il_1d(ii) * a_ip_1d(ii)
+               v_ip(ji,jj,jl) = h_ip(ji,jj,jl) * a_ip(ji,jj,jl)   ! retrieve volume from thickness
+               v_il(ji,jj,jl) = h_il(ji,jj,jl) * a_ip(ji,jj,jl)
                !
                !------------------!
                ! case ice melting !
                !------------------!
                !
                !--- available meltwater for melt ponding (zdv_avail) ---!
-               zdv_avail = -( dh_i_sum(ii)*rhoi + dh_s_sum(ii)*rhos ) * z1_rhow * a_i_1d(ii) ! > 0
-               zfr_mlt   = rn_apnd_min + ( rn_apnd_max - rn_apnd_min ) * at_i_1d(ii) !  = ( 1 - r ) = fraction of melt water that is not flushed
+               zdv_avail = -( dh_i_sum_2d(ji,jj,jl)*rhoi + dh_s_sum_2d(ji,jj,jl)*rhos ) * z1_rhow * a_i(ji,jj,jl) ! > 0
+               zfr_mlt   = rn_apnd_min + ( rn_apnd_max - rn_apnd_min ) * at_i(ji,jj) !  = ( 1 - r ) = fraction of melt water that is not flushed
                zdv_mlt   = MAX( 0._wp, zfr_mlt * zdv_avail ) ! max for roundoff errors?
                !
                !--- overflow ---!
                !
                ! area driven overflow
-               !    If pond area exceeds zfr_mlt * a_i_1d(ii) then reduce the pond volume
+               !    If pond area exceeds zfr_mlt * a_i(ji,jj,jl) then reduce the pond volume
                !       a_ip_max = zfr_mlt * a_i
                !       => from zaspect = h_ip / (a_ip / a_i), set v_ip_max as:
-               zv_ip_max = zfr_mlt * zfr_mlt * a_i_1d(ii) * zaspect
-               zdv_mlt   = MAX( 0._wp, MIN( zdv_mlt, zv_ip_max - v_ip_1d(ii) ) )
+               zv_ip_max = zfr_mlt * zfr_mlt * a_i(ji,jj,jl) * zaspect
+               zdv_mlt   = MAX( 0._wp, MIN( zdv_mlt, zv_ip_max - v_ip(ji,jj,jl) ) )
 
                ! depth driven overflow
                !    If pond depth exceeds half the ice thickness then reduce the pond volume
                !       h_ip_max = 0.5 * h_i
                !       => from zaspect = h_ip / (a_ip / a_i), set v_ip_max as:
-               zv_ip_max = z1_aspect * a_i_1d(ii) * 0.25 * h_i_1d(ii) * h_i_1d(ii)
-               zdv_mlt   = MAX( 0._wp, MIN( zdv_mlt, zv_ip_max - v_ip_1d(ii) ) )
+               zv_ip_max = z1_aspect * a_i(ji,jj,jl) * 0.25 * h_i(ji,jj,jl) * h_i(ji,jj,jl)
+               zdv_mlt   = MAX( 0._wp, MIN( zdv_mlt, zv_ip_max - v_ip(ji,jj,jl) ) )
 
                !--- Pond growing ---!
-               v_ip_1d(ii) = v_ip_1d(ii) + zdv_mlt
+               v_ip(ji,jj,jl) = v_ip(ji,jj,jl) + zdv_mlt
                !
                !--- Lid melting ---!
-               IF( ln_pnd_lids )   v_il_1d(ii) = MAX( 0._wp, v_il_1d(ii) - zdv_mlt ) ! must be bounded by 0
+               IF( ln_pnd_lids )   v_il(ji,jj,jl) = MAX( 0._wp, v_il(ji,jj,jl) - zdv_mlt ) ! must be bounded by 0
                !
                !-------------------!
-               ! case ice freezing ! i.e. t_su_1d(ii) < (zTp+rt0)
+               ! case ice freezing ! i.e. t_su(ji,jj,jl) < (zTp+rt0)
                !-------------------!
                !
-               zdT = MAX( zTp+rt0 - t_su_1d(ii), 0._wp )
+               zdT = MAX( zTp+rt0 - t_su(ji,jj,jl), 0._wp )
                !
                !--- Pond contraction (due to refreezing) ---!
                IF( ln_pnd_lids ) THEN
                   !
                   !--- Lid growing and subsequent pond shrinking ---!
-                  zdv_frz = - 0.5_wp * MAX( 0._wp, -v_il_1d(ii) + & ! Flocco 2010 (eq. 5) solved implicitly as aH**2 + bH + c = 0
-                     & SQRT( v_il_1d(ii)*v_il_1d(ii) + a_ip_1d(ii)*a_ip_1d(ii) * 4._wp * rcnd_i * zdT * rDt_ice / (rLfus * rhow) ) ) ! max for roundoff errors
+                  zdv_frz = - 0.5_wp * MAX( 0._wp, -v_il(ji,jj,jl) + & ! Flocco 2010 (eq. 5) solved implicitly as aH**2 + bH + c = 0
+                     & SQRT( v_il(ji,jj,jl)*v_il(ji,jj,jl) + a_ip(ji,jj,jl)*a_ip(ji,jj,jl) * 4._wp * rcnd_i * zdT * rDt_ice / (rLfus * rhow) ) ) ! max for roundoff errors
 
                   ! Lid growing
-                  v_il_1d(ii) = MAX( 0._wp, v_il_1d(ii) - zdv_frz )
+                  v_il(ji,jj,jl) = MAX( 0._wp, v_il(ji,jj,jl) - zdv_frz )
 
                   ! Pond shrinking
-                  v_ip_1d(ii) = MAX( 0._wp, v_ip_1d(ii) + zdv_frz )
+                  v_ip(ji,jj,jl) = MAX( 0._wp, v_ip(ji,jj,jl) + zdv_frz )
 
                ELSE
-                  zdv_frz = v_ip_1d(ii) * ( EXP( 0.01_wp * zdT * z1_Tp ) - 1._wp )  ! Holland 2012 (eq. 6)
+                  zdv_frz = v_ip(ji,jj,jl) * ( EXP( 0.01_wp * zdT * z1_Tp ) - 1._wp )  ! Holland 2012 (eq. 6)
                   ! Pond shrinking
-                  v_ip_1d(ii) = MAX( 0._wp, v_ip_1d(ii) + zdv_frz )
+                  v_ip(ji,jj,jl) = MAX( 0._wp, v_ip(ji,jj,jl) + zdv_frz )
                ENDIF
                !
                !--- Set new pond area and depth ---! assuming linear relation between h_ip and a_ip_frac
                ! v_ip     = h_ip * a_ip
                ! a_ip/a_i = a_ip_frac = h_ip / zaspect (cf Holland 2012, fitting SHEBA so that knowing v_ip we can distribute it to a_ip and h_ip)
-               a_ip_1d(ii) = MIN( a_i_1d(ii), SQRT( v_ip_1d(ii) * z1_aspect * a_i_1d(ii) ) ) ! make sure a_ip < a_i
-               h_ip_1d(ii) = zaspect * a_ip_1d(ii) / a_i_1d(ii)
+               a_ip(ji,jj,jl) = MIN( a_i(ji,jj,jl), SQRT( v_ip(ji,jj,jl) * z1_aspect * a_i(ji,jj,jl) ) ) ! make sure a_ip < a_i
+               h_ip(ji,jj,jl) = zaspect * a_ip(ji,jj,jl) / a_i(ji,jj,jl)
                !
 
                !------------------------------------------------!
                ! Pond drainage through brine network (flushing) !
                !------------------------------------------------!
                ! height of top of the pond above sea-level
-               zhp = ( h_i_1d(ii) * ( rho0 - rhoi ) + h_ip_1d(ii) * ( rho0 - rhow * a_ip_1d(ii) / a_i_1d(ii) ) ) * r1_rho0
+               zhp = ( h_i(ji,jj,jl) * ( rho0 - rhoi ) + h_ip(ji,jj,jl) * ( rho0 - rhow * a_ip(ji,jj,jl) / a_i(ji,jj,jl) ) ) * r1_rho0
 
                ! Calculate the permeability of the ice
-               zperm = ice_perm_eff( t_i_1d(ii,:), sz_i_1d(ii,:) )
+               zperm = ice_perm_eff( t_i(ji,jj,:,jl), sz_i(ji,jj,:,jl) )
                
                ! Do the drainage using Darcy's law
-               zdv_flush   = -zperm * rho0 * grav * zhp * rDt_ice / (zvisc * h_i_1d(ii)) * a_ip_1d(ii) * rn_pnd_flush ! rn_pnd_flush comes from Hunke et al. (2012)
-               zdv_flush   = MAX( zdv_flush, -v_ip_1d(ii) ) ! < 0
-               v_ip_1d(ii) = v_ip_1d(ii) + zdv_flush
+               zdv_flush   = -zperm * rho0 * grav * zhp * rDt_ice / (zvisc * h_i(ji,jj,jl)) * a_ip(ji,jj,jl) * rn_pnd_flush ! rn_pnd_flush comes from Hunke et al. (2012)
+               zdv_flush   = MAX( zdv_flush, -v_ip(ji,jj,jl) ) ! < 0
+               v_ip(ji,jj,jl) = v_ip(ji,jj,jl) + zdv_flush
 
                !--- Set new pond area and depth ---! assuming linear relation between h_ip and a_ip_frac
-               a_ip_1d(ii) = MIN( a_i_1d(ii), SQRT( v_ip_1d(ii) * z1_aspect * a_i_1d(ii) ) ) ! make sure a_ip < a_i
-               h_ip_1d(ii) = zaspect * a_ip_1d(ii) / a_i_1d(ii)
+               a_ip(ji,jj,jl) = MIN( a_i(ji,jj,jl), SQRT( v_ip(ji,jj,jl) * z1_aspect * a_i(ji,jj,jl) ) ) ! make sure a_ip < a_i
+               h_ip(ji,jj,jl) = zaspect * a_ip(ji,jj,jl) / a_i(ji,jj,jl)
 
                !--- Corrections and lid thickness ---!
                IF( ln_pnd_lids ) THEN
                   !--- retrieve lid thickness from volume ---!
-                  IF( a_ip_1d(ii) > 0.01_wp ) THEN   ;   h_il_1d(ii) = v_il_1d(ii) / a_ip_1d(ii)
-                  ELSE                               ;   h_il_1d(ii) = 0._wp
+                  IF( a_ip(ji,jj,jl) > 0.01_wp ) THEN   ;   h_il(ji,jj,jl) = v_il(ji,jj,jl) / a_ip(ji,jj,jl)
+                  ELSE                               ;   h_il(ji,jj,jl) = 0._wp
                   ENDIF
                   !--- remove ponds if lids are much larger than ponds ---!
-                  IF ( h_il_1d(ii) > h_ip_1d(ii) * 10._wp ) THEN
-                     a_ip_1d(ii) = 0._wp
-                     h_ip_1d(ii) = 0._wp
-                     h_il_1d(ii) = 0._wp
+                  IF ( h_il(ji,jj,jl) > h_ip(ji,jj,jl) * 10._wp ) THEN
+                     a_ip(ji,jj,jl) = 0._wp
+                     h_ip(ji,jj,jl) = 0._wp
+                     h_il(ji,jj,jl) = 0._wp
                   ENDIF
                ENDIF
 
                ! diagnostics: dvpnd = mlt+rnf+lid+drn
                IF( ll_diag_pnd ) THEN
-                  diag_dvpn_mlt_1d(ii) = diag_dvpn_mlt_1d(ii) + rhow *   zdv_avail             * r1_Dt_ice   ! > 0, surface melt input
-                  diag_dvpn_rnf_1d(ii) = diag_dvpn_rnf_1d(ii) + rhow * ( zdv_mlt - zdv_avail ) * r1_Dt_ice   ! < 0, runoff
-                  diag_dvpn_lid_1d(ii) = diag_dvpn_lid_1d(ii) + rhow *   zdv_frz               * r1_Dt_ice   ! < 0, shrinking
-                  diag_dvpn_drn_1d(ii) = diag_dvpn_drn_1d(ii) + rhow *   zdv_flush             * r1_Dt_ice   ! < 0, drainage
+                  diag_dvpn_mlt(ji,jj) = diag_dvpn_mlt(ji,jj) + rhow *   zdv_avail             * r1_Dt_ice   ! > 0, surface melt input
+                  diag_dvpn_rnf(ji,jj) = diag_dvpn_rnf(ji,jj) + rhow * ( zdv_mlt - zdv_avail ) * r1_Dt_ice   ! < 0, runoff
+                  diag_dvpn_lid(ji,jj) = diag_dvpn_lid(ji,jj) + rhow *   zdv_frz               * r1_Dt_ice   ! < 0, shrinking
+                  diag_dvpn_drn(ji,jj) = diag_dvpn_drn(ji,jj) + rhow *   zdv_flush             * r1_Dt_ice   ! < 0, drainage
                ENDIF
                !
             ENDIF
             !
-            v_ip_1d(ii) = h_ip_1d(ii) * a_ip_1d(ii)
-            v_il_1d(ii) = h_il_1d(ii) * a_ip_1d(ii)
+            v_ip(ji,jj,jl) = h_ip(ji,jj,jl) * a_ip(ji,jj,jl)
+            v_il(ji,jj,jl) = h_il(ji,jj,jl) * a_ip(ji,jj,jl)
             !
-            zdv_pnd = ( h_ip_1d(ii) + h_il_1d(ii) ) * a_ip_1d(ii) - zdv_pnd
-            wfx_pnd_1d(ii) = wfx_pnd_1d(ii) - zdv_pnd * rhow * r1_Dt_ice
+            zdv_pnd = ( h_ip(ji,jj,jl) + h_il(ji,jj,jl) ) * a_ip(ji,jj,jl) - zdv_pnd
+            wfx_pnd(ji,jj) = wfx_pnd(ji,jj) - zdv_pnd * rhow * r1_Dt_ice
             !
-         END DO
+         END_2D
 
-         !--------------------------------------------------------------------
-         ! Retrieve 2D arrays
-         !--------------------------------------------------------------------
-         CALL tab_1d_2d( npti, nptidx(1:npti), a_ip_1d(1:npti), a_ip(:,:,jl) )
-         CALL tab_1d_2d( npti, nptidx(1:npti), h_ip_1d(1:npti), h_ip(:,:,jl) )
-         CALL tab_1d_2d( npti, nptidx(1:npti), h_il_1d(1:npti), h_il(:,:,jl) )
-         CALL tab_1d_2d( npti, nptidx(1:npti), v_ip_1d(1:npti), v_ip(:,:,jl) )
-         CALL tab_1d_2d( npti, nptidx(1:npti), v_il_1d(1:npti), v_il(:,:,jl) )
-         !
-      END DO
-      !
-      CALL tab_1d_2d( npti, nptidx(1:npti), wfx_pnd_1d(1:npti), wfx_pnd )
-      !
-      IF( ll_diag_pnd ) THEN
-         CALL tab_1d_2d( npti, nptidx(1:npti), diag_dvpn_mlt_1d (1:npti), diag_dvpn_mlt )
-         CALL tab_1d_2d( npti, nptidx(1:npti), diag_dvpn_drn_1d (1:npti), diag_dvpn_drn )
-         CALL tab_1d_2d( npti, nptidx(1:npti), diag_dvpn_lid_1d (1:npti), diag_dvpn_lid )
-         CALL tab_1d_2d( npti, nptidx(1:npti), diag_dvpn_rnf_1d (1:npti), diag_dvpn_rnf )
-      ENDIF
+      END DO ! jl loop
       !
    END SUBROUTINE pnd_LEV
 
@@ -596,13 +523,6 @@ CONTAINS
 
       at_i (:,:) = SUM( a_i (:,:,:), dim=3 ) ! ice fraction
       vt_i (:,:) = SUM( v_i (:,:,:), dim=3 ) ! volume per grid area
-
-      !---------------------------------------------------------------
-      ! Change 2D to 1D
-      !---------------------------------------------------------------
-      ! MV
-      ! a less computing-intensive version would have 2D-1D passage here
-      ! use what we have in iceitd.F90 (incremental remapping)
 
       !--------------------------------------------------------------
       ! Collect total available pond water volume

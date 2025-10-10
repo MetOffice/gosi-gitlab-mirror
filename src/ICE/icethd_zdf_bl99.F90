@@ -13,11 +13,12 @@ MODULE icethd_zdf_BL99
    !!----------------------------------------------------------------------
    !!  ice_thd_zdf_BL99 : vertical diffusion computation
    !!----------------------------------------------------------------------
+   USE par_oce
    USE par_ice        ! SI3 parameters
    USE par_kind, ONLY : wp
-   USE par_oce , ONLY : jpij
    USE phycst  
-   USE ice1D          ! sea-ice: thermodynamics variables
+   USE ice
+   USE sbc_ice , ONLY : qns_ice, dqns_ice, qcn_ice, qtr_ice_top, qsr_ice
    USE icevar  , ONLY : ice_var_snwfra, ice_var_enthalpy
 
    IMPLICIT NONE
@@ -25,13 +26,16 @@ MODULE icethd_zdf_BL99
 
    PUBLIC   ice_thd_zdf_BL99   ! called by icethd_zdf
 
+   !! * Substitutions
+#  include "do_loop_substitute.h90"
+
    !!----------------------------------------------------------------------
    !! NEMO/ICE 5.0, NEMO Consortium (2024)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE ice_thd_zdf_BL99( k_cnd )
+   SUBROUTINE ice_thd_zdf_BL99( jl_cat, k_cnd, ll_ice_present )
       !!-------------------------------------------------------------------
       !!                ***  ROUTINE ice_thd_zdf_BL99  ***
       !!
@@ -69,14 +73,16 @@ CONTAINS
       !!           total ice/snow thickness         : h_i_1d, h_s_1d
       !!-------------------------------------------------------------------
       INTEGER, INTENT(in) ::   k_cnd     ! conduction flux (off, on, emulated)
+      INTEGER, INTENT(in) ::   jl_cat
+      LOGICAL, DIMENSION(A2D(0)), INTENT(in) :: ll_ice_present
       !
-      INTEGER ::   ji, jk         ! spatial loop index
+      INTEGER ::   ji, jj, jk     ! spatial loop index
       INTEGER ::   jm             ! current reference number of equation
       INTEGER ::   iconv          ! number of iterations in iterative procedure
       INTEGER ::   iconv_max = 50 ! max number of iterations in iterative procedure
       !
 
-      LOGICAL, DIMENSION(jpij) ::   l_T_converged   ! true when T converges (per grid point)
+      LOGICAL, DIMENSION(A2D(0)) ::   l_T_converged   ! true when T converges (per grid point)
       !
       REAL(wp) ::   zg1s      =  2._wp        ! for the tridiagonal system
       REAL(wp) ::   zg1       =  2._wp        !
@@ -92,31 +98,32 @@ CONTAINS
       REAL(wp) ::   zdti_max                  ! current maximal error on temperature
       REAL(wp) ::   zcpi                      ! Ice specific heat
       REAL(wp) ::   zhfx_err, zdq             ! diag errors on heat
+      REAL(wp) ::   zfac
       !
-      REAL(wp), DIMENSION(jpij) ::   zraext_s     ! extinction coefficient of radiation in the snow
-      REAL(wp), DIMENSION(jpij) ::   ztsub        ! surface temperature at previous iteration
-      REAL(wp), DIMENSION(jpij) ::   zh_i, z1_h_i ! ice layer thickness
-      REAL(wp), DIMENSION(jpij) ::   zh_s, z1_h_s ! snow layer thickness
-      REAL(wp), DIMENSION(jpij) ::   zqns_ice_b   ! solar radiation absorbed at the surface
-      REAL(wp), DIMENSION(jpij) ::   zdqns_ice_b  ! derivative of the surface flux function
-      REAL(wp), DIMENSION(jpij,0:nlay_s) ::   zradtr_s    ! Radiation transmited through the snow
-      REAL(wp), DIMENSION(jpij,0:nlay_s) ::   zradab_s    ! Radiation absorbed in the snow
-      REAL(wp), DIMENSION(jpij,0:nlay_i) ::   zradtr_i    ! Radiation transmitted through the ice
-      REAL(wp), DIMENSION(jpij,0:nlay_i) ::   zradab_i    ! Radiation absorbed in the ice
-      REAL(wp), DIMENSION(jpij,0:nlay_i) ::   ztcond_i    ! Ice thermal conductivity
-      REAL(wp), DIMENSION(jpij,0:nlay_i) ::   ztcond_i_cp ! copy
-      REAL(wp), DIMENSION(jpij,nlay_i)   ::   ztiold      ! Old temperature in the ice
-      REAL(wp), DIMENSION(jpij,nlay_s)   ::   ztsold      ! Old temperature in the snow
-      REAL(wp), DIMENSION(jpij,0:nlay_i) ::   zkappa_i    ! Kappa factor in the ice
-      REAL(wp), DIMENSION(jpij,0:nlay_i) ::   zeta_i      ! Eta factor in the ice
-      REAL(wp), DIMENSION(jpij,0:nlay_s) ::   zkappa_s    ! Kappa factor in the snow
-      REAL(wp), DIMENSION(jpij,0:nlay_s) ::   zeta_s      ! Eta factor in the snow
-      REAL(wp), DIMENSION(jpij)          ::   zkappa_comb ! Combined snow and ice surface conductivity
-      REAL(wp), DIMENSION(jpij)          ::   zq_ini      ! diag errors on heat
-      REAL(wp), DIMENSION(jpij)          ::   zghe        ! G(he), th. conduct enhancement factor, mono-cat
-      REAL(wp), DIMENSION(jpij)          ::   za_s_fra    ! ice fraction covered by snow
-      REAL(wp), DIMENSION(jpij)          ::   isnow       ! snow presence (1) or not (0)
-      REAL(wp), DIMENSION(jpij)          ::   isnow_comb  ! snow presence for met-office
+      REAL(wp), DIMENSION(A2D(0)) ::   zraext_s     ! extinction coefficient of radiation in the snow
+      REAL(wp), DIMENSION(A2D(0)) ::   ztsub        ! surface temperature at previous iteration
+      REAL(wp), DIMENSION(A2D(0)) ::   zh_i, z1_h_i ! ice layer thickness
+      REAL(wp), DIMENSION(A2D(0)) ::   zh_s, z1_h_s ! snow layer thickness
+      REAL(wp), DIMENSION(A2D(0)) ::   zqns_ice_b   ! solar radiation absorbed at the surface
+      REAL(wp), DIMENSION(A2D(0)) ::   zdqns_ice_b  ! derivative of the surface flux function
+      REAL(wp), DIMENSION(A2D(0),0:nlay_s) ::   zradtr_s    ! Radiation transmited through the snow
+      REAL(wp), DIMENSION(A2D(0),0:nlay_s) ::   zradab_s    ! Radiation absorbed in the snow
+      REAL(wp), DIMENSION(A2D(0),0:nlay_i) ::   zradtr_i    ! Radiation transmitted through the ice
+      REAL(wp), DIMENSION(A2D(0),0:nlay_i) ::   zradab_i    ! Radiation absorbed in the ice
+      REAL(wp), DIMENSION(A2D(0),0:nlay_i) ::   ztcond_i    ! Ice thermal conductivity
+      REAL(wp), DIMENSION(A2D(0),0:nlay_i) ::   ztcond_i_cp ! copy
+      REAL(wp), DIMENSION(A2D(0),nlay_i)   ::   ztiold      ! Old temperature in the ice
+      REAL(wp), DIMENSION(A2D(0),nlay_s)   ::   ztsold      ! Old temperature in the snow
+      REAL(wp), DIMENSION(A2D(0),0:nlay_i) ::   zkappa_i    ! Kappa factor in the ice
+      REAL(wp), DIMENSION(A2D(0),0:nlay_i) ::   zeta_i      ! Eta factor in the ice
+      REAL(wp), DIMENSION(A2D(0),0:nlay_s) ::   zkappa_s    ! Kappa factor in the snow
+      REAL(wp), DIMENSION(A2D(0),0:nlay_s) ::   zeta_s      ! Eta factor in the snow
+      REAL(wp), DIMENSION(A2D(0))          ::   zkappa_comb ! Combined snow and ice surface conductivity
+      REAL(wp), DIMENSION(A2D(0))          ::   zq_ini      ! diag errors on heat
+      REAL(wp), DIMENSION(A2D(0))          ::   zghe        ! G(he), th. conduct enhancement factor, mono-cat
+      REAL(wp), DIMENSION(A2D(0))          ::   za_s_fra    ! ice fraction covered by snow
+      REAL(wp), DIMENSION(A2D(0))          ::   isnow       ! snow presence (1) or not (0)
+      REAL(wp), DIMENSION(A2D(0))          ::   isnow_comb  ! snow presence for met-office
       !
       INTEGER  ::   jm_min    ! reference number of top equation
       INTEGER  ::   jm_max    ! reference number of bottom equation
@@ -133,15 +140,16 @@ CONTAINS
       REAL(wp) ::   zhe        ! dummy factor
       REAL(wp) ::   zcnd_i     ! mean sea ice thermal conductivity
       !!------------------------------------------------------------------
-
       ! --- diag error on heat diffusion - PART 1 --- !
-      DO ji = 1, npti
-         zq_ini(ji) = ( SUM( e_i_1d(ji,1:nlay_i) ) * h_i_1d(ji) * r1_nlay_i +  &
-            &           SUM( e_s_1d(ji,1:nlay_s) ) * h_s_1d(ji) * r1_nlay_s )
-      END DO
+      DO_2D(0, 0, 0, 0)
+       IF (ll_ice_present(ji,jj) ) THEN
+         zq_ini(ji,jj) = ( SUM( e_i(ji,jj,1:nlay_i,jl_cat) ) * h_i(ji,jj,jl_cat) * r1_nlay_i +  &
+            &           SUM( e_s(ji,jj,1:nlay_s,jl_cat) ) * h_s(ji,jj,jl_cat) * r1_nlay_s )
+       ENDIF
+      END_2D
 
       ! calculate ice fraction covered by snow for radiation
-      CALL ice_var_snwfra( h_s_1d(1:npti), za_s_fra(1:npti) )
+      CALL ice_var_snwfra( h_s(A2D(0),jl_cat), za_s_fra(:,:) ) ! May need to apply mask in ice_var_snwfra, check...
 
       !------------------
       ! 1) Initialization
@@ -149,96 +157,117 @@ CONTAINS
       !
       ! extinction radiation in the snow
       IF    ( nn_qtrice == 0 ) THEN   ! constant
-         zraext_s(1:npti) = rn_kappa_s
+         zraext_s(:,:) = rn_kappa_s
       ELSEIF( nn_qtrice == 1 ) THEN   ! depends on melting/freezing conditions
-         WHERE( t_su_1d(1:npti) < rt0 )   ;   zraext_s(1:npti) = rn_kappa_sdry   ! no surface melting
-         ELSEWHERE                        ;   zraext_s(1:npti) = rn_kappa_smlt   !    surface melting
+         WHERE( t_su(:,:,jl_cat) < rt0 )   ;   zraext_s(:,:) = rn_kappa_sdry   ! no surface melting
+         ELSEWHERE                        ;   zraext_s(:,:) = rn_kappa_smlt   !    surface melting
          END WHERE
       ENDIF
       !
       ! thicknesses
-      DO ji = 1, npti
+      DO_2D(0, 0, 0, 0)
+       IF (ll_ice_present(ji,jj) ) THEN
          ! ice thickness
-         IF( h_i_1d(ji) > 0._wp ) THEN
-            zh_i  (ji) = MAX( zh_min , h_i_1d(ji) ) * r1_nlay_i ! set a minimum thickness for conduction
-            z1_h_i(ji) = 1._wp / zh_i(ji)                       !       it must be very small
+         IF( h_i(ji,jj,jl_cat) > 0._wp ) THEN
+            zh_i  (ji,jj) = MAX( zh_min , h_i(ji,jj,jl_cat) ) * r1_nlay_i ! set a minimum thickness for conduction
+            z1_h_i(ji,jj) = 1._wp / zh_i(ji,jj)                       !       it must be very small
          ELSE
-            zh_i  (ji) = 0._wp
-            z1_h_i(ji) = 0._wp
+            zh_i  (ji,jj) = 0._wp
+            z1_h_i(ji,jj) = 0._wp
          ENDIF
          ! snow thickness
-         IF( h_s_1d(ji) > 0._wp ) THEN
-            zh_s  (ji) = MAX( zh_min , h_s_1d(ji) ) * r1_nlay_s ! set a minimum thickness for conduction
-            z1_h_s(ji) = 1._wp / zh_s(ji)                       !       it must be very small
-            isnow (ji) = 1._wp
+         IF( h_s(ji,jj,jl_cat) > 0._wp ) THEN
+            zh_s  (ji,jj) = MAX( zh_min , h_s(ji,jj,jl_cat) ) * r1_nlay_s ! set a minimum thickness for conduction
+            z1_h_s(ji,jj) = 1._wp / zh_s(ji,jj)                       !       it must be very small
+            isnow (ji,jj) = 1._wp
          ELSE
-            zh_s  (ji) = 0._wp
-            z1_h_s(ji) = 0._wp
-            isnow (ji) = 0._wp
+            zh_s  (ji,jj) = 0._wp
+            z1_h_s(ji,jj) = 0._wp
+            isnow (ji,jj) = 0._wp
          ENDIF
          ! for Met-Office
-         IF( h_s_1d(ji) < zh_min ) THEN
-            isnow_comb(ji) = h_s_1d(ji) / zh_min
+         IF( h_s(ji,jj,jl_cat) < zh_min ) THEN
+            isnow_comb(ji,jj) = h_s(ji,jj,jl_cat) / zh_min
          ELSE
-            isnow_comb(ji) = 1._wp
+            isnow_comb(ji,jj) = 1._wp
          ENDIF
-      END DO
+       ENDIF
+      END_2D
       ! clem: we should apply correction on snow thickness to take into account snow fraction
       !       it must be a distribution, so it is a bit complicated
       !
       ! Store initial temperatures and non solar heat fluxes
       IF( k_cnd == np_cnd_OFF .OR. k_cnd == np_cnd_EMU ) THEN
-         ztsub      (1:npti) = t_su_1d(1:npti)                          ! surface temperature at iteration n-1
-         t_su_1d    (1:npti) = MIN( t_su_1d(1:npti), rt0 - ztsu_err )   ! required to leave the choice between melting or not
-         zdqns_ice_b(1:npti) = dqns_ice_1d(1:npti)                      ! derivative of incoming nonsolar flux
-         zqns_ice_b (1:npti) = qns_ice_1d(1:npti)                       ! store previous qns_ice_1d value
+         DO_2D(0, 0, 0, 0)
+            IF (ll_ice_present(ji,jj) ) THEN
+              ztsub      (ji,jj) = t_su(ji,jj,jl_cat)                              ! surface temperature at iteration n-1
+              t_su    (ji,jj,jl_cat) = MIN( t_su(ji,jj,jl_cat), rt0 - ztsu_err )   ! required to leave the choice between melting or not
+              zdqns_ice_b(ji,jj) = dqns_ice(ji,jj,jl_cat)                          ! derivative of incoming nonsolar flux
+             zqns_ice_b (ji,jj) = qns_ice(ji,jj,jl_cat)                           ! store previous qns_ice_1d value
+            ENDIF
+         END_2D
          !
       ENDIF
       !
-      ztsold (1:npti,:) = t_s_1d(1:npti,:)   ! Old snow temperature
-      ztiold (1:npti,:) = t_i_1d(1:npti,:)   ! Old ice temperature
+      DO_2D(0, 0, 0, 0)
+         IF (ll_ice_present(ji,jj) ) THEN
+            ztsold (ji,jj,:) = t_s(ji,jj,:,jl_cat)   ! Old snow temperature
+            ztiold (ji,jj,:) = t_i(ji,jj,:,jl_cat)   ! Old ice temperature
+         ENDIF
+      END_2D
 
       !-------------
       ! 2) Radiation
       !-------------
       ! --- Transmission/absorption of solar radiation in the ice --- !
-      zradtr_s(1:npti,0) = qtr_ice_top_1d(1:npti)
+      zradtr_s(:,:,0) = qtr_ice_top(A2D(0),jl_cat)
       DO jk = 1, nlay_s
-         DO ji = 1, npti
+         DO_2D(0, 0, 0, 0)
+          IF (ll_ice_present(ji,jj) ) THEN
             !                             ! radiation transmitted below the layer-th snow layer
-            zradtr_s(ji,jk) = zradtr_s(ji,0) * EXP( - zraext_s(ji) * MAX( 0._wp, zh_s(ji) * REAL(jk) - zhs_ssl ) )
+            zradtr_s(ji,jj,jk) = zradtr_s(ji,jj,0) * EXP( - zraext_s(ji,jj) * MAX( 0._wp, zh_s(ji,jj) * REAL(jk) - zhs_ssl ) )
             !                             ! radiation absorbed by the layer-th snow layer
-            zradab_s(ji,jk) = zradtr_s(ji,jk-1) - zradtr_s(ji,jk)
-         END DO
+            zradab_s(ji,jj,jk) = zradtr_s(ji,jj,jk-1) - zradtr_s(ji,jj,jk)
+          ENDIF
+         END_2D
       END DO
       !
-      zradtr_i(1:npti,0) = zradtr_s(1:npti,nlay_s) * za_s_fra(1:npti) + qtr_ice_top_1d(1:npti) * ( 1._wp - za_s_fra(1:npti) )
+      zradtr_i(:,:,0) = zradtr_s(:,:,nlay_s) * za_s_fra(:,:) + qtr_ice_top(A2D(0),jl_cat) * ( 1._wp - za_s_fra(:,:) )
       DO jk = 1, nlay_i
-         DO ji = 1, npti
+         DO_2D(0, 0, 0, 0)
+          IF (ll_ice_present(ji,jj) ) THEN
             !                             ! radiation transmitted below the layer-th ice layer
-            zradtr_i(ji,jk) =           za_s_fra(ji)   * zradtr_s(ji,nlay_s)                       &   ! part covered by snow
-               &                                       * EXP( - rn_kappa_i * MAX( 0._wp, zh_i(ji) * REAL(jk) - zh_min  ) ) &
-               &            + ( 1._wp - za_s_fra(ji) ) * qtr_ice_top_1d(ji)                        &   ! part snow free
-               &                                       * EXP( - rn_kappa_i * MAX( 0._wp, zh_i(ji) * REAL(jk) - zhi_ssl ) )
+            zradtr_i(ji,jj,jk) =           za_s_fra(ji,jj)   * zradtr_s(ji,jj,nlay_s)                       &   ! part covered by snow
+               &                                       * EXP( - rn_kappa_i * MAX( 0._wp, zh_i(ji,jj) * REAL(jk) - zh_min  ) ) &
+               &            + ( 1._wp - za_s_fra(ji,jj) ) * qtr_ice_top(ji,jj,jl_cat)                        &   ! part snow free
+               &                                       * EXP( - rn_kappa_i * MAX( 0._wp, zh_i(ji,jj) * REAL(jk) - zhi_ssl ) )
             !                             ! radiation absorbed by the layer-th ice layer
-            zradab_i(ji,jk) = zradtr_i(ji,jk-1) - zradtr_i(ji,jk)
-         END DO
+            zradab_i(ji,jj,jk) = zradtr_i(ji,jj,jk-1) - zradtr_i(ji,jj,jk)
+          ENDIF
+         END_2D
       END DO
          !
-      DO ji = 1, npti
-         qtr_ice_bot_1d(ji) = zradtr_i(ji,nlay_i)   ! record radiation transmitted below the ice
-      END DO
+      DO_2D(0, 0, 0, 0)
+       IF (ll_ice_present(ji,jj)) THEN
+         qtr_ice_bot(ji,jj,jl_cat) = zradtr_i(ji,jj,nlay_i)   ! record radiation transmitted below the ice
+       ENDIF
+      END_2D
       !
       !
       iconv = 0          ! number of iterations
       !
-      l_T_converged(:) = .FALSE.
+      l_T_converged(:,:) = .FALSE.
+      DO_2D(0, 0, 0, 0)
+         IF ( .NOT. ll_ice_present(ji,jj) ) THEN
+            l_T_converged(ji,jj) = .TRUE. ! Initialise l_T_converged to TRUE if no ice present
+         ENDIF
+      END_2D
       ! Convergence calculated until all sub-domain grid points have converged
       ! Calculations keep going for all grid points until sub-domain convergence (vectorisation optimisation)
       ! but values are not taken into account (results independant of MPI partitioning)
       !
       !                                                                            !============================!
-      DO WHILE ( ( .NOT. ALL (l_T_converged(1:npti)) ) .AND. iconv < iconv_max )   ! Iterative procedure begins !
+      DO WHILE ( ( .NOT. ALL (l_T_converged(:,:)) ) .AND. iconv < iconv_max )   ! Iterative procedure begins !
          !                                                                         !============================!
          iconv = iconv + 1
          !
@@ -247,108 +276,110 @@ CONTAINS
          !--------------------------------
          IF( ln_cndi_U64 ) THEN         !-- Untersteiner (1964) formula: k = k0 + beta.S/T
             !
-            DO ji = 1, npti
-               ztcond_i_cp(ji,0)      = rcnd_i + zbeta * sz_i_1d(ji,1)      / MIN( -epsi10, t_i_1d(ji,1) - rt0 )
-               ztcond_i_cp(ji,nlay_i) = rcnd_i + zbeta * sz_i_1d(ji,nlay_i) / MIN( -epsi10, t_bo_1d(ji)  - rt0 )
-            END DO
+            DO_2D(0, 0, 0, 0)
+               ztcond_i_cp(ji,jj,0)      = rcnd_i + zbeta * sz_i(ji,jj,1,jl_cat)      / MIN( -epsi10, t_i(ji,jj,1,jl_cat) - rt0 )
+               ztcond_i_cp(ji,jj,nlay_i) = rcnd_i + zbeta * sz_i(ji,jj,nlay_i,jl_cat) / MIN( -epsi10, t_bo(ji,jj)  - rt0 )
+            END_2D
             DO jk = 1, nlay_i-1
-               DO ji = 1, npti
-                  ztcond_i_cp(ji,jk) = rcnd_i + zbeta * 0.5_wp * ( sz_i_1d(ji,jk) + sz_i_1d(ji,jk+1) ) /  &
-                     &                    MIN( -epsi10, 0.5_wp * (  t_i_1d(ji,jk) +  t_i_1d(ji,jk+1) ) - rt0 )
-               END DO
+               DO_2D(0, 0, 0, 0)
+                IF (ll_ice_present(ji,jj)) THEN
+                  ztcond_i_cp(ji,jj,jk) = rcnd_i + zbeta * 0.5_wp * ( sz_i(ji,jj,jk,jl_cat) + sz_i(ji,jj,jk+1,jl_cat) ) /  &
+                     &                    MIN( -epsi10, 0.5_wp * (  t_i(ji,jj,jk,jl_cat) +  t_i(ji,jj,jk+1,jl_cat) ) - rt0 )
+                ENDIF
+               END_2D
             END DO
             !
          ELSEIF( ln_cndi_P07 ) THEN     !-- Pringle et al formula: k = k0 + beta1.S/T - beta2.T
             !
-            DO ji = 1, npti
-               ztcond_i_cp(ji,0)      = rcnd_i + 0.09_wp  *  sz_i_1d(ji,1)      / MIN( -epsi10, t_i_1d(ji,1) - rt0 )  &
-                  &                            - 0.011_wp * ( t_i_1d(ji,1) - rt0 )
-               ztcond_i_cp(ji,nlay_i) = rcnd_i + 0.09_wp  *  sz_i_1d(ji,nlay_i) / MIN( -epsi10, t_bo_1d(ji)  - rt0 )  &
-                  &                            - 0.011_wp * ( t_bo_1d(ji) - rt0 )
-            END DO
+            DO_2D(0, 0, 0, 0)
+               ztcond_i_cp(ji,jj,0)      = rcnd_i + 0.09_wp  *  sz_i(ji,jj,1,jl_cat)      / MIN( -epsi10, t_i(ji,jj,1,jl_cat) - rt0 )  &
+                  &                            - 0.011_wp * ( t_i(ji,jj,1,jl_cat) - rt0 )
+               ztcond_i_cp(ji,jj,nlay_i) = rcnd_i + 0.09_wp  *  sz_i(ji,jj,nlay_i,jl_cat) / MIN( -epsi10, t_bo(ji,jj)  - rt0 )  &
+                  &                            - 0.011_wp * ( t_bo(ji,jj) - rt0 )
+            END_2D
             DO jk = 1, nlay_i-1
-               DO ji = 1, npti
-                  ztcond_i_cp(ji,jk) = rcnd_i + 0.09_wp  *   0.5_wp * ( sz_i_1d(ji,jk) + sz_i_1d(ji,jk+1) ) /       &
-                     &                         MIN( -epsi10, 0.5_wp * (  t_i_1d(ji,jk) +  t_i_1d(ji,jk+1) ) - rt0 ) &
-                     &                        - 0.011_wp * ( 0.5_wp * (  t_i_1d(ji,jk) +  t_i_1d(ji,jk+1) ) - rt0 )
-               END DO
+               DO_2D(0, 0, 0, 0)
+                  ztcond_i_cp(ji,jj,jk) = rcnd_i + 0.09_wp  *   0.5_wp * ( sz_i(ji,jj,jk,jl_cat) + sz_i(ji,jj,jk+1,jl_cat) ) /       &
+                     &                         MIN( -epsi10, 0.5_wp * (  t_i(ji,jj,jk,jl_cat) +  t_i(ji,jj,jk+1,jl_cat) ) - rt0 ) &
+                     &                        - 0.011_wp * ( 0.5_wp * (  t_i(ji,jj,jk,jl_cat) +  t_i(ji,jj,jk+1,jl_cat) ) - rt0 )
+               END_2D
             END DO
             !
          ENDIF
 
          ! Variable used after iterations
          ! Value must be frozen after convergence for MPP independance reason
-         DO ji = 1, npti
-            IF ( .NOT. l_T_converged(ji) ) &
-               ztcond_i(ji,:) = MAX( zkimin, ztcond_i_cp(ji,:) )
-         END DO
+         DO_2D(0, 0, 0, 0)
+            IF ( .NOT. l_T_converged(ji,jj) ) &
+               ztcond_i(ji,jj,:) = MAX( zkimin, ztcond_i_cp(ji,jj,:) )
+         END_2D
          !
          !--- G(he) : enhancement of thermal conductivity in mono-category case
          ! Computation of effective thermal conductivity G(h)
          ! Used in mono-category case only to simulate an ITD implicitly
          ! Fichefet and Morales Maqueda, JGR 1997
-         zghe(1:npti) = 1._wp
+         zghe(:,:) = 1._wp
          !
          IF( ln_virtual_itd ) THEN
             !
             zepsilon = 0.1_wp
-            DO ji = 1, npti
-               zcnd_i = SUM( ztcond_i(ji,:) ) / REAL( nlay_i+1, wp )                            ! Mean sea ice thermal conductivity
-               zhe = ( rcnd_s * h_i_1d(ji) + zcnd_i * h_s_1d(ji) ) / ( rcnd_s + zcnd_i )        ! Effective thickness he (zhe)
+            DO_2D(0, 0, 0, 0)
+               zcnd_i = SUM( ztcond_i(ji,jj,:) ) / REAL( nlay_i+1, wp )                            ! Mean sea ice thermal conductivity
+               zhe = ( rcnd_s * h_i(ji,jj,jl_cat) + zcnd_i * h_s(ji,jj,jl_cat) ) / ( rcnd_s + zcnd_i )        ! Effective thickness he (zhe)
                IF( zhe >=  zepsilon * 0.5_wp * EXP(1._wp) )  &
-                  &   zghe(ji) = MIN( 2._wp, 0.5_wp * ( 1._wp + LOG( 2._wp * zhe / zepsilon ) ) )   ! G(he)
-            END DO
+                  &   zghe(ji,jj) = MIN( 2._wp, 0.5_wp * ( 1._wp + LOG( 2._wp * zhe / zepsilon ) ) )   ! G(he)
+            END_2D
             !
          ENDIF
          !
          !-----------------
          ! 4) kappa factors
          !-----------------
-         DO ji = 1, npti
+         DO_2D(0, 0, 0, 0)
             !
-            IF ( .NOT. l_T_converged(ji) ) THEN
+            IF ( .NOT. l_T_converged(ji,jj) ) THEN
                !
                !--- Snow
                ! Variable used after iterations
                ! Value must be frozen after convergence for MPP independance reason
                DO jk = 0, nlay_s-1
-                  zkappa_s(ji,jk) = zghe(ji) * rcnd_s * z1_h_s(ji)
+                  zkappa_s(ji,jj,jk) = zghe(ji,jj) * rcnd_s * z1_h_s(ji,jj)
                END DO
-               zkappa_s(ji,nlay_s) = isnow(ji) * zghe(ji) * rcnd_s * ztcond_i(ji,0) &   ! Snow-ice interface
-                  &                            / ( 0.5_wp * ( ztcond_i(ji,0) * zh_s(ji) + rcnd_s * zh_i(ji) ) )
+               zfac = 0.5_wp * (ztcond_i(ji, jj, 0) * zh_s(ji, jj) + rcnd_s * zh_i(ji, jj))
+               zkappa_s(ji,jj,nlay_s) = isnow(ji,jj) * zghe(ji,jj) * rcnd_s * ztcond_i(ji,jj,0) / zfac   ! Snow-ice interface
                !
                !--- Ice
                ! Variable used after iterations
                ! Value must be frozen after convergence for MPP independance reason
                DO jk = 0, nlay_i
-                  zkappa_i(ji,jk) = zghe(ji) * ztcond_i(ji,jk) * z1_h_i(ji)
+                  zkappa_i(ji,jj,jk) = zghe(ji,jj) * ztcond_i(ji,jj,jk) * z1_h_i(ji,jj)
                END DO
                ! Calculate combined surface snow and ice conductivity to pass through the coupler (met-office)
-               zkappa_comb(ji) = isnow_comb(ji) * zkappa_s(ji,0) + ( 1._wp - isnow_comb(ji) ) * zkappa_i(ji,0)
+               zkappa_comb(ji,jj) = isnow_comb(ji,jj) * zkappa_s(ji,jj,0) + ( 1._wp - isnow_comb(ji,jj) ) * zkappa_i(ji,jj,0)
                ! If there is snow then use the same snow-ice interface conductivity for the top layer of ice
-               IF( h_s_1d(ji) > 0._wp )   zkappa_i(ji,0) = zkappa_s(ji,nlay_s)   ! Snow-ice interface
+               IF( h_s(ji,jj,jl_cat) > 0._wp )   zkappa_i(ji,jj,0) = zkappa_s(ji,jj,nlay_s)   ! Snow-ice interface
                !
             ENDIF
             !
-         END DO
+         END_2D
          
          !--------------------------------------
          ! 5) Sea ice specific heat, eta factors
          !--------------------------------------
          DO jk = 1, nlay_i
-            DO ji = 1, npti
-               IF ( .NOT. l_T_converged(ji) ) THEN
-                  zcpi = rcpi + zgamma * sz_i_1d(ji,jk) / MAX( ( t_i_1d(ji,jk) - rt0 ) * ( ztiold(ji,jk) - rt0 ), epsi10 )
-                  zeta_i(ji,jk) = rDt_ice * r1_rhoi * z1_h_i(ji) / zcpi
+            DO_2D(0, 0, 0, 0)
+               IF ( .NOT. l_T_converged(ji,jj) ) THEN
+                  zcpi = rcpi + zgamma * sz_i(ji,jj,jk,jl_cat) / MAX( ( t_i(ji,jj,jk,jl_cat) - rt0 ) * ( ztiold(ji,jj,jk) - rt0 ), epsi10 )
+                  zeta_i(ji,jj,jk) = rDt_ice * r1_rhoi * z1_h_i(ji,jj) / zcpi
                ENDIF
-            END DO
+            END_2D
          END DO
          !
          DO jk = 1, nlay_s
-            DO ji = 1, npti
-               IF ( .NOT. l_T_converged(ji) ) &
-                  & zeta_s(ji,jk) = rDt_ice * r1_rhos * r1_rcpi * z1_h_s(ji)
-            END DO
+            DO_2D(0, 0, 0, 0)
+               IF ( .NOT. l_T_converged(ji,jj) ) &
+                  & zeta_s(ji,jj,jk) = rDt_ice * r1_rhos * r1_rcpi * z1_h_s(ji,jj)
+            END_2D
          END DO
          !
          !
@@ -362,7 +393,7 @@ CONTAINS
             ! ==> The original BL99 temperature computation is used
             !       (with qsr_ice, qns_ice and dqns_ice as inputs)
             !
-            DO ji = 1, npti
+            DO_2D(0, 0, 0, 0)
                !
                !----------------------------
                ! 6) surface flux computation
@@ -370,15 +401,15 @@ CONTAINS
                ! update of the non solar flux according to the update in T_su
                ! Variable used after iterations
                ! Value must be frozen after convergence for MPP independance reason
-               IF ( .NOT. l_T_converged(ji) ) THEN
+               IF ( .NOT. l_T_converged(ji,jj) ) THEN
                   !
-                  qns_ice_1d(ji) = qns_ice_1d(ji) + dqns_ice_1d(ji) * ( t_su_1d(ji) - ztsub(ji) )
+                  qns_ice(ji,jj,jl_cat) = qns_ice(ji,jj,jl_cat) + dqns_ice(ji,jj,jl_cat) * ( t_su(ji,jj,jl_cat) - ztsub(ji,jj) )
                   !
-                  zfnet = qsr_ice_1d(ji) - qtr_ice_top_1d(ji) + qns_ice_1d(ji) ! net heat flux = net - transmitted solar + non solar
+                  zfnet = qsr_ice(ji,jj,jl_cat) - qtr_ice_top(ji,jj,jl_cat) + qns_ice(ji,jj,jl_cat) ! net heat flux = net - transmitted solar + non solar
                   !
                   ! before temperatures
-                  ztib(:) = t_i_1d(ji,:)
-                  ztsb(:) = t_s_1d(ji,:)
+                  ztib(:) = t_i(ji,jj,:,jl_cat)
+                  ztsb(:) = t_s(ji,jj,:,jl_cat)
                   !
                   !----------------------------
                   ! 7) tridiagonal system terms
@@ -396,54 +427,54 @@ CONTAINS
 
                   DO jm = nlay_s + 2, nlay_s + nlay_i
                      jk = jm - nlay_s - 1
-                     ztrid   (jm,1) =       - zeta_i(ji,jk) *   zkappa_i(ji,jk-1)
-                     ztrid   (jm,2) = 1._wp + zeta_i(ji,jk) * ( zkappa_i(ji,jk-1) + zkappa_i(ji,jk) )
-                     ztrid   (jm,3) =       - zeta_i(ji,jk) *                       zkappa_i(ji,jk)
-                     zindterm(jm)   = ztiold(ji,jk) + zeta_i(ji,jk) * zradab_i(ji,jk)
+                     ztrid   (jm,1) =       - zeta_i(ji,jj,jk) *   zkappa_i(ji,jj,jk-1)
+                     ztrid   (jm,2) = 1._wp + zeta_i(ji,jj,jk) * ( zkappa_i(ji,jj,jk-1) + zkappa_i(ji,jj,jk) )
+                     ztrid   (jm,3) =       - zeta_i(ji,jj,jk) *                       zkappa_i(ji,jj,jk)
+                     zindterm(jm)   = ztiold(ji,jj,jk) + zeta_i(ji,jj,jk) * zradab_i(ji,jj,jk)
                   END DO
 
                   jm =  nlay_s + nlay_i + 1
                   ! ice bottom term
-                  ztrid   (jm,1) =       - zeta_i(ji,nlay_i) *   zkappa_i(ji,nlay_i-1)
-                  ztrid   (jm,2) = 1._wp + zeta_i(ji,nlay_i) * ( zkappa_i(ji,nlay_i-1) + zkappa_i(ji,nlay_i) * zg1 )
+                  ztrid   (jm,1) =       - zeta_i(ji,jj,nlay_i) *   zkappa_i(ji,jj,nlay_i-1)
+                  ztrid   (jm,2) = 1._wp + zeta_i(ji,jj,nlay_i) * ( zkappa_i(ji,jj,nlay_i-1) + zkappa_i(ji,jj,nlay_i) * zg1 )
                   ztrid   (jm,3) = 0._wp
-                  zindterm(jm)   = ztiold(ji,nlay_i) + zeta_i(ji,nlay_i) *  &
-                     &         ( zradab_i(ji,nlay_i) + zkappa_i(ji,nlay_i) * zg1 * t_bo_1d(ji) )
+                  zindterm(jm)   = ztiold(ji,jj,nlay_i) + zeta_i(ji,jj,nlay_i) *  &
+                     &         ( zradab_i(ji,jj,nlay_i) + zkappa_i(ji,jj,nlay_i) * zg1 * t_bo(ji,jj) )
 
                   !                               !---------------------!
-                  IF( h_s_1d(ji) > 0._wp ) THEN   !  snow-covered cells !
+                  IF( h_s(ji,jj,jl_cat) > 0._wp ) THEN   !  snow-covered cells !
                      !                            !---------------------!
                      ! snow interior terms (bottom equation has the same form as the others)
                      DO jm = 3, nlay_s + 1
                         jk = jm - 1
-                        ztrid   (jm,1) =       - zeta_s(ji,jk) *   zkappa_s(ji,jk-1)
-                        ztrid   (jm,2) = 1._wp + zeta_s(ji,jk) * ( zkappa_s(ji,jk-1) + zkappa_s(ji,jk) )
-                        ztrid   (jm,3) =       - zeta_s(ji,jk) *                       zkappa_s(ji,jk)
-                        zindterm(jm)   = ztsold(ji,jk) + zeta_s(ji,jk) * zradab_s(ji,jk)
+                        ztrid   (jm,1) =       - zeta_s(ji,jj,jk) *   zkappa_s(ji,jj,jk-1)
+                        ztrid   (jm,2) = 1._wp + zeta_s(ji,jj,jk) * ( zkappa_s(ji,jj,jk-1) + zkappa_s(ji,jj,jk) )
+                        ztrid   (jm,3) =       - zeta_s(ji,jj,jk) *                       zkappa_s(ji,jj,jk)
+                        zindterm(jm)   = ztsold(ji,jj,jk) + zeta_s(ji,jj,jk) * zradab_s(ji,jj,jk)
                      END DO
 
                      ! case of only one layer in the ice (ice equation is altered)
                      IF( nlay_i == 1 ) THEN
                         ztrid   (nlay_s+2,3) = 0._wp
-                        zindterm(nlay_s+2)   = zindterm(nlay_s+2) + zeta_i(ji,1) * zkappa_i(ji,1) * t_bo_1d(ji)
+                        zindterm(nlay_s+2)   = zindterm(nlay_s+2) + zeta_i(ji,jj,1) * zkappa_i(ji,jj,1) * t_bo(ji,jj)
                      ENDIF
 
-                     IF( t_su_1d(ji) < rt0 ) THEN   !--  case 1 : no surface melting
+                     IF( t_su(ji,jj,jl_cat) < rt0 ) THEN   !--  case 1 : no surface melting
 
                         jm_min = 1
                         jm_max = nlay_i + nlay_s + 1
 
                         ! surface equation
                         ztrid   (1,1) = 0._wp
-                        ztrid   (1,2) = zdqns_ice_b(ji) - zg1s * zkappa_s(ji,0)
-                        ztrid   (1,3) =                   zg1s * zkappa_s(ji,0)
-                        zindterm(1)   = zdqns_ice_b(ji) * t_su_1d(ji) - zfnet
+                        ztrid   (1,2) = zdqns_ice_b(ji,jj) - zg1s * zkappa_s(ji,jj,0)
+                        ztrid   (1,3) =                   zg1s * zkappa_s(ji,jj,0)
+                        zindterm(1)   = zdqns_ice_b(ji,jj) * t_su(ji,jj,jl_cat) - zfnet
 
                         ! first layer of snow equation
-                        ztrid   (2,1) =       - zeta_s(ji,1) *                    zkappa_s(ji,0) * zg1s
-                        ztrid   (2,2) = 1._wp + zeta_s(ji,1) * ( zkappa_s(ji,1) + zkappa_s(ji,0) * zg1s )
-                        ztrid   (2,3) =       - zeta_s(ji,1) *   zkappa_s(ji,1)
-                        zindterm(2)   = ztsold(ji,1) + zeta_s(ji,1) * zradab_s(ji,1)
+                        ztrid   (2,1) =       - zeta_s(ji,jj,1) *                    zkappa_s(ji,jj,0) * zg1s
+                        ztrid   (2,2) = 1._wp + zeta_s(ji,jj,1) * ( zkappa_s(ji,jj,1) + zkappa_s(ji,jj,0) * zg1s )
+                        ztrid   (2,3) =       - zeta_s(ji,jj,1) *   zkappa_s(ji,jj,1)
+                        zindterm(2)   = ztsold(ji,jj,1) + zeta_s(ji,jj,1) * zradab_s(ji,jj,1)
 
                      ELSE                            !--  case 2 : surface is melting
                         !
@@ -452,40 +483,40 @@ CONTAINS
 
                         ! first layer of snow equation
                         ztrid   (2,1) = 0._wp
-                        ztrid   (2,2) = 1._wp + zeta_s(ji,1) * ( zkappa_s(ji,1) + zkappa_s(ji,0) * zg1s )
-                        ztrid   (2,3) =       - zeta_s(ji,1) *   zkappa_s(ji,1)
-                        zindterm(2)   = ztsold(ji,1) + zeta_s(ji,1) * ( zradab_s(ji,1) + zkappa_s(ji,0) * zg1s * t_su_1d(ji) )
+                        ztrid   (2,2) = 1._wp + zeta_s(ji,jj,1) * ( zkappa_s(ji,jj,1) + zkappa_s(ji,jj,0) * zg1s )
+                        ztrid   (2,3) =       - zeta_s(ji,jj,1) *   zkappa_s(ji,jj,1)
+                        zindterm(2)   = ztsold(ji,jj,1) + zeta_s(ji,jj,1) * ( zradab_s(ji,jj,1) + zkappa_s(ji,jj,0) * zg1s * t_su(ji,jj,jl_cat) )
                      ENDIF
                      !                            !---------------------!
                   ELSE                            ! cells without snow  !
                      !                            !---------------------!
                      !
-                     IF( t_su_1d(ji) < rt0 ) THEN   !--  case 1 : no surface melting
+                     IF( t_su(ji,jj,jl_cat) < rt0 ) THEN   !--  case 1 : no surface melting
                         !
                         jm_min = nlay_s + 1
                         jm_max = nlay_i + nlay_s + 1
 
                         ! surface equation
                         ztrid   (jm_min,1) = 0._wp
-                        ztrid   (jm_min,2) = zdqns_ice_b(ji) - zkappa_i(ji,0) * zg1
-                        ztrid   (jm_min,3) =                   zkappa_i(ji,0) * zg1
-                        zindterm(jm_min)   = zdqns_ice_b(ji) * t_su_1d(ji) - zfnet
+                        ztrid   (jm_min,2) = zdqns_ice_b(ji,jj) - zkappa_i(ji,jj,0) * zg1
+                        ztrid   (jm_min,3) =                   zkappa_i(ji,jj,0) * zg1
+                        zindterm(jm_min)   = zdqns_ice_b(ji,jj) * t_su(ji,jj,jl_cat) - zfnet
 
                         ! first layer of ice equation
-                        ztrid   (jm_min+1,1) =       - zeta_i(ji,1) *                    zkappa_i(ji,0) * zg1
-                        ztrid   (jm_min+1,2) = 1._wp + zeta_i(ji,1) * ( zkappa_i(ji,1) + zkappa_i(ji,0) * zg1 )
-                        ztrid   (jm_min+1,3) =       - zeta_i(ji,1) *   zkappa_i(ji,1)
-                        zindterm(jm_min+1)   = ztiold(ji,1) + zeta_i(ji,1) * zradab_i(ji,1)
+                        ztrid   (jm_min+1,1) =       - zeta_i(ji,jj,1) *                    zkappa_i(ji,jj,0) * zg1
+                        ztrid   (jm_min+1,2) = 1._wp + zeta_i(ji,jj,1) * ( zkappa_i(ji,jj,1) + zkappa_i(ji,jj,0) * zg1 )
+                        ztrid   (jm_min+1,3) =       - zeta_i(ji,jj,1) *   zkappa_i(ji,jj,1)
+                        zindterm(jm_min+1)   = ztiold(ji,jj,1) + zeta_i(ji,jj,1) * zradab_i(ji,jj,1)
 
                         ! case of only one layer in the ice (surface & ice equations are altered)
                         IF( nlay_i == 1 ) THEN
                            ztrid   (jm_min,1)   = 0._wp
-                           ztrid   (jm_min,2)   = zdqns_ice_b(ji)      -   zkappa_i(ji,0) * 2._wp
-                           ztrid   (jm_min,3)   =                          zkappa_i(ji,0) * 2._wp
-                           ztrid   (jm_min+1,1) =       - zeta_i(ji,1) *   zkappa_i(ji,0) * 2._wp
-                           ztrid   (jm_min+1,2) = 1._wp + zeta_i(ji,1) * ( zkappa_i(ji,0) * 2._wp + zkappa_i(ji,1) )
+                           ztrid   (jm_min,2)   = zdqns_ice_b(ji,jj)      -   zkappa_i(ji,jj,0) * 2._wp
+                           ztrid   (jm_min,3)   =                          zkappa_i(ji,jj,0) * 2._wp
+                           ztrid   (jm_min+1,1) =       - zeta_i(ji,jj,1) *   zkappa_i(ji,jj,0) * 2._wp
+                           ztrid   (jm_min+1,2) = 1._wp + zeta_i(ji,jj,1) * ( zkappa_i(ji,jj,0) * 2._wp + zkappa_i(ji,jj,1) )
                            ztrid   (jm_min+1,3) = 0._wp
-                           zindterm(jm_min+1)   = ztiold(ji,1) + zeta_i(ji,1) * (zradab_i(ji,1) + zkappa_i(ji,1) * t_bo_1d(ji))
+                           zindterm(jm_min+1)   = ztiold(ji,jj,1) + zeta_i(ji,jj,1) * (zradab_i(ji,jj,1) + zkappa_i(ji,jj,1) * t_bo(ji,jj))
                         ENDIF
 
                      ELSE                            !--  case 2 : surface is melting
@@ -495,17 +526,17 @@ CONTAINS
 
                         ! first layer of ice equation
                         ztrid   (jm_min,1) = 0._wp
-                        ztrid   (jm_min,2) = 1._wp + zeta_i(ji,1) * ( zkappa_i(ji,1) + zkappa_i(ji,0) * zg1 )
-                        ztrid   (jm_min,3) =       - zeta_i(ji,1) *   zkappa_i(ji,1)
-                        zindterm(jm_min)   = ztiold(ji,1) + zeta_i(ji,1) * (zradab_i(ji,1) + zkappa_i(ji,0) * zg1 * t_su_1d(ji))
+                        ztrid   (jm_min,2) = 1._wp + zeta_i(ji,jj,1) * ( zkappa_i(ji,jj,1) + zkappa_i(ji,jj,0) * zg1 )
+                        ztrid   (jm_min,3) =       - zeta_i(ji,jj,1) *   zkappa_i(ji,jj,1)
+                        zindterm(jm_min)   = ztiold(ji,jj,1) + zeta_i(ji,jj,1) * (zradab_i(ji,jj,1) + zkappa_i(ji,jj,0) * zg1 * t_su(ji,jj,jl_cat))
 
                         ! case of only one layer in the ice (surface & ice equations are altered)
                         IF( nlay_i == 1 ) THEN
                            ztrid   (jm_min,1) = 0._wp
-                           ztrid   (jm_min,2) = 1._wp + zeta_i(ji,1) * ( zkappa_i(ji,0) * 2._wp + zkappa_i(ji,1) )
+                           ztrid   (jm_min,2) = 1._wp + zeta_i(ji,jj,1) * ( zkappa_i(ji,jj,0) * 2._wp + zkappa_i(ji,jj,1) )
                            ztrid   (jm_min,3) = 0._wp
-                           zindterm(jm_min)   = ztiold(ji,1) + zeta_i(ji,1) * ( zradab_i(ji,1) + zkappa_i(ji,1) * t_bo_1d(ji) ) &
-                              &                    + t_su_1d(ji) * zeta_i(ji,1) * zkappa_i(ji,0) * 2._wp
+                           zindterm(jm_min)   = ztiold(ji,jj,1) + zeta_i(ji,jj,1) * ( zradab_i(ji,jj,1) + zkappa_i(ji,jj,1) * t_bo(ji,jj) ) &
+                              &                    + t_su(ji,jj,jl_cat) * zeta_i(ji,jj,1) * zkappa_i(ji,jj,0) * 2._wp
                         ENDIF
 
                      ENDIF
@@ -529,30 +560,30 @@ CONTAINS
                   ! ice temperatures
                   ! Variable used after iterations
                   ! Value must be frozen after convergence for MPP independance reason
-                  t_i_1d(ji,nlay_i) = zindtbis(jm_max) / zdiagbis(jm_max)
+                  t_i(ji,jj,nlay_i,jl_cat) = zindtbis(jm_max) / zdiagbis(jm_max)
                   
                   DO jm = nlay_i + nlay_s, nlay_s + 2, -1
                      jk = jm - nlay_s - 1
-                     t_i_1d(ji,jk) = ( zindtbis(jm) - ztrid(jm,3) * t_i_1d(ji,jk+1) ) / zdiagbis(jm)
+                     t_i(ji,jj,jk,jl_cat) = ( zindtbis(jm) - ztrid(jm,3) * t_i(ji,jj,jk+1,jl_cat) ) / zdiagbis(jm)
                   END DO
 
                   ! snow temperatures
                   ! Variables used after iterations
                   ! Value must be frozen after convergence for MPP independance reason
-                  IF ( h_s_1d(ji) > 0._wp ) &
-                     &   t_s_1d(ji,nlay_s) = ( zindtbis(nlay_s+1) - ztrid(nlay_s+1,3) * t_i_1d(ji,1) ) / zdiagbis(nlay_s+1)
+                  IF ( h_s(ji,jj,jl_cat) > 0._wp ) &
+                     &   t_s(ji,jj,nlay_s,jl_cat) = ( zindtbis(nlay_s+1) - ztrid(nlay_s+1,3) * t_i(ji,jj,1,jl_cat) ) / zdiagbis(nlay_s+1)
 
                   DO jm = nlay_s, 2, -1
                      jk = jm - 1
-                     IF ( h_s_1d(ji) > 0._wp ) &
-                        &   t_s_1d(ji,jk) = ( zindtbis(jm) - ztrid(jm,3) * t_s_1d(ji,jk+1) ) / zdiagbis(jm)
+                     IF ( h_s(ji,jj,jl_cat) > 0._wp ) &
+                        &   t_s(ji,jj,jk,jl_cat) = ( zindtbis(jm) - ztrid(jm,3) * t_s(ji,jj,jk+1,jl_cat) ) / zdiagbis(jm)
                   END DO
                   
                   ! surface temperature
-                  ztsub(ji) = t_su_1d(ji)
-                  IF( t_su_1d(ji) < rt0 ) THEN
-                     t_su_1d(ji) = ( zindtbis(jm_min) - ztrid(jm_min,3) *  &
-                        &          ( isnow(ji) * t_s_1d(ji,1) + ( 1._wp - isnow(ji) ) * t_i_1d(ji,1) ) ) / zdiagbis(jm_min)
+                  ztsub(ji,jj) = t_su(ji,jj,jl_cat)
+                  IF( t_su(ji,jj,jl_cat) < rt0 ) THEN
+                     t_su(ji,jj,jl_cat) = ( zindtbis(jm_min) - ztrid(jm_min,3) *  &
+                        &          ( isnow(ji,jj) * t_s(ji,jj,1,jl_cat) + ( 1._wp - isnow(ji,jj) ) * t_i(ji,jj,1,jl_cat) ) ) / zdiagbis(jm_min)
                   ENDIF
                   !
                   !--------------------------------------------------------------
@@ -560,35 +591,35 @@ CONTAINS
                   !--------------------------------------------------------------
                   ! check that nowhere it has started to melt
                   ! zdti_max is a measure of error, it has to be under zdti_bnd                  
+
                   zdti_max = 0._wp
 
-                  t_su_1d(ji) = MAX( MIN( t_su_1d(ji) , rt0 ) , rt0 - 100._wp )
-                  zdti_max    = MAX( zdti_max, ABS( t_su_1d(ji) - ztsub(ji) ) )
+                  t_su(ji,jj,jl_cat) = MAX( MIN( t_su(ji,jj,jl_cat) , rt0 ) , rt0 - 100._wp )
+                  zdti_max    = MAX( zdti_max, ABS( t_su(ji,jj,jl_cat) - ztsub(ji,jj) ) )
 
-                  IF( h_s_1d(ji) > 0._wp ) THEN
+                  IF( h_s(ji,jj,jl_cat) > 0._wp ) THEN
                      DO jk = 1, nlay_s
-                        t_s_1d(ji,jk) = MAX( MIN( t_s_1d(ji,jk), rt0 ), rt0 - 100._wp )
-                        zdti_max      = MAX ( zdti_max , ABS( t_s_1d(ji,jk) - ztsb(jk) ) )
+                        t_s(ji,jj,jk,jl_cat) = MAX( MIN( t_s(ji,jj,jk,jl_cat), rt0 ), rt0 - 100._wp )
+                        zdti_max      = MAX ( zdti_max , ABS( t_s(ji,jj,jk,jl_cat) - ztsb(jk) ) )
                      END DO
                   ENDIF
 
                   DO jk = 1, nlay_i
-                     ztmelts       = -rTmlt * sz_i_1d(ji,jk) + rt0
-                     t_i_1d(ji,jk) =  MAX( MIN( t_i_1d(ji,jk), ztmelts ), rt0 - 100._wp )
-                     zdti_max      =  MAX( zdti_max, ABS( t_i_1d(ji,jk) - ztib(jk) ) )
+                     ztmelts       = -rTmlt * sz_i(ji,jj,jk,jl_cat) + rt0
+                     t_i(ji,jj,jk,jl_cat) =  MAX( MIN( t_i(ji,jj,jk,jl_cat), ztmelts ), rt0 - 100._wp )
+                     zdti_max      =  MAX( zdti_max, ABS( t_i(ji,jj,jk,jl_cat) - ztib(jk) ) )
                   END DO
 
                   ! convergence test
                   IF( ln_zdf_chkcvg ) THEN
-                     tice_cvgerr_1d(ji) = zdti_max
-                     tice_cvgstp_1d(ji) = REAL(iconv)
+                     ztice_cvgerr(ji,jj,jl_cat) = zdti_max
+                     ztice_cvgstp(ji,jj,jl_cat) = REAL(iconv)
                   ENDIF
 
-                  IF( zdti_max < zdti_bnd )   l_T_converged(ji) = .TRUE.
+                  IF( zdti_max < zdti_bnd )   l_T_converged(ji,jj) = .TRUE.
 
                ENDIF
-               
-            END DO     
+            END_2D     
             !
          ELSEIF( k_cnd == np_cnd_ON ) THEN
             !----------------------------------------!
@@ -599,12 +630,12 @@ CONTAINS
             !
             ! ==> we use a modified BL99 solver with conduction flux (qcn_ice) as forcing term
             !
-            DO ji = 1, npti
+            DO_2D(0, 0, 0, 0)
                !
-               IF ( .NOT. l_T_converged(ji) ) THEN
+               IF ( .NOT. l_T_converged(ji,jj) ) THEN
                   ! before temperatures
-                  ztib(:) = t_i_1d(ji,:)
-                  ztsb(:) = t_s_1d(ji,:)
+                  ztib(:) = t_i(ji,jj,:,jl_cat)
+                  ztsb(:) = t_s(ji,jj,:,jl_cat)
                   !
                   !----------------------------
                   ! 7) tridiagonal system terms
@@ -622,36 +653,36 @@ CONTAINS
 
                   DO jm = nlay_s + 2, nlay_s + nlay_i
                      jk = jm - nlay_s - 1
-                     ztrid   (jm,1) =       - zeta_i(ji,jk) *   zkappa_i(ji,jk-1)
-                     ztrid   (jm,2) = 1._wp + zeta_i(ji,jk) * ( zkappa_i(ji,jk-1) + zkappa_i(ji,jk) )
-                     ztrid   (jm,3) =       - zeta_i(ji,jk) *                       zkappa_i(ji,jk)
-                     zindterm(jm)   = ztiold(ji,jk) + zeta_i(ji,jk) * zradab_i(ji,jk)
+                     ztrid   (jm,1) =       - zeta_i(ji,jj,jk) *   zkappa_i(ji,jj,jk-1)
+                     ztrid   (jm,2) = 1._wp + zeta_i(ji,jj,jk) * ( zkappa_i(ji,jj,jk-1) + zkappa_i(ji,jj,jk) )
+                     ztrid   (jm,3) =       - zeta_i(ji,jj,jk) *                       zkappa_i(ji,jj,jk)
+                     zindterm(jm)   = ztiold(ji,jj,jk) + zeta_i(ji,jj,jk) * zradab_i(ji,jj,jk)
                   END DO
 
                   ! ice bottom term
                   jm =  nlay_s + nlay_i + 1
-                  ztrid   (jm,1) =       - zeta_i(ji,nlay_i) *   zkappa_i(ji,nlay_i-1)
-                  ztrid   (jm,2) = 1._wp + zeta_i(ji,nlay_i) * ( zkappa_i(ji,nlay_i-1) + zkappa_i(ji,nlay_i) * zg1 )
+                  ztrid   (jm,1) =       - zeta_i(ji,jj,nlay_i) *   zkappa_i(ji,jj,nlay_i-1)
+                  ztrid   (jm,2) = 1._wp + zeta_i(ji,jj,nlay_i) * ( zkappa_i(ji,jj,nlay_i-1) + zkappa_i(ji,jj,nlay_i) * zg1 )
                   ztrid   (jm,3) = 0._wp
-                  zindterm(jm)   = ztiold(ji,nlay_i) + zeta_i(ji,nlay_i) *  &
-                     &              ( zradab_i(ji,nlay_i) + zkappa_i(ji,nlay_i) * zg1 * t_bo_1d(ji) )
+                  zindterm(jm)   = ztiold(ji,jj,nlay_i) + zeta_i(ji,jj,nlay_i) *  &
+                     &              ( zradab_i(ji,jj,nlay_i) + zkappa_i(ji,jj,nlay_i) * zg1 * t_bo(ji,jj) )
 
                   !                               !---------------------!
-                  IF( h_s_1d(ji) > 0._wp ) THEN   !  snow-covered cells !
+                  IF( h_s(ji,jj,jl_cat) > 0._wp ) THEN   !  snow-covered cells !
                      !                            !---------------------!
                      ! snow interior terms (bottom equation has the same form as the others)
                      DO jm = 3, nlay_s + 1
                         jk = jm - 1
-                        ztrid   (jm,1) =       - zeta_s(ji,jk) *   zkappa_s(ji,jk-1)
-                        ztrid   (jm,2) = 1._wp + zeta_s(ji,jk) * ( zkappa_s(ji,jk-1) + zkappa_s(ji,jk) )
-                        ztrid   (jm,3) =       - zeta_s(ji,jk) *                       zkappa_s(ji,jk)
-                        zindterm(jm)   = ztsold(ji,jk) + zeta_s(ji,jk) * zradab_s(ji,jk)
+                        ztrid   (jm,1) =       - zeta_s(ji,jj,jk) *   zkappa_s(ji,jj,jk-1)
+                        ztrid   (jm,2) = 1._wp + zeta_s(ji,jj,jk) * ( zkappa_s(ji,jj,jk-1) + zkappa_s(ji,jj,jk) )
+                        ztrid   (jm,3) =       - zeta_s(ji,jj,jk) *                       zkappa_s(ji,jj,jk)
+                        zindterm(jm)   = ztsold(ji,jj,jk) + zeta_s(ji,jj,jk) * zradab_s(ji,jj,jk)
                      END DO
 
                      ! case of only one layer in the ice (ice equation is altered)
                      IF ( nlay_i == 1 ) THEN
                         ztrid   (nlay_s+2,3) = 0._wp
-                        zindterm(nlay_s+2)   = zindterm(nlay_s+2) + zeta_i(ji,1) * zkappa_i(ji,1) * t_bo_1d(ji)
+                        zindterm(nlay_s+2)   = zindterm(nlay_s+2) + zeta_i(ji,jj,1) * zkappa_i(ji,jj,1) * t_bo(ji,jj)
                      ENDIF
 
                      jm_min = 2
@@ -659,9 +690,9 @@ CONTAINS
 
                      ! first layer of snow equation
                      ztrid   (2,1) = 0._wp
-                     ztrid   (2,2) = 1._wp + zeta_s(ji,1) * zkappa_s(ji,1)
-                     ztrid   (2,3) =       - zeta_s(ji,1) * zkappa_s(ji,1)
-                     zindterm(2)   = ztsold(ji,1) + zeta_s(ji,1) * ( zradab_s(ji,1) + qcn_ice_1d(ji) )
+                     ztrid   (2,2) = 1._wp + zeta_s(ji,jj,1) * zkappa_s(ji,jj,1)
+                     ztrid   (2,3) =       - zeta_s(ji,jj,1) * zkappa_s(ji,jj,1)
+                     zindterm(2)   = ztsold(ji,jj,1) + zeta_s(ji,jj,1) * ( zradab_s(ji,jj,1) + qcn_ice(ji,jj,jl_cat) )
 
                      !                            !---------------------!
                   ELSE                            ! cells without snow  !
@@ -671,17 +702,17 @@ CONTAINS
 
                      ! first layer of ice equation
                      ztrid   (jm_min,1) = 0._wp
-                     ztrid   (jm_min,2) = 1._wp + zeta_i(ji,1) * zkappa_i(ji,1)
-                     ztrid   (jm_min,3) =       - zeta_i(ji,1) * zkappa_i(ji,1)
-                     zindterm(jm_min)   = ztiold(ji,1) + zeta_i(ji,1) * ( zradab_i(ji,1) + qcn_ice_1d(ji) )
+                     ztrid   (jm_min,2) = 1._wp + zeta_i(ji,jj,1) * zkappa_i(ji,jj,1)
+                     ztrid   (jm_min,3) =       - zeta_i(ji,jj,1) * zkappa_i(ji,jj,1)
+                     zindterm(jm_min)   = ztiold(ji,jj,1) + zeta_i(ji,jj,1) * ( zradab_i(ji,jj,1) + qcn_ice(ji,jj,jl_cat) )
 
                      ! case of only one layer in the ice (surface & ice equations are altered)
                      IF( nlay_i == 1 ) THEN
                         ztrid   (jm_min,1) = 0._wp
-                        ztrid   (jm_min,2) = 1._wp + zeta_i(ji,1) * zkappa_i(ji,1)
+                        ztrid   (jm_min,2) = 1._wp + zeta_i(ji,jj,1) * zkappa_i(ji,jj,1)
                         ztrid   (jm_min,3) = 0._wp
-                        zindterm(jm_min)   = ztiold(ji,1) + zeta_i(ji,1) *  &
-                           &                                     ( zradab_i(ji,1) + zkappa_i(ji,1) * t_bo_1d(ji) + qcn_ice_1d(ji) )
+                        zindterm(jm_min)   = ztiold(ji,jj,1) + zeta_i(ji,jj,1) *  &
+                           &                                     ( zradab_i(ji,jj,1) + zkappa_i(ji,jj,1) * t_bo(ji,jj) + qcn_ice(ji,jj,jl_cat) )
                      ENDIF
 
                   ENDIF
@@ -704,23 +735,23 @@ CONTAINS
                   ! ice temperatures
                   ! Variable used after iterations
                   ! Value must be frozen after convergence for MPP independance reason
-                  t_i_1d(ji,nlay_i) = zindtbis(jm_max) / zdiagbis(jm_max)
+                  t_i(ji,jj,nlay_i,jl_cat) = zindtbis(jm_max) / zdiagbis(jm_max)
 
                   DO jm = nlay_i + nlay_s, nlay_s + 2, -1
                      jk = jm - nlay_s - 1
-                     t_i_1d(ji,jk) = ( zindtbis(jm) - ztrid(jm,3) * t_i_1d(ji,jk+1) ) / zdiagbis(jm)
+                     t_i(ji,jj,jk,jl_cat) = ( zindtbis(jm) - ztrid(jm,3) * t_i(ji,jj,jk+1,jl_cat) ) / zdiagbis(jm)
                   END DO
 
                   ! snow temperatures
                   ! Variables used after iterations
                   ! Value must be frozen after convergence for MPP independance reason
-                  IF ( h_s_1d(ji) > 0._wp ) &
-                     &   t_s_1d(ji,nlay_s) = ( zindtbis(nlay_s+1) - ztrid(nlay_s+1,3) * t_i_1d(ji,1) ) / zdiagbis(nlay_s+1)
+                  IF ( h_s(ji,jj,jl_cat) > 0._wp ) &
+                     &   t_s(ji,jj,nlay_s,jl_cat) = ( zindtbis(nlay_s+1) - ztrid(nlay_s+1,3) * t_i(ji,jj,1,jl_cat) ) / zdiagbis(nlay_s+1)
 
                   DO jm = nlay_s, 2, -1
                      jk = jm - 1
-                     IF ( h_s_1d(ji) > 0._wp ) &
-                        &   t_s_1d(ji,jk) = ( zindtbis(jm) - ztrid(jm,3) * t_s_1d(ji,jk+1) ) / zdiagbis(jm)
+                     IF ( h_s(ji,jj,jl_cat) > 0._wp ) &
+                        &   t_s(ji,jj,jk,jl_cat) = ( zindtbis(jm) - ztrid(jm,3) * t_s(ji,jj,jk+1,jl_cat) ) / zdiagbis(jm)
                   END DO
                   !
                   !--------------------------------------------------------------
@@ -728,32 +759,32 @@ CONTAINS
                   !--------------------------------------------------------------
                   ! check that nowhere it has started to melt
                   ! zdti_max is a measure of error, it has to be under zdti_bnd
+
                   zdti_max = 0._wp
 
-                  IF( h_s_1d(ji) > 0._wp ) THEN
+                  IF( h_s(ji,jj,jl_cat) > 0._wp ) THEN
                      DO jk = 1, nlay_s
-                        t_s_1d(ji,jk) = MAX( MIN( t_s_1d(ji,jk), rt0 ), rt0 - 100._wp )
-                        zdti_max      = MAX ( zdti_max , ABS( t_s_1d(ji,jk) - ztsb(jk) ) )
+                        t_s(ji,jj,jk,jl_cat) = MAX( MIN( t_s(ji,jj,jk,jl_cat), rt0 ), rt0 - 100._wp )
+                        zdti_max      = MAX ( zdti_max , ABS( t_s(ji,jj,jk,jl_cat) - ztsb(jk) ) )
                      END DO
                   ENDIF
 
                   DO jk = 1, nlay_i
-                     ztmelts       = -rTmlt * sz_i_1d(ji,jk) + rt0
-                     t_i_1d(ji,jk) =  MAX( MIN( t_i_1d(ji,jk), ztmelts ), rt0 - 100._wp )
-                     zdti_max      =  MAX ( zdti_max, ABS( t_i_1d(ji,jk) - ztib(jk) ) )
+                     ztmelts       = -rTmlt * sz_i(ji,jj,jk,jl_cat) + rt0
+                     t_i(ji,jj,jk,jl_cat) =  MAX( MIN( t_i(ji,jj,jk,jl_cat), ztmelts ), rt0 - 100._wp )
+                     zdti_max      =  MAX ( zdti_max, ABS( t_i(ji,jj,jk,jl_cat) - ztib(jk) ) )
                   END DO
 
                   ! convergence test
                   IF( ln_zdf_chkcvg ) THEN
-                     tice_cvgerr_1d(ji) = zdti_max
-                     tice_cvgstp_1d(ji) = REAL(iconv)
+                     ztice_cvgerr(ji,jj,jl_cat) = zdti_max
+                     ztice_cvgstp(ji,jj,jl_cat) = REAL(iconv)
                   ENDIF
 
-                  IF( zdti_max < zdti_bnd )   l_T_converged(ji) = .TRUE.
+                  IF( zdti_max < zdti_bnd )   l_T_converged(ji,jj) = .TRUE.
 
                ENDIF
-
-            END DO
+            END_2D
 
          ENDIF ! k_cnd
 
@@ -765,31 +796,37 @@ CONTAINS
       !
       IF( k_cnd == np_cnd_OFF .OR. k_cnd == np_cnd_EMU ) THEN
          !
-         DO ji = 1, npti
+         DO_2D(0, 0, 0, 0)
+          IF (ll_ice_present(ji,jj)) THEN
             ! --- ice conduction fluxes (positive downward)
-            qcn_ice_bot_1d(ji) = - zkappa_i(ji,nlay_i) * zg1 * ( t_bo_1d(ji ) - t_i_1d (ji,nlay_i) )                ! bottom
-            qcn_ice_top_1d(ji) = -           isnow(ji)   * zkappa_s(ji,0) * zg1s * ( t_s_1d(ji,1) - t_su_1d(ji) ) & ! surface
-               &                 - ( 1._wp - isnow(ji) ) * zkappa_i(ji,0) * zg1  * ( t_i_1d(ji,1) - t_su_1d(ji) )
+            qcn_ice_bot(ji,jj,jl_cat) = - zkappa_i(ji,jj,nlay_i) * zg1 * ( t_bo(ji,jj ) - t_i(ji,jj,nlay_i,jl_cat) )                ! bottom
+            qcn_ice_top(ji,jj,jl_cat) = - isnow(ji,jj)   * zkappa_s(ji,jj,0) * zg1s * ( t_s(ji,jj,1,jl_cat) - t_su(ji,jj,jl_cat) ) & ! surface
+               &                 - ( 1._wp - isnow(ji,jj) ) * zkappa_i(ji,jj,0) * zg1  * ( t_i(ji,jj,1,jl_cat) - t_su(ji,jj,jl_cat) )
             ! --- Diagnose the heat loss due to changing non-solar / conduction flux
-            hfx_err_dif_1d(ji) = hfx_err_dif_1d(ji) - ( qns_ice_1d(ji) - zqns_ice_b(ji) ) * a_i_1d(ji)           
-         END DO
+            hfx_err_dif(ji,jj) = hfx_err_dif(ji,jj) - ( qns_ice(ji,jj,jl_cat) - zqns_ice_b(ji,jj) ) * a_i(ji,jj,jl_cat)           
+          ENDIF
+         END_2D
          !
       ELSEIF( k_cnd == np_cnd_ON ) THEN
          !
-         DO ji = 1, npti
+         DO_2D(0, 0, 0, 0)
+          IF (ll_ice_present(ji,jj)) THEN
             ! --- ice conduction fluxes (positive downward)
-            qcn_ice_bot_1d(ji) = - zkappa_i(ji,nlay_i) * zg1 * ( t_bo_1d(ji ) - t_i_1d (ji,nlay_i) ) ! bottom
-            qcn_ice_top_1d(ji) = qcn_ice_1d(ji)                                                      ! surface
-         END DO
+            qcn_ice_bot(ji,jj,jl_cat) = - zkappa_i(ji,jj,nlay_i) * zg1 * ( t_bo(ji,jj ) - t_i(ji,jj,nlay_i,jl_cat) ) ! bottom
+            qcn_ice_top(ji,jj,jl_cat) = qcn_ice(ji,jj,jl_cat)                                                      ! surface
+          ENDIF
+         END_2D
          !
          ! --- surface ice temperature
          IF( ln_cndemulate ) THEN
-            DO ji = 1, npti
-               t_su_1d(ji) = ( qcn_ice_top_1d(ji) +          isnow(ji)   * zkappa_s(ji,0) * zg1s * t_s_1d(ji,1) + &
-                  &                                ( 1._wp - isnow(ji) ) * zkappa_i(ji,0) * zg1  * t_i_1d(ji,1) ) &
-                  &          / MAX( epsi10, isnow(ji) * zkappa_s(ji,0) * zg1s + ( 1._wp - isnow(ji) ) * zkappa_i(ji,0) * zg1 )
-               t_su_1d(ji) = MAX( MIN( t_su_1d(ji), rt0 ), rt0 - 100._wp )  ! cap t_su
-            END DO
+            DO_2D(0, 0, 0, 0)
+             IF (ll_ice_present(ji,jj)) THEN
+               t_su(ji,jj,jl_cat) = ( qcn_ice_top(ji,jj,jl_cat) +          isnow(ji,jj)   * zkappa_s(ji,jj,0) * zg1s * t_s(ji,jj,1,jl_cat) + &
+                  &                                ( 1._wp - isnow(ji,jj) ) * zkappa_i(ji,jj,0) * zg1  * t_i(ji,jj,1,jl_cat) ) &
+                  &          / MAX( epsi10, isnow(ji,jj) * zkappa_s(ji,jj,0) * zg1s + ( 1._wp - isnow(ji,jj) ) * zkappa_i(ji,jj,0) * zg1 )
+               t_su(ji,jj,jl_cat) = MAX( MIN( t_su(ji,jj,jl_cat), rt0 ), rt0 - 100._wp )  ! cap t_su
+             ENDIF
+            END_2D
          ENDIF
          !
       ENDIF
@@ -798,37 +835,39 @@ CONTAINS
       !
       IF( k_cnd == np_cnd_OFF .OR. k_cnd == np_cnd_ON ) THEN
 
-         CALL ice_var_enthalpy
+         CALL ice_var_enthalpy(jl_cat, ll_ice_present)
 
          ! zhfx_err = correction on the diagnosed heat flux due to non-convergence of the algorithm used to solve heat equation
-         DO ji = 1, npti
-            zdq = - zq_ini(ji) + ( SUM( e_i_1d(ji,1:nlay_i) ) * h_i_1d(ji) * r1_nlay_i +  &
-               &                   SUM( e_s_1d(ji,1:nlay_s) ) * h_s_1d(ji) * r1_nlay_s )
+         DO_2D(0, 0, 0, 0)
+          IF (ll_ice_present(ji,jj)) THEN
+            zdq = - zq_ini(ji,jj) + ( SUM( e_i(ji,jj,1:nlay_i,jl_cat) ) * h_i(ji,jj,jl_cat) * r1_nlay_i +  &
+               &                   SUM( e_s(ji,jj,1:nlay_s,jl_cat) ) * h_s(ji,jj,jl_cat) * r1_nlay_s )
 
             IF( k_cnd == np_cnd_OFF ) THEN
 
-               IF( t_su_1d(ji) < rt0 ) THEN  ! case T_su < 0degC
-                  zhfx_err = ( qns_ice_1d(ji)     + qsr_ice_1d(ji)     - zradtr_i(ji,nlay_i) - qcn_ice_bot_1d(ji)  &
-                     &       + zdq * r1_Dt_ice ) * a_i_1d(ji)
+               IF( t_su(ji,jj,jl_cat) < rt0 ) THEN  ! case T_su < 0degC
+                  zhfx_err = ( qns_ice(ji,jj,jl_cat)     + qsr_ice(ji,jj,jl_cat)     - zradtr_i(ji,jj,nlay_i) - qcn_ice_bot(ji,jj,jl_cat)  &
+                     &       + zdq * r1_Dt_ice ) * a_i(ji,jj,jl_cat)
                ELSE                          ! case T_su = 0degC
-                  zhfx_err = ( qcn_ice_top_1d(ji) + qtr_ice_top_1d(ji) - zradtr_i(ji,nlay_i) - qcn_ice_bot_1d(ji)  &
-                     &       + zdq * r1_Dt_ice ) * a_i_1d(ji)
+                  zhfx_err = ( qcn_ice_top(ji,jj,jl_cat) + qtr_ice_top(ji,jj,jl_cat) - zradtr_i(ji,jj,nlay_i) - qcn_ice_bot(ji,jj,jl_cat)  &
+                     &       + zdq * r1_Dt_ice ) * a_i(ji,jj,jl_cat)
                ENDIF
 
             ELSEIF( k_cnd == np_cnd_ON ) THEN
 
-               zhfx_err    = ( qcn_ice_top_1d(ji) + qtr_ice_top_1d(ji) - zradtr_i(ji,nlay_i) - qcn_ice_bot_1d(ji)  &
-                  &          + zdq * r1_Dt_ice ) * a_i_1d(ji)
+               zhfx_err    = ( qcn_ice_top(ji,jj,jl_cat) + qtr_ice_top(ji,jj,jl_cat) - zradtr_i(ji,jj,nlay_i) - qcn_ice_bot(ji,jj,jl_cat)  &
+                  &          + zdq * r1_Dt_ice ) * a_i(ji,jj,jl_cat)
 
             ENDIF
             !
             ! total heat sink to be sent to the ocean
-            hfx_err_dif_1d(ji) = hfx_err_dif_1d(ji) + zhfx_err
+            hfx_err_dif(ji,jj) = hfx_err_dif(ji,jj) + zhfx_err
             !
             ! hfx_dif = Heat flux diagnostic of sensible heat used to warm/cool ice in W.m-2
-            hfx_dif_1d(ji) = hfx_dif_1d(ji) - zdq * r1_Dt_ice * a_i_1d(ji)
+            hfx_dif(ji,jj) = hfx_dif(ji,jj) - zdq * r1_Dt_ice * a_i(ji,jj,jl_cat)
             !
-         END DO
+          ENDIF
+         END_2D
          !
       ENDIF
       !
@@ -837,34 +876,42 @@ CONTAINS
       !--------------------------------------------------------------------
       ! effective conductivity and 1st layer temperature (needed by Met Office)
       ! this is a conductivity at mid-layer, hence the factor 2
-      DO ji = 1, npti
-         IF( h_i_1d(ji) >= zhi_ssl ) THEN
-            cnd_ice_1d(ji) = 2._wp * zkappa_comb(ji)
+      DO_2D(0, 0, 0, 0)
+       IF (ll_ice_present(ji,jj)) THEN
+         IF( h_i(ji,jj,jl_cat) >= zhi_ssl ) THEN
+            cnd_ice(ji,jj,jl_cat) = 2._wp * zkappa_comb(ji,jj)
             !!cnd_ice_1d(ji) = 2._wp * zkappa_i(ji,0)
          ELSE
-            cnd_ice_1d(ji) = 2._wp * ztcond_i(ji,0) / zhi_ssl ! cnd_ice is capped by: cond_i/zhi_ssl
+            cnd_ice(ji,jj,jl_cat) = 2._wp * ztcond_i(ji,jj,0) / zhi_ssl ! cnd_ice is capped by: cond_i/zhi_ssl
          ENDIF
-         t1_ice_1d(ji) = isnow(ji) * t_s_1d(ji,1) + ( 1._wp - isnow(ji) ) * t_i_1d(ji,1)
-      END DO
+         t1_ice(ji,jj,jl_cat) = isnow(ji,jj) * t_s(ji,jj,1,jl_cat) + ( 1._wp - isnow(ji,jj) ) * t_i(ji,jj,1,jl_cat)
+       ENDIF
+      END_2D
       !
       IF( k_cnd == np_cnd_EMU ) THEN
-         ! Restore temperatures to their initial values
-         t_s_1d    (1:npti,:) = ztsold        (1:npti,:)
-         t_i_1d    (1:npti,:) = ztiold        (1:npti,:)
-         qcn_ice_1d(1:npti)   = qcn_ice_top_1d(1:npti)
+        DO_2D(0, 0, 0, 0)
+           IF (ll_ice_present(ji,jj)) THEN 
+             ! Restore temperatures to their initial values
+             t_s    (ji,jj,:,jl_cat) = ztsold        (ji,jj,:)
+             t_i    (ji,jj,:,jl_cat) = ztiold        (ji,jj,:)
+             qcn_ice(ji,jj,jl_cat) = qcn_ice_top(ji,jj,jl_cat)
+           ENDIF
+        END_2D
       ENDIF
       !
       ! --- SIMIP diagnostics (Snow-ice interfacial temperature)
-      DO ji = 1, npti
-         IF( h_s_1d(ji) >= zhs_ssl ) THEN
-            t_si_1d(ji) = (   rcnd_s         * h_i_1d(ji) * r1_nlay_i * t_s_1d(ji,nlay_s)   &
-               &            + ztcond_i(ji,1) * h_s_1d(ji) * r1_nlay_s * t_i_1d(ji,1)      ) &
-               &          / ( rcnd_s         * h_i_1d(ji) * r1_nlay_i &
-               &            + ztcond_i(ji,1) * h_s_1d(ji) * r1_nlay_s )
+      DO_2D(0, 0, 0, 0)
+       IF (ll_ice_present(ji,jj)) THEN
+         IF( h_s(ji,jj,jl_cat) >= zhs_ssl ) THEN
+            t_si(ji,jj,jl_cat) = (   rcnd_s         * h_i(ji,jj,jl_cat) * r1_nlay_i * t_s(ji,jj,nlay_s,jl_cat)   &
+               &            + ztcond_i(ji,jj,1) * h_s(ji,jj,jl_cat) * r1_nlay_s * t_i(ji,jj,1,jl_cat)      ) &
+               &          / ( rcnd_s         * h_i(ji,jj,jl_cat) * r1_nlay_i &
+               &            + ztcond_i(ji,jj,1) * h_s(ji,jj,jl_cat) * r1_nlay_s )
          ELSE
-            t_si_1d(ji) = t_su_1d(ji)
+            t_si(ji,jj,jl_cat) = t_su(ji,jj,jl_cat)
          ENDIF
-      END DO
+       ENDIF
+      END_2D
       !
    END SUBROUTINE ice_thd_zdf_BL99
 

@@ -36,9 +36,7 @@ MODULE asminc
 #if defined key_si3 && defined key_asminc
    USE par_ice        ! SI3 parameters
    USE phycst         ! physical constants
-   USE ice1D          ! sea-ice: thermodynamics variables
-   USE icetab         ! sea-ice: 3D <==> 2D, 2D <==> 1D
-   USE ice
+   USE ice            ! sea-ice: thermodynamics variables
 #endif
    !
    USE in_out_manager  ! I/O manager
@@ -1302,65 +1300,56 @@ CONTAINS
       REAL(wp)            :: ztmelts             ! melting point
       REAL(wp), PARAMETER :: ppSice_Fz = 2.3_wp  ! Salinity of the ice = F(z) [multiyear ice]
 
-      REAL(wp), DIMENSION(jpij) ::   zs_newice   ! salinity of new ice
+      LOGICAL,  DIMENSION(jpi, jpj)  ::   ll_ice_present 
+      REAL(wp), DIMENSION(jpi, jpj)  ::   zs_newice   ! salinity of new ice
       !!----------------------------------------------------------------------
 
       ! Identify grid points where new ice forms
-      npti = 0   ;   nptidx(:) = 0
+      ll_ice_present(:,:)=.false.
       DO jj = 1, jpj
          DO ji = 1, jpi
             IF ( hi_new(ji,jj) > 0._wp ) THEN
-               npti = npti + 1
-               nptidx( npti ) = (jj - 1) * jpi + ji
+               ll_ice_present(ji,jj) = .true.
             ENDIF
          END DO
       END DO
 
-      ! Move from 2-D to 1-D vectors
-      IF ( npti > 0 ) THEN
-         CALL tab_3d_2d( npti, nptidx(1:npti), sv_i_2d(1:npti,1:jpl), sv_i(:,:,:) )
-         CALL tab_3d_2d( npti, nptidx(1:npti), v_i_2d (1:npti,1:jpl), v_i (:,:,:) )
-         CALL tab_2d_1d( npti, nptidx(1:npti), sss_1d    (1:npti) , sss_m         )
-         CALL tab_2d_1d( npti, nptidx(1:npti), t_bo_1d   (1:npti) , t_bo          )
-         DO jk = 1, nlay_i
-            CALL tab_2d_1d( npti, nptidx(1:npti), e_i_1d(1:npti,jk), e_i(:,:,jk,1) )
-         END DO
+      ! --- Salinity of new ice --- !
+      SELECT CASE ( nn_icesal )
+      CASE ( 1 )                    ! Sice = constant
+         zs_newice(:,:) = rn_icesal
+      CASE ( 2 , 4 )                ! Sice = F(z,t) [Griewank and Notz 2013 ; Rees Jones and Worster 2014]
+         zs_newice(:,:) = rn_sinew * sss_m(:,:)
+      CASE ( 3 )                    ! Sice = F(z) [multiyear ice]
+         zs_newice(:,:) = ppSice_Fz
+      END SELECT
 
-         ! --- Salinity of new ice --- !
-         SELECT CASE ( nn_icesal )
-         CASE ( 1 )                    ! Sice = constant
-            zs_newice(1:npti) = rn_icesal
-         CASE ( 2 , 4 )                ! Sice = F(z,t) [Griewank and Notz 2013 ; Rees Jones and Worster 2014]
-            zs_newice(1:npti) = rn_sinew * sss_1d(1:npti)
-         CASE ( 3 )                    ! Sice = F(z) [multiyear ice]
-            zs_newice(1:npti) = ppSice_Fz
-         END SELECT
+      ! --- Update ice salt content --- !
+      DO_2D(0, 0, 0, 0)
+         IF (ll_ice_present(ji,jj)) THEN
+            sv_i(ji,jj,1) = sv_i(ji,jj,1) + zs_newice(ji,jj) * ( v_i(ji,jj,1) )
+         ENDIF
+      END_2D
 
-         ! --- Update ice salt content --- !
-         DO ji = 1, npti
-            sv_i_2d(ji,1) = sv_i_2d(ji,1) + zs_newice(ji) * ( v_i_2d(ji,1) )
-         END DO
+      ! --- Heat content of new ice --- !
+      ! We assume that new ice is formed at the seawater freezing point
+      DO_2D(0, 0, 0, 0)
+         IF (ll_ice_present(ji,jj)) THEN
+            ztmelts       = - rTmlt * zs_newice(ji,jj)                  ! Melting point (C)
+            e_i(ji,jj,:,1)  =   rhoi * (  rcpi  * ( ztmelts - ( t_bo(ji,jj) - rt0 ) )                        &
+               &                        + rLfus * ( 1.0_wp - ztmelts / MIN( t_bo(ji,jj) - rt0, -epsi10 ) )   &
+               &                        - rcp   *         ztmelts )
+         END IF
+      END_2D
 
-         ! --- Heat content of new ice --- !
-         ! We assume that new ice is formed at the seawater freezing point
-         DO ji = 1, npti
-               ztmelts       = - rTmlt * zs_newice(ji)                  ! Melting point (C)
-               e_i_1d(ji,:)  =   rhoi * (  rcpi  * ( ztmelts - ( t_bo_1d(ji) - rt0 ) )                        &
-                  &                      + rLfus * ( 1.0_wp - ztmelts / MIN( t_bo_1d(ji) - rt0, -epsi10 ) )   &
-                  &                      - rcp   *         ztmelts )
-         END DO
-
-         ! Change units for e_i
-         DO jk = 1, nlay_i
-            e_i_1d(1:npti,jk) = e_i_1d(1:npti,jk) * v_i_2d(1:npti,1) * r1_nlay_i
-         END DO
-
-         ! Reforming full thermodynamic variables
-         CALL tab_2d_3d( npti, nptidx(1:npti), sv_i_2d(1:npti,1:jpl), sv_i(:,:,:) )
-         DO jk = 1, nlay_i
-               CALL tab_1d_2d( npti, nptidx(1:npti), e_i_1d(1:npti,jk), e_i(:,:,jk,1) )
-         END DO
-      END IF
+      ! Change units for e_i
+      DO jk = 1, nlay_i
+         DO_2D(0, 0, 0, 0)
+            IF (ll_ice_present(ji,jj)) THEN
+               e_i(ji,jj,jk,1) = e_i(ji,jj,jk,1) * v_i(ji,jj,1) * r1_nlay_i
+            END IF
+         END_2D
+      END DO
 
    END SUBROUTINE init_new_ice_thd
 #endif

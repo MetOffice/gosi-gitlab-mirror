@@ -14,6 +14,7 @@ MODULE icethd_zdf
    !!  ice_thd_zdf_init : initialization
    !!----------------------------------------------------------------------
    USE par_ice
+   USE par_oce
    USE par_kind , ONLY : wp
    USE phycst   , ONLY : rcnd_s
    USE icethd_zdf_BL99 ! sea-ice: vertical diffusion (Bitz and Lipscomb, 1999) 
@@ -37,6 +38,7 @@ MODULE icethd_zdf
    REAL(wp) ::   rn_cnd_s       ! thermal conductivity of the snow [W/m/K]
 
    !! * Substitutions
+#  include "do_loop_substitute.h90"
 #  include "read_nml_substitute.h90"
    !!----------------------------------------------------------------------
    !! NEMO/ICE 5.0, NEMO Consortium (2024)
@@ -44,7 +46,9 @@ MODULE icethd_zdf
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE ice_thd_zdf
+   SUBROUTINE ice_thd_zdf(kl, ll_ice_present)
+      INTEGER, INTENT(in) :: kl
+      LOGICAL, DIMENSION(A2D(0)), INTENT(in) :: ll_ice_present
       !!-------------------------------------------------------------------
       !!                ***  ROUTINE ice_thd_zdf  ***
       !!
@@ -58,12 +62,12 @@ CONTAINS
       CASE( np_BL99 )               ! BL99 solver !
          !                          !-------------!
          IF( .NOT.ln_cndflx ) THEN                           ! No conduction flux ==> default option
-            CALL ice_thd_zdf_BL99( np_cnd_OFF )
+            CALL ice_thd_zdf_BL99( kl, np_cnd_OFF, ll_ice_present )
          ELSEIF( ln_cndflx .AND. .NOT.ln_cndemulate ) THEN   ! Conduction flux as surface boundary condition ==> Met Office default option
-            CALL ice_thd_zdf_BL99( np_cnd_ON  )
+            CALL ice_thd_zdf_BL99( kl, np_cnd_ON, ll_ice_present  )
          ELSEIF( ln_cndflx .AND.      ln_cndemulate ) THEN   ! Conduction flux is emulated 
-            CALL ice_thd_zdf_BL99( np_cnd_EMU )
-            CALL ice_thd_zdf_BL99( np_cnd_ON  )
+            CALL ice_thd_zdf_BL99( kl, np_cnd_EMU, ll_ice_present )
+            CALL ice_thd_zdf_BL99( kl, np_cnd_ON, ll_ice_present  )
          ENDIF
          !
       END SELECT
@@ -117,6 +121,7 @@ CONTAINS
       !                             !== set the choice of ice vertical thermodynamic formulation ==!
       ioptio = 0 
       IF( ln_zdf_BL99 ) THEN   ;   ioptio = ioptio + 1   ;   nice_zdf = np_BL99   ;   ENDIF   ! BL99 thermodynamics (linear liquidus + constant thermal properties)
+!      IF( .NOT. ln_zdf_BL99 ) ioptio = ioptio + 1  ! Prevents model from crashing if ln_zdf_BL99 is false
 !!    IF( ln_zdf_XXXX ) THEN   ;   ioptio = ioptio + 1   ;   nice_zdf = np_XXXX   ;   ENDIF
       IF( ioptio /= 1 )   CALL ctl_stop( 'ice_thd_init: one and only one ice thermo option has to be defined ' )
       !

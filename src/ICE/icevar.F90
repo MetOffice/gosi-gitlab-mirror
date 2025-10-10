@@ -57,7 +57,6 @@ MODULE icevar
    USE phycst         ! physical constants (ocean directory)
    USE sbc_oce , ONLY : sss_m, sst_m, ln_ice_embd, nn_fsbc
    USE ice            ! sea-ice: variables
-   USE ice1D          ! sea-ice: thermodynamics variables
    !
    USE in_out_manager ! I/O manager
    USE lib_mpp        ! MPP library
@@ -69,7 +68,7 @@ MODULE icevar
    PUBLIC   ice_var_glo2eqv
 !!$   PUBLIC   ice_var_eqv2glo
    PUBLIC   ice_var_salprof
-   PUBLIC   ice_var_salprof1d
+!   PUBLIC   ice_var_salprof1d
    PUBLIC   ice_var_zapsmall
    PUBLIC   ice_var_zapneg
    PUBLIC   ice_var_roundoff
@@ -89,7 +88,7 @@ MODULE icevar
 #  include "do_loop_substitute.h90"
 
    INTERFACE ice_var_snwfra
-      MODULE PROCEDURE ice_var_snwfra_1d, ice_var_snwfra_3d
+      MODULE PROCEDURE ice_var_snwfra_1d, ice_var_snwfra_2d, ice_var_snwfra_3d
    END INTERFACE
 
    INTERFACE ice_var_snwblow
@@ -534,70 +533,6 @@ CONTAINS
    END SUBROUTINE ice_var_salprof
 
 
-   SUBROUTINE ice_var_salprof1d
-      !!-------------------------------------------------------------------
-      !!                  ***  ROUTINE ice_var_salprof1d  ***
-      !!
-      !! ** Purpose :   1d computation of the sea ice salinity profile
-      !!                Works with 1d vectors and is used by thermodynamic modules
-      !!-------------------------------------------------------------------
-      INTEGER  ::   ji, jk    ! dummy loop indices
-      REAL(wp) ::   z1_dS, ztmp1, ztmp2, zalpha
-      REAL(wp), PARAMETER ::   zsi0 = 3.5_wp
-      REAL(wp), PARAMETER ::   zsi1 = 4.5_wp
-      !!-------------------------------------------------------------------
-      !
-      SELECT CASE ( nn_icesal )
-      !
-      !               !---------------------------------------!
-      CASE( 1 )       !  constant salinity in time and space  !
-         !            !---------------------------------------!
-         sz_i_1d(1:npti,:) = rn_icesal
-         !
-         !            !---------------------------------------------!
-      CASE( 2 , 4 )   !  time varying salinity with linear profile  !
-         !            !---------------------------------------------!
-         z1_dS = 1._wp / ( zsi1 - zsi0 )
-         !
-         DO jk = 1, nlay_i
-            DO ji = 1, npti
-               !
-               IF    ( s_i_1d(ji) >= zsi1 ) THEN    ;    zalpha = 0._wp
-               ELSEIF( s_i_1d(ji) <= zsi0 ) THEN    ;    zalpha = 1._wp
-               ELSE                                 ;    zalpha = ( zsi1 - s_i_1d(ji) ) * z1_dS
-               ENDIF
-               !
-               IF( s_i_1d(ji) >= ( 0.5_wp * rn_sinew * sss_1d(ji) ) )   zalpha = 0._wp ! force constant profile when SSS too low (Baltic Sea)
-               IF( s_i_1d(ji) <= ( REAL( nlay_i , wp ) * rn_simin ) )   zalpha = 0._wp ! force constant profile when ice surface salinity too small
-               !                                                                       !       it depends on nlay_i which is not ideal
-               !
-               ! linear profile with 0 surface value
-               sz_i_1d(ji,jk) =          zalpha   * s_i_1d(ji) * 2._wp * ( REAL(jk,wp) - 0.5_wp ) * r1_nlay_i &
-                  &          + ( 1._wp - zalpha ) * s_i_1d(ji)
-               !  => mean(sz_i(jk)) = s_i
-            END DO
-         END DO
-         !
-         !            !-------------------------------------------!
-      CASE( 3 )       ! constant salinity with a fix profile      ! (Schwarzacher (1959) multiyear salinity profile
-         !            !-------------------------------------------!                                   (mean = 2.30)
-         !
-         s_i_1d(1:npti) = 2.30_wp
-         !
-!!gm cf remark in ice_var_salprof routine, CASE( 3 )
-         DO jk = 1, nlay_i
-            ztmp1  = ( REAL(jk,wp) - 0.5_wp ) * r1_nlay_i
-            ztmp2 =  1.6_wp * ( 1._wp - COS( rpi * ztmp1**( 0.407_wp / ( 0.573_wp + ztmp1 ) ) ) )
-            DO ji = 1, npti
-               sz_i_1d(ji,jk) = ztmp2
-            END DO
-         END DO
-         !
-      END SELECT
-      !
-   END SUBROUTINE ice_var_salprof1d
-
-
    SUBROUTINE ice_var_zapsmall
       !!-------------------------------------------------------------------
       !!                   ***  ROUTINE ice_var_zapsmall ***
@@ -839,43 +774,65 @@ CONTAINS
    END SUBROUTINE ice_var_zapneg
 
 
-   SUBROUTINE ice_var_roundoff( pa_i, pv_i, pv_s, psv_i, poa_i, pa_ip, pv_ip, pv_il, pe_s, pe_i, pszv_i )
+   SUBROUTINE ice_var_roundoff( pa_i, pv_i, pv_s, psv_i, poa_i, pa_ip, pv_ip, pv_il, pe_s, pe_i, pszv_i, ll_ice_present )
       !!-------------------------------------------------------------------
       !!                   ***  ROUTINE ice_var_roundoff ***
       !!
       !! ** Purpose :   Remove negative sea ice values arising from roundoff errors
       !!-------------------------------------------------------------------
-      REAL(wp), DIMENSION(:,:)  , INTENT(inout) ::   pa_i       ! ice concentration
-      REAL(wp), DIMENSION(:,:)  , INTENT(inout) ::   pv_i       ! ice volume
-      REAL(wp), DIMENSION(:,:)  , INTENT(inout) ::   pv_s       ! snw volume
-      REAL(wp), DIMENSION(:,:)  , INTENT(inout) ::   psv_i      ! salt content
-      REAL(wp), DIMENSION(:,:)  , INTENT(inout) ::   poa_i      ! age content
-      REAL(wp), DIMENSION(:,:)  , INTENT(inout) ::   pa_ip      ! melt pond fraction
-      REAL(wp), DIMENSION(:,:)  , INTENT(inout) ::   pv_ip      ! melt pond volume
-      REAL(wp), DIMENSION(:,:)  , INTENT(inout) ::   pv_il      ! melt pond lid volume
-      REAL(wp), DIMENSION(:,:,:), INTENT(inout) ::   pe_s       ! snw heat content
-      REAL(wp), DIMENSION(:,:,:), INTENT(inout) ::   pe_i       ! ice heat content
-      REAL(wp), DIMENSION(:,:,:), INTENT(inout) ::   pszv_i     ! ice salt content
+      INTEGER :: ji,jj
+      LOGICAL, DIMENSION(A2D(0)), INTENT(in) :: ll_ice_present
+      REAL(wp), DIMENSION(jpi,jpj,jpl)  , INTENT(inout) ::   pa_i       ! ice concentration
+      REAL(wp), DIMENSION(jpi,jpj,jpl)  , INTENT(inout) ::   pv_i       ! ice volume
+      REAL(wp), DIMENSION(jpi,jpj,jpl)  , INTENT(inout) ::   pv_s       ! ice volume
+      REAL(wp), DIMENSION(jpi,jpj,jpl)  , INTENT(inout) ::   psv_i      ! salt content
+      REAL(wp), DIMENSION(jpi,jpj,jpl)  , INTENT(inout) ::   poa_i      ! age content
+      REAL(wp), DIMENSION(jpi,jpj,jpl)  , INTENT(inout) ::   pa_ip      ! melt pond fraction
+      REAL(wp), DIMENSION(jpi,jpj,jpl)  , INTENT(inout) ::   pv_ip      ! melt pond volume
+      REAL(wp), DIMENSION(jpi,jpj,jpl)  , INTENT(inout) ::   pv_il      ! melt pond lid volume
+      REAL(wp), DIMENSION(jpi,jpj,nlay_s,jpl), INTENT(inout) ::   pe_s       ! snw heat content
+      REAL(wp), DIMENSION(jpi,jpj,nlay_i,jpl), INTENT(inout) ::   pe_i       ! ice heat content
+      REAL(wp), DIMENSION(jpi,jpj,nlay_i,jpl), INTENT(inout) ::   pszv_i     ! ice salt content
       !!-------------------------------------------------------------------
-
-      WHERE( pa_i (1:npti,:)   < 0._wp )   pa_i (1:npti,:)   = 0._wp   !  a_i must be >= 0
-      WHERE( pv_i (1:npti,:)   < 0._wp )   pv_i (1:npti,:)   = 0._wp   !  v_i must be >= 0
-      WHERE( pv_s (1:npti,:)   < 0._wp )   pv_s (1:npti,:)   = 0._wp   !  v_s must be >= 0
-      WHERE( poa_i(1:npti,:)   < 0._wp )   poa_i(1:npti,:)   = 0._wp   ! oa_i must be >= 0
-      WHERE( pe_i (1:npti,:,:) < 0._wp )   pe_i (1:npti,:,:) = 0._wp   !  e_i must be >= 0
-      WHERE( pe_s (1:npti,:,:) < 0._wp )   pe_s (1:npti,:,:) = 0._wp   !  e_s must be >= 0
+      
+      DO_2D(0, 0, 0, 0)
+        IF (ll_ice_present(ji,jj)) THEN
+           pa_i(ji,jj,:) = MAX(pa_i(ji,jj,:), 0._wp)
+           pv_i(ji,jj,:) = MAX(pv_i(ji,jj,:), 0._wp)
+           pv_s(ji,jj,:) = MAX(pv_s(ji,jj,:), 0._wp)
+           poa_i(ji,jj,:) = MAX(poa_i(ji,jj,:), 0._wp)
+           pe_i(ji,jj,:,:) = MAX(pe_i(ji,jj,:,:), 0._wp)
+           pe_s(ji,jj,:,:) = MAX(pe_s(ji,jj,:,:), 0._wp)
+        ENDIF
+      END_2D
       IF( ln_pnd_LEV .OR. ln_pnd_TOPO ) THEN
-         WHERE( pa_ip(1:npti,:) < 0._wp )  pa_ip(1:npti,:)   = 0._wp   ! a_ip must be >= 0
-         WHERE( pv_ip(1:npti,:) < 0._wp )  pv_ip(1:npti,:)   = 0._wp   ! v_ip must be >= 0
+         DO_2D(0, 0, 0, 0)
+            IF (ll_ice_present(ji,jj)) THEN
+              pa_ip(ji,jj,:) = MAX(pa_ip(ji,jj,:), 0._wp)
+              pv_ip(ji,jj,:) = MAX(pv_ip(ji,jj,:), 0._wp)
+            ENDIF
+         END_2D
          IF( ln_pnd_lids ) THEN
-            WHERE( pv_il(1:npti,:) < 0._wp .AND. pv_il(1:npti,:) > -epsi10 )   pv_il(1:npti,:) = 0._wp   ! v_il must be >= 0
+            DO_2D(0, 0, 0, 0)
+               IF (ll_ice_present(ji,jj)) THEN
+                 pv_il(ji,jj,:) = MAX(pv_il(ji,jj,:), 0._wp)
+              ENDIF
+            END_2D
          ENDIF
       ENDIF
       IF( nn_icesal == 4 ) THEN
-         WHERE( pszv_i(1:npti,:,:) < 0._wp )   pszv_i(1:npti,:,:) = 0._wp   ! szv_i must be >= 0
+         DO_2D(0, 0, 0, 0)
+            IF (ll_ice_present(ji,jj)) THEN
+               pszv_i(ji,jj,:,:) = MAX(pszv_i(ji,jj,:,:), 0._wp)
+            ENDIF
+         END_2D
       ELSE
-         WHERE( psv_i (1:npti,:)   < 0._wp )   psv_i (1:npti,:)   = 0._wp   ! sv_i must be >= 0
-      ENDIF
+         DO_2D(0, 0, 0, 0)
+            IF (ll_ice_present(ji,jj)) THEN
+               psv_i(ji,jj,:) = MAX(psv_i(ji,jj,:), 0._wp)
+            ENDIF
+         END_2D
+      ENDIF 
       !
    END SUBROUTINE ice_var_roundoff
 
@@ -923,7 +880,7 @@ CONTAINS
    END SUBROUTINE ice_var_brine
 
    
-   SUBROUTINE ice_var_enthalpy
+   SUBROUTINE ice_var_enthalpy(jl_cat, ll_ice_present)
       !!-------------------------------------------------------------------
       !!                   ***  ROUTINE ice_var_enthalpy ***
       !!
@@ -931,25 +888,31 @@ CONTAINS
       !!
       !! ** Method  :   Formula (Bitz and Lipscomb, 1999)
       !!-------------------------------------------------------------------
-      INTEGER  ::   ji, jk   ! dummy loop indices
+      INTEGER, INTENT(in) :: jl_cat
+      LOGICAL, DIMENSION(A2D(0)), INTENT(in) :: ll_ice_present
+      INTEGER  ::   ji, jj, jk   ! dummy loop indices
       REAL(wp) ::   ztmelts  ! local scalar
       !!-------------------------------------------------------------------
       !
       DO jk = 1, nlay_i             ! Sea ice energy of melting
-         DO ji = 1, npti
-            ztmelts       = - rTmlt  * sz_i_1d(ji,jk)
-            t_i_1d(ji,jk) = MIN( t_i_1d(ji,jk), ztmelts + rt0 ) ! Force t_i_1d to be lower than melting point => likely conservation issue
+         DO_2D(0, 0, 0, 0)
+          IF (ll_ice_present(ji,jj)) THEN
+            ztmelts       = - rTmlt  * sz_i(ji,jj,jk,jl_cat)
+            t_i(ji,jj,jk,jl_cat) = MIN( t_i(ji,jj,jk,jl_cat), ztmelts + rt0 ) ! Force t_i_1d to be lower than melting point => likely conservation issue
                                                                 !   (sometimes zdf scheme produces abnormally high temperatures)
-            e_i_1d(ji,jk) = rhoi * ( rcpi  * ( ztmelts - ( t_i_1d(ji,jk) - rt0 ) )           &
-               &                   + rLfus * ( 1._wp - ztmelts / ( t_i_1d(ji,jk) - rt0 ) )   &
+            e_i(ji,jj,jk,jl_cat) = rhoi * ( rcpi  * ( ztmelts - ( t_i(ji,jj,jk,jl_cat) - rt0 ) )           &
+               &                   + rLfus * ( 1._wp - ztmelts / ( t_i(ji,jj,jk,jl_cat) - rt0 ) )   &
                &                   - rcp   * ztmelts )
-         END DO
+          ENDIF
+         END_2D
       END DO
       !
       DO jk = 1, nlay_s             ! Snow energy of melting
-         DO ji = 1, npti
-            e_s_1d(ji,jk) = rhos * ( rcpi * ( rt0 - t_s_1d(ji,jk) ) + rLfus )
-         END DO
+         DO_2D(0, 0, 0, 0)
+          IF (ll_ice_present(ji,jj)) THEN
+            e_s(ji,jj,jk,jl_cat) = rhos * ( rcpi * ( rt0 - t_s(ji,jj,jk,jl_cat) ) + rLfus )
+          ENDIF
+         END_2D
       END DO
       !
    END SUBROUTINE ice_var_enthalpy
@@ -1585,6 +1548,20 @@ CONTAINS
          END DO
       ENDIF
    END SUBROUTINE ice_var_snwfra_3d
+
+   SUBROUTINE ice_var_snwfra_2d( ph_s, pa_s_fra )
+      REAL(wp), DIMENSION(A2D(0)), INTENT(in   ) ::   ph_s        ! snow thickness
+      REAL(wp), DIMENSION(A2D(0)), INTENT(  out) ::   pa_s_fra    ! ice fraction covered by snow
+      IF    ( nn_snwfra == 0 ) THEN   ! basic 0 or 1 snow cover
+         WHERE( ph_s > 0._wp ) ; pa_s_fra = 1._wp
+         ELSEWHERE             ; pa_s_fra = 0._wp
+         END WHERE
+      ELSEIF( nn_snwfra == 1 ) THEN   ! snow cover depends on hsnow (met-office style)
+         pa_s_fra = 1._wp - EXP( -0.2_wp * rhos * ph_s )
+      ELSEIF( nn_snwfra == 2 ) THEN   ! snow cover depends on hsnow (cice style)
+         pa_s_fra = ph_s / ( ph_s + 0.02_wp )
+      ENDIF
+   END SUBROUTINE ice_var_snwfra_2d
 
    SUBROUTINE ice_var_snwfra_1d( ph_s, pa_s_fra )
       REAL(wp), DIMENSION(:), INTENT(in   ) ::   ph_s        ! snow thickness

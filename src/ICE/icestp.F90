@@ -43,7 +43,6 @@ MODULE icestp
    USE par_ice        ! SI3 parameters
    USE oce     , ONLY : uu, vv
    USE ice            ! sea-ice: variables
-   USE ice1D          ! sea-ice: thermodynamical 1D variables
    !
    USE phycst         ! Define parameters for the routines
    USE eosbn2         ! equation of state
@@ -312,12 +311,6 @@ CONTAINS
          CALL iom_close( numrir )  ! close input ice restart file
          IF(lrxios) CALL iom_context_finalize(      cr_icerst_cxt         )
       ENDIF
-      !
-      !                                ! Allocate the 1D ice arrays
-      ierr = ice1D_alloc      ()       ! thermodynamics
-      !
-      CALL mpp_sum( 'icestp', ierr )
-      IF( ierr /= 0 )   CALL ctl_stop('STOP', 'ice_init : unable to allocate 1D ice arrays')
       !
    END SUBROUTINE ice_init
 

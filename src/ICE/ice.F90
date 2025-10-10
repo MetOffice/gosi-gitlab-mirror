@@ -259,6 +259,14 @@ MODULE ice
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   hm_il         !: mean melt pond lid depth                     [m]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   vt_il         !: total melt pond lid volume per gridcell area [m]
 
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   dh_s_tot      !: Snow accretion/ablation        [m]
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   dh_i_itm      !: Ice internal ablation [m]
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   dh_i_bom      !: Ice bottom ablation  [m]
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   dh_i_bog      !: Ice bottom accretion  [m]
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   dh_i_sub      !: Ice surface sublimation [m]
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   dh_s_itm      !: Snow internal melt [m]
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   dh_snowice    !: Snow ice formation             [m of ice]
+
    ! meltwater arrays to save for melt ponds (mv - could be grouped in a single meltwater volume array)
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::   dh_i_sum_2d   !: surface melt (2d arrays for ponds)       [m]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::   dh_s_sum_2d   !: snow surf melt (2d arrays for ponds)     [m]
@@ -310,6 +318,13 @@ MODULE ice
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   diag_fs           !: conservation of ice salt
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   diag_ft           !: conservation of ice heat
    !
+   !!----------------------------------------------------------------------
+   !! * Ice salinity checks in drainage and flushing
+   !! * Note these arrays are allocated in icethd.F90 (icethd_salchk), depending on whether ln_sal_chk is enabled
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::   zsneg_drain , zsneg_flush
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::   zcfl_drain  , zcfl_flush
+   !! * For convergence tests; ztice_cvgerr and ztice_cvgstp are allocated in icethd.F90 depending on whether ln_zdf_chkcvg is enabled
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::   ztice_cvgerr, ztice_cvgstp
    !!----------------------------------------------------------------------
    !! * SIMIP extra diagnostics
    !!----------------------------------------------------------------------
@@ -427,6 +442,12 @@ CONTAINS
       ! * others
       ii = ii + 1
       ALLOCATE( tau_icebfr(A2D(0)) , dh_i_sum_2d(A2D(0),jpl) , dh_s_sum_2d(A2D(0),jpl) ,  STAT=ierr(ii) )
+
+      ! * dh_* arrays
+      ii = ii + 1
+      ALLOCATE( dh_s_tot(A2D(0)) , dh_i_itm(A2D(0)) , dh_i_bom(A2D(0)), dh_i_bog(A2D(0)), dh_i_sub(A2D(0)), &
+                dh_s_itm(A2D(0)), dh_snowice(A2D(0)),  STAT=ierr(ii) )
+
       ii = 1
       ALLOCATE( ht_i_new (A2D(0)) , fraz_frac (A2D(0)) , STAT=ierr(ii) )
 
@@ -500,6 +521,7 @@ CONTAINS
          &      sm_i  , hm_s  , om_i , vm_ibr ,  &
          &      tm_su )
       DEALLOCATE( tau_icebfr , dh_i_sum_2d , dh_s_sum_2d )
+      DEALLOCATE( dh_s_tot, dh_i_itm, dh_i_bom, dh_i_bog, dh_i_sub, dh_s_itm, dh_snowice)
       DEALLOCATE( ht_i_new  , fraz_frac )
       DEALLOCATE( hi_max, hi_mean )
       DEALLOCATE( diag_trp_vi   , diag_trp_vs   , diag_trp_ei   ,                                         &

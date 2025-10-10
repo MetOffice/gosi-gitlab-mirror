@@ -15,9 +15,11 @@ MODULE icethd_dh
    !!----------------------------------------------------------------------
    USE par_ice        ! SI3 parameters
    USE par_kind, ONLY : wp
-   USE par_oce , ONLY : jpij
+   USE par_oce
+   USE sbc_oce , ONLY : sprecip, sss_m, sst_m, frq_m
    USE phycst
-   USE ice1D          ! sea-ice: thermodynamics variables
+   USE ice
+   USE sbc_ice
    USE icevar  , ONLY : ice_var_snwblow, ice_var_vremap
 
    IMPLICIT NONE
@@ -25,13 +27,15 @@ MODULE icethd_dh
 
    PUBLIC   ice_thd_dh        ! called by ice_thd
 
+   !! * Substitutions
+#  include "do_loop_substitute.h90"
    !!----------------------------------------------------------------------
    !! NEMO/ICE 5.0, NEMO Consortium (2024)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE ice_thd_dh
+   SUBROUTINE ice_thd_dh(jl_cat, ll_ice_present)
       !!------------------------------------------------------------------
       !!                ***  ROUTINE ice_thd_dh  ***
       !!
@@ -57,7 +61,9 @@ CONTAINS
       !!              Vancoppenolle, Fichefet and Bitz, 2005, Geophys. Res. Let.
       !!              Vancoppenolle et al.,2009, Ocean Modelling
       !!------------------------------------------------------------------
-      INTEGER  ::   ji, jk       ! dummy loop indices
+      INTEGER  ::   ji, jj, jk       ! dummy loop indices
+      INTEGER, INTENT(IN) :: jl_cat
+      LOGICAL, DIMENSION(A2D(0)), INTENT(inout) :: ll_ice_present
       !
       REAL(wp) ::   ztmelts      ! local scalar
       REAL(wp) ::   zdum
@@ -76,7 +82,7 @@ CONTAINS
       REAL(wp) ::   zq_top      ! heat for surface ablation                   (J.m-2)
       REAL(wp) ::   zq_bot      ! heat for bottom ablation                    (J.m-2)
       REAL(wp) ::   zf_tt       ! Heat budget to determine melting or freezing(W.m-2)
-      REAL(wp), DIMENSION(jpij) ::   zsnw        ! distribution of snow after wind blowing
+      REAL(wp), DIMENSION(A2D(0)) ::   zsnw        ! distribution of snow after wind blowing
       !
       INTEGER , DIMENSION(nlay_i)     ::   icount    ! number of layers vanishing by melting
       REAL(wp), DIMENSION(nlay_i)     ::   zs_i      ! ice salinity
@@ -95,7 +101,7 @@ CONTAINS
       END SELECT
       !
       ! snow distribution over ice after wind blowing
-      CALL ice_var_snwblow( 1._wp - at_i_1d(1:npti), zsnw(1:npti) )
+      CALL ice_var_snwblow( 1._wp - at_i(A2D(0)), zsnw(:,:) )
       !
       ! for snw-ice formation
       z1_rho = 1._wp / ( rhos+rho0-rhoi )
@@ -103,25 +109,26 @@ CONTAINS
       !                       ! ==================== !
       !                       ! Start main loop here !
       !                       ! ==================== !
-      DO ji = 1, npti
+      DO_2D(0, 0, 0, 0)
+       IF (ll_ice_present(ji,jj)) THEN
          !                       ! ============================================== !
          !                       ! Available heat for surface and bottom ablation !
          !                       ! ============================================== !
          IF( .NOT.ln_cndflx .OR. ln_cndemulate ) THEN
-            IF( t_su_1d(ji) >= rt0 ) THEN
-               qml_ice_1d(ji) = qns_ice_1d(ji) + qsr_ice_1d(ji) - qtr_ice_top_1d(ji) - qcn_ice_top_1d(ji)
+            IF( t_su(ji,jj,jl_cat) >= rt0 ) THEN
+               qml_ice(ji,jj,jl_cat) = qns_ice(ji,jj,jl_cat) + qsr_ice(ji,jj,jl_cat) - qtr_ice_top(ji,jj,jl_cat) - qcn_ice_top(ji,jj,jl_cat)
             ELSE
-               qml_ice_1d(ji) = 0._wp
+               qml_ice(ji,jj,jl_cat) = 0._wp
             ENDIF
          ENDIF
          !
-         zq_top = MAX( 0._wp, qml_ice_1d(ji) * rDt_ice )
-         zf_tt  = qcn_ice_bot_1d(ji) + qsb_ice_bot_1d(ji) + fhld_1d(ji) + qtr_ice_bot_1d(ji) * frq_m_1d(ji)
+         zq_top = MAX( 0._wp, qml_ice(ji,jj,jl_cat) * rDt_ice )
+         zf_tt  = qcn_ice_bot(ji,jj,jl_cat) + qsb_ice_bot(ji,jj) + fhld(ji,jj) + qtr_ice_bot(ji,jj,jl_cat) * frq_m(ji,jj)
          zq_bot = MAX( 0._wp, zf_tt * rDt_ice )
          !
          ! initialize salinity
-         IF( nn_icesal == 4 ) THEN   ;   zs_i(:) = sz_i_1d(ji,:)  ! use layer salinity if nn_icesal=4 
-         ELSE                        ;   zs_i(:) = s_i_1d (ji)    !     bulk salinity otherwise (for conservation purpose)
+         IF( nn_icesal == 4 ) THEN   ;   zs_i(:) = sz_i(ji,jj,:,jl_cat)  ! use layer salinity if nn_icesal=4 
+         ELSE                        ;   zs_i(:) = s_i(ji,jj,:)    !     bulk salinity otherwise (for conservation purpose)
          ENDIF
          !
          ! initialize ice layer thicknesses and enthalpies
@@ -130,18 +137,18 @@ CONTAINS
          zh_i_old(0:nlay_i+1) = 0._wp
          zh_i    (0:nlay_i+1) = 0._wp
          DO jk = 1, nlay_i
-            zs_i_old(jk) = h_i_1d(ji) * r1_nlay_i * zs_i  (jk)
-            ze_i_old(jk) = h_i_1d(ji) * r1_nlay_i * e_i_1d(ji,jk)
-            zh_i_old(jk) = h_i_1d(ji) * r1_nlay_i
-            zh_i    (jk) = h_i_1d(ji) * r1_nlay_i
+            zs_i_old(jk) = h_i(ji,jj,jl_cat) * r1_nlay_i * zs_i  (jk)
+            ze_i_old(jk) = h_i(ji,jj,jl_cat) * r1_nlay_i * e_i(ji,jj,jk,jl_cat)
+            zh_i_old(jk) = h_i(ji,jj,jl_cat) * r1_nlay_i
+            zh_i    (jk) = h_i(ji,jj,jl_cat) * r1_nlay_i
          END DO
          !
          ! initialize snw layer thicknesses and enthalpies
          zh_s(0) = 0._wp
          ze_s(0) = 0._wp
          DO jk = 1, nlay_s
-            zh_s(jk) = h_s_1d(ji) * r1_nlay_s
-            ze_s(jk) = e_s_1d(ji,jk)
+            zh_s(jk) = h_s(ji,jj,jl_cat) * r1_nlay_s
+            ze_s(jk) = e_s(ji,jj,jk,jl_cat)
          END DO
          !
          !                       ! ============ !
@@ -152,12 +159,12 @@ CONTAINS
          ! ----------------
          ! IF snow temperature is above freezing point, THEN snow melts (should not happen but sometimes it does)
          DO jk = 1, nlay_s
-            IF( t_s_1d(ji,jk) > rt0 ) THEN
-               hfx_res_1d    (ji) = hfx_res_1d    (ji) - ze_s(jk) * zh_s(jk) * a_i_1d(ji) * r1_Dt_ice   ! heat flux to the ocean [W.m-2], < 0
-               wfx_snw_sum_1d(ji) = wfx_snw_sum_1d(ji) + rhos     * zh_s(jk) * a_i_1d(ji) * r1_Dt_ice   ! mass flux
+            IF( t_s(ji,jj,jk,jl_cat) > rt0 ) THEN
+               hfx_res(ji,jj) = hfx_res(ji,jj) - ze_s(jk) * zh_s(jk) * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! heat flux to the ocean [W.m-2], < 0
+               wfx_snw_sum(ji,jj) = wfx_snw_sum(ji,jj) + rhos * zh_s(jk) * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! mass flux
                ! updates
-               dh_s_itm(ji) =             dh_s_itm(ji) - zh_s(jk)
-               h_s_1d  (ji) = MAX( 0._wp, h_s_1d  (ji) - zh_s(jk) )
+               dh_s_itm(ji,jj) =             dh_s_itm(ji,jj) - zh_s(jk)
+               h_s(ji,jj,jl_cat) = MAX( 0._wp, h_s(ji,jj,jl_cat) - zh_s(jk) )
                zh_s    (jk) = 0._wp
                ze_s    (jk) = 0._wp
             END IF
@@ -165,35 +172,35 @@ CONTAINS
 
          ! Snow precipitation
          !-------------------
-         IF( sprecip_1d(ji) > 0._wp ) THEN
-            zh_s(0) = zsnw(ji) * sprecip_1d(ji) * rDt_ice * r1_rhos / at_i_1d(ji)   ! thickness of precip
-            ze_s(0) = MAX( 0._wp, - qprec_ice_1d(ji) )                              ! enthalpy of the precip (>0, J.m-3)
+         IF(sprecip(ji,jj) > 0._wp ) THEN
+            zh_s(0) = zsnw(ji,jj) * sprecip(ji,jj) * rDt_ice * r1_rhos / at_i(ji,jj)   ! thickness of precip
+            ze_s(0) = MAX( 0._wp, - qprec_ice(ji,jj) )                              ! enthalpy of the precip (>0, J.m-3)
             !
-            hfx_spr_1d(ji) = hfx_spr_1d(ji) + ze_s(0) * zh_s(0) * a_i_1d(ji) * r1_Dt_ice   ! heat flux from snow precip (>0, W.m-2)
-            wfx_spr_1d(ji) = wfx_spr_1d(ji) - rhos    * zh_s(0) * a_i_1d(ji) * r1_Dt_ice   ! mass flux, <0
+            hfx_spr(ji,jj) = hfx_spr(ji,jj) + ze_s(0) * zh_s(0) * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! heat flux from snow precip (>0, W.m-2)
+            wfx_spr(ji,jj) = wfx_spr(ji,jj) - rhos    * zh_s(0) * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! mass flux, <0
             !
             ! update thickness
-            h_s_1d(ji) = h_s_1d(ji) + zh_s(0)
+            h_s(ji,jj,jl_cat) = h_s(ji,jj,jl_cat) + zh_s(0)
          ENDIF
 
          ! Snow sublimation and deposition
-         !--------------------------------
+         !-----------------
          ! if qla_ice is >=0 (upwards), heat goes to the atmosphere, therefore snow sublimates
          ! else                       , there is snow deposition
          !    comment: not counted in mass/heat exchange in iceupdate.F90 since this is an exchange with atm. (not ocean)
-         zdeltah    = MAX( - evap_ice_1d(ji) * r1_rhos * rDt_ice, - h_s_1d(ji) )   ! amount of snw that sublimates (<0) or deposition (>0)
-         zevap_rema =        evap_ice_1d(ji)           * rDt_ice + zdeltah * rhos  ! remaining evap in kg.m-2 (used for ice sublimation later on)
+         zdeltah    = MAX( - evap_ice(ji,jj,jl_cat) * r1_rhos * rDt_ice, - h_s(ji,jj,jl_cat) )   ! amount of snw that sublimates (<0) or deposition (>0)
+         zevap_rema =        evap_ice(ji,jj,jl_cat)           * rDt_ice + zdeltah * rhos  ! remaining evap in kg.m-2 (used for ice sublimation later on)
          IF( zdeltah > 0._wp .AND. ze_s(0) == 0._wp ) THEN   ! if snow deposition and no snow precip, then estimate ze_s(0) with t_su
-            ze_s(0) = rhos * ( rLfus - rcpi * ( t_su_1d(ji) - rt0 ) )
+            ze_s(0) = rhos * ( rLfus - rcpi * ( t_su(ji,jj,jl_cat) - rt0 ) )
          ENDIF
          DO jk = 0, nlay_s
             zdum = MAX( -zh_s(jk), zdeltah ) ! snow layer thickness that sublimates (<0) or deposits (>0)
             !
-            hfx_sub_1d    (ji) = hfx_sub_1d    (ji) + ze_s(jk) * zdum * a_i_1d(ji) * r1_Dt_ice  ! Heat flux of snw that sublimates/deposits [W.m-2], <0 or >0
-            wfx_snw_sub_1d(ji) = wfx_snw_sub_1d(ji) - rhos     * zdum * a_i_1d(ji) * r1_Dt_ice  ! Mass flux by sublimation or deposition
+            hfx_sub(ji,jj) = hfx_sub(ji,jj) + ze_s(jk) * zdum * a_i(ji,jj,jl_cat) * r1_Dt_ice  ! Heat flux of snw that sublimates/deposits [W.m-2], <0 or >0
+            wfx_snw_sub(ji,jj) = wfx_snw_sub(ji,jj) - rhos     * zdum * a_i(ji,jj,jl_cat) * r1_Dt_ice  ! Mass flux by sublimation or deposition
 
             ! update thickness
-            h_s_1d(ji) = MAX( 0._wp , h_s_1d(ji) + zdum )
+            h_s(ji,jj,jl_cat) = MAX( 0._wp , h_s(ji,jj,jl_cat) + zdum )
             zh_s  (jk) = MAX( 0._wp , zh_s  (jk) + zdum )
 !!$            IF( zh_s(jk) == 0._wp )   ze_s(jk) = 0._wp
 
@@ -211,13 +218,13 @@ CONTAINS
                zdum = - zq_top / MAX( ze_s(jk), epsi20 )   ! thickness change
                zdum = MAX( zdum , - zh_s(jk) )                 ! bound melting
                
-               hfx_snw_1d    (ji) = hfx_snw_1d    (ji) - ze_s(jk) * zdum * a_i_1d(ji) * r1_Dt_ice   ! heat used to melt snow(W.m-2, >0)
-               wfx_snw_sum_1d(ji) = wfx_snw_sum_1d(ji) - rhos     * zdum * a_i_1d(ji) * r1_Dt_ice   ! snow melting only = water into the ocean
+               hfx_snw(ji,jj) = hfx_snw(ji,jj) - ze_s(jk) * zdum * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! heat used to melt snow(W.m-2, >0)
+               wfx_snw_sum(ji,jj) = wfx_snw_sum(ji,jj) - rhos     * zdum * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! snow melting only = water into the ocean
                
                ! updates available heat + thickness
-               dh_s_sum(ji) =              dh_s_sum(ji) + zdum
+               dh_s_sum_2d(ji,jj,jl_cat) =              dh_s_sum_2d(ji,jj,jl_cat) + zdum
                zq_top       = MAX( 0._wp , zq_top       + zdum * ze_s(jk) )
-               h_s_1d  (ji) = MAX( 0._wp , h_s_1d  (ji) + zdum )
+               h_s(ji,jj,jl_cat) = MAX( 0._wp , h_s(ji,jj,jl_cat) + zdum )
                zh_s    (jk) = MAX( 0._wp , zh_s    (jk) + zdum )
 !!$               IF( zh_s(jk) == 0._wp )   ze_s(jk) = 0._wp
                !
@@ -231,27 +238,27 @@ CONTAINS
          ! Surface ice melting
          !--------------------
          DO jk = 1, nlay_i
-            ztmelts = - rTmlt * sz_i_1d(ji,jk)   ! Melting point of layer k [C]
+            ztmelts = - rTmlt * sz_i(ji,jj,jk,jl_cat)   ! Melting point of layer k [C]
 
-            IF( t_i_1d(ji,jk) >= (ztmelts+rt0) ) THEN   !-- Internal melting
+            IF( t_i(ji,jj,jk,jl_cat) >= (ztmelts+rt0) ) THEN   !-- Internal melting
 
-               zEi            = - e_i_1d(ji,jk) * r1_rhoi             ! Specific enthalpy of layer k [J/kg, <0]
+               zEi            = - e_i(ji,jj,jk,jl_cat) * r1_rhoi             ! Specific enthalpy of layer k [J/kg, <0]
                zdE            =   0._wp                               ! Specific enthalpy difference (J/kg, <0)
                !                                                          set up at 0 since no energy is needed to melt water...(it is already melted)
                zdum           = MIN( 0._wp , - zh_i(jk) )             ! internal melting occurs when the internal temperature is above freezing
                !                                                          this should normally not happen, but sometimes, heat diffusion leads to this
                zfmdt          = - zdum * rhoi                         ! Recompute mass flux [kg/m2, >0]
                !
-               dh_i_itm(ji)   = dh_i_itm(ji) + zdum                   ! Cumulate internal melting
+               dh_i_itm(ji,jj)   = dh_i_itm(ji,jj) + zdum                   ! Cumulate internal melting
                !
-               hfx_res_1d(ji) = hfx_res_1d(ji) + zEi  * zfmdt           * a_i_1d(ji) * r1_Dt_ice    ! Heat flux to the ocean [W.m-2], <0
+               hfx_res(ji,jj) = hfx_res(ji,jj) + zEi  * zfmdt           * a_i(ji,jj,jl_cat) * r1_Dt_ice    ! Heat flux to the ocean [W.m-2], <0
                !                                                                                        ice enthalpy zEi is "sent" to the ocean
-               wfx_res_1d(ji) = wfx_res_1d(ji) - rhoi * zdum            * a_i_1d(ji) * r1_Dt_ice    ! Mass flux
-               sfx_res_1d(ji) = sfx_res_1d(ji) - rhoi * zdum * zs_i(jk) * a_i_1d(ji) * r1_Dt_ice    ! Salt flux
+               wfx_res(ji,jj) = wfx_res(ji,jj) - rhoi * zdum            * a_i(ji,jj,jl_cat) * r1_Dt_ice    ! Mass flux
+               sfx_res(ji,jj) = sfx_res(ji,jj) - rhoi * zdum * zs_i(jk) * a_i(ji,jj,jl_cat) * r1_Dt_ice    ! Salt flux
                !
             ELSE                                        !-- Surface melting
 
-               zEi            = - e_i_1d(ji,jk) * r1_rhoi             ! Specific enthalpy of layer k [J/kg, <0]
+               zEi            = - e_i(ji,jj,jk,jl_cat) * r1_rhoi             ! Specific enthalpy of layer k [J/kg, <0]
                zEw            =    rcp * ztmelts                      ! Specific enthalpy of resulting meltwater [J/kg, <0]
                zdE            =    zEi - zEw                          ! Specific enthalpy difference < 0
 
@@ -263,25 +270,25 @@ CONTAINS
 
                zq_top         = MAX( 0._wp , zq_top - zdum * rhoi * zdE ) ! update available heat
 
-               dh_i_sum(ji)   = dh_i_sum(ji) + zdum                   ! Cumulate surface melt
+               dh_i_sum_2d(ji,jj,jl_cat)   = dh_i_sum_2d(ji,jj,jl_cat) + zdum                   ! Cumulate surface melt
 
                zfmdt          = - rhoi * zdum                         ! Recompute mass flux [kg/m2, >0]
 
                zQm            = zfmdt * zEw                           ! Energy of the melt water sent to the ocean [J/m2, <0]
 
-               hfx_thd_1d(ji) = hfx_thd_1d(ji) + zEw  * zfmdt           * a_i_1d(ji) * r1_Dt_ice    ! Heat flux [W.m-2], < 0
-               hfx_sum_1d(ji) = hfx_sum_1d(ji) - zdE  * zfmdt           * a_i_1d(ji) * r1_Dt_ice    ! Heat flux used in this process [W.m-2], > 0
-               wfx_sum_1d(ji) = wfx_sum_1d(ji) - rhoi * zdum            * a_i_1d(ji) * r1_Dt_ice    ! Mass flux
-               sfx_sum_1d(ji) = sfx_sum_1d(ji) - rhoi * zdum * zs_i(jk) * a_i_1d(ji) * r1_Dt_ice    ! Salt flux >0
+               hfx_thd(ji,jj) = hfx_thd(ji,jj) + zEw  * zfmdt           * a_i(ji,jj,jl_cat) * r1_Dt_ice    ! Heat flux [W.m-2], < 0
+               hfx_sum(ji,jj) = hfx_sum(ji,jj) - zdE  * zfmdt           * a_i(ji,jj,jl_cat) * r1_Dt_ice    ! Heat flux used in this process [W.m-2], > 0
+               wfx_sum(ji,jj) = wfx_sum(ji,jj) - rhoi * zdum            * a_i(ji,jj,jl_cat) * r1_Dt_ice    ! Mass flux
+               sfx_sum(ji,jj) = sfx_sum(ji,jj) - rhoi * zdum * zs_i(jk) * a_i(ji,jj,jl_cat) * r1_Dt_ice    ! Salt flux >0
                !
             END IF
             ! update thickness
             zh_i  (jk) = MAX( 0._wp, zh_i  (jk) + zdum )
-            h_i_1d(ji) = MAX( 0._wp, h_i_1d(ji) + zdum )
+            h_i(ji,jj,jl_cat) = MAX( 0._wp, h_i(ji,jj,jl_cat) + zdum )
             !
             ! update heat content (J.m-2), salt content and layer thickness
             zs_i_old(jk) = zs_i_old(jk) + zdum * zs_i(jk)
-            ze_i_old(jk) = ze_i_old(jk) + zdum * e_i_1d(ji,jk)
+            ze_i_old(jk) = ze_i_old(jk) + zdum * e_i(ji,jj,jk,jl_cat)
             zh_i_old(jk) = zh_i_old(jk) + zdum
             !
             !
@@ -289,21 +296,21 @@ CONTAINS
             ! ---------------
             zdum               = MAX( - zh_i(jk) , - zevap_rema * r1_rhoi )
             !
-            hfx_sub_1d(ji)     = hfx_sub_1d(ji)     + e_i_1d(ji,jk) * zdum            * a_i_1d(ji) * r1_Dt_ice ! Heat flux [W.m-2], < 0
-            wfx_ice_sub_1d(ji) = wfx_ice_sub_1d(ji) - rhoi          * zdum            * a_i_1d(ji) * r1_Dt_ice ! Mass flux > 0
-            sfx_sub_1d(ji)     = sfx_sub_1d(ji)     - rhoi          * zdum * zs_i(jk) * a_i_1d(ji) * r1_Dt_ice ! Salt flux >0
+            hfx_sub(ji,jj)     = hfx_sub(ji,jj) + e_i(ji,jj,jk,jl_cat) * zdum  * a_i(ji,jj,jl_cat) * r1_Dt_ice ! Heat flux [W.m-2], < 0
+            wfx_ice_sub(ji,jj) = wfx_ice_sub(ji,jj) - rhoi * zdum * a_i(ji,jj,jl_cat) * r1_Dt_ice ! Mass flux > 0
+            sfx_sub(ji,jj)     = sfx_sub(ji,jj)     - rhoi * zdum * zs_i(jk) * a_i(ji,jj,jl_cat) * r1_Dt_ice ! Salt flux >0
             !                                                                                                    clem: flux is sent to the ocean for simplicity
             !                                                                                                          but salt should remain in the ice except
             !                                                                                                          if all ice is melted. => must be corrected
             ! update remaining mass flux and thickness
             zevap_rema   = zevap_rema + zdum * rhoi
             zh_i  (jk)   = MAX( 0._wp, zh_i  (jk) + zdum )
-            h_i_1d(ji)   = MAX( 0._wp, h_i_1d(ji) + zdum )
-            dh_i_sub(ji) = dh_i_sub(ji) + zdum
+            h_i(ji,jj,jl_cat)   = MAX( 0._wp, h_i(ji,jj,jl_cat) + zdum )
+            dh_i_sub(ji,jj) = dh_i_sub(ji,jj) + zdum
 
             ! update heat content (J.m-2), salt content and layer thickness
             zs_i_old(jk) = zs_i_old(jk) + zdum * zs_i(jk)
-            ze_i_old(jk) = ze_i_old(jk) + zdum * e_i_1d(ji,jk)
+            ze_i_old(jk) = ze_i_old(jk) + zdum * e_i(ji,jj,jk,jl_cat)
             zh_i_old(jk) = zh_i_old(jk) + zdum
 
             ! record which layers have disappeared (for bottom melting)
@@ -315,7 +322,7 @@ CONTAINS
          END DO
 
          ! remaining "potential" evap is sent to ocean
-         wfx_err_sub_1d(ji) = wfx_err_sub_1d(ji) - zevap_rema * a_i_1d(ji) * r1_Dt_ice  ! <=0 (net evap for the ocean in kg.m-2.s-1)
+         wfx_err_sub(ji,jj) = wfx_err_sub(ji,jj) - zevap_rema * a_i(ji,jj,jl_cat) * r1_Dt_ice  ! <=0 (net evap for the ocean in kg.m-2.s-1)
 
 
          ! Ice Basal growth
@@ -329,37 +336,37 @@ CONTAINS
          !
          IF(  zf_tt < 0._wp  ) THEN
 
-            zs_i_new       = zswitch_sal * rn_sinew * sss_1d(ji) + ( 1. - zswitch_sal ) * zs_i(1)          ! New ice salinity
+            zs_i_new       = zswitch_sal * rn_sinew * sss_m(ji,jj) + ( 1. - zswitch_sal ) * zs_i(1)          ! New ice salinity
             
             ztmelts        = - rTmlt * zs_i_new                                                            ! New ice melting point (C)
             
-            zt_i_new       = zswitch_sal * t_bo_1d(ji) + ( 1. - zswitch_sal) * t_i_1d(ji, nlay_i)
+            zt_i_new       = zswitch_sal * t_bo(ji,jj) + ( 1. - zswitch_sal) * t_i(ji,jj, nlay_i,jl_cat)
             
             zEi            = rcpi * ( zt_i_new - (ztmelts+rt0) ) &                                         ! Specific enthalpy of forming ice (J/kg, <0)
                &             - rLfus * ( 1.0 - ztmelts / ( MIN( zt_i_new - rt0, -epsi10 ) ) ) + rcp * ztmelts
             
-            zEw            = rcp  * ( t_bo_1d(ji) - rt0 )                                                  ! Specific enthalpy of seawater (J/kg, < 0)
+            zEw            = rcp  * ( t_bo(ji,jj) - rt0 )                                                  ! Specific enthalpy of seawater (J/kg, < 0)
             
             zdE            = zEi - zEw                                                                     ! Specific enthalpy difference (J/kg, <0)
             
-            dh_i_bog(ji)   = rDt_ice * MAX( 0._wp , zf_tt / ( zdE * rhoi ) )
+            dh_i_bog(ji,jj)   = rDt_ice * MAX( 0._wp , zf_tt / ( zdE * rhoi ) )
 
             ! Contribution to Energy and Salt Fluxes
-            zfmdt = - rhoi * dh_i_bog(ji)                                                                  ! Mass flux x time step (kg/m2, < 0)
+            zfmdt = - rhoi * dh_i_bog(ji,jj)                                                                  ! Mass flux x time step (kg/m2, < 0)
 
-            hfx_thd_1d(ji) = hfx_thd_1d(ji) + zEw  * zfmdt                   * a_i_1d(ji) * r1_Dt_ice   ! Heat flux to the ocean [W.m-2], >0
-            hfx_bog_1d(ji) = hfx_bog_1d(ji) - zdE  * zfmdt                   * a_i_1d(ji) * r1_Dt_ice   ! Heat flux used in this process [W.m-2], <0
-            wfx_bog_1d(ji) = wfx_bog_1d(ji) - rhoi * dh_i_bog(ji)            * a_i_1d(ji) * r1_Dt_ice   ! Mass flux, <0
-            sfx_bog_1d(ji) = sfx_bog_1d(ji) - rhoi * dh_i_bog(ji) * zs_i_new * a_i_1d(ji) * r1_Dt_ice   ! Salt flux, <0
+            hfx_thd(ji,jj) = hfx_thd(ji,jj) + zEw  * zfmdt * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! Heat flux to the ocean [W.m-2], >0
+            hfx_bog(ji,jj) = hfx_bog(ji,jj) - zdE  * zfmdt * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! Heat flux used in this process [W.m-2], <0
+            wfx_bog(ji,jj) = wfx_bog(ji,jj) - rhoi * dh_i_bog(ji,jj) * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! Mass flux, <0
+            sfx_bog(ji,jj) = sfx_bog(ji,jj) - rhoi * dh_i_bog(ji,jj) * zs_i_new * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! Salt flux, <0
 
             ! update thickness
-            zh_i(nlay_i+1) = zh_i(nlay_i+1) + dh_i_bog(ji)
-            h_i_1d(ji)     = h_i_1d(ji)     + dh_i_bog(ji)
+            zh_i(nlay_i+1) = zh_i(nlay_i+1) + dh_i_bog(ji,jj)
+            h_i(ji,jj,jl_cat)     = h_i(ji,jj,jl_cat) + dh_i_bog(ji,jj)
 
             ! update heat content (J.m-2), salt content and layer thickness
-            zs_i_old(nlay_i+1) = zs_i_old(nlay_i+1) + dh_i_bog(ji) * zs_i_new
-            ze_i_old(nlay_i+1) = ze_i_old(nlay_i+1) + dh_i_bog(ji) * (-zEi * rhoi)
-            zh_i_old(nlay_i+1) = zh_i_old(nlay_i+1) + dh_i_bog(ji)
+            zs_i_old(nlay_i+1) = zs_i_old(nlay_i+1) + dh_i_bog(ji,jj) * zs_i_new
+            ze_i_old(nlay_i+1) = ze_i_old(nlay_i+1) + dh_i_bog(ji,jj) * (-zEi * rhoi)
+            zh_i_old(nlay_i+1) = zh_i_old(nlay_i+1) + dh_i_bog(ji,jj)
 
          ENDIF
 
@@ -368,27 +375,27 @@ CONTAINS
          DO jk = nlay_i, 1, -1
             IF(  zf_tt  >  0._wp  .AND. jk > icount(jk) ) THEN   ! do not calculate where layer has already disappeared by surface melting
 
-               ztmelts = - rTmlt * sz_i_1d(ji,jk)  ! Melting point of layer jk (C)
+               ztmelts = - rTmlt * sz_i(ji,jj,jk,jl_cat)  ! Melting point of layer jk (C)
 
-               IF( t_i_1d(ji,jk) >= (ztmelts+rt0) ) THEN   !-- Internal melting
+               IF( t_i(ji,jj,jk,jl_cat) >= (ztmelts+rt0) ) THEN   !-- Internal melting
 
-                  zEi            = - e_i_1d(ji,jk) * r1_rhoi     ! Specific enthalpy of melting ice (J/kg, <0)
+                  zEi            = - e_i(ji,jj,jk,jl_cat) * r1_rhoi     ! Specific enthalpy of melting ice (J/kg, <0)
                   zdE            = 0._wp                         ! Specific enthalpy difference   (J/kg, <0)
                   !                                                  set up at 0 since no energy is needed to melt water...(it is already melted)
                   zdum           = MIN( 0._wp , - zh_i(jk) )  ! internal melting occurs when the internal temperature is above freezing
                   !                                                  this should normally not happen, but sometimes, heat diffusion leads to this
-                  dh_i_itm (ji)  = dh_i_itm(ji) + zdum
+                  dh_i_itm (ji,jj)  = dh_i_itm(ji,jj) + zdum
                   !
                   zfmdt          = - zdum * rhoi                 ! Mass flux x time step > 0
                   !
-                  hfx_res_1d(ji) = hfx_res_1d(ji) + zEi  * zfmdt           * a_i_1d(ji) * r1_Dt_ice   ! Heat flux to the ocean [W.m-2], <0
+                  hfx_res(ji,jj) = hfx_res(ji,jj) + zEi  * zfmdt * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! Heat flux to the ocean [W.m-2], <0
                   !                                                                                       ice enthalpy zEi is "sent" to the ocean
-                  wfx_res_1d(ji) = wfx_res_1d(ji) - rhoi * zdum            * a_i_1d(ji) * r1_Dt_ice   ! Mass flux
-                  sfx_res_1d(ji) = sfx_res_1d(ji) - rhoi * zdum * zs_i(jk) * a_i_1d(ji) * r1_Dt_ice   ! Salt flux
+                  wfx_res(ji,jj) = wfx_res(ji,jj) - rhoi * zdum * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! Mass flux
+                  sfx_res(ji,jj) = sfx_res(ji,jj) - rhoi * zdum * zs_i(jk) * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! Salt flux
                   !
                ELSE                                        !-- Basal melting
 
-                  zEi            = - e_i_1d(ji,jk) * r1_rhoi                       ! Specific enthalpy of melting ice (J/kg, <0)
+                  zEi            = - e_i(ji,jj,jk,jl_cat) * r1_rhoi                ! Specific enthalpy of melting ice (J/kg, <0)
                   zEw            = rcp * ztmelts                                   ! Specific enthalpy of meltwater (J/kg, <0)
                   zdE            = zEi - zEw                                       ! Specific enthalpy difference   (J/kg, <0)
 
@@ -400,39 +407,39 @@ CONTAINS
 
                   zq_bot         = MAX( 0._wp , zq_bot - zdum * rhoi * zdE )       ! update available heat. MAX is necessary for roundup errors
 
-                  dh_i_bom(ji)   = dh_i_bom(ji) + zdum                             ! Update basal melt
+                  dh_i_bom(ji,jj)   = dh_i_bom(ji,jj) + zdum                             ! Update basal melt
 
                   zfmdt          = - zdum * rhoi                                   ! Mass flux x time step > 0
 
                   zQm            = zfmdt * zEw                                     ! Heat exchanged with ocean
 
-                  hfx_thd_1d(ji) = hfx_thd_1d(ji) + zEw  * zfmdt           * a_i_1d(ji) * r1_Dt_ice   ! Heat flux to the ocean [W.m-2], <0
-                  hfx_bom_1d(ji) = hfx_bom_1d(ji) - zdE  * zfmdt           * a_i_1d(ji) * r1_Dt_ice   ! Heat used in this process [W.m-2], >0
-                  wfx_bom_1d(ji) = wfx_bom_1d(ji) - rhoi * zdum            * a_i_1d(ji) * r1_Dt_ice   ! Mass flux
-                  sfx_bom_1d(ji) = sfx_bom_1d(ji) - rhoi * zdum * zs_i(jk) * a_i_1d(ji) * r1_Dt_ice   ! Salt flux
+                  hfx_thd(ji,jj) = hfx_thd(ji,jj) + zEw  * zfmdt * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! Heat flux to the ocean [W.m-2], <0
+                  hfx_bom(ji,jj) = hfx_bom(ji,jj) - zdE  * zfmdt * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! Heat used in this process [W.m-2], >0
+                  wfx_bom(ji,jj) = wfx_bom(ji,jj) - rhoi * zdum  * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! Mass flux
+                  sfx_bom(ji,jj) = sfx_bom(ji,jj) - rhoi * zdum * zs_i(jk) * a_i(ji,jj,jl_cat) * r1_Dt_ice   ! Salt flux
                   !
                ENDIF
                ! update thickness
                zh_i  (jk) = MAX( 0._wp, zh_i  (jk) + zdum )
-               h_i_1d(ji) = MAX( 0._wp, h_i_1d(ji) + zdum )
+               h_i(ji,jj,jl_cat) = MAX( 0._wp, h_i(ji,jj,jl_cat) + zdum )
                !
                ! update heat content (J.m-2), salt content and layer thickness
                zs_i_old(jk) = zs_i_old(jk) + zdum * zs_i(jk)
-               ze_i_old(jk) = ze_i_old(jk) + zdum * e_i_1d(ji,jk)
+               ze_i_old(jk) = ze_i_old(jk) + zdum * e_i(ji,jj,jk,jl_cat)
                zh_i_old(jk) = zh_i_old(jk) + zdum
             ENDIF
          END DO
 
          ! Remove snow if ice has melted entirely
          ! --------------------------------------
-         IF( h_i_1d(ji) == 0._wp ) THEN
+         IF( h_i(ji,jj,jl_cat) == 0._wp ) THEN
             DO jk = 0, nlay_s
                ! mass & energy loss to the ocean
-               hfx_res_1d(ji) = hfx_res_1d(ji) - ze_s(jk) * zh_s(jk) * a_i_1d(ji) * r1_Dt_ice  ! heat flux to the ocean [W.m-2], < 0
-               wfx_res_1d(ji) = wfx_res_1d(ji) + rhos     * zh_s(jk) * a_i_1d(ji) * r1_Dt_ice  ! mass flux
+               hfx_res(ji,jj) = hfx_res(ji,jj) - ze_s(jk) * zh_s(jk) * a_i(ji,jj,jl_cat) * r1_Dt_ice  ! heat flux to the ocean [W.m-2], < 0
+               wfx_res(ji,jj) = wfx_res(ji,jj) + rhos     * zh_s(jk) * a_i(ji,jj,jl_cat) * r1_Dt_ice  ! mass flux
 
                ! update thickness and energy
-               h_s_1d(ji) = 0._wp
+               h_s(ji,jj,jl_cat) = 0._wp
                ze_s  (jk) = 0._wp
                zh_s  (jk) = 0._wp
             END DO
@@ -443,36 +450,36 @@ CONTAINS
          ! When snow load exceeds Archimede's limit, snow-ice interface goes down under sea-level,
          ! flooding of seawater transforms snow into ice. Thickness that is transformed is dh_snowice (positive for the ice)
          !
-         dh_snowice(ji) = MAX( 0._wp , ( rhos * h_s_1d(ji) + (rhoi-rho0) * h_i_1d(ji) ) * z1_rho )
+         dh_snowice(ji,jj) = MAX( 0._wp , ( rhos * h_s(ji,jj,jl_cat) + (rhoi-rho0) * h_i(ji,jj,jl_cat) ) * z1_rho )
 
-         h_i_1d(ji)    = h_i_1d(ji) + dh_snowice(ji)
-         h_s_1d(ji)    = h_s_1d(ji) - dh_snowice(ji)
+         h_i(ji,jj,jl_cat)    = h_i(ji,jj,jl_cat) + dh_snowice(ji,jj)
+         h_s(ji,jj,jl_cat)    = h_s(ji,jj,jl_cat) - dh_snowice(ji,jj)
 
          ! Contribution to energy flux to the ocean [J/m2], >0 (if sst<0)
-         zfmdt          = ( rhos - rhoi ) * dh_snowice(ji)    ! <0
-         zEw            = rcp * sst_1d(ji)
+         zfmdt          = ( rhos - rhoi ) * dh_snowice(ji,jj)    ! <0
+         zEw            = rcp * sst_m(ji,jj)
          zQm            = zfmdt * zEw
 
-         hfx_thd_1d(ji) = hfx_thd_1d(ji) + zEw        * zfmdt * a_i_1d(ji) * r1_Dt_ice ! Heat flux
-         sfx_sni_1d(ji) = sfx_sni_1d(ji) + sss_1d(ji) * zfmdt * a_i_1d(ji) * r1_Dt_ice ! Salt flux
+         hfx_thd(ji,jj) = hfx_thd(ji,jj) + zEw * zfmdt * a_i(ji,jj,jl_cat) * r1_Dt_ice ! Heat flux
+         sfx_sni(ji,jj) = sfx_sni(ji,jj) + sss_m(ji,jj) * zfmdt * a_i(ji,jj,jl_cat) * r1_Dt_ice ! Salt flux
 
          ! Case constant salinity in time: virtual salt flux to keep salinity constant
          IF( nn_icesal == 1 .OR. nn_icesal == 3 )  THEN
-            sfx_bri_1d(ji) = sfx_bri_1d(ji) - sss_1d(ji) * zfmdt              * a_i_1d(ji) * r1_Dt_ice  &  ! put back sss_m     into the ocean
-               &                            - zs_i(1) * dh_snowice(ji) * rhoi * a_i_1d(ji) * r1_Dt_ice     ! and get  rn_icesal from the ocean
+            sfx_bri(ji,jj) = sfx_bri(ji,jj) - sss_m(ji,jj) * zfmdt * a_i(ji,jj,jl_cat) * r1_Dt_ice  &  ! put back sss_m     into the ocean
+               & - zs_i(1) * dh_snowice(ji,jj) * rhoi * a_i(ji,jj,jl_cat) * r1_Dt_ice     ! and get  rn_icesal from the ocean
          ENDIF
 
          ! Mass flux: All snow is thrown in the ocean, and seawater is taken to replace the volume
-         wfx_sni_1d    (ji) = wfx_sni_1d    (ji) - dh_snowice(ji) * rhoi * a_i_1d(ji) * r1_Dt_ice
-         wfx_snw_sni_1d(ji) = wfx_snw_sni_1d(ji) + dh_snowice(ji) * rhos * a_i_1d(ji) * r1_Dt_ice
+         wfx_sni(ji,jj) = wfx_sni(ji,jj) - dh_snowice(ji,jj) * rhoi * a_i(ji,jj,jl_cat) * r1_Dt_ice
+         wfx_snw_sni(ji,jj) = wfx_snw_sni(ji,jj) + dh_snowice(ji,jj) * rhos * a_i(ji,jj,jl_cat) * r1_Dt_ice
 
          ! update thickness
-         zh_i(0) = zh_i(0) + dh_snowice(ji)
-         zdeltah =           dh_snowice(ji)
+         zh_i(0) = zh_i(0) + dh_snowice(ji,jj)
+         zdeltah =           dh_snowice(ji,jj)
 
          ! update heat content (J.m-2), salt content and layer thickness
-         zs_i_old(0) = zs_i_old(0) - zfmdt * sss_1d(ji) * r1_rhoi      ! clem: s(0) could be > rn_sinew*sss
-         zh_i_old(0) = zh_i_old(0) + dh_snowice(ji)
+         zs_i_old(0) = zs_i_old(0) - zfmdt * sss_m(ji,jj) * r1_rhoi      ! clem: s(0) could be > rn_sinew*sss
+         zh_i_old(0) = zh_i_old(0) + dh_snowice(ji,jj)
          ze_i_old(0) = ze_i_old(0) + zfmdt * zEw           ! 1st part (sea water enthalpy)
 
          !
@@ -493,42 +500,45 @@ CONTAINS
          !
          ! Remapping of snw enthalpy on a regular grid
          !--------------------------------------------
-         e_s_1d(ji,:) = snw_ent( zh_s, ze_s )
+         e_s(ji,jj,:,jl_cat) = snw_ent( zh_s, ze_s )
    
-         ! recalculate t_s_1d from e_s_1d
-         IF( h_s_1d(ji) > 0._wp ) THEN
+         ! recalculate t_s from e_s
+         IF( h_s(ji,jj,jl_cat) > 0._wp ) THEN
             DO jk = 1, nlay_s
-               t_s_1d(ji,jk) = rt0 + ( - e_s_1d(ji,jk) * r1_rhos * r1_rcpi + rLfus * r1_rcpi )
+               t_s(ji,jj,jk,jl_cat) = rt0 + ( - e_s(ji,jj,jk,jl_cat) * r1_rhos * r1_rcpi + rLfus * r1_rcpi )
             END DO
          ELSE
             DO jk = 1, nlay_s
-               t_s_1d(ji,jk) = rt0
+               t_s(ji,jj,jk,jl_cat) = rt0
             END DO
          ENDIF
 
          ! Remapping of ice enthalpy/salt on a regular grid
          !-------------------------------------------------
-                                CALL ice_var_vremap( zh_i_old, ze_i_old, e_i_1d (ji,:) )
-         IF( nn_icesal == 4 )   CALL ice_var_vremap( zh_i_old, zs_i_old, sz_i_1d(ji,:) )
+                                CALL ice_var_vremap( zh_i_old, ze_i_old, e_i(ji,jj,:,jl_cat) )
+         IF( nn_icesal == 4 )   CALL ice_var_vremap( zh_i_old, zs_i_old, sz_i(ji,jj,:,jl_cat) )
          IF( nn_icesal == 2 )   THEN ! Update ice salinity from snow-ice and bottom growth
-            zs_sni = sss_1d(ji) * ( rhoi - rhos ) * r1_rhoi                                       ! salinity of snow ice
-            zds    =       ( zs_sni   - s_i_1d(ji) ) * dh_snowice(ji) / MAX( epsi10, h_i_1d(ji) ) ! snow-ice    
-            zds    = zds + ( zs_i_new - s_i_1d(ji) ) * dh_i_bog  (ji) / MAX( epsi10, h_i_1d(ji) ) ! bottom growth
+            zs_sni = sss_m(ji,jj) * ( rhoi - rhos ) * r1_rhoi                                       ! salinity of snow ice
+            zds    =       ( zs_sni   - s_i(ji,jj,jl_cat) ) * dh_snowice(ji,jj) / MAX( epsi10, h_i(ji,jj,jl_cat) ) ! snow-ice    
+            zds    = zds + ( zs_i_new - s_i(ji,jj,jl_cat) ) * dh_i_bog(ji,jj) / MAX( epsi10, h_i(ji,jj,jl_cat) ) ! bottom growth
             !
-            s_i_1d(ji) = s_i_1d(ji) + zds
+            s_i(ji,jj,jl_cat) = s_i(ji,jj,jl_cat) + zds
          ENDIF
-         
-      END DO ! npti
+       ENDIF ! ll_ice_present  
+      END_2D
       !                       ! ================== !
       !                       ! End main loop here !
       !                       ! ================== !
  
       ! --- ensure that a_i = 0 & h_s = 0 where h_i = 0 ---
-      WHERE( h_i_1d(1:npti) == 0._wp )
-         a_i_1d (1:npti) = 0._wp
-         h_s_1d (1:npti) = 0._wp
-         t_su_1d(1:npti) = rt0
-      END WHERE
+      DO_2D(0, 0, 0, 0)
+         IF (ll_ice_present(ji,jj) .AND. h_i(ji,jj,jl_cat) == 0._wp) THEN
+             a_i(ji,jj,jl_cat) = 0._wp
+             h_s(ji,jj,jl_cat) = 0._wp
+             t_su(ji,jj,jl_cat) = 0._wp
+             ll_ice_present(ji,jj) = .false.
+         ENDIF
+      END_2D
 
    END SUBROUTINE ice_thd_dh
 
