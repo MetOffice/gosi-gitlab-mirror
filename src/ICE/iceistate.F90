@@ -24,8 +24,6 @@ MODULE iceistate
    USE domqco         ! Quasi-Eulerian coord.
 # endif
    USE ice            ! sea-ice: variables
-   USE ice1D          ! sea-ice: thermodynamics variables
-   USE icetab         ! sea-ice: 1D <==> 2D transformation
    USE icevar  , ONLY : ice_var_salprof, ice_var_itd
    !
    USE in_out_manager ! I/O manager

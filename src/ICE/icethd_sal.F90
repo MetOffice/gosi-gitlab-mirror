@@ -15,10 +15,12 @@ MODULE icethd_sal
    !!   ice_thd_sal_init : initialization
    !!----------------------------------------------------------------------
    USE par_ice        ! SI3 parameters
+   USE par_oce
    USE par_kind, ONLY : wp
    USE phycst
-   USE ice1D          ! sea-ice: thermodynamics variables
-   USE icevar  , ONLY : ice_var_salprof1d
+   USE sbc_oce, ONLY: sss_m
+   USE ice
+   USE icevar  , ONLY : ice_var_salprof
    !
    USE in_out_manager , ONLY : numnam_ice_ref, numnam_ice_cfg, numout, numoni, lwp, lwm  ! I/O manager
    USE lib_mpp        , ONLY : ctl_stop, ctl_warn, ctl_nam                               ! MPP library
@@ -50,6 +52,7 @@ MODULE icethd_sal
    REAL(wp) ::   rn_vbrc       ! critical brines volume above which flushing can occur
    
    !! * Substitutions
+#  include "do_loop_substitute.h90"
 #  include "read_nml_substitute.h90"
    !!----------------------------------------------------------------------
    !! NEMO/ICE 5.0, NEMO Consortium (2024)
@@ -57,7 +60,7 @@ MODULE icethd_sal
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE ice_thd_sal
+   SUBROUTINE ice_thd_sal(jl_cat, ll_ice_present)
       !!-------------------------------------------------------------------
       !!                ***  ROUTINE ice_thd_sal  ***    
       !!   
@@ -168,7 +171,9 @@ CONTAINS
       !!             Tracer measurements in growing sea ice support convective gravity drainage parameterizations.
       !              Journal of Geophysical Research: Oceans, 125, e2019JC015791. https://doi.org/10. 1029/2019JC015791
       !!---------------------------------------------------------------------
-      INTEGER  ::   ji, jk, jk2            ! dummy loop indices 
+      INTEGER, INTENT(IN) :: jl_cat
+      LOGICAL, DIMENSION(A2D(0)), INTENT(in) :: ll_ice_present
+      INTEGER  ::   ji, jj, jk, jk2            ! dummy loop indices 
       REAL(wp) ::   z1_time_gd, z1_time_fl
       !
       ! for gravity drainage and flushing
@@ -211,44 +216,48 @@ CONTAINS
          ELSE                     ;   z1_time_fl = 0._wp
          ENDIF
          !         
-         DO ji = 1, npti
+         DO_2D(0, 0, 0, 0)
+          IF (ll_ice_present(ji,jj) ) THEN
             !
-            IF( h_i_1d(ji) > rn_sal_himin ) THEN
+            IF( h_i(ji,jj,jl_cat) > rn_sal_himin ) THEN
                !
                ! --- Update ice salinity from brine drainage and flushing --- !
-               IF( t_su_1d(ji) >= rt0 ) THEN             ! flushing (summer time)
-                  zds(1) = - MAX( s_i_1d(ji) - rn_sal_fl , 0._wp ) * z1_time_fl
-               ELSEIF( t_su_1d(ji) <= t_bo_1d(ji) ) THEN ! gravity drainage
-                  zds(1) = - MAX( s_i_1d(ji) - rn_sal_gd , 0._wp ) * z1_time_gd
+               IF( t_su(ji,jj,jl_cat) >= rt0 ) THEN             ! flushing (summer time)
+                  zds(1) = - MAX( s_i(ji,jj,jl_cat) - rn_sal_fl , 0._wp ) * z1_time_fl
+               ELSEIF( t_su(ji,jj,jl_cat) <= t_bo(ji,jj) ) THEN ! gravity drainage
+                  zds(1) = - MAX( s_i(ji,jj,jl_cat) - rn_sal_gd , 0._wp ) * z1_time_gd
                ELSE
                   zds(1) = 0._wp
                ENDIF
                ! update salinity
-               s_i_1d(ji) = s_i_1d(ji) + zds(1)
+               s_i(ji,jj,jl_cat) = s_i(ji,jj,jl_cat) + zds(1)
                ! salt flux
-               sfx_bri_1d(ji) = sfx_bri_1d(ji) - rhoi * a_i_1d(ji) * h_i_1d(ji) * zds(1) * r1_Dt_ice
+               sfx_bri(ji,jj) = sfx_bri(ji,jj) - rhoi * a_i(ji,jj,jl_cat) * h_i(ji,jj,jl_cat) * zds(1) * r1_Dt_ice
                !
                ! --- salinity must stay inbounds --- !
                IF( ln_drainage .OR. ln_flushing ) THEN
-                  zds(1) =          MAX( 0._wp, rn_simin            - s_i_1d(ji) ) ! > 0 if s_i < simin
-                  zds(1) = zds(1) + MIN( 0._wp, rn_sinew*sss_1d(ji) - s_i_1d(ji) ) ! < 0 if s_i > simax
+                  zds(1) =          MAX( 0._wp, rn_simin            - s_i(ji,jj,jl_cat) ) ! > 0 if s_i < simin
+                  zds(1) = zds(1) + MIN( 0._wp, rn_sinew*sss_m(ji,jj) - s_i(ji,jj,jl_cat) ) ! < 0 if s_i > simax
                   ! update salinity
-                  s_i_1d(ji) = s_i_1d(ji) + zds(1)
+                  s_i(ji,jj,jl_cat) = s_i(ji,jj,jl_cat) + zds(1)
                   ! salt flux
-                  sfx_res_1d(ji) = sfx_res_1d(ji) - rhoi * a_i_1d(ji) * h_i_1d(ji) * zds(1) * r1_Dt_ice
+                  sfx_res(ji,jj) = sfx_res(ji,jj) - rhoi * a_i(ji,jj,jl_cat) * h_i(ji,jj,jl_cat) * zds(1) * r1_Dt_ice
                ENDIF
                !
             ENDIF
             !
-         END DO
+          ENDIF
+         END_2D
          !
          ! Salinity profile (gives sz_i)
-         CALL ice_var_salprof1d
+         CALL ice_var_salprof
+
          !
          !             !----------------------------------------!
       CASE( 3 )        ! constant salinity with a fixed profile ! (Schwarzacher (1959) multiyear salinity profile (mean = 2.30)
          !             !----------------------------------------!
-         CALL ice_var_salprof1d
+         CALL ice_var_salprof
+
          !
          !             !--------------------------------!
       CASE( 4 )        ! Gravity Drainage and Flushing  !
@@ -272,17 +281,18 @@ CONTAINS
             z1_cnd_br = 1._wp / zcnd_br
             z1_visc   = 1._wp / zvisc            
             !
-            DO ji = 1, npti
+            DO_2D(0, 0, 0, 0)
+             IF (ll_ice_present(ji,jj) ) THEN
                ! ice thickness ( we do not want to do anything for salt when ice is thinner than the minimum allowed )
-               z1_h_i = 1._wp / MAX( epsi10, h_i_1d(ji) * r1_nlay_i )
+               z1_h_i = 1._wp / MAX( epsi10, h_i(ji,jj,jl_cat) * r1_nlay_i )
                !
                ! surface melting (m)
-               zhmelt = dh_s_sum(ji) + dh_i_sum(ji) ! =0 if no melt, <0 otherwise 
+               zhmelt = dh_s_sum_2d(ji,jj,jl_cat) + dh_i_sum_2d(ji,jj,jl_cat) ! =0 if no melt, <0 otherwise 
                !
                ! brine salinity
                zs_brmax = 0._wp
                DO jk = 1, nlay_i
-                  zt1 = t_i_1d(ji,jk) - rt0
+                  zt1 = t_i(ji,jj,jk,jl_cat) - rt0
                   zt2 = zt1 * zt1
                   zt3 = zt2 * zt1
                   zs_br(jk) = -18.7_wp * zt1 - 0.519_wp * zt2 - 0.00535_wp * zt3
@@ -293,21 +303,21 @@ CONTAINS
                   zs_brmax = MAX( zs_brmax, zs_br(jk) )
                ENDDO
                zs_br(0) = 0._wp               ! brine salinity at the interfaces
-               zs_br(nlay_i+1) = sss_1d(ji)
+               zs_br(nlay_i+1) = sss_m(ji,jj)
                !               
                zcfl_max = 0._wp
                zs_min   = 0._wp
-               IF( h_i_1d(ji) >= rn_sal_himin .AND. zhmelt >= 0._wp .AND. zs_brmax > sss_1d(ji) ) THEN
+               IF( h_i(ji,jj,jl_cat) >= rn_sal_himin .AND. zhmelt >= 0._wp .AND. zs_brmax > sss_m(ji,jj) ) THEN
                   !                               ! during melting season, salt flux can turn upward
                   !
-                  WHERE( (t_i_1d(ji,:)-rt0) <  - epsi06 ) ; zmsk(:) = 1._wp
+                  WHERE( (t_i(ji,jj,:,jl_cat)-rt0) <  - epsi06 ) ; zmsk(:) = 1._wp
                   ELSEWHERE                               ; zmsk(:) = 0._wp
                   ENDWHERE
                   !
                   ! Compute CFL
                   ! ===========
                   DO jk = 1, nlay_i
-                     zv_br(jk) = zmsk(jk) * sz_i_1d(ji,jk) / zs_br(jk)
+                     zv_br(jk) = zmsk(jk) * sz_i(ji,jj,jk,jl_cat) / zs_br(jk)
                   ENDDO
                   
                   ! Effective permeability
@@ -332,8 +342,8 @@ CONTAINS
                   ! ---------------
                   DO jk = 1, nlay_i
                      ! Ra = cp_br * g * beta * (Sbr(z) - Sw) * perm * (h-z) / (cnd_br*visc)   [RWJ2014 formulation]
-                     zRa(jk) = zcp_br * grav * zbeta * MAX( 0._wp, zs_br(jk) - sss_1d(ji)) * zperm_eff(jk) &
-                        &                            *  h_i_1d(ji) * ( 1._wp - z_mid(jk) ) * ( z1_cnd_br * z1_visc )
+                     zRa(jk) = zcp_br * grav * zbeta * MAX( 0._wp, zs_br(jk) - sss_m(ji,jj)) * zperm_eff(jk) &
+                        &                            *  h_i(ji,jj,jl_cat) * ( 1._wp - z_mid(jk) ) * ( z1_cnd_br * z1_visc )
                   END DO
                   
                   ! Vertical velocity
@@ -364,7 +374,7 @@ CONTAINS
                      zRae = 0._wp
                      DO jk = 1, nlay_i
                         zRae = zRae + MAX( zRa(jk) - rn_Rc_GN, 0._wp )
-                        zw_br(jk) = - rn_alpha_GN / zrhob_GN * zRae * h_i_1d(ji) * r1_nlay_i
+                        zw_br(jk) = - rn_alpha_GN / zrhob_GN * zRae * h_i(ji,jj,jl_cat) * r1_nlay_i
                      END DO
                      
                   ELSEIF ( nn_sal_scheme == 3 ) THEN    ! *** CW 1988 ***
@@ -392,7 +402,7 @@ CONTAINS
                      !
                      IF( iter > 1 ) THEN
                         DO jk = 1, nlay_i
-                           zv_br(jk) = zmsk(jk) * sz_i_1d(ji,jk) / zs_br(jk)
+                           zv_br(jk) = zmsk(jk) * sz_i(ji,jj,jk,jl_cat) / zs_br(jk)
                         ENDDO
                         
                         ! Effective permeability
@@ -417,8 +427,8 @@ CONTAINS
                         ! ---------------
                         DO jk = 1, nlay_i
                            ! Ra = cp_br * g * beta * (Sbr(z) - Sw) * perm * (h-z) / (cnd_br*visc)   [RWJ2014 formulation]
-                           zRa(jk) = zcp_br * grav * zbeta * MAX( 0._wp, zs_br(jk) - sss_1d(ji)) * zperm_eff(jk) &
-                              &                            *  h_i_1d(ji) * ( 1._wp - z_mid(jk) ) * ( z1_cnd_br * z1_visc )
+                           zRa(jk) = zcp_br * grav * zbeta * MAX( 0._wp, zs_br(jk) - sss_m(ji,jj)) * zperm_eff(jk) &
+                              &                            *  h_i(ji,jj,jl_cat) * ( 1._wp - z_mid(jk) ) * ( z1_cnd_br * z1_visc )
                         END DO
                         
                         ! Vertical velocity
@@ -449,7 +459,7 @@ CONTAINS
                            zRae = 0._wp
                            DO jk = 1, nlay_i
                               zRae = zRae + MAX( zRa(jk) - rn_Rc_GN, 0._wp )
-                              zw_br(jk) = - rn_alpha_GN / zrhob_GN * zRae * h_i_1d(ji) * r1_nlay_i
+                              zw_br(jk) = - rn_alpha_GN / zrhob_GN * zRae * h_i(ji,jj,jl_cat) * r1_nlay_i
                            END DO
                            
                         ELSEIF ( nn_sal_scheme == 3 ) THEN    ! *** CW 1988 ***
@@ -470,16 +480,16 @@ CONTAINS
                         zds(jk) = - zcfl * ( zs_br(jk+1) - zs_br(jk) )
                         !
                         zcfl_max = MAX( zcfl_max, ABS(zcfl) )
-                        zs_min   = MIN( zs_min , sz_i_1d(ji,jk) + zds(jk) ) ! record what salinity would be without the trick below
+                        zs_min   = MIN( zs_min , sz_i(ji,jj,jk,jl_cat) + zds(jk) ) ! record what salinity would be without the trick below
                         !
                         !!clem trick
-                        zds(jk) = MAX( zds(jk), -sz_i_1d(ji,jk)+rn_simin )
+                        zds(jk) = MAX( zds(jk), -sz_i(ji,jj,jk,jl_cat)+rn_simin )
                         !
                         ! new salinity
-                        sz_i_1d(ji,jk) = sz_i_1d(ji,jk) + zds(jk)
+                        sz_i(ji,jj,jk,jl_cat) = sz_i(ji,jj,jk,jl_cat) + zds(jk)
                         !
                         ! salt flux
-                        sfx_bri_1d(ji) = sfx_bri_1d(ji) - rhoi * a_i_1d(ji) * h_i_1d(ji) * r1_nlay_i * zds(jk) * r1_Dt_ice ! r1_Dt_ice is ok
+                        sfx_bri(ji,jj) = sfx_bri(ji,jj) - rhoi * a_i(ji,jj,jl_cat) * h_i(ji,jj,jl_cat) * r1_nlay_i * zds(jk) * r1_Dt_ice ! r1_Dt_ice is ok
                         !
                      END DO
 
@@ -488,34 +498,35 @@ CONTAINS
 
                ! sanity check
                IF( ln_sal_chk) THEN
-                  cfl_drain_1d(ji) = zcfl_max 
-                  IF( zs_min < 0._wp )  THEN   ;   sneg_drain_1d(ji) = zs_min 
-                  ELSE                         ;   sneg_drain_1d(ji) = 0._wp  
+                  zcfl_drain(ji,jj,jl_cat) = zcfl_max 
+                  IF( zs_min < 0._wp )  THEN   ;   zsneg_drain(ji,jj,jl_cat) = zs_min 
+                  ELSE                         ;   zsneg_drain(ji,jj,jl_cat) = 0._wp  
                   ENDIF
                ENDIF
-
-            ENDDO
-         ENDIF
+             ENDIF ! ll_ice_present
+            END_2D
+         ENDIF ! ln_drainage
 
          ! ========
          ! Flushing
          ! ========
          IF( ln_flushing ) THEN
             !
-            DO ji = 1, npti
+            DO_2D(0, 0, 0, 0)
+             IF (ll_ice_present(ji,jj)) THEN 
                ! ice thickness ( we do not want to do anything for salt when ice is thinner than the minimum allowed )
-               z1_h_i = 1._wp / MAX( h_i_1d(ji) * r1_nlay_i, epsi10 )
+               z1_h_i = 1._wp / MAX( h_i(ji,jj,jl_cat) * r1_nlay_i, epsi10 )
                !
                ! surface melting (m)
-               zhmelt = dh_s_sum(ji) + dh_i_sum(ji) ! =0 if no melt, <0 otherwise 
+               zhmelt = dh_s_sum_2d(ji,jj,jl_cat) + dh_i_sum_2d(ji,jj,jl_cat) ! =0 if no melt, <0 otherwise 
                !
                zcfl_max = 0._wp
                zs_min   = 0._wp
-               IF( h_i_1d(ji) >= rn_sal_himin .AND. zhmelt < 0._wp ) THEN     ! Flushing if  surface melting
+               IF( h_i(ji,jj,jl_cat) >= rn_sal_himin .AND. zhmelt < 0._wp ) THEN     ! Flushing if  surface melting
                   
                   ! brine salinity
                   DO jk = 1, nlay_i
-                     zt1 = t_i_1d(ji,jk) - rt0
+                     zt1 = t_i(ji,jj,jk,jl_cat) - rt0
                      zt2 = zt1 * zt1
                      zt3 = zt2 * zt1
                      zs_br(jk) = -18.7_wp * zt1 - 0.519_wp * zt2 - 0.00535_wp * zt3
@@ -526,9 +537,9 @@ CONTAINS
                   ENDDO
                   !               ! brine salinity at the interfaces
                   zs_br(0) = 0._wp
-                  zs_br(nlay_i+1) = sss_1d(ji)
+                  zs_br(nlay_i+1) = sss_m(ji,jj)
 
-                  WHERE( (t_i_1d(ji,:)-rt0) <  - epsi06 ) ; zmsk(:) = 1._wp
+                  WHERE( (t_i(ji,jj,:,jl_cat)-rt0) <  - epsi06 ) ; zmsk(:) = 1._wp
                   ELSEWHERE                               ; zmsk(:) = 0._wp
                   ENDWHERE
 
@@ -536,7 +547,7 @@ CONTAINS
                   ! ===========
                   zcfl_test = 0._wp
                   DO jk = 1, nlay_i
-                     zw_br(jk) = -rn_flushrate * ( dh_i_sum(ji)*rhoi + dh_s_sum(ji)*rhos )  &
+                     zw_br(jk) = -rn_flushrate * ( dh_i_sum_2d(ji,jj,jl_cat)*rhoi + dh_s_sum_2d(ji,jj,jl_cat)*rhos )  &
                         &                 / ( rhow * ( 1._wp + 0.8e-3_wp * zs_br(jk) ) ) * r1_Dt_ice ! r1_Dt_ice is ok
                      !                        can be replaced by rhow but in theory rhow should be rho_br = (rho0*(1+c*S_br)), with c = 0.8e-3
                      zcfl = zw_br(jk) * rDt_ice * z1_h_i
@@ -553,7 +564,7 @@ CONTAINS
                      !
                      zv_brmin = 1.e+20_wp
                      DO jk = 1, nlay_i
-                        zv_br(jk) = zmsk(jk) * sz_i_1d(ji,jk) / zs_br(jk)
+                        zv_br(jk) = zmsk(jk) * sz_i(ji,jj,jk,jl_cat) / zs_br(jk)
                         zv_brmin = MIN( zv_brmin, zv_br(jk) )
                      ENDDO
                      !
@@ -563,7 +574,7 @@ CONTAINS
                         DO jk = 1, nlay_i
                            ! Vertical velocity
                            ! -----------------
-                           zw_br(jk) = -rn_flushrate * ( dh_i_sum(ji)*rhoi + dh_s_sum(ji)*rhos )  &
+                           zw_br(jk) = -rn_flushrate * ( dh_i_sum_2d(ji,jj,jl_cat)*rhoi + dh_s_sum_2d(ji,jj,jl_cat)*rhos )  &
                               &                 / ( rhow * ( 1._wp + 0.8e-3_wp * zs_br(jk) ) ) * r1_Dt_ice ! r1_Dt_ice is ok
                            !                        can be replaced by rhow but in theory rhow should be rho_br = (rho0*(1+c*S_br)), with c = 0.8e-3
                            ! Salinity
@@ -576,17 +587,17 @@ CONTAINS
                            !
                            zds(jk) = - zcfl * ( zs_br(jk) - zs_br(jk-1) )
                            !
-                           zs_min  = MIN( zs_min , sz_i_1d(ji,jk) + zds(jk) )   ! record what salinity would be without the trick below
+                           zs_min  = MIN( zs_min , sz_i(ji,jj,jk,jl_cat) + zds(jk) )   ! record what salinity would be without the trick below
                            !
                            !!clem trick
-                           zds(jk) = MAX( MIN( 0._wp, zds(jk) ), -sz_i_1d(ji,jk)+rn_simin )
+                           zds(jk) = MAX( MIN( 0._wp, zds(jk) ), -sz_i(ji,jj,jk,jl_cat)+rn_simin )
                            !            ! min to block flushing when temperature profile is not ok
                            !
                            ! new salinity
-                           sz_i_1d(ji,jk) = sz_i_1d(ji,jk) + zds(jk)
+                           sz_i(ji,jj,jk,jl_cat) = sz_i(ji,jj,jk,jl_cat) + zds(jk)
                            !
                            ! salt flux
-                           sfx_bri_1d(ji) = sfx_bri_1d(ji) - rhoi * a_i_1d(ji) * h_i_1d(ji) * r1_nlay_i * zds(jk) * r1_Dt_ice ! r1_Dt_ice is ok
+                           sfx_bri(ji,jj) = sfx_bri(ji,jj) - rhoi * a_i(ji,jj,jl_cat) * h_i(ji,jj,jl_cat) * r1_nlay_i * zds(jk) * r1_Dt_ice ! r1_Dt_ice is ok
 
                         ENDDO
                         !                        
@@ -597,27 +608,29 @@ CONTAINS
                
                ! sanity check
                IF( ln_sal_chk ) THEN
-                  cfl_flush_1d(ji) = zcfl_max 
-                  IF( zs_min < 0._wp ) THEN    ;   sneg_flush_1d(ji) = zs_min 
-                  ELSE                         ;   sneg_flush_1d(ji) = 0._wp  
+                  zcfl_flush(ji,jj,jl_cat) = zcfl_max 
+                  IF( zs_min < 0._wp ) THEN    ;   zsneg_flush(ji,jj,jl_cat) = zs_min 
+                  ELSE                         ;   zsneg_flush(ji,jj,jl_cat) = 0._wp  
                   ENDIF
                ENDIF
-
-            ENDDO
+             ENDIF ! ll_ice_present
+            END_2D
          ENDIF
 
          ! --- salinity must stay inbounds --- !
          IF( ln_drainage .OR. ln_flushing ) THEN
-            DO ji = 1, npti
+            DO_2D(0, 0, 0, 0)
+             IF ( ll_ice_present(ji,jj) ) THEN
                DO jk = 1, nlay_i
-                  zds(jk) =           MAX( 0._wp, rn_simin            - sz_i_1d(ji,jk) ) ! > 0 if s_i < simin
-                  zds(jk) = zds(jk) + MIN( 0._wp, rn_sinew*sss_1d(ji) - sz_i_1d(ji,jk) ) ! < 0 if s_i > simax
+                  zds(jk) =           MAX( 0._wp, rn_simin            - sz_i(ji,jj,jk,jl_cat) ) ! > 0 if s_i < simin
+                  zds(jk) = zds(jk) + MIN( 0._wp, rn_sinew*sss_m(ji,jj) - sz_i(ji,jj,jk,jl_cat) ) ! < 0 if s_i > simax
                   ! update salinity
-                  sz_i_1d(ji,jk) = sz_i_1d(ji,jk) + zds(jk)
+                  sz_i(ji,jj,jk,jl_cat) = sz_i(ji,jj,jk,jl_cat) + zds(jk)
                   ! salt flux
-                  sfx_res_1d(ji) = sfx_res_1d(ji) - rhoi * a_i_1d(ji) * h_i_1d(ji) * r1_nlay_i * zds(jk) * r1_Dt_ice
+                  sfx_res(ji,jj) = sfx_res(ji,jj) - rhoi * a_i(ji,jj,jl_cat) * h_i(ji,jj,jl_cat) * r1_nlay_i * zds(jk) * r1_Dt_ice
                END DO
-            ENDDO
+             ENDIF
+            END_2D
          ENDIF
                 
       END SELECT
