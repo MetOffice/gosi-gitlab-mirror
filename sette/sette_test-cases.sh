@@ -1030,8 +1030,7 @@ if [ ${config} == "CPL_OASIS" ] ;  then
 
     # Default test-run configuration
     if [ ${DO_COUPLING_0} == "1" ] ;  then
-        export TEST_NAME="EXP00"
-        EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/${TEST_NAME}
+        EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
         cd ${EXE_DIR}
         # copy namcouple to EXP00 (not done by makenemo)
         cp -av ${CONFIG_DIR0}/${config}/EXPREF/namcouple .
@@ -1057,6 +1056,7 @@ if [ ${config} == "CPL_OASIS" ] ;  then
         set_xio_using_server iodef.xml ${USING_MPMD}
 
         cd ${SETTE_DIR}
+        export TEST_NAME="CPL"
         . ./prepare_exe_dir.sh
         JOB_FILE=${EXE_DIR}/run_job.sh
         if [ -f ${JOB_FILE} ] ; then \rm ${JOB_FILE} ; fi
