@@ -128,7 +128,7 @@ CONTAINS
          !
          ! initialize salinity
          IF( nn_icesal == 4 ) THEN   ;   zs_i(:) = sz_i(ji,jj,:,jl_cat)  ! use layer salinity if nn_icesal=4 
-         ELSE                        ;   zs_i(:) = s_i(ji,jj,:)    !     bulk salinity otherwise (for conservation purpose)
+         ELSE                        ;   zs_i(:) = s_i(ji,jj,jl_cat)     !     bulk salinity otherwise (for conservation purpose)
          ENDIF
          !
          ! initialize ice layer thicknesses and enthalpies
