@@ -972,7 +972,7 @@ CONTAINS
            END_2D
          END DO
          !
-         ll_ice_present(ji,jj) = .false.
+         ll_ice_present(:,:) = .FALSE.
          ! Identify grid cells with ice
          DO_2D( 0, 0, 0, 0 )
             IF ( at_i(ji,jj) > epsi10 ) THEN
