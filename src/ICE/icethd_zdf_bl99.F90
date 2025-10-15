@@ -220,7 +220,11 @@ CONTAINS
       ! 2) Radiation
       !-------------
       ! --- Transmission/absorption of solar radiation in the ice --- !
-      zradtr_s(:,:,0) = qtr_ice_top(A2D(0),jl_cat)
+      DO_2D(0, 0, 0, 0)
+         IF( ll_ice_present(ji,jj) ) THEN
+            zradtr_s(ji,jj,0) = qtr_ice_top(ji,jj,jl_cat)
+         ENDIF
+      END_2D
       DO jk = 1, nlay_s
          DO_2D(0, 0, 0, 0)
           IF (ll_ice_present(ji,jj) ) THEN
@@ -232,7 +236,11 @@ CONTAINS
          END_2D
       END DO
       !
-      zradtr_i(:,:,0) = zradtr_s(:,:,nlay_s) * za_s_fra(:,:) + qtr_ice_top(A2D(0),jl_cat) * ( 1._wp - za_s_fra(:,:) )
+      DO_2D(0, 0, 0, 0)
+         IF( ll_ice_present(ji,jj) ) THEN
+            zradtr_i(ji,jj,0) = zradtr_s(ji,jj,nlay_s) * za_s_fra(ji,jj) + qtr_ice_top(ji,jj,jl_cat) * ( 1._wp - za_s_fra(ji,jj) )
+         ENDIF
+      END_2D
       DO jk = 1, nlay_i
          DO_2D(0, 0, 0, 0)
           IF (ll_ice_present(ji,jj) ) THEN
