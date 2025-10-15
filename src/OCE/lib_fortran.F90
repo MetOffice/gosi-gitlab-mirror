@@ -103,7 +103,7 @@ MODULE lib_fortran
    
 #if defined key_nosignedzero
    INTERFACE SIGN
-      MODULE PROCEDURE SIGN_SCALAR
+      MODULE PROCEDURE SIGN_POSZERO
    END INTERFACE
 #endif
 
@@ -309,19 +309,25 @@ CONTAINS
    !!   'key_nosignedzero'                                         F90 SIGN
    !!----------------------------------------------------------------------
 
-   ELEMENTAL FUNCTION SIGN_SCALAR( pa, pb )
+   ELEMENTAL FUNCTION SIGN_POSZERO( a, b )
       !!-----------------------------------------------------------------------
-      !!                  ***  FUNCTION SIGN_SCALAR  ***
+      !!                    ***  FUNCTION SIGN_POSZERO  ***
       !!
-      !! ** Purpose : overwrite f95 behaviour of intrinsinc sign function
+      !! ** Purpose : substitute for the intrinsic SIGN function; it ignores
+      !!              the sign of signed zeros that may be present as the
+      !!              value of argument b; its dummy-argument names are exempt
+      !!              from compliance with the NEMO coding convention in order
+      !!              to enable the conformity between its interface and the
+      !!              interface of the intrinsic SIGN function
+      !!
       !!-----------------------------------------------------------------------
-      REAL(wp), INTENT(in) :: pa,pb          ! input
-      REAL(wp)             :: SIGN_SCALAR    ! result
+      REAL(wp), INTENT(in) ::   a, b           ! input
+      REAL(wp)             ::   SIGN_POSZERO   ! result
       !!-----------------------------------------------------------------------
-      IF ( pb >= 0._wp ) THEN   ;   SIGN_SCALAR =  ABS(pa)
-      ELSE                      ;   SIGN_SCALAR = -ABS(pa)
+      IF ( b >= 0._wp ) THEN   ;   SIGN_POSZERO =  ABS(a)
+      ELSE                     ;   SIGN_POSZERO = -ABS(a)
       ENDIF
-   END FUNCTION SIGN_SCALAR
+   END FUNCTION SIGN_POSZERO
 
 #endif
 
