@@ -26,6 +26,8 @@ MODULE step_oce
    USE bdytra          ! bdy cond. for tracers            (bdy_tra routine)
    USE bdydyn3d        ! bdy cond. for baroclinic vel.  (bdy_dyn3d routine)
 
+   USE trdtra   , ONLY : l_trdtra
+
    USE isf_oce         ! ice shelf boundary condition
    USE isfstp          ! ice shelf boundary condition     (isf_stp routine)
 
