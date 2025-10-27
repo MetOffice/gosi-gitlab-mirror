@@ -100,8 +100,13 @@ CONTAINS
          ! Open Netcdf file to find dimension id
          CALL iom_nf90_check( nf90_open(path=TRIM(filename), mode=nf90_nowrite, ncid=ncid),   &
             &                 TRIM( '   Could not open '//TRIM(filename) ) )
-         CALL iom_nf90_check( nf90_inq_dimid(ncid,'x',xdim), '' )
-         CALL iom_nf90_check( nf90_inq_dimid(ncid,'y',ydim), '' )
+         istat = nf90_inq_dimid( ncid, 'x', xdim )
+         IF( istat == nf90_noerr ) THEN
+            CALL iom_nf90_check( nf90_inq_dimid( ncid, 'y', ydim ), '' )
+         ELSE
+            CALL iom_nf90_check( nf90_inq_dimid( ncid, 'x_grid_T', xdim ), '' )
+            CALL iom_nf90_check( nf90_inq_dimid( ncid, 'y_grid_T', ydim ), '' )
+         END IF
          CALL iom_nf90_check( nf90_inq_dimid(ncid,'deptht',zdim), '' )
          CALL iom_nf90_check( nf90_inq_dimid(ncid,'time_counter',tdim), '' )
          CALL iom_nf90_check( nf90_inquire_dimension(ncid, tdim, len=ntimes), '' )

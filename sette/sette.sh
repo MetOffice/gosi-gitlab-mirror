@@ -130,7 +130,7 @@ if [ $# -gt 0 ]; then
                echo '-A to run tests in attached (SPMD) mode (default: MPMD with key_xios)'
                echo '-n "CFG1_to_test CFG2_to_test ..." to test some specific configurations'
                echo '-x "TEST_type TEST_type ..." to specify particular type(s) of test(s) to run after compilation'
-               echo '    TEST_type choices are: COMPILE RESTART REPRO CORRUPT PHYOPTS ROTSYM TRANSFORM COUPLING'
+               echo '    TEST_type choices are: COMPILE RESTART REPRO PHYOPTS ROTSYM TRANSFORM COUPLING STANDALONE'
                echo '-v "subdir" optional validation record subdirectory to be created below NEMO_VALIDATION_DIR'
                echo '-g "group_suffix" single character suffix to be appended to the standard _ST suffix used'
                echo '                  for SETTE-built configurations (needed if sette.sh invocations may overlap)'
@@ -252,7 +252,7 @@ if [[ $? != 0 ]]; then
 fi
 
 # wait for sette jobs to finish
-if [[ ${WAIT_SETTE} -eq 1 && "${TEST_TYPES[@]}" =~ (RESTART|REPRO|CORRUPT|PHYOPTS|ROTSYM|TRANSFORM|COUPLING) ]]; then
+if [[ ${WAIT_SETTE} -eq 1 && "${TEST_TYPES[@]}" =~ (RESTART|REPRO|PHYOPTS|ROTSYM|TRANSFORM|COUPLING|STANDALONE) ]]; then
    echo ""
    echo "-------------------------------------------------------------"
    echo "wait for sette jobs to finish..."

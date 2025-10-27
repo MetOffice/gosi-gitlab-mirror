@@ -145,8 +145,9 @@ do
         DO_RESTART_2=${DO_RESTART}
         DO_REPRO_1=${DO_REPRO}
         DO_REPRO_2=${DO_REPRO}
-        DO_CORRUPT_0=${DO_CORRUPT}
+        DO_STANDALONE_0=${DO_STANDALONE}
         TRANSFORM_OPT=""
+        [[ ${config} == "ORCA2_ICE_OBS" ]] && [[ ${DO_STANDALONE} == "1" ]] && DO_REPRO_2="1"
         if [[ ${DO_TRANSFORM} == "1" ]] ; then
             # Ensure reference run for TRANSFORM test
             [[ "${config}" != "ORCA2_ICE_OBS" ]] && DO_RESTART_1="1"
@@ -163,7 +164,7 @@ do
                 DO_REPRO_2="0"
                 [ "${config}" != "ORCA2_ICE_OBS" ] && DO_REPRO_1="0"
                 [ "${config}" == "ORCA2_ICE_OBS" ] && DO_RESTART_1="0"
-                DO_CORRUPT_0="0"
+                DO_STANDALONE_0="0"
             fi
         fi
 
@@ -923,7 +924,7 @@ fi
 ## Test assimilation interface code, OBS and ASM for reproducibility
 ## Restartability not tested (ASM code not restartable while increments are being applied)
 if [ ${config} == "ORCA2_ICE_OBS" ] ;  then
-    SETTE_CONFIG="ORCA2_ICE_OBS"${CONFIG_SUFFIX}
+    SETTE_CONFIG="${config}${CONFIG_SUFFIX}"
     if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
     then
         ITEND=16  # 1 day
@@ -939,17 +940,30 @@ if [ ${config} == "ORCA2_ICE_OBS" ] ;  then
         sync_config  ${CONFIG_DIR0}/ORCA2_ICE_PISCES ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
         ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r ORCA2_ICE_PISCES -d "OCE ICE" ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
-                   -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "key_asminc ${ADD_KEYS}" del_key "key_top ${DEL_KEYS}" || exit 1
+                   -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "key_linssh key_asminc ${ADD_KEYS}" del_key "key_top key_qco ${DEL_KEYS}" || exit 1
+        if [ ${DO_STANDALONE} -eq 1 ]; then
+            # Change of the SETTE configuration
+            SETTE_CONFIG="${config}_SAO${CONFIG_SUFFIX}"
+            # Cleaning and synchronisation of the target directory
+            clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
+            sync_config ${CONFIG_DIR0}/ORCA2_ICE_PISCES ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
+            # Build the NEMO SAO executable
+            ./makenemo -m ${CMP_NAM} -n "${config}_SAO${CONFIG_SUFFIX}" -r ORCA2_ICE_PISCES -d "OCE ICE SAO" ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+                       -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "key_linssh ${ADD_KEYS}" del_key "key_top key_qco ${DEL_KEYS}" || exit 1
+            # Restore the base SETTE configuration
+            SETTE_CONFIG="${config}${CONFIG_SUFFIX}"
+        fi
     fi
 
     # Configure and submit test runs for the ORCA2_ICE_OBS SETTE configuration
     # (if any)
-    if [ ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" -o ${DO_STANDALONE} == "1" ] ; then
 
         # Default test-run configuration for the ORCA2_ICE_OBS SETTE
         # configuration
         EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
         cd ${EXE_DIR}
+        MODELDATA="./O2L3OBS_84_1ts_00010101_00010102_SAO.nc"
         set_namelist namelist_cfg cn_exp \"O2L3OBS\"
         set_namelist namelist_cfg nn_it000 1
         set_namelist namelist_cfg nn_itend ${ITEND}
@@ -961,8 +975,31 @@ if [ ${config} == "ORCA2_ICE_OBS" ] ;  then
         set_namelist namelist_cfg sn_cfctl%l_obsstat .true.
         set_namelist namelist_cfg ln_diaobs .true.
         set_namelist namelist_cfg nn_obsgroups 5
-        set_namelist namelist_cfg dn_dobsini 00010101.000000
+        # Exclude the initial state from the application of the OBS operator:
+        #   - ensure the time-step length is set to 3 hours
+        set_namelist namelist_cfg rn_Dt 10800
+        #   - set the start date for the application of the OBS operator to 3
+        #     hours from the start of the model run
+        set_namelist namelist_cfg dn_dobsini 00010101.030000
         set_namelist namelist_cfg dn_dobsend 00010102.000000
+        # Ensure all diagnostic output, including that related to the SBC, is
+        # available at each time step
+        set_namelist namelist_cfg nn_fsbc 1
+        # Configure the diagnostic output to correspond to the model variables
+        # used by OBS:
+        #   - increase the diagnostic output frequency
+        #   - maximise the output precision
+        #   - reduce the number of diagnostic output fields
+        #   - replace the output of the sea-ice fraction (whose non-zero values
+        #     are capped at a minimum of 1e-6) with the corresponding output
+        #     from SBC (which does not include such limit)
+        #   - collate output associated with different grids into a common
+        #     output file
+        sed -i -E -e 's/"5d"/"1ts"/g;s/name_suffix="_grid_T"/name_suffix="_SAO"/' \
+                  -e 's/<field /<field prec="8" /g' \
+                  -e '/<file_group id="oce_5d" /p;/<file id="file1"/p;/<(\/)?file(_group)?[> ]/d' \
+                  -e '/<field [^>]*name="([suv]o)?(zos)?(thetao)?"/p;/<field /d' \
+                  -e '/<\/file_definition>/i<field prec="8" field_ref="ice_cover" name="siconc"/></file></file_group>' ./file_def_nemo-oce.xml
         # Create namobs_dta namelists to append
         temp_obs_namelist=${EXE_DIR}/temp_obs_namelist_cfg
 cat > ${temp_obs_namelist} << EOF
@@ -1001,13 +1038,24 @@ ln_surf = .true.
 cn_obsfiles = 'sic_01.nc'
 cn_obstypes = 'ICECONC'
 /
+&namsao
+   sao_files(1) = "${MODELDATA}"
+   nn_sao_idx(1) = 1
+   nn_sao_freq = 1
 EOF
-        cat temp_obs_namelist_cfg >> namelist_cfg
+        for(( n=1; n <= ${ITEND}; n++ )); do
+            echo "   sao_files($(( n + 1 ))) = \"${MODELDATA}\"" >> ${temp_obs_namelist}
+            echo "   nn_sao_idx($(( n + 1 ))) = ${n}" >> ${temp_obs_namelist}
+        done
+        echo "/" >> ${temp_obs_namelist}
+        cat ${temp_obs_namelist} >> namelist_cfg
         set_namelist namelist_cfg ln_bkgwri .true.
         set_namelist namelist_cfg ln_trainc .true.
         set_namelist namelist_cfg ln_dyninc .true.
         set_namelist namelist_cfg ln_sshinc .true.
         set_namelist namelist_cfg ln_asmiau .true.
+        set_namelist namelist_cfg ln_use_test .true.
+        set_namelist namelist_cfg nn_test_icebergs 10
         #remove all useless options for pisces (due to ORCA2_ICE_PISCES reference configuration)
         set_namelist namelist_top_cfg ln_trcdta .false.
         set_namelist namelist_top_cfg ln_trcbc  .false.
@@ -1024,20 +1072,33 @@ EOF
         set_namelist_opt namelist_cfg ln_tile ${USING_TILING} .true. .false.
         set_xio_using_server iodef.xml ${USING_MPMD}
         NPROC=32
+        # Identical base configuration for ORCA2_ICE_OBS and ORCA2_ICE_OBS_SAO
+        # SETTE runs
+        cp ./namelist_cfg ../../${config}_SAO${CONFIG_SUFFIX}/EXP00/
 
         ## Reproducibility tests
         names=""
         [[ ${DO_REPRO_1} == "1" ]] && names="${names} REPRO_4_8"
         [[ ${DO_REPRO_2} == "1" ]] && names="${names} REPRO_8_4"
+        [[ ${DO_STANDALONE} == "1" ]] && names="${names} SAO"
         for name in ${names}; do
+            if [[ ${name} == "SAO" ]]; then
+                SETTE_CONFIG="${config}_SAO${CONFIG_SUFFIX}"
+            else
+                SETTE_CONFIG="${config}${CONFIG_SUFFIX}"
+            fi
             export TEST_NAME=${name}
             cd ${SETTE_DIR}
             . ./prepare_exe_dir.sh
             set_valid_dir
             clean_valid_dir
-            JOB_FILE=${EXE_DIR}/run_job.sh
-            if [ -f ${JOB_FILE} ] ; then \rm ${JOB_FILE} ; fi
             cd ${EXE_DIR}
+            if [[ ${name} == "SAO" ]]; then
+                [[ -e ${MODELDATA} ]] || ln -s ../../${config}${CONFIG_SUFFIX}/REPRO_8_4/${MODELDATA} ./
+            else
+                JOB_FILE=${EXE_DIR}/run_job.sh
+                if [ -f ${JOB_FILE} ] ; then \rm ${JOB_FILE} ; fi
+            fi
             if [[ ${name} == "REPRO_4_8" ]]; then
                 set_namelist namelist_cfg cn_exp \"O2L3OBS_48\"
             else
@@ -1046,13 +1107,13 @@ EOF
                 set_namelist namelist_cfg jpnj 4
             fi
 
-            set_namelist namelist_cfg ln_use_test .true.
-            set_namelist namelist_cfg nn_test_icebergs 10
-
             cd ${SETTE_DIR}
             . ./prepare_job.sh input_ORCA2_ICE_OBS.cfg $NPROC ${TEST_NAME} ${MPIRUN_FLAG} ${JOB_FILE} ${NUM_XIOSERVERS} ${NEMO_VALID}
             cd ${SETTE_DIR}
-            . ./fcm_job.sh $NPROC ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
+            # The SAO test run depends on the REPRO_8_4 test run
+            if [[ ${DO_STANDALONE} != "1" ]] || [[ ${name} != "REPRO_8_4" ]]; then
+                . ./fcm_job.sh $NPROC ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
+            fi
         done
 
     fi
@@ -1083,7 +1144,7 @@ if [ ${config} == "AGRIF_DEMO" ] ;  then
     fi
 
     # Configure and submit test runs for the AGRIF_DEMO configuration (if any)
-    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_CORRUPT} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_STANDALONE} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
 
         # Default test-run configuration for the AGRIF_DEMO SETTE configuration
         EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
@@ -1205,7 +1266,7 @@ if [ ${config} == "AGRIF_DEMO" ] ;  then
         done
 
         ## test code corruption with AGRIF_DEMO (phase 1) ==> Compile with key_agrif but run with no zoom
-        if [ ${DO_CORRUPT_0} == "1" ] ;  then
+        if [ ${DO_STANDALONE_0} == "1" ] ;  then
             if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
             then
                 ITEND=16   # 2 days
@@ -1235,7 +1296,7 @@ if [ ${config} == "AGRIF_DEMO" ] ;  then
 
             ## test code corruption with AGRIF_DEMO (phase 2) ==> Compile without key_agrif (to be compared with AGRIF_DEMO_ST/ORCA2)
             SETTE_CONFIG="AGRIF_DEMO_NOAGRIF"${CONFIG_SUFFIX}
-            export TEST_NAME="ORCA2"
+            export TEST_NAME="NOAGRIF"
             cd ${MAIN_DIR}
             #
             # syncronisation if target directory/file exist (not done by makenemo)

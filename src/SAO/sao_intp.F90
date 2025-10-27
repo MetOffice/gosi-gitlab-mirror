@@ -7,6 +7,7 @@ MODULE sao_intp
    !!----------------------------------------------------------------------
    !        ! NEMO modules
    USE in_out_manager
+   USE dom_oce, ONLY : narea
    USE diaobs
    !        ! Stand Alone Observation operator modules
    USE sao_read
@@ -41,6 +42,9 @@ CONTAINS
       CALL sao_rea_dri( Kmm, ifile )
       CALL mpp_max( 'sao_interp', nstop )   ! Error check across all processes
       !
+      ! Open 'time.step' file
+      IF(lwm) CALL ctl_opn( numstp, 'time.step', 'REPLACE', 'FORMATTED', 'SEQUENTIAL', -1, numout, lwp, narea )
+      !
       DO WHILE ( istp <= nitend .AND. nstop == 0 )
          IF (ifile <= n_files + 1) THEN
             IF ( MOD( istp, nn_sao_freq ) == MOD( nit000, nn_sao_freq ) ) THEN
@@ -49,6 +53,10 @@ CONTAINS
             ENDIF
             CALL dia_obs( istp, Kmm )
          ENDIF
+         !
+         WRITE( numstp, '(1x,i8)' ) istp   ! Update 'time.step' counter
+         REWIND( numstp )
+         !
          CALL mpp_max( 'sao_interp', nstop )   ! Error check across all processes
          istp = istp + 1
       END DO
