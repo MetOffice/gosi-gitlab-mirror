@@ -57,8 +57,8 @@ do
    echo ./sette.sh ${GROUP_SETS[$gs]} -x "COMPILE" -n "$confstr"
         ./sette.sh ${GROUP_SETS[$gs]} -x "COMPILE" -n "$confstr"
    # Now run the test (and finish linking if necessary)
-   echo ./sette.sh ${GROUP_SETS[$gs]} -x "RESTART REPRO CORRUPT" -n "$confstr"
-        ./sette.sh ${GROUP_SETS[$gs]} -x "RESTART REPRO CORRUPT" -n "$confstr"
+   echo ./sette.sh ${GROUP_SETS[$gs]} -x "RESTART REPRO STANDALONE" -n "$confstr"
+        ./sette.sh ${GROUP_SETS[$gs]} -x "RESTART REPRO STANDALONE" -n "$confstr"
    wait_on_q
  done
 done

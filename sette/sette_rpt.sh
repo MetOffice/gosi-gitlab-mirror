@@ -12,8 +12,11 @@
 # report format
 format_field1="%-35s"
 
-# exit codes and warning flags
-declare -i {REPRO_EC,RESTA_EC,TRANSFORM_EC,REFCMP_EC,CPUCMP_EC,OCEOUT_EC,AGRIF_EC,ROT_EC,PHYOPT_EC,MD_WARN}=0
+# Exit codes and warning flags
+declare -i {REPRO_EC,RESTA_EC,TRANSFORM_EC,REFCMP_EC,CPUCMP_EC,OCEOUT_EC,ROT_EC,PHYOPT_EC,STANDALONE_EC,MD_WARN}=0
+
+# List of status time-series files
+statfiles="run.stat tracer.stat obs.stat"
 
 function get_dorv() {
   if [ $lastchange == 'old' ] ; then
@@ -860,52 +863,58 @@ function runtest(){
   fi
 }
 
-function identictest(){
+function standalonetest(){
 #
-# Checks AGRIF does not corrupt results with no AGRIF zoom by comparing run.stat files
+# Compare time-series output files from a reference run with corresponding
+# files produced by a run of an alternative model configuration
 #
-  vdir=$1
-  nam=$2
-  nam2=$3
-  pass=$4
+  vdir=$1    # Validation directory
+  nam=$2     # Base configuration name
+  rref=$3    # Name of the reference run
+  rtest=$4   # Name of the run of the alternative configuration
+  pass=$5    # First (0) or second (1) pass
 #
   get_dorv
 #
-  if [ -d $vdir/$mach/$dorv/$nam ] ; then
-   rep=`ls -1rt $vdir/$mach/$dorv/$nam/ |  tail -1l`
-   f1s=${vdir}/${mach}/${dorv}/${nam}/${rep}/run.stat
-   f2s=${vdir}/${mach}/${dorv2}/${nam2}/${rep}/run.stat
-#
-   if  [ -f $f1s ] && [ -f $f2s ] ; then
-      cmp -s $f1s $f2s
-      if [ $? == 0 ]; then
-          if [ $pass == 0 ]; then
-	      printf "${format_field1} %s %s %s\n" "${rep} AGRIF vs ${rep} NOAGRIF" "run.stat    unchanged        passed  :" $dorv $dorv2
-          fi
-      else
-          get_ktdiff $f1s $f2s
-          printf "\e[38;5;196m${format_field1} %s %s %s %s %-5s %s\e[0m\n" "${rep} AGRIF vs ${rep} NOAGRIF" "run.stat    changed        FAILED : " $dorv $dorv2 " (results are different after " $ktdiff " time steps)"
-          AGRIF_EC=1
-#
-# Offer view of differences on the second pass
-#
-          if [ $pass == 1 ]; then
-	      echo "<return> to view run.stat differences"
-	      read y
-	      sdiff $f1s $f2s
-	      echo "<return> to continue"
-	      read y
-          fi
-      fi
-   else
-      printf "${format_field1} %-27s %s\n" $nam $nam2 " incomplete test"
-      AGRIF_EC=1
-   fi
-  else
-      printf "${format_field1} %-27s %s\n" " " " " " non-existent test directory"
-      AGRIF_EC=1
+  if [ ! -d ${vdir}/${mach}/${dorv}/${nam} ] || [ ! -d ${vdir}/${mach}/${dorv}/${nam}_${rtest} ]; then
+    printf "${format_field1} %-28s %s\n" "${nam}_${rtest} vs ${nam}" "directory" "MISSING"
   fi
+  EC0=1   # Initial test error code
+  for testfile in ${statfiles}; do
+    f1=${vdir}/${mach}/${dorv}/${nam}/${rref}/${testfile}
+    f2=${vdir}/${mach}/${dorv}/${nam}_${rtest}/${rtest}/${testfile}
+    if [ -f ${f1} ] && [ -f ${f2} ]; then
+      EC=1   # Initial test-file error code
+      label=`printf "%-7s %s" "${rtest}" "vs ${nam}/${rref}"`
+      # Comparison
+      cmp -s ${f1} ${f2}
+      if [ $? == 0 ]; then
+        if [ ${pass} == 0 ]; then
+          printf "${format_field1} %-11s %s\n" "${label}" "${testfile}" "identical        passed  : ${dorv}"
+          EC=0    # Mark current comparison as succesful
+          EC0=0   # Mark overall test as successful
+        fi
+      else
+        if [ ${testfile} == 'run.stat' ]; then
+          get_ktdiff ${f1} ${f2}
+        else
+          get_ktdiff2 ${f1} ${f2}
+        fi
+        printf "\e[38;5;196m${format_field1} %-11s %s\e[0m\n" "${label}" "${testfile}" "differs          FAILED  : ${dorv} (results differ after ${ktdiff} time steps)"
+        if [ ${pass} -eq 1 ]; then
+          echo "<enter> to view the difference"
+          read y
+          sdiff $f1 $f2
+          echo "<enter> to continue"
+          read y
+        fi
+      fi
+      [ ${EC} == 1 ] && STANDALONE_EC=1   # Unsuccessful comparison found
+    fi
+  done
+  [ ${EC0} == 1 ] && STANDALONE_EC=1   # No successful comparison found
 }
+
 ########################### END of function definitions #################################
 ##                                                                                     ##
 ##    Main script                                                                      ##
@@ -948,14 +957,15 @@ rev=""; sha=""
              DO_COMPARE=1
              ;;
           x) TEST_TYPES=$OPTARG
-             [[ ${TEST_TYPES[*]} =~ .*RESTART.*   ]] && export DO_RESTART=1   || DO_RESTART=0
-             [[ ${TEST_TYPES[*]} =~ .*REPRO.*     ]] && export DO_REPRO=1     || DO_REPRO=0
-             [[ ${TEST_TYPES[*]} =~ .*CORRUPT.*   ]] && export DO_CORRUPT=1   || DO_CORRUPT=0
-             [[ ${TEST_TYPES[*]} =~ .*PHYOPTS.*   ]] && export DO_PHYOPTS=1   || DO_PHYOPTS=0
-             [[ ${TEST_TYPES[*]} =~ .*ROTSYM.*    ]] && export DO_ROTSYM=1    || DO_ROTSYM=0
-             [[ ${TEST_TYPES[*]} =~ .*TRANSFORM.* ]] && export DO_TRANSFORM=1 || DO_TRANSFORM=0
-             [[ ${TEST_TYPES[*]} =~ .*COUPLING.*  ]] && export DO_COUPLING=1  || DO_COUPLING=0
-             [[ ${TEST_TYPES[*]} =~ .*COMPARE.*   ]] && export DO_COMPARE=1   || DO_COMPARE=0
+             TEST_TYPES=${TEST_TYPES/CORRUPT/STANDALONE}   # Translation of a legacy option
+             [[ ${TEST_TYPES[*]} =~ .*RESTART.*    ]] && export DO_RESTART=1    || DO_RESTART=0
+             [[ ${TEST_TYPES[*]} =~ .*REPRO.*      ]] && export DO_REPRO=1      || DO_REPRO=0
+             [[ ${TEST_TYPES[*]} =~ .*PHYOPTS.*    ]] && export DO_PHYOPTS=1    || DO_PHYOPTS=0
+             [[ ${TEST_TYPES[*]} =~ .*ROTSYM.*     ]] && export DO_ROTSYM=1     || DO_ROTSYM=0
+             [[ ${TEST_TYPES[*]} =~ .*TRANSFORM.*  ]] && export DO_TRANSFORM=1  || DO_TRANSFORM=0
+             [[ ${TEST_TYPES[*]} =~ .*COUPLING.*   ]] && export DO_COUPLING=1   || DO_COUPLING=0
+             [[ ${TEST_TYPES[*]} =~ .*COMPARE.*    ]] && export DO_COMPARE=1    || DO_COMPARE=0
+             [[ ${TEST_TYPES[*]} =~ .*STANDALONE.* ]] && export DO_STANDALONE=1 || DO_STANDALONE=0
              echo "-x: will check ${TEST_TYPES[*]} test(s) for current report"
              echo "";;
           v) SETTE_SUB_VAL=$OPTARG;;
@@ -989,7 +999,7 @@ rev=""; sha=""
                  echo ' -S REFERENCE commit short (8-digits) SHA :'
                  echo '     compare sette results against the specified SHA (use to over-ride value set in param.cfg)'
                  echo ' -x test :'
-                 echo '     select specific tests to be reported (RESTART, REPRO, PHYOPTS, CORRUPT, TRANSFORM, COMPARE, COUPLING)'
+                 echo '     select specific tests to be reported (RESTART, REPRO, PHYOPTS, CORRUPT, TRANSFORM, COMPARE, COUPLING, STANDALONE)'
                  echo ' -n test configuration :'
                  echo '     select specific test configurations to be included in the test report'
                  echo ' -v sub_dir :'
@@ -1180,13 +1190,24 @@ do
         runtest $NEMO_VALID ${coupling_test} $pass "CPL"
      done
   fi
-  # AGRIF special check to ensure results are unchanged with and without key_agrif
-  if [[ ${TEST_CONFIGS[@]} =~ "AGRIF_DEMO" && ${DO_CORRUPT} -eq 1 ]]; then
-     echo ""
-     echo "   !----agrif check----!   "
-     dir1=AGRIF_DEMO_NOAGRIF
-     dir2=AGRIF_DEMO
-     identictest $NEMO_VALID $dir1 $dir2 $pass
+
+  # Test of standalone model variants
+  #   SAO:     comparison of ORCA2_ICE_OBS observation-operator output with
+  #            corresponding output from the standalone observation operator
+  #            based on ORCA2_ICE_OBS model fields
+  #   NOAGRIF: comparison of a run with AGRIF (but without any inset) and
+  #            a corresponding run without AGRIF
+  if [ ${DO_STANDALONE} -eq 1 ]; then
+      echo ""
+      echo "   !----standalone----!   "
+      for standalone_run in ORCA2_ICE_OBS:SAO:REPRO_8_4 AGRIF_DEMO:NOAGRIF:ORCA2; do
+          conf=`echo ${standalone_run} | cut -f 1 -d ':'`
+          run_test=`echo ${standalone_run} | cut -f 2 -d ':'`
+          run_ref=`echo ${standalone_run} | cut -f 3 -d ':'`
+          if [[ ${TEST_CONFIGS[@]} =~ "${conf}" ]]; then
+              standalonetest ${NEMO_VALID} ${conf} ${run_ref} ${run_test} ${pass}
+          fi
+      done
   fi
 
   # before/after tests
@@ -1238,7 +1259,7 @@ if [[ ${MD_WARN} -ge 1 ]]; then
     echo
 fi
 # error code
-SETTE_EC=$((REPRO_EC+RESTA_EC+TRANSFORM_EC+REFCMP_EC+CPUCMP_EC+OCEOUT_EC+AGRIF_EC+PHYOPT_EC+ROT_EC))
+SETTE_EC=$((REPRO_EC+RESTA_EC+TRANSFORM_EC+REFCMP_EC+CPUCMP_EC+OCEOUT_EC+AGRIF_EC+PHYOPT_EC+ROT_EC+STANDALONE_EC))
 echo ""
 echo "SETTE Report Exit Code: ${SETTE_EC}"
 

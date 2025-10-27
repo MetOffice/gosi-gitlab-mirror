@@ -74,21 +74,23 @@ fi
 export DO_COMPILE=0
 export DO_RESTART=0  
 export DO_REPRO=0
-export DO_CORRUPT=0
 export DO_PHYOPTS=0
 export DO_TRANSFORM=0
 export DO_ROTSYM=0
 export DO_COUPLING=0
+export DO_STANDALONE=0
 export SCTRANSFORMS=()
-TEST_TYPES=(${SETTE_TEST_TYPES[@]:-"COMPILE RESTART REPRO CORRUPT PHYOPTS ROTSYM COUPLING"})
-if [[ ${TEST_TYPES[*]} =~ .*COMPILE.*   ]]; then export DO_COMPILE=1   ;fi
-if [[ ${TEST_TYPES[*]} =~ .*RESTART.*   ]]; then export DO_RESTART=1   ;fi
-if [[ ${TEST_TYPES[*]} =~ .*REPRO.*     ]]; then export DO_REPRO=1     ;fi
-if [[ ${TEST_TYPES[*]} =~ .*CORRUPT.*   ]]; then export DO_CORRUPT=1   ;fi
-if [[ ${TEST_TYPES[*]} =~ .*PHYOPTS.*   ]]; then export DO_PHYOPTS=1   ;fi
-if [[ ${TEST_TYPES[*]} =~ .*ROTSYM.*    ]]; then export DO_ROTSYM=1    ;fi
-if [[ ${TEST_TYPES[*]} =~ .*COUPLING.*  ]]; then export DO_COUPLING=1  ;fi
-if [[ ${TEST_TYPES[*]} =~ .*TRANSFORM.* ]]; then export DO_TRANSFORM=1 ;fi
+TEST_TYPES=(${SETTE_TEST_TYPES[@]:-"COMPILE RESTART REPRO PHYOPTS ROTSYM COUPLING STANDALONE"})
+if [[ ${TEST_TYPES[*]} =~ .*COMPILE.*    ]]; then export DO_COMPILE=1    ;fi
+if [[ ${TEST_TYPES[*]} =~ .*RESTART.*    ]]; then export DO_RESTART=1    ;fi
+if [[ ${TEST_TYPES[*]} =~ .*REPRO.*      ]]; then export DO_REPRO=1      ;fi
+if [[ ${TEST_TYPES[*]} =~ .*PHYOPTS.*    ]]; then export DO_PHYOPTS=1    ;fi
+if [[ ${TEST_TYPES[*]} =~ .*ROTSYM.*     ]]; then export DO_ROTSYM=1     ;fi
+if [[ ${TEST_TYPES[*]} =~ .*COUPLING.*   ]]; then export DO_COUPLING=1   ;fi
+if [[ ${TEST_TYPES[*]} =~ .*TRANSFORM.*  ]]; then export DO_TRANSFORM=1  ;fi
+if [[ ${TEST_TYPES[*]} =~ .*STANDALONE.* ]]; then export DO_STANDALONE=1 ;fi
+# Translate legacy test type
+if [[ ${TEST_TYPES[*]} =~ .*CORRUPT.*    ]]; then export DO_STANDALONE=1 ; TEST_TYPES=${TEST_TYPES/CORRUPT/STANDALONE}; fi
 # LIST OF SOURCE-CODE TRANSFORMATIONS USED FOR THE TRANSFORM TEST
 # (list of 'passthrough' and/or names of available transformations)
 [ ${DO_TRANSFORM} -eq 1 ] && export SCTRANSFORMS=(passthrough OpenACC)

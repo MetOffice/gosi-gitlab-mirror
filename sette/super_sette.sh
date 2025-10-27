@@ -28,8 +28,8 @@ do
  do
    confstr="${FULLSET[$n]}"
    # run the test 
-   echo ./sette.sh ${GROUP_SETS[$gs]} -x "RESTART REPRO CORRUPT" -n "$confstr"
-        ./sette.sh ${GROUP_SETS[$gs]} -x "RESTART REPRO CORRUPT" -n "$confstr"
+   echo ./sette.sh ${GROUP_SETS[$gs]} -x "RESTART REPRO STANDALONE" -n "$confstr"
+        ./sette.sh ${GROUP_SETS[$gs]} -x "RESTART REPRO STANDALONE" -n "$confstr"
  done
 done
 #
