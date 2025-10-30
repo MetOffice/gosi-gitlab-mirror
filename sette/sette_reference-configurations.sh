@@ -927,9 +927,9 @@ if [ ${config} == "ORCA2_ICE_OBS" ] ;  then
     SETTE_CONFIG="${config}${CONFIG_SUFFIX}"
     if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
     then
-        ITEND=16  # 1 day
+        ITEND=16  # 2 days
     else
-        ITEND=80  # 5 days
+        ITEND=80  # 10 days
     fi
 
     if [ ${DO_COMPILE} -eq 1 ] ;  then
@@ -941,18 +941,20 @@ if [ ${config} == "ORCA2_ICE_OBS" ] ;  then
         #
         ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r ORCA2_ICE_PISCES -d "OCE ICE" ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "key_linssh key_asminc ${ADD_KEYS}" del_key "key_top key_qco ${DEL_KEYS}" || exit 1
-        if [ ${DO_STANDALONE} -eq 1 ]; then
-            # Change of the SETTE configuration
-            SETTE_CONFIG="${config}_SAO${CONFIG_SUFFIX}"
-            # Cleaning and synchronisation of the target directory
-            clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-            sync_config ${CONFIG_DIR0}/ORCA2_ICE_PISCES ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-            # Build the NEMO SAO executable
-            ./makenemo -m ${CMP_NAM} -n "${config}_SAO${CONFIG_SUFFIX}" -r ORCA2_ICE_PISCES -d "OCE ICE SAO" ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
-                       -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "key_linssh ${ADD_KEYS}" del_key "key_top key_qco ${DEL_KEYS}" || exit 1
-            # Restore the base SETTE configuration
-            SETTE_CONFIG="${config}${CONFIG_SUFFIX}"
-        fi
+        #if [ ${DO_STANDALONE} -eq 1 ]; then   # This condition has been inactivated as a workaround for integration testing
+                                               # (the current integration-testing implementation does not pass selected test types
+                                               # other than 'COMPILE' during the compilation stage)
+        # Change of the SETTE configuration
+        SETTE_CONFIG="${config}_SAO${CONFIG_SUFFIX}"
+        # Cleaning and synchronisation of the target directory
+        clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
+        sync_config ${CONFIG_DIR0}/ORCA2_ICE_PISCES ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
+        # Build the NEMO SAO executable
+        ./makenemo -m ${CMP_NAM} -n "${config}_SAO${CONFIG_SUFFIX}" -r ORCA2_ICE_PISCES -d "OCE ICE SAO" ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+                   -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "key_linssh ${ADD_KEYS}" del_key "key_top key_qco ${DEL_KEYS}" || exit 1
+        # Restore the base SETTE configuration
+        SETTE_CONFIG="${config}${CONFIG_SUFFIX}"
+        #fi
     fi
 
     # Configure and submit test runs for the ORCA2_ICE_OBS SETTE configuration
@@ -963,7 +965,8 @@ if [ ${config} == "ORCA2_ICE_OBS" ] ;  then
         # configuration
         EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
         cd ${EXE_DIR}
-        MODELDATA="./O2L3OBS_84_1ts_00010101_00010102_SAO.nc"
+        MODELDATA="./O2L3OBS_84_1ts_00010101_00010110_SAO.nc"
+        [[ ${ITEND} == "16" ]] && MODELDATA="./O2L3OBS_84_1ts_00010101_00010102_SAO.nc"
         set_namelist namelist_cfg cn_exp \"O2L3OBS\"
         set_namelist namelist_cfg nn_it000 1
         set_namelist namelist_cfg nn_itend ${ITEND}
