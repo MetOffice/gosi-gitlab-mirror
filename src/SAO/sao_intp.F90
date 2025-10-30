@@ -43,7 +43,7 @@ CONTAINS
       CALL mpp_max( 'sao_interp', nstop )   ! Error check across all processes
       !
       ! Open 'time.step' file
-      IF(lwm) CALL ctl_opn( numstp, 'time.step', 'REPLACE', 'FORMATTED', 'SEQUENTIAL', -1, numout, lwp, narea )
+      IF( lwm ) CALL ctl_opn( numstp, 'time.step', 'REPLACE', 'FORMATTED', 'SEQUENTIAL', -1, numout, lwp, narea )
       !
       DO WHILE ( istp <= nitend .AND. nstop == 0 )
          IF (ifile <= n_files + 1) THEN
@@ -54,8 +54,10 @@ CONTAINS
             CALL dia_obs( istp, Kmm )
          ENDIF
          !
-         WRITE( numstp, '(1x,i8)' ) istp   ! Update 'time.step' counter
-         REWIND( numstp )
+         IF( lwm ) THEN
+            WRITE( numstp, '(1x,i8)' ) istp   ! Update 'time.step' counter
+            REWIND( numstp )
+         END IF
          !
          CALL mpp_max( 'sao_interp', nstop )   ! Error check across all processes
          istp = istp + 1
