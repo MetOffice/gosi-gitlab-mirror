@@ -1200,7 +1200,10 @@ do
   if [ ${DO_STANDALONE} -eq 1 ]; then
       echo ""
       echo "   !----standalone----!   "
-      for standalone_run in ORCA2_ICE_OBS:SAO:REPRO_8_4 AGRIF_DEMO:NOAGRIF:ORCA2; do
+      #for standalone_run in ORCA2_ICE_OBS:SAO:REPRO_8_4 AGRIF_DEMO:NOAGRIF:ORCA2; do   # As a workaround for integration testing,
+      #   the reference run used for the testing of the ORCA2_ICE_OBS configuration has been adjusted to a run that is unconnected
+      #   to the REPRO test type 
+      for standalone_run in ORCA2_ICE_OBS:SAO:ORCA2 AGRIF_DEMO:NOAGRIF:ORCA2; do
           conf=`echo ${standalone_run} | cut -f 1 -d ':'`
           run_test=`echo ${standalone_run} | cut -f 2 -d ':'`
           run_ref=`echo ${standalone_run} | cut -f 3 -d ':'`

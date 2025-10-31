@@ -147,7 +147,13 @@ do
         DO_REPRO_2=${DO_REPRO}
         DO_STANDALONE_0=${DO_STANDALONE}
         TRANSFORM_OPT=""
-        [[ ${config} == "ORCA2_ICE_OBS" ]] && [[ ${DO_STANDALONE} == "1" ]] && DO_REPRO_2="1"
+        # Name of the reference run for the STANDALONE test type
+        STANDALONE_REF="ORCA2"
+        # One of the REPRO test runs can be utilised as a reference run for the STANDALONE test of configuration ORCA2_ICE_OBS
+        #[[ ${config} == "ORCA2_ICE_OBS" ]] && [[ ${DO_STANDALONE} == "1" ]] && STANDALONE_REF="" && DO_REPRO_2="1"   # This
+        #   adjustment has been disabled as a workaround for integration testing, in order to avoid the running of the same test
+        #   run twice in parallel by the current integration-testing implementation when both the REPRO and STANDALONE test types
+        #   have been selected
         if [[ ${DO_TRANSFORM} == "1" ]] ; then
             # Ensure reference run for TRANSFORM test
             [[ "${config}" != "ORCA2_ICE_OBS" ]] && DO_RESTART_1="1"
@@ -1079,11 +1085,14 @@ EOF
         # SETTE runs
         cp ./namelist_cfg ../../${config}_SAO${CONFIG_SUFFIX}/EXP00/
 
-        ## Reproducibility tests
+        # Reproducibility test runs
         names=""
         [[ ${DO_REPRO_1} == "1" ]] && names="${names} REPRO_4_8"
         [[ ${DO_REPRO_2} == "1" ]] && names="${names} REPRO_8_4"
-        [[ ${DO_STANDALONE} == "1" ]] && names="${names} SAO"
+        # Standalone test runs
+        [[ ${DO_STANDALONE} == "1" ]] && [[ -n ${STANDALONE_REF} ]] && names="${names} ${STANDALONE_REF}"
+        [[ ${DO_STANDALONE} == "1" ]] && [[ -z ${STANDALONE_REF} ]] && STANDALONE_REF="REPRO_8_4"
+        [[ ${DO_STANDALONE} == "1" ]]                               && names="${names} SAO"
         for name in ${names}; do
             if [[ ${name} == "SAO" ]]; then
                 SETTE_CONFIG="${config}_SAO${CONFIG_SUFFIX}"
@@ -1097,7 +1106,7 @@ EOF
             clean_valid_dir
             cd ${EXE_DIR}
             if [[ ${name} == "SAO" ]]; then
-                [[ -e ${MODELDATA} ]] || ln -s ../../${config}${CONFIG_SUFFIX}/REPRO_8_4/${MODELDATA} ./
+                [[ -e ${MODELDATA} ]] || ln -s ../../${config}${CONFIG_SUFFIX}/${STANDALONE_REF}/${MODELDATA} ./
             else
                 JOB_FILE=${EXE_DIR}/run_job.sh
                 if [ -f ${JOB_FILE} ] ; then \rm ${JOB_FILE} ; fi
@@ -1113,8 +1122,8 @@ EOF
             cd ${SETTE_DIR}
             . ./prepare_job.sh input_ORCA2_ICE_OBS.cfg $NPROC ${TEST_NAME} ${MPIRUN_FLAG} ${JOB_FILE} ${NUM_XIOSERVERS} ${NEMO_VALID}
             cd ${SETTE_DIR}
-            # The SAO test run depends on the REPRO_8_4 test run
-            if [[ ${DO_STANDALONE} != "1" ]] || [[ ${name} != "REPRO_8_4" ]]; then
+            # The SAO test run depends on the test run specified by variable STANDALONE_REF
+            if [[ ${DO_STANDALONE} != "1" ]] || [[ ${name} != "${STANDALONE_REF}" ]]; then
                 . ./fcm_job.sh $NPROC ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
             fi
         done
@@ -1276,7 +1285,7 @@ if [ ${config} == "AGRIF_DEMO" ] ;  then
             else
                 ITEND=150  # 5d and 9h
             fi
-            export TEST_NAME="ORCA2"
+            export TEST_NAME="${STANDALONE_REF}"
             cd ${MAIN_DIR}
             cd ${SETTE_DIR}
             . ./prepare_exe_dir.sh
