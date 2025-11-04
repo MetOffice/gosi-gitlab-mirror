@@ -1263,12 +1263,28 @@ if [ ${config} == "AGRIF_DEMO" ] ;  then
             for nname in namelist_cfg 1_namelist_cfg 2_namelist_cfg 3_namelist_cfg; do
                 if [[ ${name} == "REPRO_2_8" ]]; then
                     set_namelist ${nname} cn_exp \"AGRIF_DEMO_28\"
-                    set_namelist ${nname} jpni 2
-                    set_namelist ${nname} jpnj 8
+                    if [[   ${nname} == "1_namelist_cfg" ]]; then
+			set_namelist ${nname} jpni 1
+			set_namelist ${nname} jpnj 7
+                    elif [[ ( ${nname} == "2_namelist_cfg" ) || ( ${nname} == "3_namelist_cfg" ) ]]; then
+			set_namelist ${nname} jpni 3
+			set_namelist ${nname} jpnj 3
+		    else
+			set_namelist ${nname} jpni 2
+			set_namelist ${nname} jpnj 8
+		    fi
                 else
                     set_namelist ${nname} cn_exp \"AGRIF_DEMO_44\"
-                    set_namelist ${nname} jpni 4
-                    set_namelist ${nname} jpnj 4
+                    if [[   ${nname} == "1_namelist_cfg" ]]; then
+			set_namelist ${nname} jpni 7
+			set_namelist ${nname} jpnj 1
+                    elif [[ ( ${nname} == "2_namelist_cfg" ) || ( ${nname} == "3_namelist_cfg" ) ]]; then
+			set_namelist ${nname} jpni 1
+			set_namelist ${nname} jpnj 9
+		    else
+			set_namelist ${nname} jpni 4
+			set_namelist ${nname} jpnj 4
+		    fi
                 fi
             done
             cd ${SETTE_DIR}
@@ -1316,7 +1332,7 @@ if [ ${config} == "AGRIF_DEMO" ] ;  then
             sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
             #
             ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r AGRIF_DEMO ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
-                       -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "key_agrif ${DEL_KEYS}" || exit 1
+                       -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "key_agrif key_agrif_psisters ${DEL_KEYS}" || exit 1
             EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
             cd ${EXE_DIR}
             set_namelist namelist_cfg cn_exp \"ORCA2\"

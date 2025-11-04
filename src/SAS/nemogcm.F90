@@ -405,6 +405,12 @@ CONTAINS
       !
       IF( ln_timing    )   CALL timing_stop( 'nemo_init')
       !
+# if defined key_agrif
+      IF( Agrif_Root() ) THEN
+          CALL Agrif_MPI_Init(mpi_comm_oce)
+      ENDIF
+# endif
+      !
    END SUBROUTINE nemo_init
 
 
