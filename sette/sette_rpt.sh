@@ -876,10 +876,13 @@ function standalonetest(){
 #
   get_dorv
 #
+  EC0=1   # Initial test error code
   if [ ! -d ${vdir}/${mach}/${dorv}/${nam} ] || [ ! -d ${vdir}/${mach}/${dorv}/${nam}_${rtest} ]; then
     printf "${format_field1} %-28s %s\n" "${nam}_${rtest} vs ${nam}" "directory" "MISSING"
+    [ "${nam}" == "ORCA2_ICE_OBS" ] && EC0=0   # Error-flag suppression in case of missing 'STANDALONE' test-type output directories
+    #   for the 'ORCA2_ICE_OBS' configuration as a workaround for the current continuous-integration-testing setup, which does not
+    #   carry out the 'STANDALONE' test runs for the 'ORCA2_ICE_OBS' configuration
   fi
-  EC0=1   # Initial test error code
   for testfile in ${statfiles}; do
     f1=${vdir}/${mach}/${dorv}/${nam}/${rref}/${testfile}
     f2=${vdir}/${mach}/${dorv}/${nam}_${rtest}/${rtest}/${testfile}
