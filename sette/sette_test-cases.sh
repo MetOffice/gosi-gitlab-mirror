@@ -121,9 +121,12 @@ if [ -n "${CUSTOM_DIR}" ]; then
 fi
 CMP_NAM=${1:-$COMPILER}
 CMP_NAM_L=$(echo ${CMP_NAM} | tr '[:upper:]' '[:lower:]')
-# Copy job_batch_COMPILER file for specific compiler into job_batch_template
+# Architecture names that start in 'auto-' trigger the automatic generation of architecture configuration files
+[[ "${CMP_NAM}" != "${CMP_NAM#auto-}" ]] && CMP_NAM_A='auto' || CMP_NAM_A=${CMP_NAM}
+
+# Copy job_batch_${CMP_NAM} file for specific compiler into job_batch_template
 cd ${SETTE_DIR}
-cp BATCH_TEMPLATE/${JOB_PREFIX}-${COMPILER} job_batch_template || exit 1
+cp BATCH_TEMPLATE/${JOB_PREFIX}-${CMP_NAM} job_batch_template || exit 1
 
 # Description of configuration tested:
 # OVERFLOW       : TEST s-coordinates : (tracers) Advection schemes: FCT2, FCT4, ubs 
@@ -190,7 +193,7 @@ if [ ${config} == "OVERFLOW" ];  then
         clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -a OVERFLOW ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a OVERFLOW ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
 
@@ -301,7 +304,7 @@ if [ ${config} == "LOCK_EXCHANGE" ] ;  then
         clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -a LOCK_EXCHANGE ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a LOCK_EXCHANGE ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
 
@@ -416,7 +419,7 @@ if [ ${config} == "IWAVE" ] ;  then
         clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -a IWAVE ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a IWAVE ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
 
@@ -497,7 +500,7 @@ if [ ${config} == "VORTEX" ] ;  then
         clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -a VORTEX ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a VORTEX ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES}  ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
 
@@ -657,7 +660,7 @@ if [ ${config} == "ICE_AGRIF" ] ;  then
         sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
         # ICE_AGRIF uses linssh so remove key_qco if added by default
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -a ICE_AGRIF ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a ICE_AGRIF ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
     fi
 
@@ -781,7 +784,7 @@ if [ ${config} == "ISOMIP+" ]; then
         sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
         # ISOMIP+ uses ln_hpg_isf so remove key_qco if added by default
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -a ISOMIP+ ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a ISOMIP+ ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
     fi
 
@@ -899,7 +902,7 @@ if [ ${config} == "SWG" ] && [ ${USING_QCO} == "yes" ] ;  then
         clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -a SWG ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a SWG ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
 
@@ -1023,9 +1026,9 @@ if [ ${config} == "CPL_OASIS" ] ;  then
         clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -a ${config} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a ${config} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
-        ./tools/maketools -m ${CMP_NAM} -n TOYATM
+        ./tools/maketools -m ${CMP_NAM_A} -n TOYATM
     fi
 
     # Default test-run configuration

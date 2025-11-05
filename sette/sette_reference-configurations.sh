@@ -120,10 +120,12 @@ if [ -n "${CUSTOM_DIR}" ]; then
 fi
 CMP_NAM=${1:-$COMPILER}
 CMP_NAM_L=$(echo ${CMP_NAM} | tr '[:upper:]' '[:lower:]')
+# Architecture names that start in 'auto-' trigger the automatic generation of architecture configuration files
+[[ "${CMP_NAM}" != "${CMP_NAM#auto-}" ]] && CMP_NAM_A='auto' || CMP_NAM_A=${CMP_NAM}
 
-# Copy job_batch_COMPILER file for specific compiler into job_batch_template
+# Copy job_batch_CMP_NAM file for specific compiler into job_batch_template
 cd ${SETTE_DIR}
-cp BATCH_TEMPLATE/${JOB_PREFIX}-${COMPILER} job_batch_template || exit 1
+cp BATCH_TEMPLATE/${JOB_PREFIX}-${CMP_NAM} job_batch_template || exit 1
 # Description of available configurations:
 # GYRE_PISCES       :
 # ORCA2_ICE_PISCES  :
@@ -194,7 +196,7 @@ if [ ${config} == "GYRE_PISCES" ] ; then
         sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
         # GYRE uses linssh so remove key_qco if added by default
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r GYRE_PISCES ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r GYRE_PISCES ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
         MAKENEMO
     fi
@@ -317,7 +319,7 @@ if [ ${config} == "GYRE_GO" ] ; then
         # The GYRE_GO SETTE configuration is based on the GYRE_PISCES reference
         # configuration; in contrast to GYRE_PISCES, the QCO option is selected
         # and the TOP component is disabled
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r GYRE_PISCES ${CUSTOM_DIR:+-t ${CMP_DIR}} -d "OCE" -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r GYRE_PISCES ${CUSTOM_DIR:+-t ${CMP_DIR}} -d "OCE" -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_linssh/} key_qco" del_key "${DEL_KEYS} key_linssh key_top" || exit 1
     fi
 
@@ -441,7 +443,7 @@ if [ ${config} == "ORCA2_ICE_PISCES" ] ; then
         clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r ORCA2_ICE_PISCES ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r ORCA2_ICE_PISCES ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
 
@@ -596,7 +598,7 @@ if [ ${config} == "ORCA2_OFF_PISCES" ]  ;  then
         sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
         # ORCA2_OFF_PISCES uses linssh so remove key_qco if added by default
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r ORCA2_OFF_PISCES ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r ORCA2_OFF_PISCES ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
     fi
 
@@ -717,7 +719,7 @@ if [ ${config} == "AMM12" ] ;  then
         clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r AMM12 ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r AMM12 ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
 
@@ -825,7 +827,7 @@ if [ ${config} == "ORCA2_SAS_ICE" ] ;  then
         sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
         # ORCA2_SAS_ICE uses linssh so remove key_qco if added by default
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r ORCA2_SAS_ICE ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r ORCA2_SAS_ICE ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
     fi
 
@@ -945,7 +947,7 @@ if [ ${config} == "ORCA2_ICE_OBS" ] ;  then
         clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         sync_config  ${CONFIG_DIR0}/ORCA2_ICE_PISCES ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r ORCA2_ICE_PISCES -d "OCE ICE" ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r ORCA2_ICE_PISCES -d "OCE ICE" ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "key_linssh key_asminc ${ADD_KEYS}" del_key "key_top key_qco ${DEL_KEYS}" || exit 1
         #if [ ${DO_STANDALONE} -eq 1 ]; then   # This condition has been inactivated as a workaround for integration testing
                                                # (the current integration-testing implementation does not pass selected test types
@@ -956,7 +958,7 @@ if [ ${config} == "ORCA2_ICE_OBS" ] ;  then
         clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         sync_config ${CONFIG_DIR0}/ORCA2_ICE_PISCES ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         # Build the NEMO SAO executable
-        ./makenemo -m ${CMP_NAM} -n "${config}_SAO${CONFIG_SUFFIX}" -r ORCA2_ICE_PISCES -d "OCE ICE SAO" ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n "${config}_SAO${CONFIG_SUFFIX}" -r ORCA2_ICE_PISCES -d "OCE ICE SAO" ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "key_linssh ${ADD_KEYS}" del_key "key_top key_qco ${DEL_KEYS}" || exit 1
         # Restore the base SETTE configuration
         SETTE_CONFIG="${config}${CONFIG_SUFFIX}"
@@ -1151,7 +1153,7 @@ if [ ${config} == "AGRIF_DEMO" ] ;  then
         clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r AGRIF_DEMO ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r AGRIF_DEMO ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
 
@@ -1331,7 +1333,7 @@ if [ ${config} == "AGRIF_DEMO" ] ;  then
             clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
             sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
             #
-            ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r AGRIF_DEMO ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+            ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r AGRIF_DEMO ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                        -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "key_agrif key_agrif_psisters ${DEL_KEYS}" || exit 1
             EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
             cd ${EXE_DIR}
@@ -1386,7 +1388,7 @@ if [ ${config} == "WED025" ] ;  then
         sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
         # WED025 uses ln_hpg_isf so remove key_qco if added by default
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r WED025 ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r WED025 ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
     fi
 
@@ -1512,7 +1514,7 @@ if [[ ${config} =~ "C1D" ]]  ; then
         [[ ${config} =~ "ASICS" ]] && DEL_KEYS="${DEL_KEYS} key_top" || DEL_KEYS=${DEL_KEYS/" key_top"}
         # if SAS we add SAS src directory
         [[ ${config} =~ "SAS" ]] && ADD_SRC="OCE ICE TOP SAS" || ADD_SRC=""
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r ${config/_*} ${ADD_SRC:+-d "${ADD_SRC}"} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r ${config/_*} ${ADD_SRC:+-d "${ADD_SRC}"} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
         # restore EXPREF symlink
         rm -fv ${CONFIG_DIR0}/${config/_*}/EXPREF
