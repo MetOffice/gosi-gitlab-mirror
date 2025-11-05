@@ -189,7 +189,7 @@ fi
 # example for NOCS ClusterVision system using SLURM batch submission (requires ${SETTE_DIR}/sette_batch_template file)
 #
   #  if [ ${MPI_FLAG} == "no" ] ; then
-		case ${COMPILER} in 
+		case ${CMP_NAM} in 
 			X64_MOBILIS*)
                                 NB_REM=$( echo $NB_PROC $NXIO_PROC | awk '{print ( $1 + $2 ) % 16}')
 		        	if [ ${NB_REM} == 0 ] ; then
@@ -277,7 +277,7 @@ fi
              -e"s:DEF_TOOLS_DIR:${TOOLS_DIR}:" \
              -e"s:MPI_FLAG:${MPI_FLAG}:" \
              -e"s:DEF_NEMO_VALIDATION:${NEMO_VALID}:" -e"s:DEF_NEW_CONF:${SETTE_CONFIG}:" \
-             -e"s:DEF_CMP_NAM:${CMP_NAM}:" -e"s:DEF_TEST_NAME:${TEST_NAME}:" > run_sette_test.job
+             -e"s:DEF_CMP_NAM:${CMP_NAM_A}:" -e"s:DEF_TEST_NAME:${TEST_NAME}:" > run_sette_test.job
 
         case ${COMPILER} in
               XC40_METO*)

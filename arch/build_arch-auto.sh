@@ -73,24 +73,27 @@ Environment variables that can be defined
   ARnemo : archiver
             Can also be specified with the optional argument --ARnemo
 
+  --archname : custom .fcm file name (default: arch-auto.fcm)
+
 EOF
      exit 0 ;;
 
-       --netcdf_c_prefix) NETCDF_C_prefix=${2} ; shift ;;
-       --netcdf_f_prefix) NETCDF_F_prefix=${2} ; shift ;;
-       --hdf5_prefix)     HDF5_prefix=${2}     ; shift ;;
-       --xios_prefix)     XIOS_prefix=${2}     ; shift ;;
-       --oasis_prefix)    OASIS_prefix=${2}    ; shift ;;
-       --psyclone_prefix) PSYCLONE_prefix=${2} ; shift ;;
-       --libmpath)        LIBMpath=${2}        ; shift ;;
-       --curlpath)        CURLpath=${2}        ; shift ;;
-       --zlibpath)        ZLIBpath=${2}        ; shift ;;
-       --fcnemo)          FCnemo=${2}          ; shift ;;
-       --fcflagsnemo)     FCFLAGSnemo=${2}     ; shift ;;
-       --ccnemo)          CCnemo=${2}          ; shift ;;
-       --cppnemo)         CPPnemo=${2}         ; shift ;;
-       --mknemo)          MKnemo=${2}          ; shift ;;
-       --arnemo)          ARnemo=${2}          ; shift ;;
+       --netcdf_c_prefix) NETCDF_C_prefix=${2}   ; shift ;;
+       --netcdf_f_prefix) NETCDF_F_prefix=${2}   ; shift ;;
+       --hdf5_prefix)     HDF5_prefix=${2}       ; shift ;;
+       --xios_prefix)     XIOS_prefix=${2}       ; shift ;;
+       --oasis_prefix)    OASIS_prefix=${2}      ; shift ;;
+       --psyclone_prefix) PSYCLONE_prefix=${2}   ; shift ;;
+       --libmpath)        LIBMpath=${2}          ; shift ;;
+       --curlpath)        CURLpath=${2}          ; shift ;;
+       --zlibpath)        ZLIBpath=${2}          ; shift ;;
+       --fcnemo)          FCnemo=${2}            ; shift ;;
+       --fcflagsnemo)     FCFLAGSnemo=${2}       ; shift ;;
+       --ccnemo)          CCnemo=${2}            ; shift ;;
+       --cppnemo)         CPPnemo=${2}           ; shift ;;
+       --mknemo)          MKnemo=${2}            ; shift ;;
+       --arnemo)          ARnemo=${2}            ; shift ;;
+       --archname)        archname=${2%.fcm}.fcm ; shift ;;
 
        *) echo -e "\033[0;31m\nERROR: \"$1\" BAD OPTION\033[0m\n"
           exit 2 ;;
@@ -624,8 +627,7 @@ echo_green "ARnemo=$ARnemo"
 #-----------------------------------------------------
 #
 #
-archname=arch-auto.fcm
-cat > $(realpath $(dirname ${0}))/$archname << EOF
+cat > $(realpath $(dirname ${0}))/${archname:-"arch-auto.fcm"} << EOF
 #
 # This arch file was automatically created by $0
 # $( date )
@@ -664,12 +666,12 @@ EOF
 #
 # Additional module search command for Cray Fortran to enable successful parallel builds
 if [ $ftncomp == "cray" ] ; then
-    echo "bld::tool::fc_modsearch -J" >> $archname
+    echo "bld::tool::fc_modsearch -J" >> ${archname:-"arch-auto.fcm"}
 fi
 #
 echo
-echo "Content of the created $archname:"
+echo "Content of the created ${archname:-"arch-auto.fcm"}:"
 echo "-------------------------------------"
 echo
-cat $(realpath $(dirname ${0}))/$archname
+cat $(realpath $(dirname ${0}))/${archname:-"arch-auto.fcm"}
 echo
