@@ -200,6 +200,8 @@ if [ ${config} == "GYRE_PISCES" ] ; then
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
         MAKENEMO
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the GYRE_PISCES SETTE configuration
     # (if any)
@@ -322,6 +324,8 @@ if [ ${config} == "GYRE_GO" ] ; then
         ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r GYRE_PISCES ${CUSTOM_DIR:+-t ${CMP_DIR}} -d "OCE" -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_linssh/} key_qco" del_key "${DEL_KEYS} key_linssh key_top" || exit 1
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit runs for the GYRE_GO SETTE configuration (if any)
     if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
@@ -446,6 +450,8 @@ if [ ${config} == "ORCA2_ICE_PISCES" ] ; then
         ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r ORCA2_ICE_PISCES ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the ORCA2_ICE_PISCES SETTE
     # configuration (if any)
@@ -601,6 +607,8 @@ if [ ${config} == "ORCA2_OFF_PISCES" ]  ;  then
         ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r ORCA2_OFF_PISCES ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the ORCA2_OFF_PISCES SETTE
     # configuration (if any)
@@ -722,6 +730,8 @@ if [ ${config} == "AMM12" ] ;  then
         ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r AMM12 ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the AMM12 SETTE configuration (if any)
     if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
@@ -830,6 +840,8 @@ if [ ${config} == "ORCA2_SAS_ICE" ] ;  then
         ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r ORCA2_SAS_ICE ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the ORCA2_SAS_ICE SETTE configuration
     # (if any)
@@ -964,6 +976,8 @@ if [ ${config} == "ORCA2_ICE_OBS" ] ;  then
         SETTE_CONFIG="${config}${CONFIG_SUFFIX}"
         #fi
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the ORCA2_ICE_OBS SETTE configuration
     # (if any)
@@ -1156,6 +1170,8 @@ if [ ${config} == "AGRIF_DEMO" ] ;  then
         ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r AGRIF_DEMO ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the AGRIF_DEMO configuration (if any)
     if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_STANDALONE} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
@@ -1391,6 +1407,8 @@ if [ ${config} == "WED025" ] ;  then
         ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r WED025 ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the WED025 configuration (if any)
     if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
@@ -1520,6 +1538,8 @@ if [[ ${config} =~ "C1D" ]]  ; then
         rm -fv ${CONFIG_DIR0}/${config/_*}/EXPREF
         ln -svr ${CONFIG_DIR0}/${config/_*}/EXP_PAPA ${CONFIG_DIR0}/${config/_*}/EXPREF
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the C1D configuration (if any)
     if [ ${DO_RESTART} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
