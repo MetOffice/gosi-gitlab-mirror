@@ -44,8 +44,14 @@ export NEMO_REV=$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)
 
 # Parse command-line arguments
 if [ $# -gt 0 ]; then
-  while getopts n:x:v:g:cybrshTqQteiACFNXuawm: option; do
+  while getopts n:x:v:g:cybrshTqQteiACFNXuawm:p: option; do
      case $option in
+        p) export SETTE_TEST_PHASES=($OPTARG)
+           echo "-p: SETTE phase(s) ${SETTE_TEST_PHASES[@]} selected"
+           echo "";;
+        x) export SETTE_TEST_TYPES=(${OPTARG})
+           echo "-x: SETTE test types ${SETTE_TEST_TYPES[@]} selected"
+           echo "";;
         c) export SETTE_CLEAN_CONFIGS='yes'
            export SETTE_SYNC_CONFIGS='yes'
            echo "-c: Configuration(s) ${SETTE_TEST_CONFIGS[@]} will be cleaned; this option enforces also synchronisation"
@@ -74,9 +80,6 @@ if [ $# -gt 0 ]; then
              * ) echo "-g only accepts a single, alphanumeric character. Processing halted"; exit 42;;
            esac
            export SETTE_STG=${SETTE_STG}${OPTARG}
-           echo "";;
-        x) export SETTE_TEST_TYPES=(${OPTARG})
-           echo "-x: ${SETTE_TEST_TYPES[@]} tests requested"
            echo "";;
         v) export SETTE_SUB_VAL=($OPTARG)
            echo "-v: $SETTE_SUB_VAL validation sub-directory requested"
@@ -118,6 +121,11 @@ if [ $# -gt 0 ]; then
            echo "-m: $SETTE_COMPILER archfile and batch template will be used"
            echo "";;
         h | *) echo 'sette.sh with no arguments (in this case all configuration will be tested with default options)'
+               echo '-p space-separated list of SETTE test phases (if omitted, all available phases,'
+               echo '   COMPILE and RUN, are selected)'
+               echo '-x space-separated list of SETTE test types (if omitted, all available types,'
+               echo '   RESTART, REPRO, PHYOPTS, ROTSYM, TRANSFORM, COUPLING, and STANDALONE, are'
+               echo '   selected)'
                echo '-T to set ln_timing false for configurations (default: true)'
                echo '-t set ln_tile false in all tests that support it (default: true)'
                echo '-e set nn_hls=3 but it is not yet supported (default: nn_hls=2)'
@@ -129,8 +137,6 @@ if [ $# -gt 0 ]; then
                echo '-X to remove the key_xios key (default: added)'
                echo '-A to run tests in attached (SPMD) mode (default: MPMD with key_xios)'
                echo '-n "CFG1_to_test CFG2_to_test ..." to test some specific configurations'
-               echo '-x "TEST_type TEST_type ..." to specify particular type(s) of test(s) to run after compilation'
-               echo '    TEST_type choices are: COMPILE RESTART REPRO PHYOPTS ROTSYM TRANSFORM COUPLING STANDALONE'
                echo '-v "subdir" optional validation record subdirectory to be created below NEMO_VALIDATION_DIR'
                echo '-g "group_suffix" single character suffix to be appended to the standard _ST suffix used'
                echo '                  for SETTE-built configurations (needed if sette.sh invocations may overlap)'
@@ -202,7 +208,8 @@ if [ ${#SETTE_TEST_CONFIGS[@]} -eq 0 ]; then
    echo "=================================="
    echo "Configurations $TEST_CONFIGS will be tested if they are available"
 fi
-echo "Carrying out the following tests  : ${TEST_TYPES[@]}"
+echo "Test phases                       : ${TEST_PHASES[@]}"
+echo "Test types                        : ${TEST_TYPES[@]}"
 echo "requested by the command          : "$cmd $cmdargs
 echo "on branch                         : "$SETTE_THIS_BRANCH
 echo "on revision                       : "$NEMO_REV

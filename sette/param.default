@@ -71,7 +71,6 @@ fi
 #
 # TYPES OF TESTS TO PERFORM
 # Note an attempt will be made to compile each configuration even if none of these tests are activated
-export DO_COMPILE=0
 export DO_RESTART=0  
 export DO_REPRO=0
 export DO_PHYOPTS=0
@@ -80,8 +79,8 @@ export DO_ROTSYM=0
 export DO_COUPLING=0
 export DO_STANDALONE=0
 export SCTRANSFORMS=()
-TEST_TYPES=(${SETTE_TEST_TYPES[@]:-"COMPILE RESTART REPRO PHYOPTS ROTSYM COUPLING STANDALONE"})
-if [[ ${TEST_TYPES[*]} =~ .*COMPILE.*    ]]; then export DO_COMPILE=1    ;fi
+TEST_TYPES_AVAILABLE=(RESTART REPRO PHYOPTS ROTSYM COUPLING STANDALONE)
+TEST_TYPES=(${SETTE_TEST_TYPES[@]:-${TEST_TYPES_AVAILABLE[@]}})
 if [[ ${TEST_TYPES[*]} =~ .*RESTART.*    ]]; then export DO_RESTART=1    ;fi
 if [[ ${TEST_TYPES[*]} =~ .*REPRO.*      ]]; then export DO_REPRO=1      ;fi
 if [[ ${TEST_TYPES[*]} =~ .*PHYOPTS.*    ]]; then export DO_PHYOPTS=1    ;fi
@@ -94,6 +93,20 @@ if [[ ${TEST_TYPES[*]} =~ .*CORRUPT.*    ]]; then export DO_STANDALONE=1 ; TEST_
 # LIST OF SOURCE-CODE TRANSFORMATIONS USED FOR THE TRANSFORM TEST
 # (list of 'passthrough' and/or names of available transformations)
 [ ${DO_TRANSFORM} -eq 1 ] && export SCTRANSFORMS=(passthrough OpenACC)
+#
+# TEST PHASES
+TEST_PHASES_AVAILABLE=(COMPILE RUN)
+if [ -z "${TEST_PHASES}" ]; then
+  export TEST_PHASES=(${SETTE_TEST_PHASES[@]:-${TEST_PHASES_AVAILABLE[@]}})
+fi
+[[ ${#SETTE_TEST_PHASES[@]} -eq 0 ]] && [[ ${#SETTE_TEST_TYPES[@]} -eq 1 ]] && TEST_PHASES=("RUN")   # Workaround for compatibility
+[[ "${SETTE_TEST_TYPES[@]}" == "COMPILE" ]] && TEST_PHASES=("COMPILE")   # with the current continuous-integration-testing setup
+                                                                         # (single test-type selection, incl. 'COMPILE')
+export DO_COMPILE=0
+export DO_RUN=0
+if [[ ${TEST_PHASES[*]} =~ .*COMPILE.* ]] ; then export DO_COMPILE=1 ; fi
+if [[ ${TEST_PHASES[*]} =~ .*RUN.* ]]     ; then export DO_RUN=1     ; fi
+
 # ------------------------------------------------------------------------------------------
 #
 # reporting  

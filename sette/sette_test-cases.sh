@@ -196,6 +196,8 @@ if [ ${config} == "OVERFLOW" ];  then
         ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a OVERFLOW ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the OVERFLOW SETTE configuration
     if [ ${DO_RESTART} == "1" -o ${DO_PHYOPTS} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
@@ -307,6 +309,8 @@ if [ ${config} == "LOCK_EXCHANGE" ] ;  then
         ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a LOCK_EXCHANGE ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the LOCK_EXCHANGE SETTE configuration
     # (if any)
@@ -422,6 +426,8 @@ if [ ${config} == "IWAVE" ] ;  then
         ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a IWAVE ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the IWAVE SETTE configuration
     # (if any)
@@ -503,6 +509,8 @@ if [ ${config} == "VORTEX" ] ;  then
         ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a VORTEX ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES}  ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the VORTEX SETTE configuration (if
     # any)
@@ -663,6 +671,8 @@ if [ ${config} == "ICE_AGRIF" ] ;  then
         ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a ICE_AGRIF ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the ICE_AGRIF SETTE configuration (if
     # any)
@@ -787,6 +797,8 @@ if [ ${config} == "ISOMIP+" ]; then
         ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a ISOMIP+ ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the ISOMIP+ SETTE configuration (if
     # any)
@@ -905,6 +917,8 @@ if [ ${config} == "SWG" ] && [ ${USING_QCO} == "yes" ] ;  then
         ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a SWG ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the SWG SETTE configuration (if any)
     if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
@@ -1030,6 +1044,8 @@ if [ ${config} == "CPL_OASIS" ] ;  then
                    -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
         ./tools/maketools -m ${CMP_NAM_A} -n TOYATM
     fi
+    # Continue to RUN test phase, if requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Default test-run configuration
     if [ ${DO_COUPLING_0} == "1" ] ;  then
