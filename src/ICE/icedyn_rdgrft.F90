@@ -906,8 +906,6 @@ CONTAINS
       LOGICAL             ::   ln_str_R75
       REAL(wp)            ::   zhi, zcp
       REAL(wp)            ::   h2rdg                     ! mean value of h^2 for new ridge
-      REAL(wp), PARAMETER ::   zmax_strength = 200.e3_wp ! Max strength for R75 formulation. Richter-Menge and Elder (1998) estimate maximum in Beaufort Sea in wintertime of the order 150 kN/m.
-      ! Coon et al. (2007) state that 20 kN/m is ~10% of the maximum compressive strength of isotropic ice, giving max strength of 200 kN/m.
       REAL(wp), DIMENSION(jpij) ::   zstrength           ! strength in 1D   
       REAL(wp), DIMENSION(jpij) ::   zaksum              ! normalisation factor
       !!----------------------------------------------------------------------
@@ -1018,10 +1016,6 @@ CONTAINS
             END DO
             !
             zstrength(1:npti) = rn_pe_rdg * zcp * zstrength(1:npti) / zaksum(1:npti)
-            !
-            ! Enforce a maximum for R75 strength
-            WHERE( zstrength(1:npti) > zmax_strength ) ; zstrength(1:npti) = zmax_strength
-            END WHERE
             !
             CALL tab_1d_2d( npti, nptidx(1:npti), zstrength(1:npti), strength )
             !
