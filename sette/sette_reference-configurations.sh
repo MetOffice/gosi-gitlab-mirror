@@ -1490,11 +1490,11 @@ if [[ ${config} =~ "C1D" ]]  ; then
         #
         # C1D uses linssh so remove key_qco if added by default
         # if ASICS we remove key_top
-        [[ ${config} =~ "ASICS" ]] && DEL_KEYS="${DEL_KEYS} key_top" || DEL_KEYS=${DEL_KEYS/" key_top"}
+        [[ ${config} =~ "ASICS" ]] && DEL_KEYS_LOCAL="${DEL_KEYS} key_top" || DEL_KEYS_LOCAL="${DEL_KEYS}"
         # if SAS we add SAS src directory
         [[ ${config} =~ "SAS" ]] && ADD_SRC="OCE ICE TOP SAS" || ADD_SRC=""
         ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r ${config/_*} ${ADD_SRC:+-d "${ADD_SRC}"} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
-                   -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
+                   -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS_LOCAL}" || exit 1
         # restore EXPREF symlink
         rm -fv ${CONFIG_DIR0}/${config/_*}/EXPREF
         ln -svr ${CONFIG_DIR0}/${config/_*}/EXP_PAPA ${CONFIG_DIR0}/${config/_*}/EXPREF
