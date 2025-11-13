@@ -959,7 +959,7 @@ rev=""; sha=""
              echo ""
              DO_COMPARE=1
              ;;
-          x) TEST_TYPES=$OPTARG
+          x) TEST_TYPES=($OPTARG)
              TEST_TYPES=${TEST_TYPES/CORRUPT/STANDALONE}   # Translation of a legacy option
              [[ ${TEST_TYPES[*]} =~ .*RESTART.*    ]] && export DO_RESTART=1    || DO_RESTART=0
              [[ ${TEST_TYPES[*]} =~ .*REPRO.*      ]] && export DO_REPRO=1      || DO_REPRO=0
