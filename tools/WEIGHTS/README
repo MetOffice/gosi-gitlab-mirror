@@ -11,16 +11,21 @@ Review, simplification
 Author: Sébastien Masson
         Andrew Coward
 
+**********
 Disclaimer
+**********
 
 This directory contains software for generating and manipulating interpolation
 weights for use with the Interpolation On the Fly (IOF) option in NEMO
-v3 onwards.  The utilities rely heavily on the Spherical Coordinate Remapping
+v3 onwards. The utilities rely heavily on the Spherical Coordinate Remapping
 and Interpolation Package (SCRIP) which is freely available from Los Alamos
 (see copyright file). We make no claim to authorship of those parts of the
 SCRIP package we have used and included with this distribution.
 
+
+************
 Introduction
+************
 
 The IOF option enables forced ocean runs without the need to provide surface
 boundary data on the nemo grid. Atmospheric data are kept on their original
@@ -41,21 +46,51 @@ avoidcontaminating oceanic values.
 
 The software is divided into 3 main programs:
 
-scripgrid.exe (scripgrid.F90) which creates two grid description files suitable for
-input to the scrip package.
-Output file can also be used as grid description file in cdo interpolation functions
+1) scripgrid.exe  : creates grid description files suitable for input
+   -------------    to the scrip package.
 
-scrip.exe (scrip.F90) which takes these descriptions and generates the required
-weights in the standard SCRIP format. This program is a version of the SCRIP
-program: scrip.f which has been modified to accept the name of its namelist
-file on the command line.
-Note that, scrip.exe is the equivalent of cdo genbil, genbic or gendis
+2) scrip.exe      : generates the interpolation weights in the standard SCRIP format
+   ---------        based on the grid descriptions files created by scripgrid.exe
 
-scripshape.exe (scripshape.F90) which takes the output from scrip and rearranges
-the fields into a series of 2D fields more suited for input into NEMO using
-the iom_get routine.
+3) scripshape.exe : which takes the output from scrip.exe and rearranges the fields 
+   --------------   into a series of 2D fields more suited for input into NEMO
+                    using the iom_get routine.
 
-Installation is by use of the maketools script.
+
+*****************************************
+On the use of CDO interpolation functions
+*****************************************
+
+1) scripgrid.exe output files can also be used as grid description files in cdo interpolation
+functions.
+
+For example:
+   > cdo remapbil,orca_scrip_grid.nc sst.mnmean.nc sst.mnmean_orca.nc
+where orca_scrip_grid.nc is a grid file in scrip format, created by a call to scripgrid.exe
+and sst.mnmean.nc is NOAA Optimum Interpolation SST on a 1deg x 1deg grid available here:
+https://downloads.psl.noaa.gov/Datasets/noaa.oisst.v2/sst.mnmean.nc
+See "cdo -h remapbil" for more information
+
+2) scrip.exe is the equivalent of the cdo commands "cdo genbil", "cdo genbic" or "cdo gendis",
+which generates bilinear, bicubic or distance weighted average interpolation weights.
+
+For example:
+   > cdo genbil,orca_scrip_grid.nc sst.mnmean.nc 1degx1deg_orca_bilin.nc
+will create the file 1degx1deg_orca_bilin.nc that could also be created by a call to scrip.exe
+Both methods are exactly equivalent (as they are both calling the scrip library).
+See "cdo -h genbil" for more information
+
+Weight files created by scrip.exe or "cdo genXXX" can be used by "cdo remap" to do the interpolation
+outside of NEMO with cdo, for example:
+   > cdo remap,orca_scrip_grid.nc,1degx1deg_orca_bilin.nc sst.mnmean.nc sst.mnmean_orca.nc
+See "cdo -h remap" for more information
+
+
+************
+Installation
+************
+
+Use the maketools script:
 
   cd tools
   ./maketools -help
@@ -65,32 +100,32 @@ and, for example:
   ./maketools -m gfortran_linux -n WEIGHTS
 
 
+***********
 Example Use
------------
+***********
 
   cd tools/WEIGHTS
   ./scripgrid.exe  namelist_bilin    (creates data_scrip_grid.nc and nemo_scrip_grid.nc
 				      with the namelist example given bellow)
-  ./scrip.exe      namelist_bilin    (creates data_nemo_remap_bilin.nc)
+  ./scrip.exe      namelist_bilin    (creates data2nemo_remap_bilin.nc)
 				      with the namelist example given bellow)
   ./scripshape.exe namelist_bilin    (creates weights_bilin.nc)
   				      with the namelist example given bellow)
 
-Only the final output file is required for use with NEMO but the intermediate
-
-Note that, following this example, the call to scrip.exe could be replaced by
-
-  cdo genbil,nemo_scrip_grid.nc snow_1m_TRP_1958.nc data_nemo_remap_bilin.nc
+Only the final output file is required in NEMO.
+Outputs from scripgrid.exe can also be used by cdo (see section on cdo usage above)
 
 
-Controls
---------
+*****************
+Namelist Controls
+*****************
 
 The SCRIP derived utilities use SCRIP-style namelists to control their operation.
 In the example above the same named file is used for both but within that
 file are separate namelists blocks used by each of the 3 executable
 
-grid_inputs is used by scripgrid.exe: 
+grid_inputs namelist section is used by scripgrid.exe: 
+-----------                             -------------
 
 &grid_inputs
     grid1_grid_in = 'snow_1m_TRP_1958.nc'
@@ -108,41 +143,7 @@ grid_inputs is used by scripgrid.exe:
     grid2_file = 'nemo_scrip_grid.nc'
 /
 
-remap_inputs is used by scrip.exe: 
-
-&remap_inputs
-    num_maps = 1
-    grid1_file = 'data_scrip_grid.nc'
-    grid2_file = 'nemo_scrip_grid.nc'
-    interp_file1 = 'data_nemo_remap_bilin.nc'
-    interp_file2 = 'nemo_data_remap_bilin.nc'
-    map1_name = 'data to nemo bilin Mapping'
-    map2_name = 'nemo to data bilin Mapping'
-    map_method = 'bilinear'
-/
-
-shape_inputs is used by scripshape.exe: 
-
-&shape_inputs
-    interp_file = 'data_nemo_remap_bilin.nc'
-    output_file = 'weights_bilin.nc'
-    ew_wrap     = 0
-/
-
-scripgrid.exe
--------------
-
-scripgrid accesses the named files in order to produce the grid centre and
-corner locations required by scrip. The corner locations are fake (set to -9999.)
-as the scrip libary requires them but don't use them for bilinear, bicubic
-and distance-weighted interpolation.
-grid1_grid_in and grid2_grid_in must exist and must contain at least the
-longitude and latitude coordinate variables, which can be 1 or 2D arrays.
-
-If the mask definition is unchanged between the different mapping methods
-(i.e. bilinear, distwgt or bicubic), only one set of scrip grid files needs
-to be produced for each pair of source and destination grids.
-
+With:
  - grid1_grid_in, grid2_grid_in: names of grid1 and grid2 input files
  
  - grid1_lon, grid2_lon: names of grid1 and grid2 longitude variables
@@ -153,16 +154,25 @@ to be produced for each pair of source and destination grids.
  
  - grid1_mask_value, grid1_mask_value: value of grid1 and grid2 masked points
  
- - grid1_file, grid2_file: names of grid1 and grid2 output in scrip format
+ - grid1_file, grid2_file: names of grid1 and grid2 output files in scrip format
 
-scrip.exe
----------
 
-scrip takes the output files from scripgrid and creates a file of weights
-to use to interpolate between the two grids described. The example given
-only requests 1 map (from data to nemo); setting num_maps=2 will provide
-the reverse weights if required.
- 
+remap_inputs namelist section is used by scrip.exe: 
+------------                             ---------
+
+&remap_inputs
+    num_maps = 1     ! 1: create interp file from data to NEMO
+    !                ! 2: create interp files from data to NEMO and from NEMO to data
+    grid1_file = 'data_scrip_grid.nc'   ! --> outputs from scripgrid.exe
+    grid2_file = 'nemo_scrip_grid.nc'   ! --> outputs from scripgrid.exe
+    interp_file1 = 'data2nemo_remap_bilin.nc'
+    interp_file2 = 'nemo2data_remap_bilin.nc'
+    map1_name = 'data to nemo bilin Mapping'
+    map2_name = 'nemo to data bilin Mapping'
+    map_method = 'bilinear'
+/
+
+With:
  - num_maps: 1 or 2 depending on whether the reverse transformation is required 
 
  - grid1_file, grid2_file: names of input scrip grid files (output of scripgrid)
@@ -173,16 +183,65 @@ the reverse weights if required.
 
  - map_method: name of the interpolation method: 'bilinear', 'bicubic' or 'distwgt'
 
+
+shape_inputs namelist section is used by scripshape.exe: 
+------------                             --------------
+
+&shape_inputs
+    interp_file = 'data2nemo_remap_bilin.nc'
+    output_file = 'weights_bilin.nc'
+    ew_wrap     = 0
+/
+
+With:
+ - interp_file: name of the input scrip interp_file (created by scrip.exe or a call to "cdo genXXX")
+ - output_file: name of the output file that will be used by NEMO
+ - ew_wrap : definition of East-West poriodicity in the input data
+             n<0: input grid is not cyclic;
+             n=0: input grid is cyclic but with no overlapping columns
+             n>0: input grid is cyclic but with n  columns that overlap
+
+
+*************************
+More detailed information
+*************************
+
+scripgrid.exe
+-------------
+
+scripgrid accesses the inputs files in order to produce the grid centre and
+corner locations required by scrip. The corner locations are fake (set to -9999.)
+as the scrip libary requires them but don't use them for bilinear, bicubic
+and distance-weighted interpolation.
+The files grid1_grid_in and grid2_grid_in must exist and must contain at least the
+longitude and latitude coordinate variables, which can be 1 or 2D arrays.
+
+Note that the same scrip grid files can be used as input files in scrip.exe for different
+mapping methods (i.e. bilinear, distwgt or bicubic) if the mask definition is
+unchanged.
+
+scrip.exe
+---------
+
+This program is a version of the SCRIP program: scrip.f, which has been modified to accept
+the name of its namelist file on the command line.
+
+scrip.exe takes the output files from scripgrid.exe and creates a file of weights
+to be used to interpolate between the two grids described.
+If num_maps=1, scrip.exe produces only 1 output file used to map grid1 to grid2.
+Setting num_maps=2 will provide also the reverse weights file.
+
 The conservative mapping schemes cannot be used as the corner definition
-cannot properly be done for the first column/row based on the input grid file.
-A proper definition requires to be done on-line when running NEMO.
+cannot properly be created for the first column/row based on the input grid file.
+A proper definition would require to produce the scrip grid file on-line when
+running NEMO. further details here: https://forge.nemo-ocean.eu/nemo/nemo/-/issues/685
 
 scripshape.exe
 --------------
 
-scripshape takes the output from scrip (e.g. data_nemo_bilin.nc ) and
-rearranges the source indices and associated weights into sets of 2D
-fields each spanning the nemo grid.
+scripshape.exe takes the output from scrip.exe (e.g. data2nemo_bilin.nc) and
+rearranges the source indices and associated weights into sets of 2D fields.
+
 For a bilinear mapping, the weights file required by the IOF option
 includes the following fields:
 
@@ -216,15 +275,12 @@ For a bicubic mapping the required fields are:
                              double wgt15(lat, lon) ;
                              double wgt16(lat, lon) ;
 
-Only for the bicubic interpolation, this program also adds an attribute to
+Only for the bicubic interpolation: this program also adds an attribute to
 the weights file for use by the fld_interp routine in fldread.F90. This
 tells the model about the east-west cyclicity of the source grid which can
-be used when calculating gradient values.
+then be used when calculating gradient values.
 The value needs to be supplied in the scripshape namelist via the
-variable ew_wrap. It should have one of the following values:
-  n<0: input grid is not cyclic;
-  n=0: input grid is cyclic but with no overlapping columns
-  n>0: input grid is cyclic but with n  columns that overlap
+variable ew_wrap.
 
 scripinterp.exe
 ---------------
@@ -236,7 +292,7 @@ Two namelists are used for configuration, eg
 
 &interp_inputs
     input_file = "../data/wsx_av.nc"
-    interp_file = "data_nemo_bilin.nc"
+    interp_file = "data2nemo_bilin.nc"
     input_name = "wsx"
     input_start = 1,1,1,1
     input_stride = 1,1,1,1
