@@ -9,30 +9,30 @@
       grid1_lat = 'lat'
       grid1_mask = 'none'
       grid1_mask_value = 0.
-    grid1_file = 'core2_scrip_grid.nc'
+    grid1_file = 'data_scrip_grid.nc'
     !
     grid2_grid_in = 'domain_cfg_nordic1.nc'
       grid2_lon = 'glamt'
       grid2_lat = 'gphit'
       grid2_mask = 'top_level'
       grid2_mask_value = 0.
-    grid2_file = 'nordic1_scrip_grid.nc'
+    grid2_file = 'nemo_scrip_grid.nc'
 /
 
 &remap_inputs
     num_maps = 1
-    grid1_file = 'core2_scrip_grid.nc'
-    grid2_file = 'nordic1_scrip_grid.nc'
-    interp_file1 = 'core2_nordic1_bilin.nc'
-    interp_file2 = 'nordic1_core2_bilin.nc'
-    map1_name = 'orca2 to nordic1 bilin Mapping'
-    map2_name = 'nordic1 to orca2 bilin Mapping'
+    grid1_file = 'data_scrip_grid.nc'
+    grid2_file = 'nemo_scrip_grid.nc'
+    interp_file1 = 'data2nemo_bilin.nc'
+    interp_file2 = 'nemo2data_bilin.nc'
+    map1_name = 'data to nemo bilin Mapping'
+    map2_name = 'nemo to data bilin Mapping'
     map_method = 'bilinear'
 /
 
 &shape_inputs
-    interp_file = 'core2_nordic1_bilin.nc'
-    output_file = 'weights_core2_nordic1_bilin.nc'
+    interp_file = 'data2nemo_bilin.nc'
+    output_file = 'weights_data2nemo_bilin.nc'
     ew_wrap     = 0
 /
 
@@ -40,7 +40,7 @@
 
 &interp_inputs
     input_file = "t_10.15JUNE2009_fill.nc"
-    interp_file = "core2_nordic1_bilin.nc"
+    interp_file = "data2nemo_bilin.nc"
     input_name = "T_10_MOD"
     input_start = 1,1,1,1
     input_stride = 1,1,1,1

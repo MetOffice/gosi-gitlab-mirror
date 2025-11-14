@@ -9,30 +9,30 @@
       grid1_lat = 'lat'
       grid1_mask = 'none'
       grid1_mask_value = 0.
-    grid1_file = 'core2_scrip_grid.nc'
+    grid1_file = 'data_scrip_grid.nc'
     !
     grid2_grid_in = 'domain_cfg_nordic1.nc'
       grid2_lon = 'glamt'
       grid2_lat = 'gphit'
       grid2_mask = 'none'
       grid2_mask_value = 0.
-    grid2_file = 'nordic1_scrip_grid.nc'
+    grid2_file = 'nemo_scrip_grid.nc'
 /
 
 &remap_inputs
     num_maps = 1
-    grid1_file = 'remap_core2_grid.nc'
-    grid2_file = 'remap_nordic1_grid.nc'
-    interp_file1 = 'core2_nordic1_bicub.nc'
-    interp_file2 = 'nordic1_core2_bicub.nc'
-    map1_name = 'orca2 to nordic1 bicub Mapping'
-    map2_name = 'nordic1 to orca2 bicub Mapping'
+    grid1_file = 'data_scrip_grid.nc'
+    grid2_file = 'nemo_scrip_grid.nc'
+    interp_file1 = 'data2nemo_bicub.nc'
+    interp_file2 = 'nemo2data_bicub.nc'
+    map1_name = 'data to nemo bicub Mapping'
+    map2_name = 'nemo to data bicub Mapping'
     map_method = 'bicubic'
 /
 
 &shape_inputs
-    interp_file = 'core2_nordic1_bicub.nc'
-    output_file = 'weights_core2_nordic1_bicub.nc'
+    interp_file = 'data2nemo_bicub.nc'
+    output_file = 'weights_data2nemo_bicub.nc'
     ew_wrap     = 0
 /
 
@@ -40,7 +40,7 @@
 
 &interp_inputs
     input_file = "u_10.15JUNE2009_fill.nc"
-    interp_file = "core2_nordic1_bicub.nc"
+    interp_file = "data2nemo_bicub.nc"
     input_name = "U_10_MOD"
     input_start = 1,1,1,1
     input_stride = 1,1,1,1
