@@ -124,7 +124,7 @@ if [ $# -gt 0 ]; then
                echo '-p space-separated list of SETTE test phases (if omitted, all available phases,'
                echo '   COMPILE and RUN, are selected)'
                echo '-x space-separated list of SETTE test types (if omitted, all available types,'
-               echo '   RESTART, REPRO, PHYOPTS, ROTSYM, TRANSFORM, COUPLING, and STANDALONE, are'
+               echo '   RESTART, REPRO, PHYOPTS, ROTSYM, TRANSFORM, COUPLING, and VARIANTS, are'
                echo '   selected)'
                echo '-T to set ln_timing false for configurations (default: true)'
                echo '-t set ln_tile false in all tests that support it (default: true)'
@@ -259,7 +259,7 @@ if [[ $? != 0 ]]; then
 fi
 
 # wait for sette jobs to finish
-if [[ ${WAIT_SETTE} -eq 1 && "${TEST_TYPES[@]}" =~ (RESTART|REPRO|PHYOPTS|ROTSYM|TRANSFORM|COUPLING|STANDALONE) ]]; then
+if [[ ${WAIT_SETTE} -eq 1 && "${TEST_TYPES[@]}" =~ (RESTART|REPRO|PHYOPTS|ROTSYM|TRANSFORM|COUPLING|VARIANTS) ]]; then
    echo ""
    echo "-------------------------------------------------------------"
    echo "wait for sette jobs to finish..."

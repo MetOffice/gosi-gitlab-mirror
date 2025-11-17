@@ -13,7 +13,7 @@
 format_field1="%-35s"
 
 # Exit codes and warning flags
-declare -i {REPRO_EC,RESTA_EC,TRANSFORM_EC,REFCMP_EC,CPUCMP_EC,OCEOUT_EC,ROT_EC,PHYOPT_EC,STANDALONE_EC,MD_WARN}=0
+declare -i {REPRO_EC,RESTA_EC,TRANSFORM_EC,REFCMP_EC,CPUCMP_EC,OCEOUT_EC,ROT_EC,PHYOPT_EC,VARIANTS_EC,MD_WARN}=0
 
 # List of status time-series files
 statfiles="run.stat tracer.stat obs.stat"
@@ -879,9 +879,6 @@ function standalonetest(){
   EC0=1   # Initial test error code
   if [ ! -d ${vdir}/${mach}/${dorv}/${nam} ] || [ ! -d ${vdir}/${mach}/${dorv}/${nam}_${rtest} ]; then
     printf "${format_field1} %-28s %s\n" "${nam}_${rtest} vs ${nam}" "directory" "MISSING"
-    [ "${nam}" == "ORCA2_ICE_OBS" ] && EC0=0   # Error-flag suppression in case of missing 'STANDALONE' test-type output directories
-    #   for the 'ORCA2_ICE_OBS' configuration as a workaround for the current continuous-integration-testing setup, which does not
-    #   carry out the 'STANDALONE' test runs for the 'ORCA2_ICE_OBS' configuration
   fi
   for testfile in ${statfiles}; do
     f1=${vdir}/${mach}/${dorv}/${nam}/${rref}/${testfile}
@@ -912,10 +909,10 @@ function standalonetest(){
           read y
         fi
       fi
-      [ ${EC} == 1 ] && STANDALONE_EC=1   # Unsuccessful comparison found
+      [ ${EC} == 1 ] && VARIANTS_EC=1   # Unsuccessful comparison found
     fi
   done
-  [ ${EC0} == 1 ] && STANDALONE_EC=1   # No successful comparison found
+  [ ${EC0} == 1 ] && VARIANTS_EC=1   # No successful comparison found
 }
 
 ########################### END of function definitions #################################
@@ -960,15 +957,16 @@ rev=""; sha=""
              DO_COMPARE=1
              ;;
           x) TEST_TYPES=($OPTARG)
-             TEST_TYPES=${TEST_TYPES/CORRUPT/STANDALONE}   # Translation of a legacy option
-             [[ ${TEST_TYPES[*]} =~ .*RESTART.*    ]] && export DO_RESTART=1    || DO_RESTART=0
-             [[ ${TEST_TYPES[*]} =~ .*REPRO.*      ]] && export DO_REPRO=1      || DO_REPRO=0
-             [[ ${TEST_TYPES[*]} =~ .*PHYOPTS.*    ]] && export DO_PHYOPTS=1    || DO_PHYOPTS=0
-             [[ ${TEST_TYPES[*]} =~ .*ROTSYM.*     ]] && export DO_ROTSYM=1     || DO_ROTSYM=0
-             [[ ${TEST_TYPES[*]} =~ .*TRANSFORM.*  ]] && export DO_TRANSFORM=1  || DO_TRANSFORM=0
-             [[ ${TEST_TYPES[*]} =~ .*COUPLING.*   ]] && export DO_COUPLING=1   || DO_COUPLING=0
-             [[ ${TEST_TYPES[*]} =~ .*COMPARE.*    ]] && export DO_COMPARE=1    || DO_COMPARE=0
-             [[ ${TEST_TYPES[*]} =~ .*STANDALONE.* ]] && export DO_STANDALONE=1 || DO_STANDALONE=0
+             TEST_TYPES=${TEST_TYPES/CORRUPT/VARIANTS}      # Translation of a legacy option
+             TEST_TYPES=${TEST_TYPES/STANDALONE/VARIANTS}   # Translation of a legacy option
+             [[ ${TEST_TYPES[*]} =~ .*RESTART.*   ]] && export DO_RESTART=1   || DO_RESTART=0
+             [[ ${TEST_TYPES[*]} =~ .*REPRO.*     ]] && export DO_REPRO=1     || DO_REPRO=0
+             [[ ${TEST_TYPES[*]} =~ .*PHYOPTS.*   ]] && export DO_PHYOPTS=1   || DO_PHYOPTS=0
+             [[ ${TEST_TYPES[*]} =~ .*ROTSYM.*    ]] && export DO_ROTSYM=1    || DO_ROTSYM=0
+             [[ ${TEST_TYPES[*]} =~ .*TRANSFORM.* ]] && export DO_TRANSFORM=1 || DO_TRANSFORM=0
+             [[ ${TEST_TYPES[*]} =~ .*COUPLING.*  ]] && export DO_COUPLING=1  || DO_COUPLING=0
+             [[ ${TEST_TYPES[*]} =~ .*COMPARE.*   ]] && export DO_COMPARE=1   || DO_COMPARE=0
+             [[ ${TEST_TYPES[*]} =~ .*VARIANTS.*  ]] && export DO_VARIANTS=1  || DO_VARIANTS=0
              echo "-x: will check ${TEST_TYPES[*]} test(s) for current report"
              echo "";;
           v) SETTE_SUB_VAL=$OPTARG;;
@@ -1002,7 +1000,7 @@ rev=""; sha=""
                  echo ' -S REFERENCE commit short (8-digits) SHA :'
                  echo '     compare sette results against the specified SHA (use to over-ride value set in param.cfg)'
                  echo ' -x test :'
-                 echo '     select specific tests to be reported (RESTART, REPRO, PHYOPTS, CORRUPT, TRANSFORM, COMPARE, COUPLING, STANDALONE)'
+                 echo '     select specific tests to be reported (RESTART, REPRO, PHYOPTS, TRANSFORM, COMPARE, COUPLING, VARIANTS)'
                  echo ' -n test configuration :'
                  echo '     select specific test configurations to be included in the test report'
                  echo ' -v sub_dir :'
@@ -1200,7 +1198,7 @@ do
   #            based on ORCA2_ICE_OBS model fields
   #   NOAGRIF: comparison of a run with AGRIF (but without any inset) and
   #            a corresponding run without AGRIF
-  if [ ${DO_STANDALONE} -eq 1 ]; then
+  if [ ${DO_VARIANTS} -eq 1 ]; then
       echo ""
       echo "   !----standalone----!   "
       #for standalone_run in ORCA2_ICE_OBS:SAO:REPRO_8_4 AGRIF_DEMO:NOAGRIF:ORCA2; do   # As a workaround for integration testing,
@@ -1265,7 +1263,7 @@ if [[ ${MD_WARN} -ge 1 ]]; then
     echo
 fi
 # error code
-SETTE_EC=$((REPRO_EC+RESTA_EC+TRANSFORM_EC+REFCMP_EC+CPUCMP_EC+OCEOUT_EC+AGRIF_EC+PHYOPT_EC+ROT_EC+STANDALONE_EC))
+SETTE_EC=$((REPRO_EC+RESTA_EC+TRANSFORM_EC+REFCMP_EC+CPUCMP_EC+OCEOUT_EC+AGRIF_EC+PHYOPT_EC+ROT_EC+VARIANTS_EC))
 echo ""
 echo "SETTE Report Exit Code: ${SETTE_EC}"
 

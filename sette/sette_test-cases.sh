@@ -133,16 +133,44 @@ cp BATCH_TEMPLATE/${JOB_PREFIX}-${CMP_NAM} job_batch_template || exit 1
 #                                     & (dynamics) advection schemes: flux form (ubs, centered), vector form (een)
 #                     zps-coordinates : (tracers) Advection schemes: FCT2, FCT4, ubs
 #                                     & (dynamics) advection schemes: flux form (ubs, centered), vector form (een, and een + Hollingsworth correction)
-# LOCK_EXCHANGE  : 
-# VORTEX         : 
-# ICE_AGRIF      : 
+# LOCK_EXCHANGE  :
+# IWAVE          :
+# VORTEX         :
+# ICE_AGRIF      :
 # ISOMIP+        :
-# WAD            :
+# SWG            :
 # CPL_OASIS      : ORCA2 coupled to TOYATM tool using OASIS
+CONFIGS_AVAILABLE=( OVERFLOW LOCK_EXCHANGE IWAVE VORTEX ICE_AGRIF ISOMIP+ SWG CPL_OASIS )
 
 . ./all_functions.sh
-for config in ${TEST_CONFIGS[@]}
-do
+for config in ${TEST_CONFIGS[@]} ; do
+
+    # Ignore unavailable configurations
+    DO_SKIP=1
+    for config_available in ${CONFIGS_AVAILABLE[@]} ; do [[ "${config}" == "${config_available}" ]] && DO_SKIP=0 ; done
+    [[ ${DO_SKIP} -eq 1 ]] && continue
+
+    # SWG requires QCO
+    [[ ${config} == "SWG" ]] && [[ ${USING_QCO} != "yes" ]] && continue
+
+    # Each SETTE configuration is associated with the NEMO reference
+    # configuration or test case of the same name
+    ref_config="${config}"
+
+    # The SETTE configurations can be compiled with the default list of
+    # components (an empty string avoids overriding the default selection)
+    COMPONENTS=""
+
+    # Most SETTE configurations are compiled with the common modification of
+    # the pre-processing-key list
+    ADD_KEYS_LOC="${ADD_KEYS}"
+    DEL_KEYS_LOC="${DEL_KEYS}"
+    #   but adjustments are made for specific configurations:
+    #    - override key_qco as configurations ICE_AGRIF and ISOMIP+ use
+    #      key_linssh
+    [[ ${config} == "ICE_AGRIF" ]] && ADD_KEYS_LOC="${ADD_KEYS/key_qco/}"
+    [[ ${config} == "ISOMIP+"   ]] && ADD_KEYS_LOC="${ADD_KEYS/key_qco/}"
+
     for (( l_t=-1 ; l_t < ${#SCTRANSFORMS[@]} ; l_t++ )); do
 
         CONFIG_SUFFIX=${SETTE_STG}
@@ -174,30 +202,54 @@ do
             fi
         fi
 
+        # The actual name of the NEMO build that is associated with the
+        # currently processed SETTE configuration
+        SETTE_CONFIG="${config}${CONFIG_SUFFIX}"
+
+        # Compilation of the baseline configuration
+        if [ ${DO_COMPILE_BASELINE} -eq 1 ] ; then
+
+            cd ${MAIN_DIR}
+
+            # Cleaning of pre-existing target configurations
+            clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
+            # Synchronisation of pre-existing target configurations
+            sync_config ${CONFIG_DIR0}/${ref_config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
+            # Start the build process
+            ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r ${ref_config} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 \
+                       ${NEMO_DEBUG} -j ${CMPL_CORES} ${COMPONENTS:+-d "${COMPONENTS}"} ${TRANSFORM_OPT} \
+                       add_key "${ADD_KEYS_LOC}" del_key "${DEL_KEYS_LOC}" || exit 1
+
+
+        fi
+
+        # Compilation of a configuration variant (if any)
+        if [ ${DO_COMPILE_VARIANTS} -eq 1 ] ; then
+
+            cd ${MAIN_DIR}
+
+	    # Configuration-specific build actions that can be carried out
+	    # independent of the baseline-configuration compilation
+	    if [[ ${config} == "CPL_OASIS" ]] ; then
+                ./tools/maketools -m ${CMP_NAM_A} -n TOYATM
+            fi
+
+        fi
+
+        # Continue to next configuration unless the RUN test phase has been requested
+        [[ ${DO_RUN} -eq 0 ]] && break
+
 # ---------
 #  OVERFLOW
 # ---------
 if [ ${config} == "OVERFLOW" ];  then
-    SETTE_CONFIG="OVERFLOW"${CONFIG_SUFFIX}
+
     if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
     then
         ITEND=12
     else
         ITEND=120
     fi
-
-    if [ ${DO_COMPILE} == "1" ] ;  then
-        cd ${MAIN_DIR}
-        #
-        # syncronisation if target directory/file exist (not done by makenemo)
-        clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        #
-        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a OVERFLOW ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
-                   -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
-    fi
-    # Continue to RUN test phase, if requested
-    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the OVERFLOW SETTE configuration
     if [ ${DO_RESTART} == "1" -o ${DO_PHYOPTS} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
@@ -291,26 +343,13 @@ fi
 #  LOCK_EXCHANGE
 # --------------
 if [ ${config} == "LOCK_EXCHANGE" ] ;  then
-    SETTE_CONFIG="LOCK_EXCHANGE"${CONFIG_SUFFIX}
+
     if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
     then
         ITEND=12
     else
         ITEND=120
     fi
-
-    if [ ${DO_COMPILE} == "1" ] ;  then
-        cd ${MAIN_DIR}
-        #
-        # syncronisation if target directory/file exist (not done by makenemo)
-        clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        #
-        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a LOCK_EXCHANGE ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
-                   -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
-    fi
-    # Continue to RUN test phase, if requested
-    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the LOCK_EXCHANGE SETTE configuration
     # (if any)
@@ -408,26 +447,13 @@ fi
 # IWAVE 
 # ------
 if [ ${config} == "IWAVE" ] ;  then
-    SETTE_CONFIG="IWAVE"${CONFIG_SUFFIX}
+
     if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
     then
         ITEND=12
     else
         ITEND=120
     fi
-
-    if [ ${DO_COMPILE} == "1" ] ;  then
-        cd ${MAIN_DIR}
-        #
-        # syncronisation if target directory/file exist (not done by makenemo)
-        clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        #
-        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a IWAVE ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
-                   -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
-    fi
-    # Continue to RUN test phase, if requested
-    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the IWAVE SETTE configuration
     # (if any)
@@ -491,26 +517,13 @@ fi
 # VORTEX
 # ------
 if [ ${config} == "VORTEX" ] ;  then
-    SETTE_CONFIG="VORTEX"${CONFIG_SUFFIX}
+
     if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
     then
         ITEND=12
     else
         ITEND=240
     fi
-
-    if [ ${DO_COMPILE} == "1" ] ;  then
-        cd ${MAIN_DIR}
-        #
-        # syncronisation if target directory/file exist (not done by makenemo)
-        clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        #
-        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a VORTEX ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
-                   -j ${CMPL_CORES}  ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
-    fi
-    # Continue to RUN test phase, if requested
-    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the VORTEX SETTE configuration (if
     # any)
@@ -652,27 +665,13 @@ fi
 # ICE_AGRIF
 # ---------
 if [ ${config} == "ICE_AGRIF" ] ;  then
-    SETTE_CONFIG="ICE_AGRIF"${CONFIG_SUFFIX}
+
     if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
     then
         ITEND=10
     else
         ITEND=200
     fi
-
-    if [ ${DO_COMPILE} == "1" ] ;  then
-        cd ${MAIN_DIR}
-        #
-        # syncronisation if target directory/file exist (not done by makenemo)
-        clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        #
-        # ICE_AGRIF uses linssh so remove key_qco if added by default
-        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a ICE_AGRIF ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
-                   -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
-    fi
-    # Continue to RUN test phase, if requested
-    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the ICE_AGRIF SETTE configuration (if
     # any)
@@ -778,27 +777,13 @@ fi
 # ISOMIP+
 # -------
 if [ ${config} == "ISOMIP+" ]; then 
-    SETTE_CONFIG="ISOMIP+"${CONFIG_SUFFIX}
+
     if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
     then
         ITEND=12
     else
         ITEND=1200
     fi
-
-    if [ ${DO_COMPILE} == "1" ] ;  then
-        cd ${MAIN_DIR}
-        #
-        # syncronisation if target directory/file exist (not done by makenemo)
-        clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        #
-        # ISOMIP+ uses ln_hpg_isf so remove key_qco if added by default
-        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a ISOMIP+ ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
-                   -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
-    fi
-    # Continue to RUN test phase, if requested
-    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the ISOMIP+ SETTE configuration (if
     # any)
@@ -899,26 +884,13 @@ fi
 # SWG
 # ---
 if [ ${config} == "SWG" ] && [ ${USING_QCO} == "yes" ] ;  then
-    SETTE_CONFIG="SWG"${CONFIG_SUFFIX}
+
     if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
     then
         ITEND=12
     else
         ITEND=1728
     fi
-
-    if [ ${DO_COMPILE} == "1" ] ;  then
-        cd ${MAIN_DIR}
-        #
-        # syncronisation if target directory/file exist (not done by makenemo)
-        clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        #
-        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a SWG ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
-                   -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
-    fi
-    # Continue to RUN test phase, if requested
-    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the SWG SETTE configuration (if any)
     if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
@@ -1025,27 +997,12 @@ if [ ${config} == "CPL_OASIS" ] ;  then
     # TOYATM PATH
     export TOYATM_DIR="${MAIN_DIR}/tools/TOYATM/BLD/bin"
 
-    SETTE_CONFIG=${config}${CONFIG_SUFFIX}
     if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
     then
         ITEND=16
     else
         ITEND=160
     fi
-
-    if [ ${DO_COMPILE} == "1" ] ;  then
-        cd ${MAIN_DIR}
-        #
-        # syncronisation if target directory/file exist (not done by makenemo)
-        clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-        #
-        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -a ${config} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
-                   -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "${DEL_KEYS}" || exit 1
-        ./tools/maketools -m ${CMP_NAM_A} -n TOYATM
-    fi
-    # Continue to RUN test phase, if requested
-    [[ ${DO_RUN} -eq 0 ]] && break
 
     # Default test-run configuration
     if [ ${DO_COUPLING_0} == "1" ] ;  then
