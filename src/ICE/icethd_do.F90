@@ -73,7 +73,7 @@ CONTAINS
       !!             - Updating ice internal temperature
       !!             - Computation of variation of ice volume and mass
       !!             - Computation of a_i after lateral accretion and 
-      !!               update h_s_1d, h_i_1d      
+      !!               update h_s, h_i      
       !!------------------------------------------------------------------------
       INTEGER  ::   ji, jj, jk, jl   ! dummy loop indices
       !
@@ -179,7 +179,7 @@ CONTAINS
                ! --- Volume of new ice --- !
                zEi           = - ze_newice * r1_rhoi                  ! specific enthalpy of forming ice [J/kg]
 
-               zEw           = rcp * ( t_bo(ji,jj) - rt0 )            ! specific enthalpy of seawater at t_bo_1d [J/kg]
+               zEw           = rcp * ( t_bo(ji,jj) - rt0 )            ! specific enthalpy of seawater at t_bo [J/kg]
                                                                    ! clem: we suppose we are already at the freezing point (condition qlead<0 is satisfyied) 
                                                                    
                zdE           = zEi - zEw                              ! specific enthalpy difference [J/kg]

@@ -158,10 +158,6 @@ CONTAINS
          END SELECT
       ENDIF
 
-#if defined key_si3_1D
-      END_2D
-#endif
-
       SELECT CASE ( nice_pnd )
       CASE (np_pndTOPO)  ;   CALL pnd_TOPO         !==  Topographic melt ponds  ==!
       END SELECT
@@ -336,7 +332,7 @@ CONTAINS
                !------------------!
                !
                !--- available meltwater for melt ponding (zdv_avail) ---!
-               zdv_avail = -( dh_i_sum_2d(ji,jj,jl)*rhoi + dh_s_sum_2d(ji,jj,jl)*rhos ) * z1_rhow * a_i(ji,jj,jl) ! > 0
+               zdv_avail = -( dh_i_sum_3d(ji,jj,jl)*rhoi + dh_s_sum_3d(ji,jj,jl)*rhos ) * z1_rhow * a_i(ji,jj,jl) ! > 0
                zfr_mlt   = rn_apnd_min + ( rn_apnd_max - rn_apnd_min ) * at_i(ji,jj) !  = ( 1 - r ) = fraction of melt water that is not flushed
                zdv_mlt   = MAX( 0._wp, zfr_mlt * zdv_avail ) ! max for roundoff errors?
                !
@@ -557,7 +553,7 @@ CONTAINS
             ELSE                                                                             ! Case ice thickness >= rn_himin !
                !                                                                             !--------------------------------!
                !--- Available and contributing meltwater for melt ponding
-               zv_mlt  = - ( dh_i_sum_2d(ji,jj,jl) * rhoi + dh_s_sum_2d(ji,jj,jl) * rhos ) * z1_rhow * a_i(ji,jj,jl) ! available volume of surface melt water per grid area
+               zv_mlt  = - ( dh_i_sum_3d(ji,jj,jl) * rhoi + dh_s_sum_3d(ji,jj,jl) * rhos ) * z1_rhow * a_i(ji,jj,jl) ! available volume of surface melt water per grid area
                ! MV -> could move this directly in ice_thd_dh and get an array (ji,jj,jl) for surface melt water volume per grid area
                IF( ln_pnd_rain )    zv_mlt = zv_mlt + ( tprecip(ji,jj) - sprecip(ji,jj) ) * z1_rhow * a_i(ji,jj,jl) * rDt_ice
 
@@ -630,7 +626,7 @@ CONTAINS
 
                   IF ( v_il(ji,jj,jl) > epsi10 ) THEN
 
-                     zdvice = MIN( -dh_i_sum_2d(ji,jj,jl)*a_ip(ji,jj,jl), v_il(ji,jj,jl) )
+                     zdvice = MIN( -dh_i_sum_3d(ji,jj,jl)*a_ip(ji,jj,jl), v_il(ji,jj,jl) )
 
                      !----------------------------------------------------------------
                      ! Lid melting: floating upper ice layer melts in whole or part

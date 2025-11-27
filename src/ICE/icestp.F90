@@ -483,8 +483,8 @@ CONTAINS
             qtr_ice_bot(ji,jj,jl) = 0._wp   ! part of solar radiation transmitted through the ice needed at least for outputs
             qml_ice    (ji,jj,jl) = 0._wp   ! surface melt heat flux
             ! Melt pond surface melt diagnostics (mv - more efficient: grouped into one water volume flux)
-            dh_i_sum_2d(ji,jj,jl) = 0._wp
-            dh_s_sum_2d(ji,jj,jl) = 0._wp
+            dh_i_sum_3d(ji,jj,jl) = 0._wp
+            dh_s_sum_3d(ji,jj,jl) = 0._wp
          END_2D
       ENDDO
 

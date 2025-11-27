@@ -375,15 +375,14 @@ CONTAINS
       REAL(wp) ::   zworka, zworkv, ztrans ! ice/snow transferred
       REAL(wp), DIMENSION(A2D(0))            ::   ztmp             ! workspace
       REAL(wp), DIMENSION(A2D(0),jpl)        ::   zaTsfn           !  -    -
-      LOGICAL, DIMENSION(A2D(0)) :: ll_ice_present
       !!------------------------------------------------------------------
 
       !----------------------------------------------------------------------------------------------
       ! 1) Define a variable equal to a_i*T_su
       !----------------------------------------------------------------------------------------------
       DO jl = 1, jpl
-         DO_2D(0, 0, 0, 0)
-            IF (iptidx(ji,jj) ) zaTsfn(ji,jj,jl) = a_i(ji,jj,jl) * t_su(ji,jj,jl)
+         DO_2D( 0, 0, 0, 0 )
+            IF( iptidx(ji,jj) ) zaTsfn(ji,jj,jl) = a_i(ji,jj,jl) * t_su(ji,jj,jl)
          END_2D
       END DO
 
@@ -393,7 +392,7 @@ CONTAINS
       DO jl = 1, jpl - 1
          DO_2D(0, 0, 0, 0)
             !
-            IF (iptidx(ji,jj) ) THEN
+            IF( iptidx(ji,jj) ) THEN
                jl1 = kdonor(ji,jj,jl)
                !
                IF( jl1 > 0 ) THEN
@@ -478,18 +477,18 @@ CONTAINS
       ! clem: The transfer between one category to another can lead to very small negative values (-1.e-20)
       !       because of truncation error ( i.e. 1. - 1. /= 0 )
 
-      CALL ice_var_roundoff( a_i, v_i, v_s, sv_i, oa_i, a_ip, v_ip, v_il, e_s, e_i, szv_i, iptidx)
+      CALL ice_var_roundoff( a_i, v_i, v_s, sv_i, oa_i, a_ip, v_ip, v_il, e_s, e_i, szv_i, iptidx )
       
       ! at_i must be <= rn_amax
-      DO_2D(0, 0, 0, 0)
-       IF (iptidx(ji,jj)) THEN
-         ztmp(ji,jj) = SUM( a_i(ji,jj,:) )
-       ENDIF
+      DO_2D( 0, 0, 0, 0 )
+         IF( iptidx(ji,jj) ) THEN
+            ztmp(ji,jj) = SUM( a_i(ji,jj,:) )
+         ENDIF
       END_2D
 
       DO jl  = 1, jpl
          DO_2D(0, 0, 0, 0)
-            IF ( (iptidx(ji,jj) ) .AND. ztmp(ji,jj) > rn_amax_2d(ji,jj) )   &
+            IF( iptidx(ji,jj) .AND. ztmp(ji,jj) > rn_amax_2d(ji,jj) )   &
                &   a_i(ji,jj,jl) = a_i(ji,jj,jl) * rn_amax_2d(ji,jj) / ztmp(ji,jj)
          END_2D
       END DO
@@ -499,7 +498,7 @@ CONTAINS
       !-------------------------------------------------------------------------------
       DO jl = 1, jpl
          DO_2D(0, 0, 0, 0)
-            IF (iptidx(ji,jj) ) THEN
+            IF( iptidx(ji,jj) ) THEN
 # if defined key_single
                IF ( a_i(ji,jj,jl) >= epsi06 ) THEN
 # else
