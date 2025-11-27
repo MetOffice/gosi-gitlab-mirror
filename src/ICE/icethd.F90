@@ -19,8 +19,10 @@ MODULE icethd
    USE ice            ! sea-ice: variables
    USE sbc_oce , ONLY : sss_m, sst_m, frq_m, sprecip
    USE sbc_ice , ONLY : qsr_ice, qns_ice, dqns_ice, evap_ice, qprec_ice, qml_ice, qcn_ice, qtr_ice_top
+   USE snwthd_prec    ! sea-ice: snow fall, sublimation & deposition
    USE icethd_zdf     ! sea-ice: vertical heat diffusion
-   USE icethd_dh      ! sea-ice: ice-snow growth and melt
+   USE icethd_dh      ! sea-ice: ice growth and melt
+   USE snwthd_dh      ! sea-ice: snow melt
    USE icethd_da      ! sea-ice: lateral melting
    USE icethd_sal     ! sea-ice: salinity
    USE icethd_do      ! sea-ice: growth in open water
@@ -42,13 +44,16 @@ MODULE icethd
    PUBLIC   ice_thd_init    ! called by ice_init
 
    LOGICAL , ALLOCATABLE, DIMENSION(:,:,:) ::   llmsk
-   LOGICAL , ALLOCATABLE, DIMENSION(:,:) ::   ll_ice_present
+   REAL(wp), ALLOCATABLE, DIMENSION(:,:)   ::   zq_top      ! heat for surface ablation                    (J.m-2)
+   REAL(wp), ALLOCATABLE, DIMENSION(:,:)   ::   zq_bot      ! heat for bottom ablation                     (J.m-2)
+   REAL(wp), ALLOCATABLE, DIMENSION(:,:)   ::   zf_tt       ! Heat budget to determine melting or freezing (W.m-2)
+
+   ! sanity checks
    CHARACTER(LEN=50)      ::   clname="cfl_icesalt.ascii"    ! ascii filename
    INTEGER , DIMENSION(3) ::   iloc
    REAL(wp)               ::   zcfl_drain_max, zcfl_flush_max
    INTEGER                ::   numcfl                        ! outfile unit
-
-
+   
    !! * Substitutions
 #  include "do_loop_substitute.h90"
 #  include "read_nml_substitute.h90"
@@ -82,7 +87,9 @@ CONTAINS
       !!-------------------------------------------------------------------
       INTEGER, INTENT(in) ::   kt    ! number of iteration
       !
-      INTEGER  ::   ji, jj, jk, jl   ! dummy loop indices
+      REAL(wp), DIMENSION(A2D(0)) ::   zevap_rema   ! remaining of evaporation after snow sublimation (in kg/m2)
+      !
+      INTEGER ::   ji, jj, jk, jl   ! dummy loop indices
       !!-------------------------------------------------------------------
 
       ! controls
@@ -96,8 +103,8 @@ CONTAINS
          WRITE(numout,*) '~~~~~~~'
       ENDIF
 
-      ALLOCATE( ll_ice_present(A2D(0)) )
-
+      ALLOCATE( zq_top(A2D(0)), zq_bot(A2D(0)), zf_tt(A2D(0)) )
+      
       ! convergence tests
       IF( ln_zdf_chkcvg ) THEN
          ALLOCATE( ztice_cvgerr(A2D(0),jpl) , ztice_cvgstp(A2D(0),jpl) )
@@ -114,42 +121,54 @@ CONTAINS
       !
       DO jl = 1, jpl
 
-         ll_ice_present(:,:) = .false.
+         l_ice_present(A2D(0)) = .FALSE.
          DO_2D( 0, 0, 0, 0 )
-            IF ( a_i(ji,jj,jl) > epsi10 ) THEN
-               ll_ice_present(ji,jj) = .true. ! select ice covered grid points
-            ENDIF
+            IF( a_i(ji,jj,jl) > epsi10 )   l_ice_present(ji,jj) = .TRUE. ! select ice covered grid points
          END_2D
         
-         IF ( ANY (ll_ice_present(:,:) ) ) THEN 
+         IF( ANY( l_ice_present(A2D(0)) ) ) THEN 
             !
                               CALL ice_thd_unit_convert( jl, 1 )            ! --- & Change units of e_i, e_s from J/m2 to J/m3 --- !
             !
             dh_s_tot  (:,:) = 0._wp                              ! --- some init --- !  (important to have them here)
-            dh_i_bom(:,:) = 0._wp ; dh_i_itm(:,:) = 0._wp
+            dh_i_bom  (:,:) = 0._wp ; dh_i_itm(:,:) = 0._wp
             dh_i_sub  (:,:) = 0._wp ; dh_i_bog(:,:) = 0._wp
             dh_snowice(:,:) = 0._wp ; dh_s_itm(:,:) = 0._wp
+            zevap_rema(:,:) = 0._wp
             !
-                              CALL ice_thd_zdf(jl, ll_ice_present)                  ! --- Ice-Snow temperature --- !
+            IF( ln_icedH )    CALL snw_thd_prec( jl, zevap_rema )                        ! --- Snow fall and sublimation/deposition --- !
+            !                                               ==> out: zevap_rema
             !
-            ! ll_ice_present can be updated by thd_dh, due to melting
-            IF( ln_icedH )    CALL ice_thd_dh(jl, ll_ice_present)                   ! --- Growing/Melting --- !
+                              CALL ice_thd_zdf ( jl )                                    ! --- Ice & Snow temperature diffusion --- !
+            !                                               ==> out: qtr_ice_bot, qcn_ice_bot, qcn_ice_top, cnd_ice, qcn_ice
+            !                  
+                              CALL ice_thd_bdg ( jl )                                    ! --- Ice & Snow Top/Bottom heat budgets --- !
+            !                                               ==> out: qml_ice, zq_top, zq_bot, zf_tt
+            !                  
+            IF( ln_icedH )    CALL snw_thd_dh  ( jl, zq_top )                            ! --- Snow melt --- !
+            !                                            <==> inout: zq_top 
             !
-                              CALL ice_thd_temp(jl, ll_ice_present)                 ! --- Temperature update --- !
+            IF( ln_icedH )    CALL ice_thd_dh  ( jl, zq_top, zq_bot, zf_tt, zevap_rema ) ! --- Ice Growing/Melting & snow-ice --- !
+            !                                                ==> in: zq_top, zq_bot, zf_tt, zevap_rema
+            !                                                                              
+                              CALL ice_thd_temp( jl )                                    ! --- Ice Temperature update --- !
             !
-                              CALL ice_thd_sal(jl, ll_ice_present)                  ! --- Ice salinity --- !
+            !                  
+                              CALL ice_thd_sal ( jl )                                    ! --- Ice Salinity --- !
             !
-                              CALL ice_thd_temp(jl, ll_ice_present)                 ! --- Temperature update --- !
+            !
+                              CALL ice_thd_temp( jl )                                    ! --- Ice Temperature update --- !
             !
             IF( ln_icedH .AND. ln_virtual_itd ) &
-               &              CALL ice_thd_mono(jl, ll_ice_present)                 ! --- Extra lateral melting if virtual_itd --- !
+               &              CALL ice_thd_mono( jl )                                    ! --- Extra lateral melting if virtual_itd --- !
             !
-            ! ll_ice_present can be updated by thd_da
-            IF( ln_icedA )    CALL ice_thd_da(jl, ll_ice_present)                   ! --- Lateral melting --- !
+            !
+            IF( ln_icedA )    CALL ice_thd_da  ( jl )                                    ! --- Ice Lateral melting --- !
+            !
             !
                               CALL ice_thd_unit_convert( jl, 2 )            ! --- Change units of e_i, e_s from J/m3 to J/m2 --- !
             !
-         ENDIF ! ll_ice_present
+         ENDIF ! l_ice_present
          !
          !
       END DO ! jl loop 
@@ -171,7 +190,7 @@ CONTAINS
       !                                                             ! --- LBC for the halos --- !
       CALL lbc_lnk( 'icethd', a_i , 'T', 1._wp, v_i , 'T', 1._wp, v_s , 'T', 1._wp, sv_i, 'T', 1._wp, oa_i, 'T', 1._wp, &
          &                    t_su, 'T', 1._wp, a_ip, 'T', 1._wp, v_ip, 'T', 1._wp, v_il, 'T', 1._wp )
-      CALL lbc_lnk( 'icethd', e_i , 'T', 1._wp, e_s , 'T', 1._wp, szv_i , 'T', 1._wp )
+      CALL lbc_lnk( 'icethd', e_i , 'T', 1._wp, e_s , 'T', 1._wp, szv_i,'T', 1._wp )
       !
       at_i(:,:) = SUM( a_i, dim=3 )
       DO_2D( 0, 0, 0, 0 )                                           ! --- Ice velocity corrections
@@ -193,7 +212,7 @@ CONTAINS
       ! sanity checks for salt drainage and flushing
       IF( ln_sal_chk )   CALL ice_thd_salchk( kt, 2 )
       
-      DEALLOCATE(ll_ice_present)
+      DEALLOCATE( zq_top, zq_bot, zf_tt )
 
       ! controls
       IF( ln_icectl )   CALL ice_prt    (kt, iiceprt, jiceprt, 1, ' - ice thermodyn. - ') ! prints
@@ -204,7 +223,42 @@ CONTAINS
    END SUBROUTINE ice_thd
 
 
-   SUBROUTINE ice_thd_temp(jl_cat, ll_ice_present)
+   SUBROUTINE ice_thd_bdg( jl_cat )
+      !!-----------------------------------------------------------------------
+      !!                   ***  ROUTINE ice_thd_bdg ***
+      !!
+      !! ** Purpose :   Computes heat 
+      !!
+      !!-------------------------------------------------------------------
+      INTEGER, INTENT(in) ::   jl_cat
+      INTEGER  ::   ji, jj   ! dummy loop indices
+      !!-------------------------------------------------------------------
+      IF( .NOT.ln_cndflx .OR. ln_cndemulate ) THEN
+         DO_2D( 0, 0, 0, 0 )
+            IF( l_ice_present(ji,jj) ) THEN
+               IF( t_su(ji,jj,jl_cat) >= rt0 ) THEN
+                  qml_ice(ji,jj,jl_cat) =   qns_ice    (ji,jj,jl_cat) + qsr_ice    (ji,jj,jl_cat)  &
+                     &                    - qtr_ice_top(ji,jj,jl_cat) - qcn_ice_top(ji,jj,jl_cat)
+               ELSE
+                  qml_ice(ji,jj,jl_cat) = 0._wp
+               ENDIF
+               !
+            ENDIF
+         END_2D
+      ENDIF
+      !
+      DO_2D( 0, 0, 0, 0 )      
+         IF( l_ice_present(ji,jj) ) THEN
+            zq_top(ji,jj) = MAX( 0._wp, qml_ice(ji,jj,jl_cat) * rDt_ice )
+            zf_tt (ji,jj) = qcn_ice_bot(ji,jj,jl_cat) + qsb_ice_bot(ji,jj) + fhld(ji,jj) + qtr_ice_bot(ji,jj,jl_cat) * frq_m(ji,jj)
+            zq_bot(ji,jj) = MAX( 0._wp, zf_tt(ji,jj) * rDt_ice )
+         ENDIF
+      END_2D
+      !
+   END SUBROUTINE ice_thd_bdg
+
+
+   SUBROUTINE ice_thd_temp( jl_cat )
       !!-----------------------------------------------------------------------
       !!                   ***  ROUTINE ice_thd_temp ***
       !!
@@ -212,63 +266,65 @@ CONTAINS
       !!
       !! ** Method  :   Formula (Bitz and Lipscomb, 1999)
       !!-------------------------------------------------------------------
-      INTEGER, INTENT(IN) :: jl_cat
-      LOGICAL, DIMENSION(A2D(0)), INTENT(in) :: ll_ice_present
+      INTEGER, INTENT(in) ::   jl_cat
       INTEGER  ::   ji, jj, jk   ! dummy loop indices
       REAL(wp) ::   ztmelts, zbbb, zccc  ! local scalar
       !!-------------------------------------------------------------------
       ! Recover ice temperature
       DO jk = 1, nlay_i
-         DO_2D(0, 0, 0, 0)
-            IF (ll_ice_present(ji,jj)) THEN
-               IF( h_i(ji,jj,jl_cat) > 0._wp ) THEN
-                  ztmelts       = -rTmlt * sz_i(ji,jj,jk,jl_cat)
-                  ! Conversion q(S,T) -> T (second order equation)
-                  zbbb          = ( rcp - rcpi ) * ztmelts + e_i(ji,jj,jk,jl_cat) * r1_rhoi - rLfus
-                  zccc          = SQRT( MAX( zbbb * zbbb - 4._wp * rcpi * rLfus * ztmelts, 0._wp ) )
-                  t_i(ji,jj,jk,jl_cat) = rt0 - ( zbbb + zccc ) * 0.5_wp * r1_rcpi
-               ELSE
-                  t_i(ji,jj,jk,jl_cat) = rt0
-               ENDIF
-            ENDIF ! ll_ice_present
+         DO_2D( 0, 0, 0, 0 )
+            IF( l_ice_present(ji,jj) ) THEN
+               ztmelts = -rTmlt * sz_i(ji,jj,jk,jl_cat)
+               ! Conversion q(S,T) -> T (second order equation)
+               zbbb = ( rcp - rcpi ) * ztmelts + e_i(ji,jj,jk,jl_cat) * r1_rhoi - rLfus
+               zccc = SQRT( MAX( zbbb * zbbb - 4._wp * rcpi * rLfus * ztmelts, 0._wp ) )
+               t_i(ji,jj,jk,jl_cat) = rt0 - ( zbbb + zccc ) * 0.5_wp * r1_rcpi
+            ELSE
+               t_i(ji,jj,jk,jl_cat) = rt0
+            ENDIF
          END_2D
       END DO
       !
    END SUBROUTINE ice_thd_temp
 
 
-   SUBROUTINE ice_thd_mono(jl_cat, ll_ice_present)
+   SUBROUTINE ice_thd_mono( jl_cat )
       !!-----------------------------------------------------------------------
       !!                   ***  ROUTINE ice_thd_mono ***
       !!
       !! ** Purpose :   Lateral melting in case virtual_itd
       !!                          ( dA = A/2h dh )
       !!-----------------------------------------------------------------------
-      INTEGER, INTENT(IN) :: jl_cat
-      LOGICAL, DIMENSION(A2D(0)) :: ll_ice_present
+      INTEGER, INTENT(in) ::   jl_cat
       INTEGER  ::   ji,jj              ! dummy loop indices
       REAL(wp) ::   zhi_bef            ! ice thickness before thermo
       REAL(wp) ::   zdh_mel, zda_mel   ! net melting
       REAL(wp) ::   zvi, zvs           ! ice/snow volumes
       !!-----------------------------------------------------------------------
       !
-      DO_2D(0,0,0,0)
-       IF (ll_ice_present(ji,jj)) THEN
-         zdh_mel = MIN( 0._wp, dh_i_itm(ji,jj) + dh_i_sum_2d(ji,jj,jl_cat) + dh_i_bom(ji,jj) + dh_snowice(ji,jj) + dh_i_sub(ji,jj) )
-         IF( zdh_mel < 0._wp .AND. a_i(ji,jj,jl_cat) > 0._wp )  THEN
-            zvi          = a_i(ji,jj,jl_cat) * h_i(ji,jj,jl_cat)
-            zvs          = a_i(ji,jj,jl_cat) * h_s(ji,jj,jl_cat)
-            ! lateral melting = concentration change
-            zhi_bef     = h_i(ji,jj,jl_cat) - zdh_mel
-            zda_mel     = MAX( -a_i(ji,jj,jl_cat) , a_i(ji,jj,jl_cat) * zdh_mel / ( 2._wp * MAX( zhi_bef, epsi20 ) ) )
-            a_i(ji,jj,jl_cat)  = MAX( epsi20, a_i(ji,jj,jl_cat) + zda_mel )
-            ! adjust thickness
-            h_i(ji,jj,jl_cat) = zvi / a_i(ji,jj,jl_cat)
-            h_s(ji,jj,jl_cat) = zvs / a_i(ji,jj,jl_cat)
-            ! retrieve total concentration
-            at_i(ji,jj) = a_i(ji,jj,jl_cat)
-         END IF
-       ENDIF
+      DO_2D( 0, 0, 0, 0 )
+         !
+         IF( l_ice_present(ji,jj) ) THEN
+            !
+            zdh_mel = MIN( 0._wp, dh_i_itm(ji,jj) + dh_i_sum_3d(ji,jj,jl_cat) + dh_i_bom(ji,jj) &
+               &                                          + dh_snowice(ji,jj) + dh_i_sub(ji,jj) )
+            !
+            IF( zdh_mel < 0._wp .AND. a_i(ji,jj,jl_cat) > 0._wp )  THEN
+               zvi     = a_i(ji,jj,jl_cat) * h_i(ji,jj,jl_cat)
+               zvs     = a_i(ji,jj,jl_cat) * h_s(ji,jj,jl_cat)
+               ! lateral melting = concentration change
+               zhi_bef = h_i(ji,jj,jl_cat) - zdh_mel
+               zda_mel = MAX( -a_i(ji,jj,jl_cat) , a_i(ji,jj,jl_cat) * zdh_mel / ( 2._wp * MAX( zhi_bef, epsi20 ) ) )
+               a_i(ji,jj,jl_cat) = MAX( epsi20, a_i(ji,jj,jl_cat) + zda_mel )
+               ! adjust thickness
+               h_i(ji,jj,jl_cat) = zvi / a_i(ji,jj,jl_cat)
+               h_s(ji,jj,jl_cat) = zvs / a_i(ji,jj,jl_cat)
+               ! retrieve total concentration
+               at_i(ji,jj) = a_i(ji,jj,jl_cat)
+            END IF
+            !
+         ENDIF
+         !
       END_2D
       !
    END SUBROUTINE ice_thd_mono
@@ -318,6 +374,7 @@ CONTAINS
       
    END SUBROUTINE ice_thd_salchk
 
+
    SUBROUTINE ice_thd_unit_convert( kl, kn )
       !!-----------------------------------------------------------------------
       !!                   ***  ROUTINE ice_thd_unit_convert ***
@@ -336,8 +393,7 @@ CONTAINS
          !                 !-------------------------!
          ! --- Change units of e_i, e_s from J/m2 to J/m3 --- !
          ! Here we make sure that we don't divide by very small, but physically
-         ! meaningless, products of sea ice thicknesses/snow depths and sea ice
-         ! concentration
+         ! meaningless, products of sea ice thicknesses/snow depths and sea ice concentration
          DO jk = 1, nlay_i
             WHERE( (h_i(:,:,kl) * a_i(:,:,kl)) > epsi20 )
                e_i(:,:,jk,kl) = e_i(:,:,jk,kl) / (h_i(:,:,kl) * a_i(:,:,kl)) * nlay_i
@@ -365,13 +421,13 @@ CONTAINS
          END DO
          !
          ! Change thickness to volume (replaces routine ice_var_eqv2glo)
-         v_i(:,:,kl)   = h_i(:,:,kl)   * a_i(:,:,kl)
-         v_s(:,:,kl)   = h_s(:,:,kl)   * a_i(:,:,kl)
-         sv_i(:,:,kl)   = s_i(:,:,kl)   * v_i(:,:,kl)
-         oa_i(:,:,kl)   = o_i(:,:,kl)   * a_i(:,:,kl)
+         v_i (:,:,kl) = h_i(:,:,kl) * a_i(:,:,kl)
+         v_s (:,:,kl) = h_s(:,:,kl) * a_i(:,:,kl)
+         sv_i(:,:,kl) = s_i(:,:,kl) * v_i(:,:,kl)
+         oa_i(:,:,kl) = o_i(:,:,kl) * a_i(:,:,kl)
          DO jk = 1, nlay_i
             szv_i(:,:,jk,kl) = sz_i(:,:,jk,kl) * v_i(:,:,kl) * r1_nlay_i
-         ENDDO
+         END DO
       END SELECT
       !
    END SUBROUTINE ice_thd_unit_convert
@@ -421,6 +477,7 @@ CONTAINS
          WRITE(numcfl,*) 'Timestep  Direction   Max C     i    j    k'
          WRITE(numcfl,*) '*******************************************'
       ENDIF
+      !
    END SUBROUTINE ice_thd_init
 
 #else

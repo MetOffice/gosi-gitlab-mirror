@@ -166,7 +166,6 @@ CONTAINS
       INTEGER  ::   iter, iterate_ridging      ! local integer
       LOGICAL, DIMENSION(A2D(0)) ::   ll_ridge ! To determine whether ridging is required or not within local domain
       REAL(wp) ::   zfac                       ! local scalar
-      LOGICAL, DIMENSION(A2D(0)) :: ll_ice_present
       REAL(wp), DIMENSION(A2D(0)) ::   zdivu, zdelt  ! 1D divu_i & delta_i
       REAL(wp), DIMENSION(A2D(0)) ::   zconv         ! 1D rdg_conv (if EAP rheology)
       !!
@@ -200,57 +199,57 @@ CONTAINS
       at_i(A2D(0)) = SUM( a_i(A2D(0),:), dim=3 )
 
       ! Initialise logical array for ice points
-      ll_ice_present(:,:) = .false.
+      l_ice_present(A2D(0)) = .FALSE.
       ! Initialise logical array for ice points where ridging occurs
       ll_ridge(:,:) = .false.
 
       DO_2D( 0, 0, 0, 0 )
          IF ( at_i(ji,jj) > epsi10 ) THEN
-            ll_ice_present(ji,jj) = .true.
+            l_ice_present(ji,jj) = .TRUE.
          ENDIF
       END_2D
       !--------------------------------------------------------
       ! 1) Dynamical inputs (closing rate, divergence, opening)
       !--------------------------------------------------------
-      IF ( ANY (ll_ice_present(:,:) ) ) THEN
+      IF ( ANY( l_ice_present(A2D(0)) ) ) THEN
 
-         DO_2D(0, 0, 0, 0)
-          IF (ll_ice_present(ji,jj)) THEN
-             zdivu(ji,jj) = divu_i(ji,jj)
-            ! closing_net = rate at which open water area is removed + ice area removed by ridging
-            !                                                        - ice area added in new ridges
-            IF( ln_rhg_EVP .OR. ln_rhg_VP ) &
-               &               closing_net(ji,jj) = rn_csrdg * 0.5_wp * ( delta_i(ji,jj) - ABS( zdivu(ji,jj) ) ) - MIN( zdivu(ji,jj), 0._wp )
-            IF( ln_rhg_EAP )   closing_net(ji,jj) = rdg_conv(ji,jj)
-            !
-            IF( zdivu(ji,jj) < 0._wp )   closing_net(ji,jj) = MAX( closing_net(ji,jj), -zdivu(ji,jj) )   ! make sure the closing rate is large enough
-            !                                                                                ! to give asum = 1.0 after ridging
-            ! Opening rate (non-negative) that will give asum = 1.0 after ridging.
-            opning(ji,jj) = closing_net(ji,jj) + zdivu(ji,jj)
-          ENDIF
+         DO_2D( 0, 0, 0, 0 )
+            IF( l_ice_present(ji,jj) ) THEN
+               zdivu(ji,jj) = divu_i(ji,jj)
+               ! closing_net = rate at which open water area is removed + ice area removed by ridging
+               !                                                        - ice area added in new ridges
+               IF( ln_rhg_EVP .OR. ln_rhg_VP )   closing_net(ji,jj) = rn_csrdg * 0.5_wp * ( delta_i(ji,jj) - ABS( zdivu(ji,jj) ) ) &
+                  &                                                                                   - MIN( zdivu(ji,jj), 0._wp )
+               IF( ln_rhg_EAP )                  closing_net(ji,jj) = rdg_conv(ji,jj)
+               !
+               IF( zdivu(ji,jj) < 0._wp )        closing_net(ji,jj) = MAX( closing_net(ji,jj), -zdivu(ji,jj) )   ! make sure the closing rate is large enough
+               !                                                                                ! to give asum = 1.0 after ridging
+               ! Opening rate (non-negative) that will give asum = 1.0 after ridging.
+               opning(ji,jj) = closing_net(ji,jj) + zdivu(ji,jj)
+            ENDIF
          END_2D
          !
          !------------------------------------
          ! 2) Identify grid cells with ridging
          !------------------------------------
-         CALL rdgrft_prep( a_i, v_i, ato_i, ll_ice_present, &                       ! <<== in
+         CALL rdgrft_prep( a_i, v_i, ato_i, l_ice_present(A2D(0)),  &                                           ! <<== in
             &              apartf, aridge, araft, hi_hrdg, hraft, hrmin, hrmax, hrexp, closing_gross, opning, & ! ==>> out
             &              closing_net )                                                                        ! <<== in
 
-         DO_2D(0, 0, 0, 0)
-          IF (ll_ice_present(ji,jj))  THEN
-            IF( SUM( apartf(ji,jj,1:jpl) ) > 0._wp .AND. closing_gross(ji,jj) > 0._wp ) THEN
-               ll_ridge(ji,jj)=.TRUE. ! Set to true only if ridging is required
+         DO_2D( 0, 0, 0, 0 )
+            IF( l_ice_present(ji,jj) )  THEN
+               IF( SUM( apartf(ji,jj,1:jpl) ) > 0._wp .AND. closing_gross(ji,jj) > 0._wp ) THEN
+                  ll_ridge(ji,jj)=.TRUE. ! Set to true only if ridging is required
+               ENDIF
             ENDIF
-          ENDIF
          END_2D
-
+         
       ENDIF
 
       !-----------------
       ! 3) Start ridging
       !-----------------
-      IF( ANY (ll_ridge(:,:) ) ) THEN
+      IF( ANY( ll_ridge(:,:) ) ) THEN
 
          iter            = 1
          iterate_ridging = 1
@@ -261,13 +260,13 @@ CONTAINS
             !       and transfer      function
             !       and closing_gross (+correction on opening)
 
-            CALL rdgrft_prep( a_i, v_i, ato_i, ll_ridge, &                       ! <<== in
+            CALL rdgrft_prep( a_i, v_i, ato_i, ll_ridge, &                                                         ! <<== in
                &              apartf, aridge, araft, hi_hrdg, hraft, hrmin, hrmax, hrexp, closing_gross, opning, & ! ==>> out
                &              closing_net )                                                                        ! <<== in
 
             ! Redistribute area, volume, and energy between categories
             CALL rdgrft_shift( apartf, aridge, araft, hi_hrdg, hraft, hrmin, hrmax, hrexp, closing_gross, opning, & ! <<== in
-               &               sst_m, sss_m, ll_ridge )                                       ! <<== in
+               &               sst_m, sss_m, ll_ridge )                                                             ! <<== in
 
 
             ! Do we keep on iterating?
@@ -276,7 +275,7 @@ CONTAINS
             ! If not, because the closing and opening rates were reduced above, ridge again with new rates
 
             iterate_ridging = 0
-            DO_2D(0, 0, 0, 0)
+            DO_2D( 0, 0, 0, 0 )
              IF (ll_ridge(ji,jj) ) THEN
                zfac = 1._wp - ( ato_i(ji,jj) + SUM( a_i(ji,jj,:) ) )
                IF( ABS( zfac ) < epsi10 ) THEN
@@ -298,10 +297,6 @@ CONTAINS
 
          END DO
       ENDIF  ! high-level ridging check
-
-#if defined key_si3_1D
-      END_2D
-#endif
 
       IF( ll_diag_rdg ) THEN
         !         ! --- Ridging diagnostics --- !
@@ -333,7 +328,7 @@ CONTAINS
    END SUBROUTINE ice_dyn_rdgrft
 
 
-   SUBROUTINE rdgrft_prep( pa_i, pv_i, pato_i, ll_ice_present, &                                                          ! <<== in
+   SUBROUTINE rdgrft_prep( pa_i, pv_i, pato_i, lice_pres,  &                                                              ! <<== in
       &                    papartf, paridge, paraft, phi_hrdg, phraft, phrmin, phrmax, phrexp, pclosing_gross, popning, & ! ==>> out
       &                    pclosing_net )                                                                                 ! <<== in
       !!-------------------------------------------------------------------
@@ -344,13 +339,13 @@ CONTAINS
       !! ** Method  :   Compute the thickness distribution of the ice and open water
       !!                participating in ridging and of the resulting ridges.
       !!-------------------------------------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj,jpl)       , INTENT(in   ) ::   pa_i, pv_i
-      REAL(wp), DIMENSION(jpi,jpj)         , INTENT(in   ) ::   pato_i
-      LOGICAL, DIMENSION(A2D(0)), INTENT(in) :: ll_ice_present
+      REAL(wp), DIMENSION(jpi,jpj,jpl) , INTENT(in   ) ::   pa_i, pv_i
+      REAL(wp), DIMENSION(jpi,jpj)     , INTENT(in   ) ::   pato_i
+      LOGICAL , DIMENSION(A2D(0))      , INTENT(in   ) ::   lice_pres   ! ice presence
       REAL(wp), DIMENSION(A2D(0),0:jpl), INTENT(  out) ::   papartf
-      REAL(wp), DIMENSION(A2D(0), jpl), INTENT(  out) ::   paridge, paraft, phi_hrdg, phraft, phrmin, phrmax, phrexp
+      REAL(wp), DIMENSION(A2D(0), jpl) , INTENT(  out) ::   paridge, paraft, phi_hrdg, phraft, phrmin, phrmax, phrexp
       REAL(wp), DIMENSION(A2D(0))      , INTENT(inout), OPTIONAL ::   pclosing_gross, popning
-      REAL(wp), DIMENSION(A2D(0))         , INTENT(in   ), OPTIONAL ::   pclosing_net
+      REAL(wp), DIMENSION(A2D(0))      , INTENT(in   ), OPTIONAL ::   pclosing_net
       !!
       INTEGER  ::   ji, jj, jl                  ! dummy loop indices
       REAL(wp) ::   z1_gstar, z1_astar, zhmean, zfac   ! local scalar
@@ -358,7 +353,7 @@ CONTAINS
       REAL(wp), DIMENSION(A2D(0))        ::   zaksum                   ! normalisation factor
       REAL(wp), DIMENSION(A2D(0),jpl)    ::   zhi                      ! ice thickness
       REAL(wp), DIMENSION(A2D(0),-1:jpl) ::   zGsum                    ! zGsum(n) = sum of areas in categories 0 to n
-      !--------------------------------------------------------------------
+     !--------------------------------------------------------------------
 
       z1_gstar = 1._wp / rn_gstar
       z1_astar = 1._wp / rn_astar
@@ -370,22 +365,22 @@ CONTAINS
 #if defined key_single
 
       DO jl = 1, jpl
-         DO_2D(0, 0, 0, 0)
-          IF (ll_ice_present(ji,jj)) THEN
-            IF (pa_i(ji,jj,jl) > epsi10 .and. pv_i(ji,jj,jl) > epsi10 ) THEN
-               zhi(ji,jj,jl) = pv_i(ji,jj,jl) / pa_i(ji,jj,jl)
+         DO_2D( 0, 0, 0, 0 )
+          IF( lice_pres(ji,jj) ) THEN
+             IF (pa_i(ji,jj,jl) > epsi10 .AND. pv_i(ji,jj,jl) > epsi10 ) THEN
+                zhi(ji,jj,jl) = pv_i(ji,jj,jl) / pa_i(ji,jj,jl)
 #else
       DO jl = 1, jpl
-         DO_2D(0, 0, 0, 0)
-           IF (ll_ice_present(ji,jj)) THEN 
-            IF (pa_i(ji,jj,jl) > epsi10 ) THEN
-               zhi(ji,jj,jl) = pv_i(ji,jj,jl) / pa_i(ji,jj,jl)
+         DO_2D( 0, 0, 0, 0 )
+            IF( lice_pres(ji,jj) ) THEN 
+               IF (pa_i(ji,jj,jl) > epsi10 ) THEN
+                  zhi(ji,jj,jl) = pv_i(ji,jj,jl) / pa_i(ji,jj,jl)
 
 #endif
-            ELSE
-               zhi(ji,jj,jl) = 0._wp
+               ELSE
+                  zhi(ji,jj,jl) = 0._wp
+               ENDIF
             ENDIF
-           ENDIF
          END_2D
       END DO
 
@@ -402,66 +397,66 @@ CONTAINS
       !
       ! Compute total area of ice plus open water.
       ! This is in general not equal to one because of divergence during transport
-      DO_2D(0, 0, 0, 0)
-       IF (ll_ice_present(ji,jj)) THEN
-         zasum(ji,jj) = pato_i(ji,jj) + SUM( pa_i(ji,jj,:))      
-         IF (zasum(ji,jj) > epsi10 ) THEN
-            z1_asum(ji,jj) = 1._wp / zasum(ji,jj)
-         ELSE
-            z1_asum(ji,jj) = 0._wp
+      DO_2D( 0, 0, 0, 0 )
+         IF( lice_pres(ji,jj) ) THEN
+            zasum(ji,jj) = pato_i(ji,jj) + SUM( pa_i(ji,jj,:))      
+            IF (zasum(ji,jj) > epsi10 ) THEN
+               z1_asum(ji,jj) = 1._wp / zasum(ji,jj)
+            ELSE
+               z1_asum(ji,jj) = 0._wp
+            ENDIF
          ENDIF
-       ENDIF
       END_2D
       !
       ! Compute cumulative thickness distribution function
       ! Compute the cumulative thickness distribution function zGsum,
       ! where zGsum(n) is the fractional area in categories 0 to n.
       ! initial value (in h = 0) = open water area
-      DO_2D(0, 0, 0, 0)
-       IF (ll_ice_present(ji,jj)) THEN
-         zGsum(ji,jj,-1) = 0._wp
-         zGsum(ji,jj,0 ) = pato_i(ji,jj) * z1_asum(ji,jj)
-       ENDIF
+      DO_2D( 0, 0, 0, 0 )
+         IF( lice_pres(ji,jj) ) THEN
+            zGsum(ji,jj,-1) = 0._wp
+            zGsum(ji,jj,0 ) = pato_i(ji,jj) * z1_asum(ji,jj)
+         ENDIF
       END_2D
       DO jl = 1, jpl
-         DO_2D(0, 0, 0, 0)
-          IF (ll_ice_present(ji,jj)) THEN
-            zGsum(ji,jj,jl) = ( pato_i(ji,jj) + SUM( pa_i(ji,jj,1:jl)) ) * z1_asum(ji,jj)  ! sum(1:jl) is correct (and not jpl)
-          ENDIF
+         DO_2D( 0, 0, 0, 0 )
+            IF( lice_pres(ji,jj) ) THEN
+               zGsum(ji,jj,jl) = ( pato_i(ji,jj) + SUM( pa_i(ji,jj,1:jl)) ) * z1_asum(ji,jj)  ! sum(1:jl) is correct (and not jpl)
+            ENDIF
          END_2D
       END DO
       !
       IF( ln_partf_lin ) THEN          !--- Linear formulation (Thorndike et al., 1975)
          DO jl = 0, jpl
-            DO_2D(0, 0, 0, 0)
-             IF (ll_ice_present(ji,jj)) THEN
-               IF    ( zGsum(ji,jj,jl)   < rn_gstar ) THEN
-                  papartf(ji,jj,jl) = z1_gstar * ( zGsum(ji,jj,jl) - zGsum(ji,jj,jl-1) ) * &
-                     &                       ( 2._wp - ( zGsum(ji,jj,jl-1) + zGsum(ji,jj,jl) ) * z1_gstar )
-               ELSEIF( zGsum(ji,jj,jl-1) < rn_gstar ) THEN
-                  papartf(ji,jj,jl) = z1_gstar * ( rn_gstar     - zGsum(ji,jj,jl-1) ) *  &
-                     &                       ( 2._wp - ( zGsum(ji,jj,jl-1) + rn_gstar     ) * z1_gstar )
-               ELSE
-                  papartf(ji,jj,jl) = 0._wp
+            DO_2D( 0, 0, 0, 0 )
+               IF( lice_pres(ji,jj) ) THEN
+                  IF    ( zGsum(ji,jj,jl)   < rn_gstar ) THEN
+                     papartf(ji,jj,jl) = z1_gstar * ( zGsum(ji,jj,jl)   - zGsum(ji,jj,jl-1) ) * &
+                        &                 ( 2._wp - ( zGsum(ji,jj,jl-1) + zGsum(ji,jj,jl)   ) * z1_gstar )
+                  ELSEIF( zGsum(ji,jj,jl-1) < rn_gstar ) THEN
+                     papartf(ji,jj,jl) = z1_gstar * ( rn_gstar          - zGsum(ji,jj,jl-1) ) *  &
+                        &                 ( 2._wp - ( zGsum(ji,jj,jl-1) + rn_gstar          ) * z1_gstar )
+                  ELSE
+                     papartf(ji,jj,jl) = 0._wp
+                  ENDIF
                ENDIF
-             ENDIF
             END_2D
          END DO
          !
       ELSEIF( ln_partf_exp ) THEN      !--- Exponential, more stable formulation (Lipscomb et al, 2007)
          !
          zfac = 1._wp / ( 1._wp - EXP(-z1_astar) )
-         DO_2D(0, 0, 0, 0)
-            IF (ll_ice_present(ji,jj)) THEN
+         DO_2D( 0, 0, 0, 0 )
+            IF( lice_pres(ji,jj) ) THEN
                zGsum(ji,jj,-1) = EXP( -zGsum(ji,jj,-1) * z1_astar ) * zfac
             ENDIF
          END_2D
          DO jl = 0, jpl
-            DO_2D(0, 0, 0, 0)
-             IF (ll_ice_present(ji,jj)) THEN
-               zGsum(ji,jj,jl) = EXP( -zGsum(ji,jj,jl) * z1_astar ) * zfac
-               papartf(ji,jj,jl) = zGsum(ji,jj,jl-1) - zGsum(ji,jj,jl)
-             ENDIF
+            DO_2D( 0, 0, 0, 0 )
+               IF( lice_pres(ji,jj) ) THEN
+                  zGsum  (ji,jj,jl) = EXP( -zGsum(ji,jj,jl) * z1_astar ) * zfac
+                  papartf(ji,jj,jl) = zGsum(ji,jj,jl-1) - zGsum(ji,jj,jl)
+               ENDIF
             END_2D
          END DO
          !
@@ -469,38 +464,38 @@ CONTAINS
       !                                !--- Ridging and rafting participation concentrations
       IF( ln_rafting .AND. ln_ridging ) THEN             !- ridging & rafting
          DO jl = 1, jpl
-            DO_2D(0, 0, 0, 0)
-             IF (ll_ice_present(ji,jj)) THEN
-               paridge(ji,jj,jl) = ( 1._wp + TANH ( rn_craft * ( zhi(ji,jj,jl) - rn_hraft ) ) ) * 0.5_wp * papartf(ji,jj,jl)
-               paraft (ji,jj,jl) = papartf(ji,jj,jl) - paridge(ji,jj,jl)
-             ENDIF
+            DO_2D( 0, 0, 0, 0 )
+               IF( lice_pres(ji,jj) ) THEN
+                  paridge(ji,jj,jl) = ( 1._wp + TANH ( rn_craft * ( zhi(ji,jj,jl) - rn_hraft ) ) ) * 0.5_wp * papartf(ji,jj,jl)
+                  paraft (ji,jj,jl) = papartf(ji,jj,jl) - paridge(ji,jj,jl)
+               ENDIF
             END_2D
          END DO
       ELSEIF( ln_ridging .AND. .NOT. ln_rafting ) THEN   !- ridging alone
          DO jl = 1, jpl
-            DO_2D(0, 0, 0, 0)
-             IF (ll_ice_present(ji,jj)) THEN
-               paridge(ji,jj,jl) = papartf(ji,jj,jl)
-               paraft (ji,jj,jl) = 0._wp
-             ENDIF
+            DO_2D( 0, 0, 0, 0 )
+               IF( lice_pres(ji,jj) ) THEN
+                  paridge(ji,jj,jl) = papartf(ji,jj,jl)
+                  paraft (ji,jj,jl) = 0._wp
+               ENDIF
             END_2D
          END DO
       ELSEIF( ln_rafting .AND. .NOT. ln_ridging ) THEN   !- rafting alone
          DO jl = 1, jpl
-            DO_2D(0, 0, 0, 0)
-             IF (ll_ice_present(ji,jj)) THEN
-               paridge(ji,jj,jl) = 0._wp
-               paraft (ji,jj,jl) = papartf(ji,jj,jl)
-             ENDIF
+            DO_2D( 0, 0, 0, 0 )
+               IF( lice_pres(ji,jj) ) THEN
+                  paridge(ji,jj,jl) = 0._wp
+                  paraft (ji,jj,jl) = papartf(ji,jj,jl)
+               ENDIF
             END_2D
          END DO
       ELSE                                               !- no ridging & no rafting
          DO jl = 1, jpl
-            DO_2D(0, 0, 0, 0)
-             IF (ll_ice_present(ji,jj)) THEN
-               paridge(ji,jj,jl) = 0._wp
-               paraft (ji,jj,jl) = 0._wp
-             ENDIF
+            DO_2D( 0, 0, 0, 0 )
+               IF( lice_pres(ji,jj) ) THEN
+                  paridge(ji,jj,jl) = 0._wp
+                  paraft (ji,jj,jl) = 0._wp
+               ENDIF
             END_2D
          END DO
       ENDIF
@@ -558,39 +553,39 @@ CONTAINS
       !         net area removed = total area participating - area of new ridges
       !-----------------------------------------------------------------
       zfac = 1._wp / hi_hrft
-      DO_2D(0, 0, 0, 0)
-       IF (ll_ice_present(ji,jj)) THEN
-         zaksum(ji,jj) = papartf(ji,jj,0)
-       ENDIF
+      DO_2D( 0, 0, 0, 0 )
+         IF( lice_pres(ji,jj) ) THEN
+            zaksum(ji,jj) = papartf(ji,jj,0)
+         ENDIF
       END_2D
       !
       DO jl = 1, jpl
-         DO_2D(0, 0, 0, 0)
-          IF (ll_ice_present(ji,jj)) THEN
-            IF ( papartf(ji,jj,jl) > 0._wp ) THEN
-               zhmean        = MAX( SQRT( rn_hstar * zhi(ji,jj,jl) ), zhi(ji,jj,jl) * hrdg_hi_min )
-               phrmin(ji,jj,jl) = MIN( 2._wp * zhi(ji,jj,jl), 0.5_wp * ( zhmean + zhi(ji,jj,jl) ) )
-               phraft(ji,jj,jl) = zhi(ji,jj,jl) * zfac
-               !
-               IF( ln_distf_lin ) THEN
-                  phrmax  (ji,jj,jl) = 2._wp * zhmean - phrmin(ji,jj,jl)
-                  phi_hrdg(ji,jj,jl) = zhi(ji,jj,jl) / MAX( zhmean, epsi20 )
-               ELSEIF( ln_distf_exp ) THEN
-                  phrexp  (ji,jj,jl) = rn_murdg * SQRT( zhi(ji,jj,jl) )
-                  phi_hrdg(ji,jj,jl) = zhi(ji,jj,jl) / MAX( epsi20, phrmin(ji,jj,jl) + phrexp(ji,jj,jl) )
+         DO_2D( 0, 0, 0, 0 )
+            IF( lice_pres(ji,jj) ) THEN
+               IF ( papartf(ji,jj,jl) > 0._wp ) THEN
+                  zhmean           = MAX( SQRT( rn_hstar * zhi(ji,jj,jl) ), zhi(ji,jj,jl) * hrdg_hi_min )
+                  phrmin(ji,jj,jl) = MIN( 2._wp * zhi(ji,jj,jl), 0.5_wp * ( zhmean + zhi(ji,jj,jl) ) )
+                  phraft(ji,jj,jl) = zhi(ji,jj,jl) * zfac
+                  !
+                  IF( ln_distf_lin ) THEN
+                     phrmax  (ji,jj,jl) = 2._wp * zhmean - phrmin(ji,jj,jl)
+                     phi_hrdg(ji,jj,jl) = zhi(ji,jj,jl) / MAX( zhmean, epsi20 )
+                  ELSEIF( ln_distf_exp ) THEN
+                     phrexp  (ji,jj,jl) = rn_murdg * SQRT( zhi(ji,jj,jl) )
+                     phi_hrdg(ji,jj,jl) = zhi(ji,jj,jl) / MAX( epsi20, phrmin(ji,jj,jl) + phrexp(ji,jj,jl) )
+                  ENDIF
+                  !
+                  ! Normalization factor : zaksum, ensures mass conservation
+                  zaksum(ji,jj) = zaksum(ji,jj) + paridge(ji,jj,jl) * ( 1._wp - phi_hrdg(ji,jj,jl) )    &
+                     &                          + paraft (ji,jj,jl) * ( 1._wp - hi_hrft )
+               ELSE
+                  phrmin  (ji,jj,jl) = 0._wp
+                  phrmax  (ji,jj,jl) = 0._wp
+                  phrexp  (ji,jj,jl) = 0._wp
+                  phraft  (ji,jj,jl) = 0._wp
+                  phi_hrdg(ji,jj,jl) = 1._wp
                ENDIF
-               !
-               ! Normalization factor : zaksum, ensures mass conservation
-               zaksum(ji,jj) = zaksum(ji,jj) + paridge(ji,jj,jl) * ( 1._wp - phi_hrdg(ji,jj,jl) )    &
-                  &                    + paraft (ji,jj,jl) * ( 1._wp - hi_hrft )
-            ELSE
-               phrmin  (ji,jj,jl) = 0._wp
-               phrmax  (ji,jj,jl) = 0._wp
-               phrexp  (ji,jj,jl) = 0._wp
-               phraft  (ji,jj,jl) = 0._wp
-               phi_hrdg(ji,jj,jl) = 1._wp
             ENDIF
-          ENDIF
          END_2D
       END DO
       
@@ -601,14 +596,14 @@ CONTAINS
          !-----------------
          ! Based on the ITD of ridging and ridged ice, convert the net closing rate to a gross closing rate.
          ! NOTE: 0 < aksum <= 1
-         DO_2D(0, 0, 0, 0)
-          IF (ll_ice_present(ji,jj)) THEN
-            IF (zaksum(ji,jj) > epsi10 ) THEN
-               pclosing_gross(ji,jj) = pclosing_net(ji,jj) / zaksum(ji,jj)
-            ELSE
-               pclosing_gross(ji,jj) = 0._wp
+         DO_2D( 0, 0, 0, 0 )
+            IF( lice_pres(ji,jj) ) THEN
+               IF (zaksum(ji,jj) > epsi10 ) THEN
+                  pclosing_gross(ji,jj) = pclosing_net(ji,jj) / zaksum(ji,jj)
+               ELSE
+                  pclosing_gross(ji,jj) = 0._wp
+               ENDIF
             ENDIF
-          ENDIF
          END_2D
 
          ! correction to closing rate if excessive ice removal
@@ -616,13 +611,13 @@ CONTAINS
          ! Reduce the closing rate if more than 100% of any ice category would be removed
          ! Reduce the opening rate in proportion
          DO jl = 1, jpl
-            DO_2D(0, 0, 0, 0)
-             IF (ll_ice_present(ji,jj)) THEN
-               zfac = papartf(ji,jj,jl) * pclosing_gross(ji,jj) * rDt_ice
-               IF( zfac > pa_i(ji,jj,jl) .AND. papartf(ji,jj,jl) /= 0._wp ) THEN
-                  pclosing_gross(ji,jj) = pa_i(ji,jj,jl) / papartf(ji,jj,jl) * r1_Dt_ice
+            DO_2D( 0, 0, 0, 0 )
+               IF( lice_pres(ji,jj) ) THEN
+                  zfac = papartf(ji,jj,jl) * pclosing_gross(ji,jj) * rDt_ice
+                  IF( zfac > pa_i(ji,jj,jl) .AND. papartf(ji,jj,jl) /= 0._wp ) THEN
+                     pclosing_gross(ji,jj) = pa_i(ji,jj,jl) / papartf(ji,jj,jl) * r1_Dt_ice
+                  ENDIF
                ENDIF
-             ENDIF
             END_2D
          END DO
          
@@ -630,15 +625,15 @@ CONTAINS
          !---------------------------------------------------------
          ! Reduce the closing rate if more than 100% of the open water would be removed
          ! Reduce the opening rate in proportion
-         DO_2D(0, 0, 0, 0)
-          IF (ll_ice_present(ji,jj)) THEN
-            zfac = pato_i(ji,jj) + ( popning(ji,jj) - papartf(ji,jj,0) * pclosing_gross(ji,jj) ) * rDt_ice
-            IF( zfac < 0._wp ) THEN           ! would lead to negative ato_i
-               popning(ji,jj) = papartf(ji,jj,0) * pclosing_gross(ji,jj) - pato_i(ji,jj) * r1_Dt_ice
-            ELSEIF( zfac > zasum(ji,jj) ) THEN   ! would lead to ato_i > asum
-               popning(ji,jj) = papartf(ji,jj,0) * pclosing_gross(ji,jj) + ( zasum(ji,jj) - pato_i(ji,jj) ) * r1_Dt_ice
+         DO_2D( 0, 0, 0, 0 )
+            IF( lice_pres(ji,jj) ) THEN
+               zfac = pato_i(ji,jj) + ( popning(ji,jj) - papartf(ji,jj,0) * pclosing_gross(ji,jj) ) * rDt_ice
+               IF( zfac < 0._wp ) THEN           ! would lead to negative ato_i
+                  popning(ji,jj) = papartf(ji,jj,0) * pclosing_gross(ji,jj) - pato_i(ji,jj) * r1_Dt_ice
+               ELSEIF( zfac > zasum(ji,jj) ) THEN   ! would lead to ato_i > asum
+                  popning(ji,jj) = papartf(ji,jj,0) * pclosing_gross(ji,jj) + ( zasum(ji,jj) - pato_i(ji,jj) ) * r1_Dt_ice
+               ENDIF
             ENDIF
-          ENDIF
          END_2D
          !
 
@@ -648,7 +643,7 @@ CONTAINS
 
 
    SUBROUTINE rdgrft_shift( papartf, paridge, paraft, phi_hrdg, phraft, phrmin, phrmax, phrexp, pclosing_gross, popning, & ! <<== in
-      &                     psst, psss, ll_ice_present )                                                                   ! <<== in
+      &                     psst, psss, lice_pres )                                                                        ! <<== in
       !!-------------------------------------------------------------------
       !!                ***  ROUTINE rdgrft_shift ***
       !!
@@ -660,9 +655,9 @@ CONTAINS
       REAL(wp), DIMENSION(A2D(0),0:jpl)     , INTENT(in) ::   papartf
       REAL(wp), DIMENSION(A2D(0),jpl)       , INTENT(in) ::   paridge, paraft, phi_hrdg, phraft, phrmin, phrmax, phrexp
       REAL(wp), DIMENSION(A2D(0))           , INTENT(in) ::   pclosing_gross, popning
-      REAL(wp), DIMENSION(jpi,jpj)           , INTENT(in) ::   psst, psss
-      LOGICAL, DIMENSION(A2D(0)), INTENT(in) :: ll_ice_present
-      !
+      REAL(wp), DIMENSION(jpi,jpj)          , INTENT(in) ::   psst, psss
+      LOGICAL , DIMENSION(A2D(0))           , INTENT(in) ::   lice_pres  ! ice presence
+     !
       INTEGER  ::   ji, jj, jl, jl1, jl2, jk       ! dummy loop indices
       REAL(wp) ::   hL, hR, farea              ! left and right limits of integration and new area going to jl2
       REAL(wp) ::   expL, expR                 ! exponentials involving hL, hR
@@ -692,130 +687,133 @@ CONTAINS
       !
       ! 1) Change in open water area due to closing and opening
       !--------------------------------------------------------
-      DO_2D(0, 0, 0, 0)
-       IF (ll_ice_present(ji,jj)) THEN
-         ato_i(ji,jj) = MAX( 0._wp, ato_i(ji,jj) + ( popning(ji,jj) - papartf(ji,jj,0) * pclosing_gross(ji,jj) ) * rDt_ice )
-       ENDIF
+      DO_2D( 0, 0, 0, 0 )
+         IF( lice_pres(ji,jj) ) THEN
+            ato_i(ji,jj) = MAX( 0._wp, ato_i(ji,jj) + ( popning(ji,jj) - papartf(ji,jj,0) * pclosing_gross(ji,jj) ) * rDt_ice )
+         ENDIF
       END_2D
 
       DO jl1 = 1, jpl
  
-         DO_2D(0, 0, 0, 0)
-          IF (ll_ice_present(ji,jj)) THEN
-
-            ! set logical to true when ridging
-            IF( papartf(ji,jj,jl1) > 0._wp .AND. pclosing_gross(ji,jj) > 0._wp ) THEN   ;   ll_shift(ji,jj) = .TRUE.
-            ELSE                                                                  ;   ll_shift(ji,jj) = .FALSE.
-            ENDIF
-            
-            IF( ll_shift(ji,jj) ) THEN   ! only if ice is ridging
-
-               IF( a_i(ji,jj,jl1) > epsi10 ) THEN   ;   z1_ai = 1._wp / a_i(ji,jj,jl1)
-               ELSE                                 ;   z1_ai = 0._wp
-               ENDIF
-
-               ! area of ridging / rafting ice (airdg1) and of new ridge (airdg2)
-               airdg1(ji,jj) = paridge(ji,jj,jl1) * pclosing_gross(ji,jj) * rDt_ice
-               airft1(ji,jj) = paraft (ji,jj,jl1) * pclosing_gross(ji,jj) * rDt_ice
-
-               airdg2(ji,jj) = airdg1(ji,jj) * phi_hrdg(ji,jj,jl1)
-               airft2(ji,jj) = airft1(ji,jj) *  hi_hrft
-
-               ! ridging /rafting fractions
-               afrdg = airdg1(ji,jj) * z1_ai
-               afrft = airft1(ji,jj) * z1_ai
-
-               ! volume and enthalpy (J/m2, >0) of seawater trapped into ridges
-               IF    ( zvti(ji,jj) <= 10. ) THEN ; vsw = v_i(ji,jj,jl1) * afrdg * rn_porordg                                           ! v <= 10m then porosity = rn_porordg
-               ELSEIF( zvti(ji,jj) >= 20. ) THEN ; vsw = 0._wp                                                                         ! v >= 20m then porosity = 0
-               ELSE                           ; vsw = v_i(ji,jj,jl1) * afrdg * rn_porordg * MAX( 0._wp, 2._wp - 0.1_wp * zvti(ji,jj) ) ! v > 10m and v < 20m then porosity = linear transition to 0
-               ENDIF
-               ersw = -rhoi * vsw * rcp * psst(ji,jj)   ! clem: if sst>0, then ersw <0 (is that possible?)
-
-               ! volume etc of ridging / rafting ice and new ridges (vi, vs, sm, oi, es, ei)
-               virdg(ji,jj) = v_i(ji,jj,jl1)    * afrdg + vsw
-               vsrdg(ji,jj) = v_s(ji,jj,jl1)    * afrdg
-               oirdg(ji,jj) = oa_i(ji,jj,jl1)    * afrdg * phi_hrdg(ji,jj,jl1)
-
-               virft(ji,jj) = v_i(ji,jj,jl1)    * afrft
-               vsrft(ji,jj) = v_s(ji,jj,jl1)    * afrft
-               oirft(ji,jj) = oa_i(ji,jj,jl1)    * afrft * hi_hrft
-
-               IF ( ln_pnd_LEV .OR. ln_pnd_TOPO ) THEN
-                  aprdg(ji,jj) = a_ip(ji,jj,jl1)    * afrdg * phi_hrdg(ji,jj,jl1)
-                  vprdg(ji,jj) = v_ip(ji,jj,jl1)    * afrdg
-                  aprft(ji,jj) = a_ip(ji,jj,jl1)    * afrft *  hi_hrft
-                  vprft(ji,jj) = v_ip(ji,jj,jl1)    * afrft
-                  IF ( ln_pnd_lids ) THEN
-                     vlrdg(ji,jj) = v_il(ji,jj,jl1) * afrdg
-                     vlrft(ji,jj) = v_il(ji,jj,jl1) * afrft
-                  ENDIF
+         DO_2D( 0, 0, 0, 0 )
+            !
+            IF( lice_pres(ji,jj) ) THEN
+               !
+               ! set logical to true when ridging
+               IF( papartf(ji,jj,jl1) > 0._wp .AND. pclosing_gross(ji,jj) > 0._wp ) THEN   ;   ll_shift(ji,jj) = .TRUE.
+               ELSE                                                                        ;   ll_shift(ji,jj) = .FALSE.
                ENDIF
                
-               esrdg(ji,jj,:) = e_s(ji,jj,:,jl1) * afrdg
-               esrft(ji,jj,:) = e_s(ji,jj,:,jl1) * afrft
-               eirdg(ji,jj,:) = e_i(ji,jj,:,jl1) * afrdg + ersw * r1_nlay_i
-               eirft(ji,jj,:) = e_i(ji,jj,:,jl1) * afrft
-
-               IF( nn_icesal == 4 ) THEN 
-                  sirdg(ji,jj,:) = szv_i(ji,jj,:,jl1) * afrdg + vsw * psss(ji,jj) * r1_nlay_i
-                  sirft(ji,jj,:) = szv_i(ji,jj,:,jl1) * afrft
-               ELSE
-                  sirdg(ji,jj,1) = sv_i(ji, jj, jl1) * afrdg + vsw * psss(ji,jj)
-                  sirft(ji,jj,1) = sv_i(ji, jj, jl1) * afrft
-               ENDIF
-               
-               ! Ice-ocean exchanges associated with ice porosity
-               wfx_dyn(ji,jj) = wfx_dyn(ji,jj) - vsw * rhoi * r1_Dt_ice   ! increase in ice volume due to seawater frozen in voids
-               sfx_dyn(ji,jj) = sfx_dyn(ji,jj) - vsw * psss(ji,jj) * rhoi * r1_Dt_ice
-               hfx_dyn(ji,jj) = hfx_dyn(ji,jj) + ersw * r1_Dt_ice          ! > 0 [W.m-2]
-
-               ! Put the snow and pond lost by ridging into the ocean
-               !  Note that esrdg > 0; the ocean must cool to melt snow. If the ocean temp = Tf already, new ice must grow.
-               wfx_snw_dyn(ji,jj) = wfx_snw_dyn(ji,jj) + ( rhos * vsrdg(ji,jj) * ( 1._wp - rn_fsnwrdg )   &   ! fresh water source for ocean
-                  &                                      + rhos * vsrft(ji,jj) * ( 1._wp - rn_fsnwrft ) ) * r1_Dt_ice
-               DO jk = 1, nlay_s
-                  hfx_dyn(ji,jj) = hfx_dyn(ji,jj) + ( - esrdg(ji,jj,jk) * ( 1._wp - rn_fsnwrdg )   &          ! heat sink for ocean (<0, W.m-2)
-                     &                                - esrft(ji,jj,jk) * ( 1._wp - rn_fsnwrft ) ) * r1_Dt_ice
-               END DO
-
-               IF ( ln_pnd_LEV .OR. ln_pnd_TOPO ) THEN
-                  wfx_pnd(ji,jj)    = wfx_pnd(ji,jj)   + ( rhow * vprdg(ji,jj) * ( 1._wp - rn_fpndrdg )   &   ! fresh water source for ocean
-                     &                                   + rhow * vprft(ji,jj) * ( 1._wp - rn_fpndrft ) ) * r1_Dt_ice
-                  IF ( ln_pnd_lids ) THEN
-                     wfx_pnd(ji,jj) = wfx_pnd(ji,jj)   + ( rhow * vlrdg(ji,jj) * ( 1._wp - rn_fpndrdg )   &   ! fresh water source for ocean
-                        &                                + rhow * vlrft(ji,jj) * ( 1._wp - rn_fpndrft ) ) * r1_Dt_ice
+               IF( ll_shift(ji,jj) ) THEN   ! only if ice is ridging
+                  
+                  IF( a_i(ji,jj,jl1) > epsi10 ) THEN   ;   z1_ai = 1._wp / a_i(ji,jj,jl1)
+                  ELSE                                 ;   z1_ai = 0._wp
                   ENDIF
-               ENDIF
+                  
+                  ! area of ridging / rafting ice (airdg1) and of new ridge (airdg2)
+                  airdg1(ji,jj) = paridge(ji,jj,jl1) * pclosing_gross(ji,jj) * rDt_ice
+                  airft1(ji,jj) = paraft (ji,jj,jl1) * pclosing_gross(ji,jj) * rDt_ice
+                  
+                  airdg2(ji,jj) = airdg1(ji,jj) * phi_hrdg(ji,jj,jl1)
+                  airft2(ji,jj) = airft1(ji,jj) *  hi_hrft
+                  
+                  ! ridging /rafting fractions
+                  afrdg = airdg1(ji,jj) * z1_ai
+                  afrft = airft1(ji,jj) * z1_ai
+                  
+                  ! volume and enthalpy (J/m2, >0) of seawater trapped into ridges
+                  IF    ( zvti(ji,jj) <= 10. ) THEN ; vsw = v_i(ji,jj,jl1) * afrdg * rn_porordg                                           ! v <= 10m then porosity = rn_porordg
+                  ELSEIF( zvti(ji,jj) >= 20. ) THEN ; vsw = 0._wp                                                                         ! v >= 20m then porosity = 0
+                  ELSE                           ; vsw = v_i(ji,jj,jl1) * afrdg * rn_porordg * MAX( 0._wp, 2._wp - 0.1_wp * zvti(ji,jj) ) ! v > 10m and v < 20m then porosity = linear transition to 0
+                  ENDIF
+                  ersw = -rhoi * vsw * rcp * psst(ji,jj)   ! clem: if sst>0, then ersw <0 (is that possible?)
+                  
+                  ! volume etc of ridging / rafting ice and new ridges (vi, vs, sm, oi, es, ei)
+                  virdg(ji,jj) = v_i (ji,jj,jl1)    * afrdg + vsw
+                  vsrdg(ji,jj) = v_s (ji,jj,jl1)    * afrdg
+                  oirdg(ji,jj) = oa_i(ji,jj,jl1)    * afrdg * phi_hrdg(ji,jj,jl1)
+                  
+                  virft(ji,jj) = v_i (ji,jj,jl1)    * afrft
+                  vsrft(ji,jj) = v_s (ji,jj,jl1)    * afrft
+                  oirft(ji,jj) = oa_i(ji,jj,jl1)    * afrft * hi_hrft
 
-               ! virtual salt flux to keep salinity constant
-               IF( nn_icesal == 1 .OR. nn_icesal == 3 )  THEN
-                  sirdg(ji,jj,1)    = sirdg(ji,jj,1)    - ( psss(ji,jj) - s_i(ji,jj,jl1) ) * vsw                      ! ridge salinity = s_i
-                  sfx_bri(ji,jj) = sfx_bri(ji,jj) + ( psss(ji,jj) - s_i(ji,jj,jl1) ) * vsw * rhoi * r1_Dt_ice   ! put back sss_m into the ocean
-                  !                                                                                          ! and get  s_i  from the ocean
-               ENDIF
+                  IF ( ln_pnd_LEV .OR. ln_pnd_TOPO ) THEN
+                     aprdg(ji,jj) = a_ip(ji,jj,jl1) * afrdg * phi_hrdg(ji,jj,jl1)
+                     vprdg(ji,jj) = v_ip(ji,jj,jl1) * afrdg
+                     aprft(ji,jj) = a_ip(ji,jj,jl1) * afrft *  hi_hrft
+                     vprft(ji,jj) = v_ip(ji,jj,jl1) * afrft
+                     IF ( ln_pnd_lids ) THEN
+                        vlrdg(ji,jj) = v_il(ji,jj,jl1) * afrdg
+                        vlrft(ji,jj) = v_il(ji,jj,jl1) * afrft
+                     ENDIF
+                  ENDIF
+                  
+                  esrdg(ji,jj,:) = e_s(ji,jj,:,jl1) * afrdg
+                  esrft(ji,jj,:) = e_s(ji,jj,:,jl1) * afrft
+                  eirdg(ji,jj,:) = e_i(ji,jj,:,jl1) * afrdg + ersw * r1_nlay_i
+                  eirft(ji,jj,:) = e_i(ji,jj,:,jl1) * afrft
 
-               ! Remove area, volume of new ridge to each category jl1
-               !------------------------------------------------------
-               a_i (ji,jj,jl1) = a_i (ji,jj,jl1) - airdg1(ji,jj) - airft1(ji,jj)
-               v_i (ji,jj,jl1) = v_i (ji,jj,jl1)     * ( 1._wp - afrdg - afrft ) 
-               v_s (ji,jj,jl1) = v_s (ji,jj,jl1)     * ( 1._wp - afrdg - afrft )
-               oa_i(ji,jj,jl1) = oa_i(ji,jj,jl1)     * ( 1._wp - afrdg - afrft )
-               IF ( ln_pnd_LEV .OR. ln_pnd_TOPO ) THEN
-                  a_ip(ji,jj,jl1)  = a_ip(ji,jj,jl1) * ( 1._wp - afrdg - afrft )
-                  v_ip(ji,jj,jl1)  = v_ip(ji,jj,jl1) * ( 1._wp - afrdg - afrft ) 
-                  IF ( ln_pnd_lids ) v_il(ji,jj,jl1) = v_il(ji,jj,jl1) * ( 1._wp - afrdg - afrft )
+                  IF( nn_icesal == 4 ) THEN 
+                     sirdg(ji,jj,:) = szv_i(ji,jj,:,jl1) * afrdg + vsw * psss(ji,jj) * r1_nlay_i
+                     sirft(ji,jj,:) = szv_i(ji,jj,:,jl1) * afrft
+                  ELSE
+                     sirdg(ji,jj,1) = sv_i(ji, jj, jl1) * afrdg + vsw * psss(ji,jj)
+                     sirft(ji,jj,1) = sv_i(ji, jj, jl1) * afrft
+                  ENDIF
+                  
+                  ! Ice-ocean exchanges associated with ice porosity
+                  wfx_dyn(ji,jj) = wfx_dyn(ji,jj) - vsw * rhoi * r1_Dt_ice   ! increase in ice volume due to seawater frozen in voids
+                  sfx_dyn(ji,jj) = sfx_dyn(ji,jj) - vsw * psss(ji,jj) * rhoi * r1_Dt_ice
+                  hfx_dyn(ji,jj) = hfx_dyn(ji,jj) + ersw * r1_Dt_ice          ! > 0 [W.m-2]
+                  
+                  ! Put the snow and pond lost by ridging into the ocean
+                  !  Note that esrdg > 0; the ocean must cool to melt snow. If the ocean temp = Tf already, new ice must grow.
+                  wfx_snw_dyn(ji,jj) = wfx_snw_dyn(ji,jj) + ( rhos * vsrdg(ji,jj) * ( 1._wp - rn_fsnwrdg )   &   ! fresh water source for ocean
+                     &                                      + rhos * vsrft(ji,jj) * ( 1._wp - rn_fsnwrft ) ) * r1_Dt_ice
+                  DO jk = 1, nlay_s
+                     hfx_dyn(ji,jj) = hfx_dyn(ji,jj) + ( - esrdg(ji,jj,jk) * ( 1._wp - rn_fsnwrdg )   &          ! heat sink for ocean (<0, W.m-2)
+                        &                                - esrft(ji,jj,jk) * ( 1._wp - rn_fsnwrft ) ) * r1_Dt_ice
+                  END DO
+                  
+                  IF ( ln_pnd_LEV .OR. ln_pnd_TOPO ) THEN
+                     wfx_pnd(ji,jj)    = wfx_pnd(ji,jj)   + ( rhow * vprdg(ji,jj) * ( 1._wp - rn_fpndrdg )   &   ! fresh water source for ocean
+                        &                                   + rhow * vprft(ji,jj) * ( 1._wp - rn_fpndrft ) ) * r1_Dt_ice
+                     IF ( ln_pnd_lids ) THEN
+                        wfx_pnd(ji,jj) = wfx_pnd(ji,jj)   + ( rhow * vlrdg(ji,jj) * ( 1._wp - rn_fpndrdg )   &   ! fresh water source for ocean
+                           &                                + rhow * vlrft(ji,jj) * ( 1._wp - rn_fpndrft ) ) * r1_Dt_ice
+                     ENDIF
+                  ENDIF
+                  
+                  ! virtual salt flux to keep salinity constant
+                  IF( nn_icesal == 1 .OR. nn_icesal == 3 )  THEN
+                     sirdg(ji,jj,1) = sirdg(ji,jj,1) - ( psss(ji,jj) - s_i(ji,jj,jl1) ) * vsw                      ! ridge salinity = s_i
+                     sfx_bri(ji,jj) = sfx_bri(ji,jj) + ( psss(ji,jj) - s_i(ji,jj,jl1) ) * vsw * rhoi * r1_Dt_ice   ! put back sss_m into the ocean
+                     !                                                                                             ! and get  s_i  from the ocean
+                  ENDIF
+                  
+                  ! Remove area, volume of new ridge to each category jl1
+                  !------------------------------------------------------
+                  a_i (ji,jj,jl1) = a_i (ji,jj,jl1) - airdg1(ji,jj) - airft1(ji,jj)
+                  v_i (ji,jj,jl1) = v_i (ji,jj,jl1)     * ( 1._wp - afrdg - afrft ) 
+                  v_s (ji,jj,jl1) = v_s (ji,jj,jl1)     * ( 1._wp - afrdg - afrft )
+                  oa_i(ji,jj,jl1) = oa_i(ji,jj,jl1)     * ( 1._wp - afrdg - afrft )
+                  IF ( ln_pnd_LEV .OR. ln_pnd_TOPO ) THEN
+                     a_ip(ji,jj,jl1)  = a_ip(ji,jj,jl1) * ( 1._wp - afrdg - afrft )
+                     v_ip(ji,jj,jl1)  = v_ip(ji,jj,jl1) * ( 1._wp - afrdg - afrft ) 
+                     IF ( ln_pnd_lids ) v_il(ji,jj,jl1) = v_il(ji,jj,jl1) * ( 1._wp - afrdg - afrft )
+                  ENDIF
+                  !
+                  e_s(ji,jj,:,jl1) = e_s(ji,jj,:,jl1)   * ( 1._wp - afrdg - afrft )
+                  e_i(ji,jj,:,jl1) = e_i(ji,jj,:,jl1)   * ( 1._wp - afrdg - afrft )
+                  !
+                  IF( nn_icesal == 4 ) THEN   ;   szv_i(ji,jj,:,jl1) = szv_i(ji,jj,:,jl1) * ( 1._wp - afrdg - afrft ) 
+                  ELSE                        ;   sv_i (ji,jj,  jl1) = sv_i (ji,jj,  jl1) * ( 1._wp - afrdg - afrft ) 
+                  ENDIF
+                  
                ENDIF
                !
-               e_s(ji,jj,:,jl1) = e_s(ji,jj,:,jl1)   * ( 1._wp - afrdg - afrft )
-               e_i(ji,jj,:,jl1) = e_i(ji,jj,:,jl1)   * ( 1._wp - afrdg - afrft )
-               !
-               IF( nn_icesal == 4 ) THEN   ;   szv_i(ji,jj,:,jl1) = szv_i(ji,jj,:,jl1) * ( 1._wp - afrdg - afrft ) 
-               ELSE                        ;   sv_i(ji,jj,jl1) = sv_i(ji,jj,jl1) * ( 1._wp - afrdg - afrft ) 
-               ENDIF
-               
-            ENDIF
-          ENDIF ! ll_ice_present 
+            ENDIF ! lice_pres
+            !
          END_2D
          
  
@@ -825,10 +823,10 @@ CONTAINS
          itest_rft(:,:) = 0
          DO jl2  = 1, jpl
             !
-            DO_2D(0, 0, 0, 0)
-
-               IF( ll_ice_present(ji,jj) .AND. ll_shift(ji,jj) ) THEN
-
+            DO_2D( 0, 0, 0, 0 )
+               
+               IF( lice_pres(ji,jj) .AND. ll_shift(ji,jj) ) THEN
+                  
                   ! Compute the fraction of ridged ice area and volume going to thickness category jl2
                   IF( ln_distf_lin ) THEN ! Hibler (1980) linear formulation
                      !
@@ -921,7 +919,7 @@ CONTAINS
       ! roundoff errors
       !----------------
       ! In case ridging/rafting lead to very small negative values (sometimes it happens)
-      CALL ice_var_roundoff( a_i, v_i, v_s, sv_i, oa_i, a_ip, v_ip, v_il, e_s, e_i, szv_i, ll_ice_present)
+      CALL ice_var_roundoff( a_i, v_i, v_s, sv_i, oa_i, a_ip, v_ip, v_il, e_s, e_i, szv_i, lice_pres )
 
       !
    END SUBROUTINE rdgrft_shift
@@ -941,11 +939,10 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER             ::   ji, jj, jl  ! dummy loop indices
       REAL(wp)            ::   z1_3        ! local scalars
-      REAL(wp), DIMENSION(A2D(0))   ::   zworka         ! temporary array used here
+      REAL(wp), DIMENSION(A2D(0))      ::   zworka         ! temporary array used here
       REAL(wp), DIMENSION(jpi,jpj,jpl) ::   za_i_cap       ! local capped ice concentration
       !!
       LOGICAL             ::   ln_str_R75
-      LOGICAL, DIMENSION(A2D(0)) :: ll_ice_present
       REAL(wp)            ::   zhi, zcp
       REAL(wp)            ::   h2rdg                     ! mean value of h^2 for new ridge
       REAL(wp), PARAMETER ::   zmax_strength = 200.e3_wp ! Max strength for R75 formulation. Richter-Menge and Elder (1998) estimate maximum in Beaufort Sea in wintertime of the order 150 kN/m.
@@ -967,75 +964,75 @@ CONTAINS
          ! Initialise local capped a_i to zero
          ! Note that if 0 < a_i < epsi10, can end up with zhi=0 but apartf>0 rdgrft_prep; za_i_cap avoids this here
          DO jl = 1, jpl
-           DO_2D(0, 0, 0, 0)
+           DO_2D( 0, 0, 0, 0 )
               za_i_cap(ji,jj,jl) = 0.0
            END_2D
          END DO
          !
-         ll_ice_present(:,:) = .FALSE.
+         l_ice_present(A2D(0)) = .FALSE.
          ! Identify grid cells with ice
          DO_2D( 0, 0, 0, 0 )
             IF ( at_i(ji,jj) > epsi10 ) THEN
-               ll_ice_present(ji,jj) = .true.
+               l_ice_present(ji,jj) = .TRUE.
             ENDIF
          END_2D
 
-         IF( ANY (ll_ice_present(:,:) ) ) THEN
-
+         IF( ANY( l_ice_present(A2D(0)) ) ) THEN
+            
             ! Cap a_i to avoid zhi in rdgrft_prep going below minimum
             za_i_cap(A2D(0),:) = a_i(A2D(0),:)
             DO jl = 1, jpl
-               DO_2D(0, 0, 0, 0)
-                IF (ll_ice_present(ji,jj)) THEN
-                  IF ( a_i(ji,jj,jl) > epsi10 .AND. ( v_i(ji,jj,jl) / a_i(ji,jj,jl) ) .LT. rn_himin ) THEN
-                    za_i_cap(ji,jj,jl) = a_i(ji,jj,jl) * ( v_i(ji,jj,jl) / a_i(ji,jj,jl) ) / rn_himin
+               DO_2D( 0, 0, 0, 0 )
+                  IF( l_ice_present(ji,jj) ) THEN
+                     IF ( a_i(ji,jj,jl) > epsi10 .AND. ( v_i(ji,jj,jl) / a_i(ji,jj,jl) ) .LT. rn_himin ) THEN
+                        za_i_cap(ji,jj,jl) = a_i(ji,jj,jl) * ( v_i(ji,jj,jl) / a_i(ji,jj,jl) ) / rn_himin
+                     ENDIF
                   ENDIF
-                ENDIF
                END_2D
             END DO
-
-            CALL rdgrft_prep( za_i_cap, v_i, ato_i, ll_ice_present, &                ! <<== in
-               &              apartf, aridge, araft, hi_hrdg, hraft, hrmin, hrmax, hrexp )             ! ==>> out
+            
+            CALL rdgrft_prep( za_i_cap, v_i, ato_i, l_ice_present(A2D(0)), &                 ! <<== in
+               &              apartf, aridge, araft, hi_hrdg, hraft, hrmin, hrmax, hrexp )   ! ==>> out
             !
             zaksum(:,:) = apartf(:,:,0) !clem: aksum should be defined in the header => local to module
             DO jl = 1, jpl
-               DO_2D(0, 0, 0, 0)
-                IF (ll_ice_present(ji,jj)) THEN
-                  IF ( apartf(ji,jj,jl) > 0._wp ) THEN
-                     zaksum(ji,jj) = zaksum(ji,jj) + aridge(ji,jj,jl) * ( 1._wp - hi_hrdg(ji,jj,jl) )    &
-                        &                    + araft (ji,jj,jl) * ( 1._wp - hi_hrft )
+               DO_2D( 0, 0, 0, 0 )
+                  IF( l_ice_present(ji,jj) ) THEN
+                     IF ( apartf(ji,jj,jl) > 0._wp ) THEN
+                        zaksum(ji,jj) = zaksum(ji,jj) + aridge(ji,jj,jl) * ( 1._wp - hi_hrdg(ji,jj,jl) )    &
+                           &                          + araft (ji,jj,jl) * ( 1._wp - hi_hrft )
+                     ENDIF
                   ENDIF
-                ENDIF
                END_2D
             END DO
             !
             z1_3 = 1._wp / 3._wp
             DO jl = 1, jpl
-               DO_2D(0, 0, 0, 0)
-                IF (ll_ice_present(ji,jj)) THEN
-                  !
-                  IF( apartf(ji,jj,jl) > 0._wp ) THEN
+               DO_2D( 0, 0, 0, 0 )
+                  IF( l_ice_present(ji,jj) ) THEN
                      !
-                     IF( ln_distf_lin ) THEN       ! Uniform redistribution of ridged ice               
-                        h2rdg = z1_3 * ( hrmax(ji,jj,jl) * hrmax(ji,jj,jl) +     & ! (a**3-b**3)/(a-b) = a*a+ab+b*b
-                           &             hrmin(ji,jj,jl) * hrmin(ji,jj,jl) +     &
-                           &             hrmax(ji,jj,jl) * hrmin(ji,jj,jl) )
+                     IF( apartf(ji,jj,jl) > 0._wp ) THEN
                         !
-                     ELSEIF( ln_distf_exp ) THEN   ! Exponential redistribution of ridged ice
-                        h2rdg =          hrmin(ji,jj,jl) * hrmin(ji,jj,jl)   &
-                           &   + 2._wp * hrmin(ji,jj,jl) * hrexp(ji,jj,jl)   &
-                           &   + 2._wp * hrexp(ji,jj,jl) * hrexp(ji,jj,jl)
-                     END IF
-                     !
-                     IF( a_i(ji,jj,jl) > epsi10 ) THEN   ;   zhi = v_i(ji,jj,jl) / a_i(ji,jj,jl)
-                     ELSE                                ;   zhi = 0._wp
-                     ENDIF
+                        IF( ln_distf_lin ) THEN       ! Uniform redistribution of ridged ice               
+                           h2rdg = z1_3 * ( hrmax(ji,jj,jl) * hrmax(ji,jj,jl) +     & ! (a**3-b**3)/(a-b) = a*a+ab+b*b
+                              &             hrmin(ji,jj,jl) * hrmin(ji,jj,jl) +     &
+                              &             hrmax(ji,jj,jl) * hrmin(ji,jj,jl) )
+                           !
+                        ELSEIF( ln_distf_exp ) THEN   ! Exponential redistribution of ridged ice
+                           h2rdg =          hrmin(ji,jj,jl) * hrmin(ji,jj,jl)   &
+                              &   + 2._wp * hrmin(ji,jj,jl) * hrexp(ji,jj,jl)   &
+                              &   + 2._wp * hrexp(ji,jj,jl) * hrexp(ji,jj,jl)
+                        END IF
+                        !
+                        IF( a_i(ji,jj,jl) > epsi10 ) THEN   ;   zhi = v_i(ji,jj,jl) / a_i(ji,jj,jl)
+                        ELSE                                ;   zhi = 0._wp
+                        ENDIF
 
-	             ! Make sure ice thickness is not below the minimum
-                     ! Do not adjust concentration as don't want strength routine to be able to do this
-	             IF( a_i(ji,jj,jl) > epsi10 .AND. zhi < rn_himin ) THEN
-                       zhi = rn_himin
-                     ENDIF
+                        ! Make sure ice thickness is not below the minimum
+                        ! Do not adjust concentration as don't want strength routine to be able to do this
+                        IF( a_i(ji,jj,jl) > epsi10 .AND. zhi < rn_himin ) THEN
+                           zhi = rn_himin
+                        ENDIF
 
 
 !!$                     zstrength(ii) = zstrength(ii) -         apartf(ii,jl) * zhi * zhi                  ! PE loss from deforming ice
@@ -1044,32 +1041,32 @@ CONTAINS
 !!$                        &                                   ( hrmax(ii,jl) * hrmax(ii,jl) +           & ! (a**3-b**3)/(a-b) = a*a+ab+b*b
 !!$                        &                                     hrmin(ii,jl) * hrmin(ii,jl) +           &
 !!$                        &                                     hrmax(ii,jl) * hrmin(ii,jl) )
-                     strength(ji,jj) = strength(ji,jj) - apartf(ji,jj,jl) * zhi * zhi                  ! PE loss
-                     strength(ji,jj) = strength(ji,jj) + 2._wp * araft(ji,jj,jl) * zhi * zhi           ! PE gain (rafting)
-                     strength(ji,jj) = strength(ji,jj) + aridge(ji,jj,jl) * h2rdg *  hi_hrdg(ji,jj,jl)    ! PE gain (ridging)
-                     
+                        strength(ji,jj) = strength(ji,jj) - apartf(ji,jj,jl) * zhi * zhi                  ! PE loss
+                        strength(ji,jj) = strength(ji,jj) + 2._wp * araft(ji,jj,jl) * zhi * zhi           ! PE gain (rafting)
+                        strength(ji,jj) = strength(ji,jj) + aridge(ji,jj,jl) * h2rdg *  hi_hrdg(ji,jj,jl)    ! PE gain (ridging)
+                        
+                     ENDIF
+                     !
                   ENDIF
-                  !
-                ENDIF
                END_2D
             END DO
             !
-            DO_2D(0, 0, 0, 0)
-             IF (ll_ice_present(ji,jj)) THEN
-               strength(ji,jj) = rn_pe_rdg * zcp * strength(ji,jj) / zaksum(ji,jj)
-             ENDIF
+            DO_2D( 0, 0, 0, 0 )
+               IF( l_ice_present(ji,jj) ) THEN
+                  strength(ji,jj) = rn_pe_rdg * zcp * strength(ji,jj) / zaksum(ji,jj)
+               ENDIF
             END_2D
             !
             ! Enforce a maximum for R75 strength
-            DO_2D(0, 0, 0, 0)
-             IF (ll_ice_present(ji,jj)) THEN
-               IF ( strength(ji,jj) > zmax_strength ) THEN 
-                  strength(ji,jj) = zmax_strength
+            DO_2D( 0, 0, 0, 0 )
+               IF( l_ice_present(ji,jj) ) THEN
+                  IF ( strength(ji,jj) > zmax_strength ) THEN 
+                     strength(ji,jj) = zmax_strength
+                  ENDIF
                ENDIF
-             ENDIF
             END_2D
          ENDIF
-
+         
          CALL lbc_lnk( 'icedyn_rdgrft', strength, 'T', 1.0_wp ) ! this call could be removed if calculations were done on the full domain
          !                                                      ! but we decided it is more efficient this way
          !

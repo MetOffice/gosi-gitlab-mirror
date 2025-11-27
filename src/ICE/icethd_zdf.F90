@@ -46,9 +46,8 @@ MODULE icethd_zdf
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE ice_thd_zdf(kl, ll_ice_present)
-      INTEGER, INTENT(in) :: kl
-      LOGICAL, DIMENSION(A2D(0)), INTENT(in) :: ll_ice_present
+   SUBROUTINE ice_thd_zdf( kl )
+      INTEGER, INTENT(in) ::   kl
       !!-------------------------------------------------------------------
       !!                ***  ROUTINE ice_thd_zdf  ***
       !!
@@ -62,12 +61,12 @@ CONTAINS
       CASE( np_BL99 )               ! BL99 solver !
          !                          !-------------!
          IF( .NOT.ln_cndflx ) THEN                           ! No conduction flux ==> default option
-            CALL ice_thd_zdf_BL99( kl, np_cnd_OFF, ll_ice_present )
+            CALL ice_thd_zdf_BL99( kl, np_cnd_OFF )
          ELSEIF( ln_cndflx .AND. .NOT.ln_cndemulate ) THEN   ! Conduction flux as surface boundary condition ==> Met Office default option
-            CALL ice_thd_zdf_BL99( kl, np_cnd_ON, ll_ice_present  )
+            CALL ice_thd_zdf_BL99( kl, np_cnd_ON  )
          ELSEIF( ln_cndflx .AND.      ln_cndemulate ) THEN   ! Conduction flux is emulated 
-            CALL ice_thd_zdf_BL99( kl, np_cnd_EMU, ll_ice_present )
-            CALL ice_thd_zdf_BL99( kl, np_cnd_ON, ll_ice_present  )
+            CALL ice_thd_zdf_BL99( kl, np_cnd_EMU )
+            CALL ice_thd_zdf_BL99( kl, np_cnd_ON  )
          ENDIF
          !
       END SELECT

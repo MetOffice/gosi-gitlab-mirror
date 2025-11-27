@@ -42,53 +42,52 @@ MODULE ice
    !! List of ice state variables :                                       |
    !! -----------------------------                                       |
    !!                                                                     |
-   !!-------------|-------------|---------------------------------|-------|
-   !!   name in   |   name in   |              meaning            | units |
-   !! 2D routines | 1D routines |                                 |       |
-   !!-------------|-------------|---------------------------------|-------|
+   !!-------------|---------------------------------|-------|
+   !!   name in   |              meaning            | units |
+   !! 2D routines |                                 |       |
+   !!-------------|---------------------------------|-------|
    !!                                                                     |
    !! ******************************************************************* |
    !! ***         Dynamical variables (prognostic)                    *** |
    !! ******************************************************************* |
    !!                                                                     |
-   !! u_ice       |      -      |    ice velocity in i-direction  | m/s   |
-   !! v_ice       |      -      |    ice velocity in j-direction  | m/s   |
+   !! u_ice       |    ice velocity in i-direction  | m/s   |
+   !! v_ice       |    ice velocity in j-direction  | m/s   |
    !!                                                                     |
    !! ******************************************************************* |
    !! ***         Category dependent state variables (prognostic)     *** |
    !! ******************************************************************* |
    !!                                                                     |
    !! ** Global variables                                                 |
-   !!-------------|-------------|---------------------------------|-------|
-   !! a_i         |   a_i_1d    |    Ice concentration            |       |
-   !! v_i         |      -      |    Ice volume per unit area     | m     |
-   !! v_s         |      -      |    Snow volume per unit area    | m     |
-   !! sv_i        |      -      |    Sea ice salt content (3D)    | g/kg.m|
-   !! szv_i       |      -      |    Sea ice salt content (4D)    | g/kg.m|
-   !! oa_i        |      -      |    Sea ice areal age content    | s     |
-   !! e_i         |             |    Ice enthalpy                 | J/m2  |
-   !!             |    e_i_1d   |    Ice enthalpy per unit vol.   | J/m3  |
-   !! e_s         |             |    Snow enthalpy                | J/m2  |
-   !!             |    e_s_1d   |    Snow enthalpy per unit vol.  | J/m3  |
-   !! a_ip        |      -      |    Ice pond concentration       |       |
-   !! v_ip        |      -      |    Ice pond volume per unit area| m     |
-   !! v_il        |    v_il_1d  |    Ice pond lid volume per area | m     |
-   !!                                                                     |
-   !!-------------|-------------|---------------------------------|-------|
-   !!                                                                     |
-   !! ** Equivalent variables                                             |
-   !!-------------|-------------|---------------------------------|-------|
-   !!                                                                     |
-   !! h_i         | h_i_1d      |    Ice thickness                | m     |
-   !! h_s         ! h_s_1d      |    Snow depth                   | m     |
-   !! s_i         ! s_i_1d      |    Sea ice bulk salinity        | g/kg  |
-   !! sz_i        ! sz_i_1d     |    Sea ice salinity profile     | g/kg  |
-   !! o_i         !      -      |    Sea ice Age                  | s     |
-   !! t_i         ! t_i_1d      |    Sea ice temperature          | K     |
-   !! t_s         ! t_s_1d      |    Snow temperature             | K     |
-   !! t_su        ! t_su_1d     |    Sea ice surface temperature  | K     |
-   !! h_ip        | h_ip_1d     |    Ice pond thickness           | m     |
-   !! h_il        | h_il_1d     |    Ice pond lid thickness       | m     |
+   !!-------------|---------------------------------|-------|-------------|
+   !! a_i         |    Ice concentration            |       |
+   !! v_i         |    Ice volume per unit area     | m     |
+   !! v_s         |    Snow volume per unit area    | m     |
+   !! sv_i        |    Sea ice salt content (3D)    | g/kg.m|
+   !! szv_i       |    Sea ice salt content (4D)    | g/kg.m|
+   !! oa_i        |    Sea ice areal age content    | s     |
+   !! e_i         |    Ice enthalpy                 | J/m2  |
+   !!             |    Ice enthalpy per unit vol.   | J/m3  |
+   !! e_s         |    Snow enthalpy                | J/m2  |
+   !!             |    Snow enthalpy per unit vol.  | J/m3  |
+   !! a_ip        |    Ice pond concentration       |       |
+   !! v_ip        |    Ice pond volume per unit area| m     |
+   !! v_il        |    Ice pond lid volume per area | m     |
+   !! 
+   !!-------------|---------------------------------|-------|
+   !!                                                       |
+   !! ** Equivalent variables                               |
+   !!-------------|---------------------------------|-------|
+   !! h_i         |    Ice thickness                | m     |
+   !! h_s         |    Snow depth                   | m     |
+   !! s_i         |    Sea ice bulk salinity        | g/kg  |
+   !! sz_i        |    Sea ice salinity profile     | g/kg  |
+   !! o_i         |    Sea ice Age                  | s     |
+   !! t_i         |    Sea ice temperature          | K     |
+   !! t_s         |    Snow temperature             | K     |
+   !! t_su        |    Sea ice surface temperature  | K     |
+   !! h_ip        |    Ice pond thickness           | m     |
+   !! h_il        |    Ice pond lid thickness       | m     |
    !!                                                                     |
    !! notes: the ice model only sees a bulk (i.e., vertically averaged)   |
    !!        salinity, except in thermodynamic computations, for which    |
@@ -103,28 +102,30 @@ MODULE ice
    !! ******************************************************************* |
    !! ***         Category-summed state variables (diagnostic)        *** |
    !! ******************************************************************* |
-   !! at_i        | at_i_1d     |    Total ice concentration      |       |
-   !! vt_i        |      -      |    Total ice vol. per unit area | m     |
-   !! vt_s        |      -      |    Total snow vol. per unit ar. | m     |
-   !! st_i        |      -      |    Total Sea ice salt content   | g/kg.m|
-   !! sm_i        |      -      |    Mean sea ice salinity        | g/kg  |
-   !! tm_i        |      -      |    Mean sea ice temperature     | K     |
-   !! tm_s        |      -      |    Mean snow    temperature     | K     |
-   !! et_i        |      -      |    Total ice enthalpy           | J/m2  |
-   !! et_s        |      -      |    Total snow enthalpy          | J/m2  |
-   !! v_ibr       |      -      |    relative brine volume        | ???   |
-   !! at_ip       |      -      |    Total ice pond concentration |       |
-   !! at_ip_eff   !      -      !    Effective pond concentration |       |
-   !! hm_ip       |      -      |    Mean ice pond depth          | m     |
-   !! vt_ip       |      -      |    Total ice pond vol. per unit area| m |
-   !! hm_il       |      -      |    Mean ice pond lid depth      | m     |
-   !! vt_il       |      -      |    Total ice pond lid vol. per area | m |
+   !! at_i        |    Total ice concentration      |       |
+   !! vt_i        |    Total ice vol. per unit area | m     |
+   !! vt_s        |    Total snow vol. per unit ar. | m     |
+   !! st_i        |    Total Sea ice salt content   | g/kg.m|
+   !! sm_i        |    Mean sea ice salinity        | g/kg  |
+   !! tm_i        |    Mean sea ice temperature     | K     |
+   !! tm_s        |    Mean snow    temperature     | K     |
+   !! et_i        |    Total ice enthalpy           | J/m2  |
+   !! et_s        |    Total snow enthalpy          | J/m2  |
+   !! v_ibr       |    relative brine volume        | ???   |
+   !! at_ip       |    Total ice pond concentration |       |
+   !! at_ip_eff   |    Effective pond concentration |       |
+   !! hm_ip       |    Mean ice pond depth          | m     |
+   !! vt_ip       |    Total ice pond vol. per unit area| m |
+   !! hm_il       |    Mean ice pond lid depth      | m     |
+   !! vt_il       |    Total ice pond lid vol. per area | m |
    !!=====================================================================
 
    !!----------------------------------------------------------------------
    !! * Share Module variables
    !!----------------------------------------------------------------------
    !                                     !!** define arrays
+   LOGICAL , PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:)   ::   l_ice_present   !: presence of ice or not
+   !
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:)   ::   u_oce,v_oce     !: surface ocean velocity used in ice dynamics
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:)   ::   ht_i_new        !: ice collection thickness accreted in leads
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:)   ::   fraz_frac       !: fraction of frazil ice accreted at the ice bottom
@@ -268,8 +269,8 @@ MODULE ice
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   dh_snowice    !: Snow ice formation             [m of ice]
 
    ! meltwater arrays to save for melt ponds (mv - could be grouped in a single meltwater volume array)
-   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::   dh_i_sum_2d   !: surface melt (2d arrays for ponds)       [m]
-   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::   dh_s_sum_2d   !: snow surf melt (2d arrays for ponds)     [m]
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::   dh_i_sum_3d   !: surface melt (3d arrays for ponds)       [m]
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::   dh_s_sum_3d   !: snow surf melt (3d arrays for ponds)     [m]
 
    !!----------------------------------------------------------------------
    !! * Global variables at before time step
@@ -348,13 +349,16 @@ CONTAINS
       !!-----------------------------------------------------------------
       INTEGER :: ice_alloc
       !
-      INTEGER :: ierr(21), ii
+      INTEGER :: ierr(22), ii
       !!-----------------------------------------------------------------
       ierr(:) = 0
       ii = 0
       ! ----------------- !
       ! == FULL ARRAYS == !
       ! ----------------- !
+      ! * Ice presence
+      ii = ii + 1
+      ALLOCATE( l_ice_present(jpi,jpj) , STAT=ierr(ii) )
       
       ! * Ice global state variables
       ii = ii + 1
@@ -441,7 +445,7 @@ CONTAINS
 
       ! * others
       ii = ii + 1
-      ALLOCATE( tau_icebfr(A2D(0)) , dh_i_sum_2d(A2D(0),jpl) , dh_s_sum_2d(A2D(0),jpl) ,  STAT=ierr(ii) )
+      ALLOCATE( tau_icebfr(A2D(0)) , dh_i_sum_3d(A2D(0),jpl) , dh_s_sum_3d(A2D(0),jpl) ,  STAT=ierr(ii) )
 
       ! * dh_* arrays
       ii = ii + 1
@@ -480,6 +484,7 @@ CONTAINS
 
    SUBROUTINE ice_dealloc()
       IF( .NOT. ALLOCATED(u_ice) ) RETURN
+      DEALLOCATE( l_ice_present )
       DEALLOCATE( u_ice , v_ice )
       DEALLOCATE( h_i   , a_i  , v_i  , v_s , &
          &      h_s   , s_i  , sv_i , o_i , oa_i , &
@@ -520,7 +525,7 @@ CONTAINS
          &      hm_ip , hm_il , tm_i , tm_s   ,  &
          &      sm_i  , hm_s  , om_i , vm_ibr ,  &
          &      tm_su )
-      DEALLOCATE( tau_icebfr , dh_i_sum_2d , dh_s_sum_2d )
+      DEALLOCATE( tau_icebfr , dh_i_sum_3d , dh_s_sum_3d )
       DEALLOCATE( dh_s_tot, dh_i_itm, dh_i_bom, dh_i_bog, dh_i_sub, dh_s_itm, dh_snowice)
       DEALLOCATE( ht_i_new  , fraz_frac )
       DEALLOCATE( hi_max, hi_mean )

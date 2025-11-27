@@ -42,7 +42,7 @@ MODULE icethd_da
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE ice_thd_da(jl_cat, ll_ice_present)
+   SUBROUTINE ice_thd_da( jl_cat )
       !!-------------------------------------------------------------------
       !!                ***  ROUTINE ice_thd_da  ***    
       !!   
@@ -110,8 +110,7 @@ CONTAINS
       !!              Processes controlling surface, bottom and lateral melt of Arctic sea ice in a state of the art sea ice model.
       !!              Phil. Trans. R. Soc. A, 373(2052), 20140167.
       !!---------------------------------------------------------------------
-      INTEGER, INTENT(IN) :: jl_cat
-      LOGICAL, DIMENSION(A2D(0)), INTENT(inout) :: ll_ice_present
+      INTEGER, INTENT(in) ::   jl_cat
       INTEGER  ::   ji, jj     ! dummy loop indices
       REAL(wp)            ::   zastar, zdfloe, zperi, zwlat, zda, zda_tot
       REAL(wp), PARAMETER ::   zdmax = 300._wp
@@ -123,48 +122,52 @@ CONTAINS
       !
       zastar = 1._wp / ( 1._wp - (rn_dmin / zdmax)**(1._wp/rn_beta) )
       !
-      DO_2D(0, 0, 0, 0)
-       IF (ll_ice_present(ji,jj)) THEN
-          IF( nn_icesal == 4 ) THEN   ;   zs_i(:) = sz_i(ji,jj,:,jl_cat)  ! use layer salinity if nn_icesal=4 
-          ELSE                        ;   zs_i(:) = s_i (ji,jj,  jl_cat)  !     bulk salinity otherwise (for conservation purpose)
+      DO_2D( 0, 0, 0, 0 )
+         !
+         IF( l_ice_present(ji,jj) ) THEN
+            !
+            IF( nn_icesal == 4 ) THEN   ;   zs_i(:) = sz_i(ji,jj,:,jl_cat)  ! use layer salinity if nn_icesal=4 
+            ELSE                        ;   zs_i(:) = s_i (ji,jj,  jl_cat)  !     bulk salinity otherwise (for conservation purpose)
 
-          ENDIF
-          !
-          ! --- Calculate reduction of total sea ice concentration --- !
-          zdfloe = rn_dmin * ( zastar / ( zastar - at_i(ji,jj) ) )**rn_beta           ! Mean floe caliper diameter [m]
-          !
-          zperi  = at_i(ji,jj) * rpi / ( zcs * zdfloe )                               ! Mean perimeter of the floe [m.m-2]
-          !                                                                           !    = N*pi*D = (A/cs*D^2)*pi*D
-          zwlat  = zm1 * ( MAX( 0._wp, sst_m(ji,jj) - ( t_bo(ji,jj) - rt0 ) ) )**zm2  ! Melt speed rate [m/s]
-          !
-          zda_tot = MIN( zwlat * zperi * rDt_ice, at_i(ji,jj) )                     ! sea ice concentration decrease (>0)
-       
-          ! --- Distribute reduction among ice categories and calculate associated ice-ocean fluxes --- !
-          ! decrease of concentration for the category jl
-          ! each category contributes to melting in proportion to its concentration
-          zda = MIN( a_i(ji,jj,jl_cat), zda_tot * a_i(ji,jj,jl_cat) / at_i(ji,jj) )
-             
-          ! Contribution to salt flux
-          sfx_lam(ji,jj) = sfx_lam(ji,jj) + rhoi * zda * r1_Dt_ice * h_i(ji,jj,jl_cat) * r1_nlay_i * SUM( zs_i(:) ) 
-
-             
-          ! Contribution to heat flux into the ocean [W.m-2], (<0)  
-          hfx_thd(ji,jj) = hfx_thd(ji,jj) - zda * r1_Dt_ice * ( h_i(ji,jj,jl_cat) * r1_nlay_i * SUM( e_i(ji,jj,1:nlay_i,jl_cat) )  &
-                                                              + h_s(ji,jj,jl_cat) * r1_nlay_s * SUM( e_s(ji,jj,1:nlay_s,jl_cat) ) ) 
-             
-          ! Contribution to mass flux
-          wfx_lam(ji,jj) =  wfx_lam(ji,jj) + zda * r1_Dt_ice * ( rhoi * h_i(ji,jj,jl_cat) + rhos * h_s(ji,jj,jl_cat) )
-             
-          ! new concentration
-          a_i(ji,jj,jl_cat) = a_i(ji,jj,jl_cat) - zda
- 
-          ! ensure that h_i = 0 where a_i = 0
-          IF( a_i(ji,jj,jl_cat) == 0._wp ) THEN
-              h_i(ji,jj,jl_cat) = 0._wp
-              h_s(ji,jj,jl_cat) = 0._wp
-              ll_ice_present(ji,jj) = .false.
-          ENDIF
-       ENDIF
+            ENDIF
+            !
+            ! --- Calculate reduction of total sea ice concentration --- !
+            zdfloe = rn_dmin * ( zastar / ( zastar - at_i(ji,jj) ) )**rn_beta           ! Mean floe caliper diameter [m]
+            !
+            zperi  = at_i(ji,jj) * rpi / ( zcs * zdfloe )                               ! Mean perimeter of the floe [m.m-2]
+            !                                                                           !    = N*pi*D = (A/cs*D^2)*pi*D
+            zwlat  = zm1 * ( MAX( 0._wp, sst_m(ji,jj) - ( t_bo(ji,jj) - rt0 ) ) )**zm2  ! Melt speed rate [m/s]
+            !
+            zda_tot = MIN( zwlat * zperi * rDt_ice, at_i(ji,jj) )                       ! sea ice concentration decrease (>0)
+            
+            ! --- Distribute reduction among ice categories and calculate associated ice-ocean fluxes --- !
+            ! decrease of concentration for the category jl
+            ! each category contributes to melting in proportion to its concentration
+            zda = MIN( a_i(ji,jj,jl_cat), zda_tot * a_i(ji,jj,jl_cat) / at_i(ji,jj) )
+            
+            ! Contribution to salt flux
+            sfx_lam(ji,jj) = sfx_lam(ji,jj) + rhoi * zda * r1_Dt_ice * h_i(ji,jj,jl_cat) * r1_nlay_i * SUM( zs_i(:) ) 
+            
+            
+            ! Contribution to heat flux into the ocean [W.m-2], (<0)  
+            hfx_thd(ji,jj) = hfx_thd(ji,jj) - zda * r1_Dt_ice * ( h_i(ji,jj,jl_cat) * r1_nlay_i * SUM( e_i(ji,jj,1:nlay_i,jl_cat) ) &
+               &                                                + h_s(ji,jj,jl_cat) * r1_nlay_s * SUM( e_s(ji,jj,1:nlay_s,jl_cat) ) ) 
+            
+            ! Contribution to mass flux
+            wfx_lam(ji,jj) =  wfx_lam(ji,jj) + zda * r1_Dt_ice * ( rhoi * h_i(ji,jj,jl_cat) + rhos * h_s(ji,jj,jl_cat) )
+            
+            ! new concentration
+            a_i(ji,jj,jl_cat) = a_i(ji,jj,jl_cat) - zda
+            
+            ! ensure that h_i = 0 where a_i = 0
+            IF( a_i(ji,jj,jl_cat) == 0._wp ) THEN
+               h_i(ji,jj,jl_cat) = 0._wp
+               h_s(ji,jj,jl_cat) = 0._wp
+               l_ice_present(ji,jj) = .FALSE.
+            ENDIF
+            !
+         ENDIF
+         !
       END_2D
       !
    END SUBROUTINE ice_thd_da

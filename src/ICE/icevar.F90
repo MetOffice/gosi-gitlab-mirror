@@ -75,6 +75,7 @@ MODULE icevar
    PUBLIC   ice_var_brine
    PUBLIC   ice_var_enthalpy
    PUBLIC   ice_var_vremap
+   PUBLIC   snw_var_vremap
    PUBLIC   ice_var_sshdyn
    PUBLIC   ice_var_itd
    PUBLIC   ice_var_snwfra
@@ -88,11 +89,11 @@ MODULE icevar
 #  include "do_loop_substitute.h90"
 
    INTERFACE ice_var_snwfra
-      MODULE PROCEDURE ice_var_snwfra_1d, ice_var_snwfra_2d, ice_var_snwfra_3d
+      MODULE PROCEDURE ice_var_snwfra_2d, ice_var_snwfra_3d
    END INTERFACE
 
    INTERFACE ice_var_snwblow
-      MODULE PROCEDURE ice_var_snwblow_1d, ice_var_snwblow_2d
+      MODULE PROCEDURE ice_var_snwblow_2d
    END INTERFACE
 
    !!----------------------------------------------------------------------
@@ -774,14 +775,14 @@ CONTAINS
    END SUBROUTINE ice_var_zapneg
 
 
-   SUBROUTINE ice_var_roundoff( pa_i, pv_i, pv_s, psv_i, poa_i, pa_ip, pv_ip, pv_il, pe_s, pe_i, pszv_i, ll_ice_present )
+   SUBROUTINE ice_var_roundoff( pa_i, pv_i, pv_s, psv_i, poa_i, pa_ip, pv_ip, pv_il, pe_s, pe_i, pszv_i, lice_pres )
       !!-------------------------------------------------------------------
       !!                   ***  ROUTINE ice_var_roundoff ***
       !!
       !! ** Purpose :   Remove negative sea ice values arising from roundoff errors
       !!-------------------------------------------------------------------
-      INTEGER :: ji,jj
-      LOGICAL, DIMENSION(A2D(0)), INTENT(in) :: ll_ice_present
+      INTEGER ::   ji, jj
+      !
       REAL(wp), DIMENSION(jpi,jpj,jpl)  , INTENT(inout) ::   pa_i       ! ice concentration
       REAL(wp), DIMENSION(jpi,jpj,jpl)  , INTENT(inout) ::   pv_i       ! ice volume
       REAL(wp), DIMENSION(jpi,jpj,jpl)  , INTENT(inout) ::   pv_s       ! ice volume
@@ -793,42 +794,42 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj,nlay_s,jpl), INTENT(inout) ::   pe_s       ! snw heat content
       REAL(wp), DIMENSION(jpi,jpj,nlay_i,jpl), INTENT(inout) ::   pe_i       ! ice heat content
       REAL(wp), DIMENSION(jpi,jpj,nlay_i,jpl), INTENT(inout) ::   pszv_i     ! ice salt content
+      LOGICAL , DIMENSION(A2D(0))       , INTENT(in)    ::   lice_pres  ! ice presence
       !!-------------------------------------------------------------------
-      
-      DO_2D(0, 0, 0, 0)
-        IF (ll_ice_present(ji,jj)) THEN
-           pa_i(ji,jj,:) = MAX(pa_i(ji,jj,:), 0._wp)
-           pv_i(ji,jj,:) = MAX(pv_i(ji,jj,:), 0._wp)
-           pv_s(ji,jj,:) = MAX(pv_s(ji,jj,:), 0._wp)
-           poa_i(ji,jj,:) = MAX(poa_i(ji,jj,:), 0._wp)
-           pe_i(ji,jj,:,:) = MAX(pe_i(ji,jj,:,:), 0._wp)
-           pe_s(ji,jj,:,:) = MAX(pe_s(ji,jj,:,:), 0._wp)
-        ENDIF
+      DO_2D( 0, 0, 0, 0 )
+         IF( lice_pres(ji,jj) ) THEN
+            pa_i (ji,jj,:)   = MAX(pa_i (ji,jj,:),   0._wp)
+            pv_i (ji,jj,:)   = MAX(pv_i (ji,jj,:),   0._wp)
+            pv_s (ji,jj,:)   = MAX(pv_s (ji,jj,:),   0._wp)
+            poa_i(ji,jj,:)   = MAX(poa_i(ji,jj,:),   0._wp)
+            pe_i (ji,jj,:,:) = MAX(pe_i (ji,jj,:,:), 0._wp)
+            pe_s (ji,jj,:,:) = MAX(pe_s (ji,jj,:,:), 0._wp)
+         ENDIF
       END_2D
       IF( ln_pnd_LEV .OR. ln_pnd_TOPO ) THEN
-         DO_2D(0, 0, 0, 0)
-            IF (ll_ice_present(ji,jj)) THEN
-              pa_ip(ji,jj,:) = MAX(pa_ip(ji,jj,:), 0._wp)
-              pv_ip(ji,jj,:) = MAX(pv_ip(ji,jj,:), 0._wp)
+         DO_2D( 0, 0, 0, 0 )
+            IF( lice_pres(ji,jj) ) THEN
+               pa_ip(ji,jj,:) = MAX(pa_ip(ji,jj,:), 0._wp)
+               pv_ip(ji,jj,:) = MAX(pv_ip(ji,jj,:), 0._wp)
             ENDIF
          END_2D
          IF( ln_pnd_lids ) THEN
-            DO_2D(0, 0, 0, 0)
-               IF (ll_ice_present(ji,jj)) THEN
-                 pv_il(ji,jj,:) = MAX(pv_il(ji,jj,:), 0._wp)
-              ENDIF
+            DO_2D( 0, 0, 0, 0 )
+               IF( lice_pres(ji,jj) ) THEN
+                  pv_il(ji,jj,:) = MAX(pv_il(ji,jj,:), 0._wp)
+               ENDIF
             END_2D
          ENDIF
       ENDIF
       IF( nn_icesal == 4 ) THEN
-         DO_2D(0, 0, 0, 0)
-            IF (ll_ice_present(ji,jj)) THEN
+         DO_2D( 0, 0, 0, 0 )
+            IF( lice_pres(ji,jj) ) THEN
                pszv_i(ji,jj,:,:) = MAX(pszv_i(ji,jj,:,:), 0._wp)
             ENDIF
          END_2D
       ELSE
-         DO_2D(0, 0, 0, 0)
-            IF (ll_ice_present(ji,jj)) THEN
+         DO_2D( 0, 0, 0, 0 )
+            IF( lice_pres(ji,jj) ) THEN
                psv_i(ji,jj,:) = MAX(psv_i(ji,jj,:), 0._wp)
             ENDIF
          END_2D
@@ -880,7 +881,7 @@ CONTAINS
    END SUBROUTINE ice_var_brine
 
    
-   SUBROUTINE ice_var_enthalpy(jl_cat, ll_ice_present)
+   SUBROUTINE ice_var_enthalpy( jl_cat )
       !!-------------------------------------------------------------------
       !!                   ***  ROUTINE ice_var_enthalpy ***
       !!
@@ -888,30 +889,29 @@ CONTAINS
       !!
       !! ** Method  :   Formula (Bitz and Lipscomb, 1999)
       !!-------------------------------------------------------------------
-      INTEGER, INTENT(in) :: jl_cat
-      LOGICAL, DIMENSION(A2D(0)), INTENT(in) :: ll_ice_present
+      INTEGER, INTENT(in) ::   jl_cat
       INTEGER  ::   ji, jj, jk   ! dummy loop indices
       REAL(wp) ::   ztmelts  ! local scalar
       !!-------------------------------------------------------------------
       !
       DO jk = 1, nlay_i             ! Sea ice energy of melting
-         DO_2D(0, 0, 0, 0)
-          IF (ll_ice_present(ji,jj)) THEN
-            ztmelts       = - rTmlt  * sz_i(ji,jj,jk,jl_cat)
-            t_i(ji,jj,jk,jl_cat) = MIN( t_i(ji,jj,jk,jl_cat), ztmelts + rt0 ) ! Force t_i_1d to be lower than melting point => likely conservation issue
-                                                                !   (sometimes zdf scheme produces abnormally high temperatures)
-            e_i(ji,jj,jk,jl_cat) = rhoi * ( rcpi  * ( ztmelts - ( t_i(ji,jj,jk,jl_cat) - rt0 ) )           &
-               &                   + rLfus * ( 1._wp - ztmelts / ( t_i(ji,jj,jk,jl_cat) - rt0 ) )   &
-               &                   - rcp   * ztmelts )
+         DO_2D( 0, 0, 0, 0 )
+            IF( l_ice_present(ji,jj) ) THEN
+               ztmelts       = - rTmlt  * sz_i(ji,jj,jk,jl_cat)
+               t_i(ji,jj,jk,jl_cat) = MIN( t_i(ji,jj,jk,jl_cat), ztmelts + rt0 ) ! Force t_i to be lower than melting point => likely conservation issue
+               !                                                                 !   (sometimes zdf scheme produces abnormally high temperatures)
+               e_i(ji,jj,jk,jl_cat) = rhoi * ( rcpi  * ( ztmelts - ( t_i(ji,jj,jk,jl_cat) - rt0 ) )   &
+                  &                  + rLfus * ( 1._wp - ztmelts / ( t_i(ji,jj,jk,jl_cat) - rt0 ) )   &
+                  &                  - rcp   * ztmelts )
           ENDIF
          END_2D
       END DO
       !
       DO jk = 1, nlay_s             ! Snow energy of melting
-         DO_2D(0, 0, 0, 0)
-          IF (ll_ice_present(ji,jj)) THEN
-            e_s(ji,jj,jk,jl_cat) = rhos * ( rcpi * ( rt0 - t_s(ji,jj,jk,jl_cat) ) + rLfus )
-          ENDIF
+         DO_2D( 0, 0, 0, 0 )
+            IF( l_ice_present(ji,jj) ) THEN
+               e_s(ji,jj,jk,jl_cat) = rhos * ( rcpi * ( rt0 - t_s(ji,jj,jk,jl_cat) ) + rLfus )
+            ENDIF
          END_2D
       END DO
       !
@@ -945,7 +945,6 @@ CONTAINS
       REAL(wp), DIMENSION(0:nlay_i+1), INTENT(in)    ::   ph_old, pts_old  ! old tickness (m), enthlapy (J.m-2) or salt (m.g/kg)
       REAL(wp), DIMENSION(1:nlay_i)  , INTENT(inout) ::   pts_i            ! new enthlapies (J.m-3, remapped) or salt (g/kg)
       !
-      INTEGER  ::   ji         !  dummy loop indices
       INTEGER  ::   jk0, jk1   !  old/new layer indices
       !
       REAL(wp), DIMENSION(0:nlay_i+2) ::   zts_cum0, zh_cum0   ! old cumulative enthlapies/salinities and layers interfaces
@@ -995,6 +994,84 @@ CONTAINS
       END DO
       
    END SUBROUTINE ice_var_vremap
+
+   SUBROUTINE snw_var_vremap( ph_old, pe_old, pe_s )
+      !!-------------------------------------------------------------------
+      !!               ***   ROUTINE snw_var_vremap  ***
+      !! ** Purpose :
+      !!           This routine computes new vertical grids in the snow,
+      !!           and consistently redistributes temperatures.
+      !!           Redistribution is made so as to ensure to energy conservation
+      !!
+      !!
+      !! ** Method  : linear conservative remapping
+      !!
+      !! ** Steps : 1) cumulative integrals of old enthalpies/thicknesses
+      !!            2) linear remapping on the new layers
+      !!
+      !! ------------ cum0(0)                        ------------- cum1(0)
+      !!                                    NEW      -------------
+      !! ------------ cum0(1)               ==>      -------------
+      !!     ...                                     -------------
+      !! ------------                                -------------
+      !! ------------ cum0(nlay_s+1)                 ------------- cum1(nlay_s)
+      !!
+      !!
+      !! References : Bitz & Lipscomb, JGR 99; Vancoppenolle et al., GRL, 2005
+      !!-------------------------------------------------------------------
+      REAL(wp), DIMENSION(0:nlay_s), INTENT(in)    ::   ph_old      ! old thicknesses (m)
+      REAL(wp), DIMENSION(0:nlay_s), INTENT(in)    ::   pe_old      ! old enthlapies  (J.m-3)
+      REAL(wp), DIMENSION(1:nlay_s), INTENT(inout) ::   pe_s        ! new enthlapies  (J.m-3, remapped)
+      !
+      INTEGER  :: jk0, jk1   !  old/new layer indices
+      !
+      REAL(wp), DIMENSION(0:nlay_s+1) ::   zeh_cum0, zh_cum0   ! old cumulative enthlapies and layers interfaces
+      REAL(wp), DIMENSION(0:nlay_s)   ::   zeh_cum1, zh_cum1   ! new cumulative enthlapies and layers interfaces
+      REAL(wp)                        ::   zhnew               ! new layers thicknesses
+      !!-------------------------------------------------------------------
+
+      !--------------------------------------------------------------------------
+      !  1) Cumulative integral of old enthalpy * thickness and layers interfaces
+      !--------------------------------------------------------------------------
+      zeh_cum0(0) = 0._wp
+      zh_cum0 (0) = 0._wp
+      DO jk0 = 1, nlay_s+1
+         zeh_cum0(jk0) = zeh_cum0(jk0-1) + pe_old(jk0-1) * ph_old(jk0-1)
+         zh_cum0 (jk0) = zh_cum0 (jk0-1) + ph_old(jk0-1)
+      END DO
+
+      !------------------------------------
+      !  2) Interpolation on the new layers
+      !------------------------------------
+      ! new layer thickesses
+      zhnew = SUM( ph_old(0:nlay_s) ) * r1_nlay_s
+
+      ! new layers interfaces
+      zh_cum1(0) = 0._wp
+      DO jk1 = 1, nlay_s
+         zh_cum1(jk1) = zh_cum1(jk1-1) + zhnew
+      END DO
+
+      zeh_cum1(0:nlay_s) = 0._wp
+      ! new cumulative q*h => linear interpolation
+      DO jk0 = 1, nlay_s+1
+         DO jk1 = 1, nlay_s-1
+            IF( zh_cum1(jk1) <= zh_cum0(jk0) .AND. zh_cum1(jk1) > zh_cum0(jk0-1) )   THEN
+               zeh_cum1(jk1) = ( zeh_cum0(jk0-1) * ( zh_cum0(jk0) - zh_cum1(jk1  ) ) +  &
+                  &              zeh_cum0(jk0  ) * ( zh_cum1(jk1) - zh_cum0(jk0-1) ) )  &
+                  &            / ( zh_cum0(jk0) - zh_cum0(jk0-1) )
+            ENDIF
+         END DO
+      END DO
+      ! to ensure that total heat content is strictly conserved, set:
+      zeh_cum1(nlay_s) = zeh_cum0(nlay_s+1)
+
+      ! new enthalpies
+      DO jk1 = 1, nlay_s
+         pe_s(jk1) = MAX( 0._wp, zeh_cum1(jk1) - zeh_cum1(jk1-1) ) / MAX( zhnew, epsi20 ) ! max for roundoff error
+      END DO
+
+   END SUBROUTINE snw_var_vremap
 
    FUNCTION ice_var_sshdyn(pssh, psnwice_mass, psnwice_mass_b)
       !!---------------------------------------------------------------------
@@ -1563,20 +1640,6 @@ CONTAINS
       ENDIF
    END SUBROUTINE ice_var_snwfra_2d
 
-   SUBROUTINE ice_var_snwfra_1d( ph_s, pa_s_fra )
-      REAL(wp), DIMENSION(:), INTENT(in   ) ::   ph_s        ! snow thickness
-      REAL(wp), DIMENSION(:), INTENT(  out) ::   pa_s_fra    ! ice fraction covered by snow
-      IF    ( nn_snwfra == 0 ) THEN   ! basic 0 or 1 snow cover
-         WHERE( ph_s > 0._wp ) ; pa_s_fra = 1._wp
-         ELSEWHERE             ; pa_s_fra = 0._wp
-         END WHERE
-      ELSEIF( nn_snwfra == 1 ) THEN   ! snow cover depends on hsnow (met-office style)
-         pa_s_fra = 1._wp - EXP( -0.2_wp * rhos * ph_s )
-      ELSEIF( nn_snwfra == 2 ) THEN   ! snow cover depends on hsnow (cice style)
-         pa_s_fra = ph_s / ( ph_s + 0.02_wp )
-      ENDIF
-   END SUBROUTINE ice_var_snwfra_1d
-
    !!--------------------------------------------------------------------------
    !! INTERFACE ice_var_snwblow
    !!
@@ -1598,12 +1661,6 @@ CONTAINS
       REAL(wp), DIMENSION(A2D(0)), INTENT(inout) :: pout
       pout = ( 1._wp - ( pin )**rn_snwblow )
    END SUBROUTINE ice_var_snwblow_2d
-
-   SUBROUTINE ice_var_snwblow_1d( pin, pout )
-      REAL(wp), DIMENSION(:), INTENT(in   ) :: pin
-      REAL(wp), DIMENSION(:), INTENT(inout) :: pout
-      pout = ( 1._wp - ( pin )**rn_snwblow )
-   END SUBROUTINE ice_var_snwblow_1d
 
 #else
    !!----------------------------------------------------------------------
