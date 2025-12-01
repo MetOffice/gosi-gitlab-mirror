@@ -1028,6 +1028,7 @@ if [ ${config} == "ORCA2_ICE_OBS" ] ;  then
         #   - collate output associated with different grids into a common
         #     output file
         sed -i -E -e 's/"5d"/"1ts"/g;s/name_suffix="_grid_T"/name_suffix="_SAO"/' \
+                  -e 's/freq_op[^<]*<\/field/\//' \
                   -e 's/<field /<field prec="8" /g' \
                   -e '/<file_group id="oce_5d" /p;/<file id="file1"/p;/<(\/)?file(_group)?[> ]/d' \
                   -e '/<field [^>]*name="([suv]o)?(zos)?(thetao)?"/p;/<field /d' \
