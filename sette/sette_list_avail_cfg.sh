@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 echo ''
 echo 'Reference configurations available are named :'
 printf "%-15s \n" GYRE_PISCES
