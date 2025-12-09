@@ -392,7 +392,6 @@ CONTAINS
             zze0 = ze0(ji,jj) * EXP( - ze3t*r1_si0 )   ;   zzeR = zeR(ji,jj) * EXP( - ze3t*r1_LR )   ! IR    ; Red  at jk+1 w-level
             zzeG = zeG(ji,jj) * EXP( - ze3t*r1_LG  )   ;   zzeB = zeB(ji,jj) * EXP( - ze3t*r1_LB )   ! Green ; Blue      -      -
             zzeT = ( zze0 + zzeB + zzeG + zzeR ) * wmask(ji,jj,jk+1)                                 ! Total             -      -
-!!st01            zzeT = ( zze0 + zzeR + zzeG + zzeB ) * wmask(ji,jj,jk+1)                                 ! Total             -      -
             !
 #if defined key_RK3
             !                                      !- RK3 : temperature trend at jk t-level
@@ -406,6 +405,13 @@ CONTAINS
             zeT(ji,jj) = zzeT                                   ! total          -        -      -
          END_2D
          !
+#if defined key_RK3
+         IF( jk == 1 ) THEN               !* sea-ice *!   store the 1st level attenuation coeff.
+            WHERE( qsr(T2D(0)) /= 0._wp )   ;   fraqsr_1lev(T2D(0)) = 1._wp - zeT(T2D(0)) / qsr(T2D(0))
+            ELSEWHERE                       ;   fraqsr_1lev(T2D(0)) = 1._wp
+            END WHERE
+         ENDIF
+#endif
       END DO
       !
       DO jk = nk0+1, nkR                  !* down to Red extinction *!   (< ~71 meters : RGB , IR removed from calculation)
@@ -542,7 +548,6 @@ CONTAINS
             zze0 = ze0(ji,jj) * EXP( - ze3t * r1_si0 )   ;   zzeR = zeR(ji,jj) * EXP( - ze3t * r1_LR )   ! IR    ; Red  at jk+1 w-level
             zzeG = zeG(ji,jj) * EXP( - ze3t * r1_LG  )   ;   zzeB = zeB(ji,jj) * EXP( - ze3t * r1_LB )   ! Green ; Blue      -      -
             zzeT = ( zze0 + zzeB + zzeG + zzeR ) * wmask(ji,jj,jk+1)                                     ! Total             -      -
-!!st7-9            zzeT = ( zze0 + zzeR + zzeG + zzeB ) * wmask(ji,jj,jk+1)                                     ! Total             -      -
 #if defined key_RK3
             !                                               ! RK3 : temperature trend at jk t-level
             pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
@@ -554,11 +559,13 @@ CONTAINS
             zeG(ji,jj) = zzeG   ;   zeB(ji,jj) = zzeB           ! Green ; Blue   -        -      -
             zeT(ji,jj) = zzeT                                   ! total          -        -      -
          END_2D
-!!stbug         IF( jk == 1 ) THEN               !* sea-ice *!   store the 1st level attenuation coeff.
-!!stbug            WHERE( qsr(T2D(0)) /= 0._wp )   ;   fraqsr_1lev(T2D(0)) = 1._wp - zeT(T2D(0)) / qsr(T2D(0))
-!!stbug            ELSEWHERE                       ;   fraqsr_1lev(T2D(0)) = 1._wp
-!!stbug            END WHERE
-!!stbug         ENDIF
+#if defined key_RK3
+         IF( jk == 1 ) THEN               !* sea-ice *!   store the 1st level attenuation coeff.
+            WHERE( qsr(T2D(0)) /= 0._wp )   ;   fraqsr_1lev(T2D(0)) = 1._wp - zeT(T2D(0)) / qsr(T2D(0))
+            ELSEWHERE                       ;   fraqsr_1lev(T2D(0)) = 1._wp
+            END WHERE
+         ENDIF
+#endif
       END DO
       !
       DO jk = nk0+1, nkR                  !* down to Red extinction *!   (< ~71 meters : RGB , IR removed from calculation)
@@ -567,7 +574,6 @@ CONTAINS
             zzeR = zeR(ji,jj) * EXP( - ze3t * r1_LR )                                                 ! Red          at jk+1 w-level
             zzeG = zeG(ji,jj) * EXP( - ze3t * r1_LG )   ;   zzeB = zeB(ji,jj) * EXP( - ze3t * r1_LB ) ! Green ; Blue      -      -
             zzeT = ( zzeB + zzeG + zzeR ) * wmask(ji,jj,jk+1)                                         ! Total             -      -
-!!st7-11            zzeT = ( zzeR + zzeG + zzeB ) * wmask(ji,jj,jk+1)                                         ! Total             -      -
 #if defined key_RK3
             !                                               ! RK3 : temperature trend at jk t-level
             pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
@@ -681,8 +687,9 @@ CONTAINS
 #endif
             zatt(ji,jj) = zzatt                          ! save for the next level computation
          END_2D
-!!stbug         !                                         !* sea-ice *!   store the 1st level attenuation coeff.
-!!stbug         IF( jk == 1 )   fraqsr_1lev(T2D(0)) = 1._wp - zatt(T2D(0)) * rho0_rcp
+#if defined key_RK3
+         IF( jk == 1 )   fraqsr_1lev(T2D(0)) = 1._wp - zatt(T2D(0)) * rho0_rcp
+#endif
       END DO
 !!st      IF(lwp) WRITE(numout,*) 'nk0+1= ', nk0+1, ' qsr max = ' , MAXVAL(zatt*qsr)*rho0_rcp, ' W/m2' , MAXVAL(zatt*qsr/e3t(:,:,nk0+1,Kmm)), ' K/s' 
       !
@@ -860,6 +867,13 @@ CONTAINS
             zeU(ji,jj) = zzeU   ;   zeT(ji,jj) = zzeT           ! UV    ; total  -        -      -
          END_2D
          !
+#if defined key_RK3
+         IF( jk == 1 ) THEN               !* sea-ice *!   store the 1st level attenuation coeff.
+            WHERE( qsr(T2D(0)) /= 0._wp )   ;   fraqsr_1lev(T2D(0)) = 1._wp - zeT(T2D(0)) / qsr(T2D(0))
+            ELSEWHERE                       ;   fraqsr_1lev(T2D(0)) = 1._wp
+            END WHERE
+         ENDIF
+#endif
       END DO
       !
       DO jk = nk0+1, nkR                  !* down to Red extinction *!   (< ~71 meters : RGB + UV, IR removed from calculation)
@@ -1043,6 +1057,13 @@ CONTAINS
             zeU(ji,jj) = zzeU   ;   zeT(ji,jj) = zzeT           ! UV    ; total  -        -      -
          END_2D
          !
+#if defined key_RK3
+         IF( jk == 1 ) THEN               !* sea-ice *!   store the 1st level attenuation coeff.
+            WHERE( qsr(T2D(0)) /= 0._wp )   ;   fraqsr_1lev(T2D(0)) = 1._wp - zeT(T2D(0)) / qsr(T2D(0))
+            ELSEWHERE                       ;   fraqsr_1lev(T2D(0)) = 1._wp
+            END WHERE
+         ENDIF
+#endif
       END DO
       !
       DO jk = nk0+1, nkR                  !* down to Red extinction *!   (< ~71 meters : RGB + UV, IR removed from calculation)
