@@ -92,6 +92,7 @@ MODULE lib_mpp
    END INTERFACE
    INTERFACE mpp_sum
       MODULE PROCEDURE mppsum0d_int    , mppsum1d_int
+      MODULE PROCEDURE mppsum0d_int_dp , mppsum1d_int_dp
       MODULE PROCEDURE mppsum0d_real_sp, mppsum1d_real_sp
       MODULE PROCEDURE mppsum0d_real_dp, mppsum1d_real_dp
       MODULE PROCEDURE mppsum0d_cplx_dp, mppsum1d_cplx_dp
@@ -192,6 +193,7 @@ MODULE lib_mpp
    CHARACTER(len=32), DIMENSION(nbdelay), PUBLIC ::   c_delaylist
    TYPE, PUBLIC ::   DELAYARR
       INTEGER    , DIMENSION(:), ALLOCATABLE ::     ibuffin,   ibuffout
+      INTEGER(8) , DIMENSION(:), ALLOCATABLE ::   idpbuffin, idpbuffout
       REAL(   sp), DIMENSION(:), ALLOCATABLE ::   zspbuffin, zspbuffout
       REAL(   dp), DIMENSION(:), ALLOCATABLE ::   zdpbuffin, zdpbuffout
       COMPLEX(dp), DIMENSION(:), ALLOCATABLE ::   ydpbuffin, ydpbuffout
@@ -652,6 +654,14 @@ CONTAINS
 #     include "mpp_allreduce_generic.h90"
 #  undef DIM_1d
 #  undef INTEGER_TYPE
+#  define INTEGERDP_TYPE
+#  define DIM_0d
+#     include "mpp_allreduce_generic.h90"
+#  undef DIM_0d
+#  define DIM_1d
+#     include "mpp_allreduce_generic.h90"
+#  undef DIM_1d
+#  undef INTEGERDP_TYPE
    !
    !   ----   REAL_SP
 #  define REALSP_TYPE

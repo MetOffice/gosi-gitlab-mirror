@@ -9,6 +9,17 @@
 #      define DELAYBUFF ibuff
 #      define TYPENAME int
 #   endif
+#   if defined INTEGERDP_TYPE
+#      define ARRAY_TYPE(i)    INTEGER(8)               , INTENT(inout) ::   ARRAY_IN(i)
+#      if defined DIM_0d
+#         define TMP_TYPE      INTEGER(8), DIMENSION(1) ::   work
+#      else
+#         define TMP_TYPE      INTEGER(8), DIMENSION(:), ALLOCATABLE ::   work
+#      endif
+#      define MPI_TYPE MPI_INTEGER8
+#      define DELAYBUFF idpbuff
+#      define TYPENAME int_dp
+#   endif
 #   if defined REALSP_TYPE
 #      define PREC sp
 #      define ARRAY_TYPE(i)    REAL(sp)                 , INTENT(inout) ::   ARRAY_IN(i)
@@ -73,7 +84,7 @@
 #      define OPT min
 #   endif
 #   if defined OPERATION_SUM
-#      if defined INTEGER_TYPE
+#      if defined INTEGER_TYPE || defined INTEGERDP_TYPE
 #         define MPI_OPERATION MPI_SUM
 #      else
 #         define MPI_OPERATION mpi_sumdd

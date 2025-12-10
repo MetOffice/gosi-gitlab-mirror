@@ -218,10 +218,12 @@ CONTAINS
       INTEGER, INTENT( in ) :: kt                  ! ocean time-step index
       INTEGER, INTENT( in ) :: Kbb, Kaa ! time level indices
       !
-      INTEGER ::   jk, jn   ! dummy loop indices
+      INTEGER ::   jn   ! dummy loop index
       REAL(wp), ALLOCATABLE, DIMENSION(:,:,:,:) :: z4d
       REAL(wp), ALLOCATABLE, DIMENSION(:) :: ztraa
       CHARACTER (len=25) ::   charout   !
+      INTEGER(i8)                     ::   ilsb_sum   ! Test value: cumulative sum of the two least-significant bytes of the tested
+                                                      ! values
       !!-------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('trc_stp_end')
@@ -248,12 +250,21 @@ CONTAINS
          ENDDO
          !
          ztraa(1:jptra) = glob_3Dsum( 'trc_stp', z4d(:,:,:,1:jptra) )
-         IF( lwm ) WRITE(numstr,9300) kt,  SUM( ztraa ) / areatot
+         !
+         IF( sn_cfctl%l_lsb_sum ) THEN   ! Output of 'tracer.stat' records with the test value
+            ilsb_sum = 0   ! Initialisation of the test value (cumulative sum)
+            DO jn = 1, jptra
+               ilsb_sum = ilsb_sum + SUM( IAND( TRANSFER( REAL( tr(A2D(0),:,jn,Kaa) * tmask(A2D(0),:), KIND=dp ), &
+                  &                                       (/ ilsb_sum, ilsb_sum /) ), 2_i8**16 - 1_i8 ) )
+            END DO
+            CALL mpp_sum( 'trc_stp', ilsb_sum )   ! Finalisation of the test value
+            IF( lwm ) WRITE(numstr,'(i10,D23.16,A10,z17.16)') kt,  SUM( ztraa ) / areatot, ' lsb sum: ', ilsb_sum
+         ELSE   ! Output of 'tracer.stat' records without the test value
+            IF( lwm ) WRITE(numstr,'(i10,D23.16)') kt,  SUM( ztraa ) / areatot
+         END IF
          !
          DEALLOCATE( z4d, ztraa )
       ENDIF
-      !
-9300  FORMAT(i10,D23.16)
       !
       CALL trc_wri      ( kt,      Kaa            )       ! output of passive tracers with iom I/O manager before time level swap 
       !

@@ -106,6 +106,8 @@ MODULE in_out_manager
       LOGICAL :: l_runstat = .FALSE.  !: Produce/do not produce run.stat file (T/F)
       LOGICAL :: l_trcstat = .FALSE.  !: Produce/do not produce tracer.stat file (T/F)
       LOGICAL :: l_obsstat = .FALSE.  !: Produce/do not produce obs.stat file (T/F)
+      LOGICAL :: l_lsb_sum = .FALSE.  !: Include/do not include in the {run,tracer,obs}.stat records a test value that is sensitive
+                                      !  to a change in the two least-significant bytes of any of the tested values
       LOGICAL :: l_oceout  = .FALSE.  !: Produce all ocean.outputs    (T) or just one (F)
       LOGICAL :: l_layout  = .FALSE.  !: Produce all layout.dat files (T) or just one (F)
       LOGICAL :: l_prtctl  = .FALSE.  !: Produce/do not produce mpp.output_XXXX files (T/F)

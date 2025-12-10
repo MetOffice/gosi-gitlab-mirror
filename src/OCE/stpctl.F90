@@ -40,6 +40,8 @@ MODULE stpctl
    INTEGER, DIMENSION(jpvar)  ::   nvarid   ! netcdf variable id
    INTEGER, DIMENSION(3)      ::   j0oce    ! global integer wet point indicators
    LOGICAL                    ::   l0oce_T, l0oce_U, l0oce_V        ! Logical no wet point indicators
+   !! * Substitutions
+#  include "do_loop_substitute.h90"
    !!----------------------------------------------------------------------
    !! NEMO/OCE 5.0, NEMO Consortium (2024)
    !! Software governed by the CeCILL license (see ./LICENSE)
@@ -72,8 +74,11 @@ CONTAINS
       INTEGER , DIMENSION(3,jptst)    ::   iloc                                  ! min/max loc indices
       REAL(wp)                        ::   zzz, zminsal, zmaxsal                 ! local real 
       REAL(wp), DIMENSION(jpvar+1)    ::   zmax
+      INTEGER(i8)                     ::   ilsb_sum                              ! Test value: cumulative sum of the two
+                                                                                 ! least-significant bytes of tested values
       REAL(wp), DIMENSION(jptst)      ::   zmaxlocal
       LOGICAL                         ::   ll_wrtstp, ll_colruns, ll_wrtruns
+      LOGICAL                         ::   ll_lsb_sum                            ! Flag to indicate test-value computation
       LOGICAL, DIMENSION(jpi,jpj,jpk) ::   llmsk
       CHARACTER(len=20)               ::   clname
       !!----------------------------------------------------------------------
@@ -84,6 +89,8 @@ CONTAINS
       ll_wrtstp  = ( MOD( kt-nit000, sn_cfctl%ptimincr ) == 0 ) .OR. ( kt == nitend )
       ll_colruns = sn_cfctl%l_runstat .AND. ll_wrtstp .AND. jpnij > 1
       ll_wrtruns = sn_cfctl%l_runstat .AND. ll_wrtstp .AND. lwm
+      ll_lsb_sum = sn_cfctl%l_lsb_sum   ! Local flag to indicate the computation of the test value
+      ilsb_sum   = 0                    ! Initialisation of the test value (cumulative sum)
       !
       IF( kt == nit000 ) THEN
          !
@@ -149,7 +156,7 @@ CONTAINS
          WRITE ( numstp, '(1x, i8)' )   kt
          REWIND( numstp )
       ENDIF
-      !                                   !==            test of local extrema           ==!
+      !                                   !==     test of local extrema and test sum     ==!
       !                                   !==  done by all processes at every time step  ==!
       !
       llmsk(     1:nn_hls,:,:) = .FALSE.                                          ! exclude halos from the checked region
@@ -164,13 +171,23 @@ CONTAINS
       ELSE
          zmax(1) = MAXVAL( ABS( ssh(:,:,Kmm)           ), mask = llmsk(:,:,1) )   ! ssh max
       ENDIF
+      IF( ll_lsb_sum ) ilsb_sum = ilsb_sum + SUM( IAND( TRANSFER( REAL( ssh(A2D(0),Kmm) * ssmask(A2D(0)), KIND=dp ),          &
+         &                                                        (/ ilsb_sum, ilsb_sum /) ), 2_i8**16 - 1_i8 ) )   ! SSH contribution
       llmsk(Nis0:Nie0,Njs0:Nje0,:) = umask(Nis0:Nie0,Njs0:Nje0,:) == 1._wp        ! define only the inner domain
       zmax(2) = MAXVAL(  ABS( uu(:,:,:,Kmm) ), mask = llmsk )                     ! velocity max (zonal only)
+      IF( ll_lsb_sum ) ilsb_sum = ilsb_sum + SUM( IAND( TRANSFER( REAL( uu(A2D(0),:,Kmm) * umask(A2D(0),:), KIND=dp ),        &
+         &                                                        (/ ilsb_sum, ilsb_sum /) ), 2_i8**16 - 1_i8 ) )   ! u-velocity contrib.
       llmsk(Nis0:Nie0,Njs0:Nje0,:) = vmask(Nis0:Nie0,Njs0:Nje0,:) == 1._wp        ! define only the inner domain
       zmax(3) = MAXVAL(  ABS( vv(:,:,:,Kmm) ), mask = llmsk )                     ! velocity max (meridional only)
+      IF( ll_lsb_sum ) ilsb_sum = ilsb_sum + SUM( IAND( TRANSFER( REAL( vv(A2D(0),:,Kmm) * vmask(A2D(0),:), KIND=dp ),        &
+         &                                                        (/ ilsb_sum, ilsb_sum /) ), 2_i8**16 - 1_i8 ) )   ! v-velocity contrib.
       llmsk(Nis0:Nie0,Njs0:Nje0,:) = tmask(Nis0:Nie0,Njs0:Nje0,:) == 1._wp        ! define only the inner domain
       zmax(4) = MAXVAL( -ts(:,:,:,jp_sal,Kmm), mask = llmsk )                     ! minus salinity max
       zmax(5) = MAXVAL(  ts(:,:,:,jp_sal,Kmm), mask = llmsk )                     !       salinity max
+      IF( ll_lsb_sum ) ilsb_sum = ilsb_sum + SUM( IAND( TRANSFER( REAL( ts(A2D(0),:,jp_tem,Kmm) * tmask(A2D(0),:), KIND=dp ), &
+         &                                                        (/ ilsb_sum, ilsb_sum /) ), 2_i8**16 - 1_i8 ) )   ! temperature contrib.
+      IF( ll_lsb_sum ) ilsb_sum = ilsb_sum + SUM( IAND( TRANSFER( REAL( ts(A2D(0),:,jp_sal,Kmm) * tmask(A2D(0),:), KIND=dp ), &
+         &                                                        (/ ilsb_sum, ilsb_sum /) ), 2_i8**16 - 1_i8 ) )   ! salinity contrib.
       IF( ll_colruns .OR. jpnij == 1 ) THEN     ! following variables are used only in the netcdf file
          zmax(6) = MAXVAL( -ts(:,:,:,jp_tem,Kmm), mask = llmsk )                  ! minus temperature max
          zmax(7) = MAXVAL(  ts(:,:,:,jp_tem,Kmm), mask = llmsk )                  !       temperature max
@@ -191,6 +208,7 @@ CONTAINS
       IF( ll_colruns ) THEN
          zmaxlocal(:) = zmax(1:jptst)
          CALL mpp_max( "stpctl", zmax )          ! max over the global domain: ok even if l0oce_[T,U,V] = .true. 
+         IF( ll_lsb_sum ) CALL mpp_sum( "stpctl", ilsb_sum )   ! Finalise the cumulative test value
          nstop = NINT( zmax(jpvar+1) )           ! update nstop indicator (now shared among all local domains)
          ! if no ocean point: MAXVAL returns -HUGE => we must overwrite this value to avoid error handling below.
          ! no T-points, globally is unlikely but no U- or V- points can occur with uni-directional channels
@@ -211,7 +229,11 @@ CONTAINS
       !                                   !==              write "run.stat" files              ==!
       !                                   !==  done only by 1st subdomain at writting timestep  ==!
       IF( ll_wrtruns ) THEN
-         WRITE(numrun,9500) kt, zmax(1), MAX(zmax(2),zmax(3)), zmax(4),zmax(5)
+         IF( .NOT. ll_lsb_sum ) THEN
+            WRITE(numrun,9500) kt, zmax(1), MAX(zmax(2),zmax(3)), zmax(4),zmax(5)
+         ELSE
+            WRITE(numrun,9501) kt, zmax(1), MAX(zmax(2),zmax(3)), zmax(4),zmax(5), ilsb_sum
+         END IF
          IF( jpnij == 1 ) CALL FLUSH(numrun)
          DO ji = 1, jpvar - 2 * COUNT( .NOT. (/ln_zad_Aimp/) )
             istatus = NF90_PUT_VAR( nrunid, nvarid(ji), (/zmax(ji)/), (/kt/), (/1/) )
@@ -313,6 +335,8 @@ CONTAINS
       ENDIF
       !
 9500  FORMAT(' it :', i8, '    |ssh|_max: ', D23.16, ' |{U,V}|_max: ', D23.16, ' S_min: ', D23.16,' S_max: ', D23.16)
+9501  FORMAT(' it :', i8, '    |ssh|_max: ', D23.16, ' |{U,V}|_max: ', D23.16, ' S_min: ', D23.16,' S_max: ', D23.16, &
+         &   ' lsb sum: ', z17.16 )
       !
       IF( ln_timing )   CALL timing_stop( 'stp_ctl' )
       !
