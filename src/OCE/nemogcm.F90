@@ -506,6 +506,7 @@ CONTAINS
          WRITE(numout,*) '                              sn_cfctl%l_runstat = ', sn_cfctl%l_runstat
          WRITE(numout,*) '                              sn_cfctl%l_trcstat = ', sn_cfctl%l_trcstat
          WRITE(numout,*) '                              sn_cfctl%l_obsstat = ', sn_cfctl%l_obsstat
+         WRITE(numout,*) '                              sn_cfctl%l_lsb_sum = ', sn_cfctl%l_lsb_sum
          WRITE(numout,*) '                              sn_cfctl%l_oceout  = ', sn_cfctl%l_oceout
          WRITE(numout,*) '                              sn_cfctl%l_layout  = ', sn_cfctl%l_layout
          WRITE(numout,*) '                              sn_cfctl%l_prtctl  = ', sn_cfctl%l_prtctl

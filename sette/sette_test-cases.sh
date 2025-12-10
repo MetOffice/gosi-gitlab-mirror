@@ -282,6 +282,7 @@ if [ ${config} == "OVERFLOW" ];  then
             set_namelist namelist_cfg cn_exp \"OVF_LONG\"
             set_namelist_rst namelist ${ITEND}
             set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+            set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
             cd ${SETTE_DIR}
             . ./prepare_job.sh input_EMPTY.cfg $NPROC ${TEST_NAME} ${MPIRUN_FLAG} ${JOB_FILE} ${NUM_XIOSERVERS} ${NEMO_VALID}
         fi
@@ -295,6 +296,7 @@ if [ ${config} == "OVERFLOW" ];  then
             set_namelist namelist_cfg cn_exp \"OVF_SHORT\"
             set_namelist_rst namelist ${ITEND} "OVF_LONG" "OCE"
             set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+            set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
             cd ${SETTE_DIR}
             . ./prepare_job.sh input_EMPTY.cfg $NPROC ${TEST_NAME} ${MPIRUN_FLAG} ${JOB_FILE} ${NUM_XIOSERVERS} ${NEMO_VALID}
         fi
@@ -384,6 +386,7 @@ if [ ${config} == "LOCK_EXCHANGE" ] ;  then
             set_namelist namelist_cfg cn_exp \"LOCK_LONG\"
             set_namelist_rst namelist ${ITEND}
             set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+            set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
             cd ${SETTE_DIR}
             . ./prepare_job.sh input_EMPTY.cfg $NPROC ${TEST_NAME} ${MPIRUN_FLAG} ${JOB_FILE} ${NUM_XIOSERVERS} ${NEMO_VALID}
         fi
@@ -397,6 +400,7 @@ if [ ${config} == "LOCK_EXCHANGE" ] ;  then
             set_namelist namelist_cfg cn_exp \"LOCK_SHORT\"
             set_namelist_rst namelist ${ITEND} "LOCK_LONG" "OCE"
             set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+            set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
             cd ${SETTE_DIR}
             . ./prepare_job.sh input_EMPTY.cfg $NPROC ${TEST_NAME} ${MPIRUN_FLAG} ${JOB_FILE} ${NUM_XIOSERVERS} ${NEMO_VALID}
         fi
@@ -488,6 +492,7 @@ if [ ${config} == "IWAVE" ] ;  then
             set_namelist namelist_cfg cn_exp \"IWAVE_LONG\"
             set_namelist_rst namelist ${ITEND}
             set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+            set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
             cd ${SETTE_DIR}
             . ./prepare_job.sh input_EMPTY.cfg $NPROC ${TEST_NAME} ${MPIRUN_FLAG} ${JOB_FILE} ${NUM_XIOSERVERS} ${NEMO_VALID}
         fi
@@ -501,6 +506,7 @@ if [ ${config} == "IWAVE" ] ;  then
             set_namelist namelist_cfg cn_exp \"IWAVE_SHORT\"
             set_namelist_rst namelist ${ITEND} "IWAVE_LONG" "OCE"
             set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+            set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
             cd ${SETTE_DIR}
             . ./prepare_job.sh input_EMPTY.cfg $NPROC ${TEST_NAME} ${MPIRUN_FLAG} ${JOB_FILE} ${NUM_XIOSERVERS} ${NEMO_VALID}
         fi
@@ -537,6 +543,7 @@ if [ ${config} == "VORTEX" ] ;  then
         set_namelist namelist_cfg nn_itend ${ITEND}
         set_namelist namelist_cfg nn_stock ${ITEND}
         set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist_opt namelist_cfg nn_hls ${USING_EXTRA_HALO} 3 2
         set_namelist_opt namelist_cfg nn_comm ${USING_COLLECTIVES} 2 1
@@ -546,6 +553,7 @@ if [ ${config} == "VORTEX" ] ;  then
         set_namelist 1_namelist_cfg nn_itend $(( ${ITEND} * 3 ))
         set_namelist 1_namelist_cfg nn_stock $(( ${ITEND} * 3 ))
         set_namelist 1_namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist 1_namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt 1_namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist_opt 1_namelist_cfg nn_hls ${USING_EXTRA_HALO} 3 2
         set_namelist_opt 1_namelist_cfg nn_comm ${USING_COLLECTIVES} 2 1
@@ -685,6 +693,7 @@ if [ ${config} == "ICE_AGRIF" ] ;  then
         set_namelist namelist_cfg nn_itend ${ITEND}
         set_namelist namelist_cfg nn_stock $(( ${ITEND} / 2 ))
         set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist_opt namelist_cfg nn_hls ${USING_EXTRA_HALO} 3 2
         set_namelist_opt namelist_cfg nn_comm ${USING_COLLECTIVES} 2 1
@@ -694,6 +703,7 @@ if [ ${config} == "ICE_AGRIF" ] ;  then
         set_namelist 1_namelist_cfg nn_itend $(( ${ITEND} * 3 ))
         set_namelist 1_namelist_cfg nn_stock $(( ${ITEND} * 3 / 2 ))
         set_namelist 1_namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist 1_namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt 1_namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist_opt 1_namelist_cfg nn_hls ${USING_EXTRA_HALO} 3 2
         set_namelist_opt 1_namelist_cfg nn_comm ${USING_COLLECTIVES} 2 1
@@ -798,6 +808,7 @@ if [ ${config} == "ISOMIP+" ]; then
         set_namelist namelist_cfg jpni 9
         set_namelist namelist_cfg jpnj 3
         set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist_opt namelist_cfg nn_hls ${USING_EXTRA_HALO} 3 2
         set_namelist_opt namelist_cfg nn_comm ${USING_COLLECTIVES} 2 1
@@ -903,6 +914,7 @@ if [ ${config} == "SWG" ] && [ ${USING_QCO} == "yes" ] ;  then
         set_namelist namelist_cfg nn_itend ${ITEND}
         set_namelist namelist_cfg nn_stock ${ITEND}
         set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist_opt namelist_cfg nn_hls ${USING_EXTRA_HALO} 3 2
         set_namelist_opt namelist_cfg nn_comm ${USING_COLLECTIVES} 2 1
@@ -1015,6 +1027,7 @@ if [ ${config} == "CPL_OASIS" ] ;  then
         set_namelist namelist_cfg nn_itend ${ITEND}
         set_namelist namelist_cfg nn_stock ${ITEND}
         set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist_opt namelist_cfg nn_hls ${USING_EXTRA_HALO} 3 2
         set_namelist_opt namelist_cfg nn_comm ${USING_COLLECTIVES} 2 1

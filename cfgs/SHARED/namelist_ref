@@ -1535,6 +1535,8 @@
    sn_cfctl%l_prttrc  = .FALSE.   !
    sn_cfctl%l_oasout  = .FALSE.   !
    sn_cfctl%l_obsstat = .FALSE.   !
+   sn_cfctl%l_lsb_sum = .FALSE.   ! Computation of a test value that is sensitive to changes in the two least-significant bytes of
+                                  ! any of the tested values (appended ot {run,tracer,obs}.stat records)
    sn_cfctl%procmin   = 0         ! Minimum area number for reporting [default:0]
    sn_cfctl%procmax   = 1000000   ! Maximum area number for reporting [default:1000000]
    sn_cfctl%procincr  = 1         ! Increment for optional subsetting of areas [default:1]

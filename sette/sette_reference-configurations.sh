@@ -320,8 +320,9 @@ if [ ${config} == "GYRE_PISCES" ] ; then
         set_namelist namelist_cfg nn_itend ${ITEND}
         set_namelist namelist_cfg jpni 2
         set_namelist namelist_cfg jpnj 4
-	set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_runstat .true.
         set_namelist namelist_cfg sn_cfctl%l_trcstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist namelist_top_cfg ln_trcbc  .false.
         # put ln_ironsed, ln_hydrofe to false
         # if not you need input files, and for tests is not necessary
@@ -435,6 +436,7 @@ if [ ${config} == "GYRE_GO" ] ; then
         set_namelist namelist_cfg ln_hpg_zco .false.
         set_namelist namelist_cfg ln_hpg_sco .true.
         set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist_opt namelist_cfg nn_hls ${USING_EXTRA_HALO} 3 2
         set_namelist_opt namelist_cfg nn_comm ${USING_COLLECTIVES} 2 1
@@ -544,6 +546,7 @@ if [ ${config} == "ORCA2_ICE_PISCES" ] ; then
         set_namelist namelist_cfg jpnj 8
         set_namelist namelist_cfg sn_cfctl%l_runstat .true.
         set_namelist namelist_cfg sn_cfctl%l_trcstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist namelist_cfg ln_wave .true.
         set_namelist namelist_cfg ln_cdgw .false.
         set_namelist namelist_cfg ln_sdw  .true.
@@ -686,6 +689,7 @@ if [ ${config} == "ORCA2_OFF_PISCES" ]  ;  then
         set_namelist namelist_cfg jpnj 8
         set_namelist namelist_cfg sn_cfctl%l_runstat .true.
         set_namelist namelist_cfg sn_cfctl%l_trcstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist namelist_cfg ln_qsr_rgb .true.
         set_namelist namelist_top_cfg ln_trcbc  .false.
         # put ln_ironsed, ln_hydrofe to false
@@ -792,6 +796,7 @@ if [ ${config} == "AMM12" ] ;  then
         set_namelist namelist_cfg jpni 4
         set_namelist namelist_cfg jpnj 8
         set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist_opt namelist_cfg nn_hls ${USING_EXTRA_HALO} 3 2
         set_namelist_opt namelist_cfg nn_comm ${USING_COLLECTIVES} 2 1
@@ -891,6 +896,7 @@ if [ ${config} == "ORCA2_SAS_ICE" ] ;  then
         set_namelist namelist_cfg jpni 4
         set_namelist namelist_cfg jpnj 8
         set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist_opt namelist_cfg nn_hls ${USING_EXTRA_HALO} 3 2
         set_namelist_opt namelist_cfg nn_comm ${USING_COLLECTIVES} 2 1
@@ -1005,6 +1011,7 @@ if [ ${config} == "ORCA2_ICE_OBS" ] ;  then
         set_namelist namelist_cfg sn_cfctl%l_runstat .true.
         set_namelist namelist_cfg sn_cfctl%l_trcstat .true.
         set_namelist namelist_cfg sn_cfctl%l_obsstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist namelist_cfg ln_diaobs .true.
         set_namelist namelist_cfg nn_obsgroups 5
         # Exclude the initial state from the application of the OBS operator:
@@ -1182,21 +1189,25 @@ if [ ${config} == "AGRIF_DEMO" ] ;  then
         set_namelist namelist_cfg nn_itend ${ITEND}
         set_namelist namelist_cfg sn_cfctl%l_runstat .true.
         set_namelist namelist_cfg sn_cfctl%l_trcstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist 1_namelist_cfg cn_exp \"AGRIF_DEMO\"
         set_namelist 1_namelist_cfg nn_it000 1
         set_namelist 1_namelist_cfg nn_itend ${ITEND}
         set_namelist 1_namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist 1_namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt 1_namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist 2_namelist_cfg cn_exp \"AGRIF_DEMO\"
         set_namelist 2_namelist_cfg nn_it000 1
         set_namelist 2_namelist_cfg nn_itend $(( ${ITEND} * 4 ))
         set_namelist 2_namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist 2_namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt 2_namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist 3_namelist_cfg cn_exp \"AGRIF_DEMO\"
         set_namelist 3_namelist_cfg nn_it000 1
         set_namelist 3_namelist_cfg nn_itend $(( ${ITEND} * 4 * 3 ))
         set_namelist 3_namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist 3_namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt 3_namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist_opt namelist_cfg nn_hls ${USING_EXTRA_HALO} 3 2
         set_namelist_opt namelist_cfg nn_comm ${USING_COLLECTIVES} 2 1
@@ -1350,6 +1361,7 @@ if [ ${config} == "AGRIF_DEMO" ] ;  then
             set_namelist namelist_cfg nn_itend ${ITEND}
             set_namelist namelist_cfg sn_cfctl%l_runstat .true.
             set_namelist namelist_cfg sn_cfctl%l_trcstat .true.
+            set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
             set_namelist_opt namelist_cfg ln_timing ${USING_TIMING} .true. .false.
             set_namelist_opt namelist_cfg nn_hls ${USING_EXTRA_HALO} 3 2
             set_namelist_opt namelist_cfg nn_comm ${USING_COLLECTIVES} 2 1
@@ -1398,6 +1410,7 @@ if [ ${config} == "WED025" ] ;  then
         set_namelist namelist_cfg jpni 4
         set_namelist namelist_cfg jpnj 8
         set_namelist namelist_cfg sn_cfctl%l_runstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist_opt namelist_cfg nn_hls ${USING_EXTRA_HALO} 3 2
         set_namelist_opt namelist_cfg nn_comm ${USING_COLLECTIVES} 2 1
@@ -1502,6 +1515,7 @@ if [[ ${config} =~ "C1D" ]]  ; then
         set_namelist namelist_cfg jpnj 1
         set_namelist namelist_cfg sn_cfctl%l_runstat .true.
         set_namelist namelist_cfg sn_cfctl%l_trcstat .true.
+        set_namelist namelist_cfg sn_cfctl%l_lsb_sum .true.
         set_namelist_opt namelist_cfg ln_timing ${USING_TIMING} .true. .false.
         set_namelist_opt namelist_cfg nn_hls ${USING_EXTRA_HALO} 3 1
         set_namelist_opt namelist_cfg nn_comm ${USING_COLLECTIVES} 2 1

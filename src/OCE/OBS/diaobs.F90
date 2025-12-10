@@ -446,6 +446,8 @@ CONTAINS
       INTEGER :: inumgoodobsmpp    ! ..
       REAL(wp) :: zsumx            ! ..
       REAL(wp) :: zsumx2           ! ..
+      INTEGER(i8) :: ilsb_sum      ! Test value: cumulative sum of the two least-significant bytes of tested values
+      LOGICAL     :: ll_lsb_sum    ! Local flag to indicate the computation of the test value
       REAL(wp) :: zomb             ! ..
       LOGICAL :: lstp0             ! Flag special treatment on zeroth time step
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: &
@@ -644,11 +646,15 @@ CONTAINS
          &        zsurfvar, zsurfclim )
 
       IF ( sn_cfctl%l_obsstat ) THEN
+
+         ll_lsb_sum = sn_cfctl%l_lsb_sum   ! Local test-value computation flag
+
          IF ( lwm ) THEN
 !$AGRIF_DO_NOT_TREAT
             WRITE(numobsstat,'(I10,1X)',advance='no') kstp
 !$AGRIF_END_DO_NOT_TREAT
          ENDIF
+         ilsb_sum = 0   ! Initialisation of the test value (cumulative sum)
          DO jgroup = 1, nn_obsgroups
             IF ( sobsgroups(jgroup)%lenabled ) THEN
                IF ( sobsgroups(jgroup)%lprof ) THEN
@@ -664,6 +670,13 @@ CONTAINS
                               zomb = sobsgroups(jgroup)%sprofdataqc%var(jvar)%vmod(jk) - sobsgroups(jgroup)%sprofdataqc%var(jvar)%vobs(jk)
                               zsumx = zsumx + zomb
                               zsumx2 = zsumx2 + zomb**2
+                              ! Accumulate test value
+                              IF( ll_lsb_sum ) ilsb_sum = ilsb_sum + &
+                                 &   IAND( TRANSFER( REAL( sobsgroups(jgroup)%sprofdataqc%var(jvar)%vmod(jk), KIND=dp ), &
+                                 &                   ilsb_sum ), 2_i8**16 - 1_i8 )
+                              IF( ll_lsb_sum ) ilsb_sum = ilsb_sum + &
+                                 &   IAND( TRANSFER( REAL( sobsgroups(jgroup)%sprofdataqc%var(jvar)%vobs(jk), KIND=dp ), &
+                                 &                   ilsb_sum ), 2_i8**16 - 1_i8 )
                               inumgoodobs = inumgoodobs + 1
                            ENDIF
                         ENDDO
@@ -696,6 +709,13 @@ CONTAINS
                            zomb = sobsgroups(jgroup)%ssurfdataqc%rmod(jo,jvar) - sobsgroups(jgroup)%ssurfdataqc%robs(jo,jvar)
                            zsumx = zsumx + zomb
                            zsumx2 = zsumx2 + zomb**2
+                           ! Accumulate test value
+                           IF( ll_lsb_sum ) ilsb_sum = ilsb_sum + &
+                              &   IAND( TRANSFER( REAL( sobsgroups(jgroup)%ssurfdataqc%rmod(jo,jvar), KIND=dp ), &
+                              &                   ilsb_sum ), 2_i8**16 - 1_i8 )
+                           IF( ll_lsb_sum ) ilsb_sum = ilsb_sum + &
+                              &   IAND( TRANSFER( REAL( sobsgroups(jgroup)%ssurfdataqc%robs(jo,jvar), KIND=dp ), &
+                              &                   ilsb_sum ), 2_i8**16 - 1_i8 )
                            inumgoodobs = inumgoodobs + 1
                         ENDIF
                      ENDDO
@@ -719,8 +739,13 @@ CONTAINS
                ENDIF
             ENDIF
          ENDDO
+         IF( ll_lsb_sum ) CALL mpp_sum( 'dia_obs', ilsb_sum )   ! Finalise test value
          IF ( lwm ) THEN
-            WRITE(numobsstat,'(A1)') ' '
+            IF( ll_lsb_sum ) THEN
+               WRITE(numobsstat,'(A10,z17.16)') ' lsb sum: ', ilsb_sum
+            ELSE
+               WRITE(numobsstat,'(A1)') ' '
+            END IF
          ENDIF
       ENDIF
 
