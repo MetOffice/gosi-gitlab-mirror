@@ -312,8 +312,8 @@
 &nampisfer     !   parameters for iron chemistry
 !-----------------------------------------------------------------------
    ln_ligvar =  .false.   ! variable ligand concentration
-   xlam1     =  0.02      ! scavenging rate of Iron by biogenic particles
-   xlamdust  =  150.0     ! Scavenging rate of Iron by dust
+   xlam1     =  0.04      ! scavenging rate of Iron by biogenic particles
+   xlamdust  =  700.0     ! Scavenging rate of Iron by dust
    ligand    =  1E-9     ! Ligands concentration 
    kfep      =  0.01      ! Nanoparticle formation rate constant
    scaveff   =  1.0       ! Fraction of scavenged Fe that goes to POFe
@@ -362,7 +362,7 @@
    ln_ironsed  =  .false.   ! boolean for Fe input from sediments
    ln_ironice  =  .false.   ! boolean for Fe input from sea ice
    ln_hydrofe  =  .false.   ! boolean for from hydrothermal vents
-   sedfeinput  =  2.e-9    ! Coastal release of Iron
+   sedfeinput  =  1.e-9    ! Coastal release of Iron
    distcoast   =  5.e3     ! Distance off the coast for Iron from sediments
    mfrac       =  0.035    ! Fe mineral fraction of dust
    wdust       =  2.0      ! Dust sinking speed

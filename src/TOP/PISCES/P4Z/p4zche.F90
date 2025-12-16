@@ -33,6 +33,7 @@ MODULE p4zche
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   :: chemc    ! Solubilities of O2 and CO2
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   :: chemo2    ! Solubilities of O2 and CO2
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:,:) :: fesol    ! solubility of Fe
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   akfe2ox  ! Oxydation rate of FEII
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   salinprac  ! Practical salinity
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   tempis   ! In situ temperature
 
@@ -415,6 +416,10 @@ CONTAINS
           ! Iron and SIO3 saturation concentration from ...
           sio3eq(ji,jj,jk) = EXP(  LOG( 10.) * ( 6.44 - 968. / ztkel )  ) * 1.e-6
           fekeq (ji,jj,jk) = 10**( 17.27 - 1565.7 / ztkel ) 
+
+          ! Oxidation kinetic of FeII
+          akfe2ox(ji,jj,jk) = EXP( LOG(10.) * (21.56 - 1545.0 / ztkel - 3.23 * zisqrt + 1.52 * zis) ) / total2free / 60.0
+
           ! Liu and Millero (1999) only valid 5 - 50 degC
           ztkel1 = MAX( 5. , tempis(ji,jj,jk) ) + 273.16
           fesol(ji,jj,jk,1) = 10**(-13.486 - 0.1856* zis**0.5 + 0.3073*zis + 5254.0/ztkel1)
@@ -786,7 +791,8 @@ CONTAINS
 
       ierr(:) = 0
 
-      ALLOCATE( sio3eq(jpi,jpj,jpk), fekeq(jpi,jpj,jpk), chemc(jpi,jpj,3), chemo2(jpi,jpj,jpk), STAT=ierr(1) )
+      ALLOCATE( sio3eq(jpi,jpj,jpk), fekeq(jpi,jpj,jpk), chemc(jpi,jpj,3),   &
+         &      akfe2ox(jpi,jpj,jpk), chemo2(jpi,jpj,jpk), STAT=ierr(1) )
 
       ALLOCATE( akb3(jpi,jpj,jpk)     , tempis(jpi, jpj, jpk),       &
          &      akw3(jpi,jpj,jpk)     , borat (jpi,jpj,jpk)  ,       &
