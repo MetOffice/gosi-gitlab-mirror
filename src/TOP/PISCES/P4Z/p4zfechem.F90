@@ -31,6 +31,8 @@ MODULE p4zfechem
    REAL(wp), PUBLIC ::   kfep         !: rate constant for nanoparticle formation
    REAL(wp), PUBLIC ::   scaveff      !: Fraction of scavenged iron that is considered as being subject to solubilization
 
+   REAL(wp)         ::   xcons = 10**(-6.3)
+
    !! * Substitutions
 #  include "do_loop_substitute.h90"
 #  include "domzgr_substitute.h90"
@@ -55,10 +57,10 @@ CONTAINS
       !
       INTEGER  ::   ji, jj, jk, jic, jn
       REAL(wp) ::   zlam1a, zlam1b
-      REAL(wp) ::   zkeq, zfesatur, fe3sol, zligco
+      REAL(wp) ::   zkeq, zfesatur, fe3sol, zligco, zscavepoc, zscavegoc
       REAL(wp) ::   zscave, zaggdfea, zaggdfeb, ztrc, zdust, zklight
       REAL(wp) ::   ztfe, zhplus, zxlam, zaggliga, zaggligb
-      REAL(wp) ::   zprecip, zprecipno3,  zconsfe, za1
+      REAL(wp) ::   zprecip, zprecipno3,  zconsfe, za1, zoxy, zoxyrat
       REAL(wp) ::   zrfact2
       CHARACTER (len=25) :: charout
       REAL(wp), DIMENSION(jpi,jpj,jpk) ::   zTL1, zFe3, ztotlig, zfeprecip, zFeL1, zfecoll
@@ -102,14 +104,17 @@ CONTAINS
       DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpkm1)
           zTL1(ji,jj,jk)  = ztotlig(ji,jj,jk)
           zkeq            = fekeq(ji,jj,jk)
-          zklight         = 4.77E-7 * etot(ji,jj,jk) * 0.5 / ( 10**(-6.3) )
-          zconsfe         = consfe3(ji,jj,jk) / ( 10**(-6.3) )
+          zklight         = 4.77E-7 * etot(ji,jj,jk) * 0.5 / xcons 
+          zconsfe         = consfe3(ji,jj,jk) / xcons
           zfesatur        = zTL1(ji,jj,jk) * 1E-9
           ztfe            = (1.0 + zklight) * tr(ji,jj,jk,jpfer,Kbb) 
+          zoxy            = akfe2ox(ji,jj,jk) * (akw3(ji,jj,jk) / ( MAX( hi(ji,jj,1), 1.e-10 ) ) )**2  &
+            &               * tr(ji,jj,jk,jpoxy,Kbb)
+          zoxyrat         = 4.77E-7 * etot(ji,jj,jk) * 0.5 / ( consfe3(ji,jj,jk) + zoxy + rtrn )
           ! Fe' is the root of a 2nd order polynom
-          za1 =  1. + zfesatur * zkeq + zklight +  zconsfe - zkeq * tr(ji,jj,jk,jpfer,Kbb)
+          za1             =  1. + (1.0 + zoxyrat) * (zfesatur * zkeq + zconsfe) + zklight - zkeq * tr(ji,jj,jk,jpfer,Kbb)
           zFe3 (ji,jj,jk) = ( -1 * za1 + SQRT( za1**2 + 4. * ztfe * zkeq) ) / ( 2. * zkeq + rtrn )
-          zFeL1(ji,jj,jk) = MAX( 0., tr(ji,jj,jk,jpfer,Kbb) - zFe3(ji,jj,jk) )
+          zFeL1(ji,jj,jk) = (zkeq * zfesatur + zconsfe) / ( 1.0 + zklight + zkeq * zFe3 (ji,jj,jk) ) * zFe3 (ji,jj,jk)
       END_3D
       !
       plig(:,:,:) =  MAX( 0., ( zFeL1(:,:,:) / ( tr(:,:,:,jpfer,Kbb) + rtrn ) ) )
@@ -164,12 +169,15 @@ CONTAINS
          !
          zfeprecip(ji,jj,jk) = zprecip + zprecipno3
          !
-         ztrc   = ( tr(ji,jj,jk,jppoc,Kbb) + tr(ji,jj,jk,jpgoc,Kbb) + tr(ji,jj,jk,jpcal,Kbb) + tr(ji,jj,jk,jpgsi,Kbb) ) * 1.e6 
+         ztrc   = ( tr(ji,jj,jk,jppoc,Kbb) + tr(ji,jj,jk,jpgoc,Kbb) + tr(ji,jj,jk,jpcal,Kbb) + tr(ji,jj,jk,jpgsi,Kbb) * 2.0 ) * 1.e6 
          ztrc = MAX( rtrn, ztrc )
          IF( ll_dust )  zdust  = dust(ji,jj) / ( wdust / rday ) * tmask(ji,jj,jk)
          zxlam  = MAX( 1.E-3, (1. - EXP(-2 * tr(ji,jj,jk,jpoxy,Kbb) / 100.E-6 ) ))
          zlam1b = 3.e-5 + ( xlamdust * zdust + xlam1 * ztrc ) * zxlam
          zscave = zFe3(ji,jj,jk) * zlam1b * xstep
+         zscavepoc = zFe3(ji,jj,jk) * xlam1 * tr(ji,jj,jk,jppoc,Kbb) * 1E6 * zxlam * xstep
+         zscavegoc = zFe3(ji,jj,jk) * xlam1 * (tr(ji,jj,jk,jpgoc,Kbb) + tr(ji,jj,jk,jpcal,Kbb) + tr(ji,jj,jk,jpgsi,Kbb) * 2.0 ) &
+           &         * 1E6 * zxlam * xstep
 
          !  Compute the coagulation of colloidal iron. This parameterization 
          !  could be thought as an equivalent of colloidal pumping.
@@ -187,9 +195,8 @@ CONTAINS
          tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) - zscave - zaggdfea - zaggdfeb &
          &                       - zfeprecip(ji,jj,jk)
 
-         tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) + zscave * scaveff * tr(ji,jj,jk,jppoc,Kbb) / ztrc
-         tr(ji,jj,jk,jpbfe,Krhs) = tr(ji,jj,jk,jpbfe,Krhs) + zscave * scaveff * tr(ji,jj,jk,jppoc,Kbb) / ztrc
-
+         tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) + zscavepoc * scaveff
+         tr(ji,jj,jk,jpbfe,Krhs) = tr(ji,jj,jk,jpbfe,Krhs) + zscavegoc * scaveff
 
           ! Precipitated iron is supposed to be permanently lost.
           ! Scavenged iron is supposed to be released back to seawater
