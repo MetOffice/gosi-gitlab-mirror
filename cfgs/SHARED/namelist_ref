@@ -475,6 +475,7 @@
       rn_rnf_max  = 5.735e-4   !  max value of the runoff climatologie over global domain ( ln_rnf_depth_ini = .true )
       rn_dep_max  = 150.       !  depth over which runoffs is spread ( ln_rnf_depth_ini = .true )
       nn_rnf_depth_file = 0    !  create (=1) a runoff depth file or not (=0)
+   ln_icb_depth = .false.      !  read in depth information for icb runoff
 
    cn_dir       = './'      !  root directory for the runoff data location
    !___________!_________________________!___________________!___________!_____________!________!___________!__________________!__________!_______________!
@@ -486,6 +487,7 @@
    sn_t_rnf    = 'runoffs'               ,        24.        , 'rotemper',   .true.    , .true. , 'yearly'  , ''               , ''       , ''
    sn_i_rnf    = 'NOT USED'              ,        24.        , 'xxxxxxxx',   .true.    , .true. , 'yearly'  , ''               , ''       , ''
    sn_dep_rnf  = 'runoffs'               ,       -12.        , 'rodepth' ,   .false.   , .true. , 'yearly'  , ''               , ''       , ''
+   sn_dep_icb  = 'NOT USED'              ,        -1.        , 'icbthick',   .false.   , .true. , 'yearly'  , ''               , ''       , ''
 /
 !-----------------------------------------------------------------------
 &namsbc_apr    !   Atmospheric pressure used as ocean forcing           (ln_apr_dyn =T)
