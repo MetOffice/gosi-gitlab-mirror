@@ -41,6 +41,7 @@ MODULE sbcrnf
    REAL(wp)                   ::      rn_rnf_max        !: maximum value of the runoff climatologie (ln_rnf_depth_ini =T)
    REAL(wp)                   ::      rn_dep_max        !: depth over which runoffs is spread       (ln_rnf_depth_ini =T)
    INTEGER                    ::      nn_rnf_depth_file !: create (=1) a runoff depth file or not (=0)
+   LOGICAL                    ::   ln_icb_depth      !: depth       icb runoffs attribute specified in a file
    LOGICAL           , PUBLIC ::   ln_rnf_icb        !: iceberg flux is specified in a file
    LOGICAL                    ::   ln_rnf_tem        !: temperature river runoffs attribute specified in a file
    LOGICAL           , PUBLIC ::   ln_rnf_sal        !: salinity    river runoffs attribute specified in a file
@@ -50,6 +51,7 @@ MODULE sbcrnf
    TYPE(FLD_N)                ::   sn_s_rnf          !: information about the salinities of runoff file to be read
    TYPE(FLD_N)                ::   sn_t_rnf          !: information about the temperatures of runoff file to be read
    TYPE(FLD_N)                ::   sn_dep_rnf        !: information about the depth which river inflow affects
+   TYPE(FLD_N)                ::   sn_dep_icb        !: information about the depth which icb inflow affects
    LOGICAL           , PUBLIC ::   ln_rnf_mouth      !: specific treatment in mouths vicinity
    REAL(wp)                   ::   rn_hrnf           !: runoffs, depth over which enhanced vertical mixing is used
    REAL(wp)          , PUBLIC ::   rn_avt_rnf        !: runoffs, value of the additional vertical mixing coef. [m2/s]
@@ -104,8 +106,10 @@ CONTAINS
       !!
       !! ** Action  :   runoff updated runoff field at time-step kt
       !!----------------------------------------------------------------------
-      INTEGER, INTENT(in) ::   kt          ! ocean time step
+      INTEGER, INTENT(in) ::   kt       ! ocean time step
       !
+      REAL(wp), DIMENSION(A2D(0)) ::   zqicb
+      REAL(wp) ::   zqfr
       INTEGER  ::   ji, jj    ! dummy loop indices
       INTEGER  ::   z_err = 0 ! dummy integer for error handling
       !!----------------------------------------------------------------------
@@ -125,15 +129,30 @@ CONTAINS
       IF( MOD( kt - 1, nn_fsbc ) == 0 ) THEN
          !
          IF( .NOT. l_rnfcpl ) THEN
-            rnf(A2D(0)) = rn_rfact * ( sf_rnf(1)%fnow(:,:,1) ) * smask0(:,:)  ! updated runoff value at time step kt
+            !
+            ! if rnf file exists
+            IF( TRIM( sn_rnf%clname ) /= "NOT USED" ) THEN
+               rnf(A2D(0)) = rn_rfact * ( sf_rnf(1)%fnow(:,:,1) ) * smask0(:,:)  ! updated runoff value at time step kt
+            ELSE
+               rnf(A2D(0)) = 0._wp
+            ENDIF
+            !
+            ! if icb file exists
             IF( ln_rnf_icb ) THEN
+               ! freshwater flux
                fwficb(:,:) = rn_rfact * ( sf_i_rnf(1)%fnow(:,:,1) ) * smask0(:,:)  ! updated runoff value at time step kt
                rnf(A2D(0)) = rnf(A2D(0)) + fwficb(:,:)
-               qns(:,:) = qns(:,:) - fwficb(:,:) * rLfus
-               !!qns_tot(:,:) = qns_tot(:,:) - fwficb(:,:) * rLfus
-               !!qns_oce(:,:) = qns_oce(:,:) - fwficb(:,:) * rLfus
-               CALL iom_put( 'iceberg_cea'  ,  fwficb(:,:)  )          ! output iceberg flux
-               CALL iom_put( 'hflx_icb_cea' , -fwficb(:,:) * rLfus )   ! output Heat Flux into Sea Water due to Iceberg Thermodynamics -->
+               ! heat flux (only latent, we suppose icb temp = 0degC)
+               DO_2D( 0, 0, 0, 0 )
+                  ! energy needed to bring ocean surface layer to its freezing (just a guess since sst can also drop because of sea-ice)
+                  zqfr         = MIN( 0._wp, rho0 * rcp * e3t_m(ji,jj) * ( -1.9_wp - sst_m(ji,jj) ) * r1_Dt * smask0(ji,jj) ) ! < 0 [in W/m2]
+                  zqicb(ji,jj) = MAX( - fwficb(ji,jj) * rLfus, zqfr ) ! clem: < 0 and MAX to avoid sst droping well below the freezing point
+                  qns  (ji,jj) = qns(ji,jj) + zqicb(ji,jj)
+                  !!qns_tot(ji,jj) = qns_tot(ji,jj) + zqicb(ji,jj)
+                  !!qns_oce(ji,jj) = qns_oce(ji,jj) + zqicb(ji,jj)
+               END_2D
+               CALL iom_put( 'iceberg_cea'  , fwficb(:,:) )   ! output iceberg flux
+               CALL iom_put( 'hflx_icb_cea' ,  zqicb(:,:) )   ! output Heat Flux into Sea Water due to Iceberg Thermodynamics -->
             ENDIF
          ENDIF
          !
@@ -220,16 +239,18 @@ CONTAINS
       !! ** Action  : - read parameters
       !!----------------------------------------------------------------------
       INTEGER, INTENT(in) :: Kmm           ! ocean time level index
-      CHARACTER(len=32) ::   rn_dep_file   ! runoff file name
+      CHARACTER(len=256) ::   rn_dep_file   ! runoff file name
       INTEGER           ::   ji, jj, jk, jm    ! dummy loop indices
       INTEGER           ::   ierror, inum  ! temporary integer
       INTEGER           ::   ios           ! Local integer output status for namelist read
       INTEGER           ::   nbrec         ! temporary integer
       REAL(wp)          ::   zacoef
-      REAL(wp), DIMENSION(A2D(1),2) :: zrnfcl
+      REAL(wp), DIMENSION(A2D(1),2) :: zrnfcl, zicbcl
+      REAL(wp), DIMENSION(A2D(1))   :: zh_icb
+      INTEGER , DIMENSION(A2D(1))   :: nk_icb
       !!
-      NAMELIST/namsbc_rnf/ cn_dir            , ln_rnf_depth, ln_rnf_tem, ln_rnf_sal, ln_rnf_icb,   &
-         &                 sn_rnf, sn_cnf    , sn_i_rnf, sn_s_rnf    , sn_t_rnf  , sn_dep_rnf,   &
+      NAMELIST/namsbc_rnf/ cn_dir            , ln_rnf_depth, ln_rnf_tem, ln_rnf_sal, ln_rnf_icb, ln_icb_depth, &
+         &                 sn_rnf, sn_cnf    , sn_i_rnf, sn_s_rnf    , sn_t_rnf  , sn_dep_rnf, sn_dep_icb,     &
          &                 ln_rnf_mouth      , rn_hrnf     , rn_avt_rnf, rn_rfact,     &
          &                 ln_rnf_depth_ini  , rn_dep_max  , rn_rnf_max, nn_rnf_depth_file
       !!----------------------------------------------------------------------
@@ -320,7 +341,9 @@ CONTAINS
          CALL fld_fill (sf_s_rnf, (/ sn_s_rnf /), cn_dir, 'sbc_rnf_init', 'read runoff salinity data', 'namsbc_rnf', no_print )
       ENDIF
       !
+      !                                          ! --------------------------------
       IF( ln_rnf_depth ) THEN                    ! depth of runoffs set from a file
+         !                                       ! --------------------------------
          IF(lwp) WRITE(numout,*)
          IF(lwp) WRITE(numout,*) '   ==>>>   runoffs depth read in a file'
          rn_dep_file = TRIM( cn_dir )//TRIM( sn_dep_rnf%clname )
@@ -351,29 +374,56 @@ CONTAINS
                h_rnf(ji,jj) = h_rnf(ji,jj) + e3t(ji,jj,jk,Kmm)
             END DO
          END_2D
-         !
-      ELSE IF( ln_rnf_depth_ini ) THEN           ! runoffs applied at the surface
-         !
+         !                                       ! --------------------------------------------------
+      ELSE IF( ln_rnf_depth_ini ) THEN           ! depth of runoffs recalculated from runoff strength
+         !                                       ! --------------------------------------------------
          IF(lwp) WRITE(numout,*)
          IF(lwp) WRITE(numout,*) '   ==>>>   depth of runoff computed once from max value of runoff'
          IF(lwp) WRITE(numout,*) '        max value of the runoff climatologie (over global domain) rn_rnf_max = ', rn_rnf_max
          IF(lwp) WRITE(numout,*) '        depth over which runoffs is spread                        rn_dep_max = ', rn_dep_max
          IF(lwp) WRITE(numout,*) '        create (=1) a runoff depth file or not (=0)      nn_rnf_depth_file  = ', nn_rnf_depth_file
 
-         CALL iom_open( TRIM( sn_rnf%clname ), inum ) !  open runoff file
-         nbrec = iom_getszuld( inum )
-         zrnfcl(:,:,1) = 0._wp                                                            ! init the max to 0. in 1
-         DO jm = 1, nbrec
-            CALL iom_get( inum, jpdom_global, TRIM( sn_rnf%clvar ), zrnfcl(:,:,2), jm )   ! read the value in 2
-            zrnfcl(:,:,1) = MAXVAL( zrnfcl(:,:,:), DIM=3 )                                ! store the maximum value in time in 1
-         END DO
-         CALL iom_close( inum )
-         !
-         zacoef = rn_dep_max / rn_rnf_max             ! coef of linear relation between runoff and its depth (150m for max of runoff)
-         !
-         WHERE( zrnfcl(:,:,1) > 0._wp ) ; h_rnf(:,:) = zacoef * zrnfcl(:,:,1)   ! compute depth for all runoffs
-         ELSEWHERE                      ; h_rnf(:,:) = 1._wp
-         ENDWHERE
+         zrnfcl(:,:,1) = 0._wp                                                               ! init the max to 0. in 1
+         zicbcl(:,:,1) = 0._wp                                                               ! init the max to 0. in 1
+         DO_2D( 1, 1, 1, 1 )
+            h_rnf (ji,jj) = e3t(ji,jj,1,Kmm)
+         END_2D
+ 
+         ! for pure runoff
+         IF( TRIM( sn_rnf%clname ) /= "NOT USED" ) THEN
+            CALL iom_open( TRIM( sn_rnf%clname ), inum ) !  open runoff file
+            nbrec = iom_getszuld( inum )
+            DO jm = 1, nbrec
+               CALL iom_get( inum, jpdom_global, TRIM( sn_rnf%clvar ), zrnfcl(:,:,2), jm )   ! read the value in 2
+               zrnfcl(:,:,1) = MAXVAL( zrnfcl(:,:,:), DIM=3 )                                ! store the maximum value in time in 1
+            END DO
+            CALL iom_close( inum )
+            !
+            zacoef = rn_dep_max / rn_rnf_max             ! coef of linear relation between runoff and its depth (150m for max of runoff)
+            !
+            WHERE( zrnfcl(:,:,1) > 0._wp )   h_rnf(:,:) = zacoef * zrnfcl(:,:,1)   ! compute depth for all runoffs
+            !
+         ENDIF
+
+         ! when icb file is read but not the depth
+         IF( ln_rnf_icb ) THEN
+            ! read icb file
+            CALL iom_open( TRIM( sn_i_rnf%clname ), inum ) !  open runoff file
+            nbrec = iom_getszuld( inum )
+            DO jm = 1, nbrec
+               CALL iom_get( inum, jpdom_global, TRIM( sn_i_rnf%clvar ), zicbcl(:,:,2), jm ) ! read the value in 2
+               zicbcl(:,:,1) = MAXVAL( zicbcl(:,:,:), DIM=3   )                              ! store the maximum value in time in 1
+            END DO
+            CALL iom_close( inum )
+            !
+            IF( .NOT.ln_icb_depth ) THEN
+               WHERE( zicbcl(:,:,1) > 0._wp )   h_rnf(:,:) = rn_dep_max   ! compute depth for all icb runoffs
+            ENDIF
+            !
+            ! add icb to rnf
+            zrnfcl(:,:,1) = zrnfcl(:,:,1) + zicbcl(:,:,1)
+            
+         ENDIF
          !
          DO_2D( 1, 1, 1, 1 )      ! take in account min depth of ocean rn_hmin
             IF( zrnfcl(ji,jj,1) > 0._wp ) THEN
@@ -400,17 +450,62 @@ CONTAINS
             END DO
          END_2D
          !
-         IF( nn_rnf_depth_file == 1 ) THEN            !  save  output nb levels for runoff
-            IF(lwp) WRITE(numout,*) '   ==>>>   create runoff depht file'
-            CALL iom_open  ( TRIM( sn_dep_rnf%clname ), inum, ldwrt = .TRUE. )
-            CALL iom_rstput( 0, 0, inum, 'rodepth', h_rnf )
-            CALL iom_close ( inum )
-         ENDIF
-      ELSE                                            ! runoffs applied at the surface
+         !                                       ! ------------------------------
+      ELSE                                       ! runoffs applied at the surface
+         !                                       ! ------------------------------
          DO_2D( 1, 1, 1, 1 )
             nk_rnf(ji,jj) = 1
             h_rnf (ji,jj) = e3t(ji,jj,1,Kmm)
          END_2D
+      ENDIF
+      
+      !                                          ! --------------------------------------------------------
+      IF( ln_icb_depth ) THEN                    ! Change rnf depth if depth of icb runoffs set from a file
+         !                                       ! --------------------------------------------------------
+         IF(lwp) WRITE(numout,*)
+         IF(lwp) WRITE(numout,*) '   ==>>>   runoffs icb depth read in a file'
+         rn_dep_file = TRIM( cn_dir )//TRIM( sn_dep_icb%clname )
+         IF( .NOT. sn_dep_icb%ln_clim ) THEN   ;   WRITE(rn_dep_file, '(a,"_y",i4)' ) TRIM( rn_dep_file ), nyear    ! add year
+            IF( sn_dep_icb%clftyp == 'monthly' )   WRITE(rn_dep_file, '(a,"m",i2)'  ) TRIM( rn_dep_file ), nmonth   ! add month
+         ENDIF
+         CALL iom_open ( rn_dep_file, inum )                                                 ! open file
+         CALL iom_get  ( inum, jpdom_global, sn_dep_icb%clvar, zh_icb, kfill = jpfillcopy )   ! read the icb mouth. no 0 on halos!
+         CALL iom_close( inum )                                                              ! close file
+
+         DO_2D( 1, 1, 1, 1 )      ! take in account min depth of ocean rn_hmin
+            IF( zh_icb(ji,jj) > 0._wp ) THEN
+               jk = mbkt(ji,jj)
+               zh_icb(ji,jj) = MIN( zh_icb(ji,jj), gdept_0(ji,jj,jk ) )
+            ENDIF
+         END_2D
+         !
+         DO_2D( 1, 1, 1, 1 )      ! number of levels on which runoffs are distributed
+            nk_icb(ji,jj) = 0
+            IF( zh_icb(ji,jj) > 0._wp ) THEN
+               jk = 2
+               DO WHILE ( jk < mbkt(ji,jj) .AND. gdept_0(ji,jj,jk) < zh_icb(ji,jj) ) ;  jk = jk + 1
+               END DO
+               nk_icb(ji,jj) = jk
+            ENDIF
+         END_2D
+         !
+         DO_2D( 1, 1, 1, 1 )      ! set the associated depth
+            zh_icb(ji,jj) = 0._wp
+            DO jk = 1, nk_icb(ji,jj)
+               zh_icb(ji,jj) = zh_icb(ji,jj) + e3t(ji,jj,jk,Kmm)
+            END DO
+         END_2D
+
+         WHERE( zh_icb(:,:) > 0._wp )    h_rnf(:,:) = zh_icb(:,:)
+         WHERE( nk_icb(:,:) > 0     )   nk_rnf(:,:) = nk_icb(:,:)
+
+      ENDIF
+      
+      IF( nn_rnf_depth_file == 1 ) THEN            !  save  output nb levels for runoff
+         IF(lwp) WRITE(numout,*) '   ==>>>   create runoff depth file'
+         CALL iom_open  ( TRIM( sn_dep_rnf%clname ), inum, ldwrt = .TRUE. )
+         CALL iom_rstput( 0, 0, inum, 'rodepth', h_rnf )
+         CALL iom_close ( inum )
       ENDIF
       !
       DO_2D( 0, 0, 0, 0 )
