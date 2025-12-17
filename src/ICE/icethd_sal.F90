@@ -169,7 +169,9 @@ CONTAINS
       !! ** References
       !! Thomas, M., Vancoppenolle, M., France, J. L., Sturges, W. T., Bakker, D. C. E., Kaiser, J., & von Glasow, R. (2020).
       !!             Tracer measurements in growing sea ice support convective gravity drainage parameterizations.
-      !              Journal of Geophysical Research: Oceans, 125, e2019JC015791. https://doi.org/10. 1029/2019JC015791
+      !!             Journal of Geophysical Research: Oceans, 125, e2019JC015791. https://doi.org/10. 1029/2019JC015791
+      !! Ortega, E., Vancoppenolle, M., Rousset, C., & Lemaire, E. (2025).
+      !!             New representation of sea ice salt dynamics within NEMO-SI3: Evaluation and impacts.
       !!---------------------------------------------------------------------
       INTEGER, INTENT(in) ::   jl_cat
       INTEGER  ::   ji, jj, jk, jk2            ! dummy loop indices 
