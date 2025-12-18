@@ -299,7 +299,7 @@ CONTAINS
                !               
                zcfl_max = 0._wp
                zs_min   = 0._wp
-               IF( h_i_1d(ji) >= rn_sal_himin .AND. zhmelt >= 0._wp .AND. zs_brmax > sss_1d(ji) ) THEN
+               IF( h_i_1d(ji) >= rn_sal_himin .AND. zhmelt >= 0._wp .AND. zs_brmax > sss_1d(ji) .AND. t_su_1d(ji) <= t_bo_1d(ji) ) THEN 
                   !                               ! during melting season, salt flux can turn upward
                   !
                   WHERE( (t_i_1d(ji,:)-rt0) <  - epsi06 ) ; zmsk(:) = 1._wp
