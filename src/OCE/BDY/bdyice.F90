@@ -77,27 +77,28 @@ CONTAINS
                CALL ctl_stop( 'bdy_ice : unrecognised option for open boundaries for ice fields' )
             END SELECT
             !
-         END DO
-         !
-         ! Update bdy points        
-         IF( ir == 1 ) CYCLE   ! at least 2 halos will be corrected -> no need to correct rim 1 before rim 0
-         DO jbdy = 1, nb_bdy
             IF( cn_ice(jbdy) == 'frs' ) THEN
                llsend1(:) = llsend1(:) .OR. lsend_bdyint(jbdy,1,:,ir)   ! possibly every direction, T points
                llrecv1(:) = llrecv1(:) .OR. lrecv_bdyint(jbdy,1,:,ir)   ! possibly every direction, T points
             END IF
          END DO   ! jbdy
-         IF( ANY(llsend1) .OR. ANY(llrecv1) ) THEN   ! if need to send/recv in at least one direction
-            ! exchange 3d arrays
-            CALL lbc_lnk('bdyice', a_i , 'T', 1._wp, h_i , 'T', 1._wp, h_s , 'T', 1._wp, oa_i, 'T', 1._wp                   &
-               &                 , s_i , 'T', 1._wp, t_su, 'T', 1._wp, v_i , 'T', 1._wp, v_s , 'T', 1._wp, sv_i, 'T', 1._wp &
-               &                 , a_ip, 'T', 1._wp, v_ip, 'T', 1._wp, v_il, 'T', 1._wp                                     &
-               &                 , kfillmode=jpfillnothing ,lsend=llsend1, lrecv=llrecv1 )
-            ! exchange 4d arrays :   third dimension = 1   and then   third dimension = jpk
-            CALL lbc_lnk('bdyice', t_s , 'T', 1._wp, e_s , 'T', 1._wp, t_i , 'T', 1._wp, e_i , 'T', 1._wp, szv_i , 'T', 1._wp, &
-               &                                     kfillmode=jpfillnothing ,lsend=llsend1, lrecv=llrecv1 )
-         END IF
       END DO   ! ir
+      !
+      DO jbdy = 1, nb_bdy
+         llsend1(:) = llsend1(:) .OR. lsend_bdyper(jbdy,1,:)
+         llrecv1(:) = llrecv1(:) .OR. lrecv_bdyper(jbdy,1,:)
+      END DO
+      ! at least 2 halos will be corrected -> no need to correct rim 1 before rim 0
+      IF( ANY(llsend1) .OR. ANY(llrecv1) ) THEN   ! if need to send/recv in at least one direction
+         ! exchange 3d arrays
+         CALL lbc_lnk('bdyice', a_i , 'T', 1._wp, h_i , 'T', 1._wp, h_s , 'T', 1._wp, oa_i, 'T', 1._wp                   &
+            &                 , s_i , 'T', 1._wp, t_su, 'T', 1._wp, v_i , 'T', 1._wp, v_s , 'T', 1._wp, sv_i, 'T', 1._wp &
+            &                 , a_ip, 'T', 1._wp, v_ip, 'T', 1._wp, v_il, 'T', 1._wp                                     &
+            &                 , kfillmode=jpfillnothing ,lsend=llsend1, lrecv=llrecv1 )
+         ! exchange 4d arrays :   third dimension = 1   and then   third dimension = jpk
+         CALL lbc_lnk('bdyice', t_s , 'T', 1._wp, e_s , 'T', 1._wp, t_i , 'T', 1._wp, e_i , 'T', 1._wp, szv_i , 'T', 1._wp, &
+            &                                     kfillmode=jpfillnothing ,lsend=llsend1, lrecv=llrecv1 )
+      END IF
       !
       CALL ice_cor( kt , 0 )      ! -- In case categories are out of bounds, do a remapping
       !                           !    i.e. inputs have not the same ice thickness distribution (set by rn_himean)
@@ -393,6 +394,13 @@ CONTAINS
                      !
                   END DO
                   !
+                  llsend2(  :  ) = llsend2(  :  ) .OR. lsend_bdyint(jbdy,2,  :  ,ir)   ! possibly every direction, U points
+                  idir3 = (/ jpwe, jpsw, jpnw /)
+                  llsend2(idir3) = llsend2(idir3) .OR. lsend_bdyext(jbdy,2,idir3,ir)   ! nei might search point towards its ea bdy
+                  llrecv2(  :  ) = llrecv2(  :  ) .OR. lrecv_bdyint(jbdy,2,  :  ,ir)   ! possibly every direction, U points
+                  idir3 = (/ jpea, jpse, jpne /)
+                  llrecv2(idir3) = llrecv2(idir3) .OR. lrecv_bdyext(jbdy,2,idir3,ir)   ! might search point towards east bdy
+                  !
                CASE ( 'V' )
                   jgrd = 3      ! v velocity
                   IF( ir == 0 ) THEN   ;   ibeg = 1                                 ;   iend = idx_bdy(jbdy)%nblenrim0(jgrd)
@@ -427,6 +435,13 @@ CONTAINS
                      !
                   END DO
                   !
+                  llsend3(  :  ) = llsend3(  :  ) .OR. lsend_bdyint(jbdy,3,  :  ,ir)   ! possibly every direction, V points
+                  idir3 = (/ jpso, jpsw, jpse /)
+                  llsend3(idir3) = llsend3(idir3) .OR. lsend_bdyext(jbdy,3,idir3,ir)   ! nei might search point towards its no bdy
+                  llrecv3(  :  ) = llrecv3(  :  ) .OR. lrecv_bdyint(jbdy,3,  :  ,ir)   ! possibly every direction, V points
+                  idir3 = (/ jpno, jpnw, jpne /)
+                  llrecv3(idir3) = llrecv3(idir3) .OR. lrecv_bdyext(jbdy,3,idir3,ir)   ! might search point towards north bdy
+                  !
                END SELECT
                !
             CASE DEFAULT
@@ -434,40 +449,19 @@ CONTAINS
             END SELECT
             !
          END DO    ! jbdy
-         !
-         SELECT CASE ( cd_type )        
-         CASE ( 'U' ) 
-         IF( ir == 1 ) CYCLE   ! at least 2 halos will be corrected -> no need to correct rim 1 before rim 0
-            DO jbdy = 1, nb_bdy
-               IF( cn_ice(jbdy) == 'frs' .AND. nn_ice_dta(jbdy) /= 0 ) THEN
-                  llsend2(  :  ) = llsend2(  :  ) .OR. lsend_bdyint(jbdy,2,  :  ,ir)   ! possibly every direction, U points
-                  idir3 = (/ jpwe, jpsw, jpnw /)
-                  llsend2(idir3) = llsend2(idir3) .OR. lsend_bdyext(jbdy,2,idir3,ir)   ! nei might search point towards its ea bdy
-                  llrecv2(  :  ) = llrecv2(  :  ) .OR. lrecv_bdyint(jbdy,2,  :  ,ir)   ! possibly every direction, U points
-                  idir3 = (/ jpea, jpse, jpne /)
-                  llrecv2(idir3) = llrecv2(idir3) .OR. lrecv_bdyext(jbdy,2,idir3,ir)   ! might search point towards east bdy
-               END IF
-            END DO
-            IF( ANY(llsend2) .OR. ANY(llrecv2) ) THEN   ! if need to send/recv in at least one direction
-               CALL lbc_lnk( 'bdyice', u_ice, 'U', -1.0_wp, kfillmode=jpfillnothing ,lsend=llsend2, lrecv=llrecv2 )
-            END IF
-         CASE ( 'V' )
-         IF( ir == 1 ) CYCLE   ! at least 2 halos will be corrected -> no need to correct rim 1 before rim 0
-            DO jbdy = 1, nb_bdy
-               IF( cn_ice(jbdy) == 'frs' .AND. nn_ice_dta(jbdy) /= 0 ) THEN
-                  llsend3(  :  ) = llsend3(  :  ) .OR. lsend_bdyint(jbdy,3,  :  ,ir)   ! possibly every direction, V points
-                  idir3 = (/ jpso, jpsw, jpse /)
-                  llsend3(idir3) = llsend3(idir3) .OR. lsend_bdyext(jbdy,3,idir3,ir)   ! nei might search point towards its no bdy
-                  llrecv3(  :  ) = llrecv3(  :  ) .OR. lrecv_bdyint(jbdy,3,  :  ,ir)   ! possibly every direction, V points
-                  idir3 = (/ jpno, jpnw, jpne /)
-                  llrecv3(idir3) = llrecv3(idir3) .OR. lrecv_bdyext(jbdy,3,idir3,ir)   ! might search point towards north bdy
-               END IF
-            END DO
-            IF( ANY(llsend3) .OR. ANY(llrecv3) ) THEN   ! if need to send/recv in at least one direction
-               CALL lbc_lnk( 'bdyice', v_ice, 'V', -1.0_wp, kfillmode=jpfillnothing ,lsend=llsend3, lrecv=llrecv3 )
-            END IF
-         END SELECT
       END DO   ! ir
+
+      DO jbdy = 1, nb_bdy
+         llsend2(:) = llsend2(:) .OR. lsend_bdyper(jbdy,2,:)   ;   llrecv2(:) = llrecv2(:) .OR. lrecv_bdyper(jbdy,2,:)
+         llsend3(:) = llsend3(:) .OR. lsend_bdyper(jbdy,3,:)   ;   llrecv3(:) = llrecv3(:) .OR. lrecv_bdyper(jbdy,3,:)
+      END DO
+      ! at least 2 halos will be corrected -> no need to correct rim 1 before rim 0
+      IF( ANY(llsend2) .OR. ANY(llrecv2) ) THEN   ! if need to send/recv in at least one direction
+         CALL lbc_lnk( 'bdyice', u_ice, 'U', -1.0_wp, kfillmode=jpfillnothing ,lsend=llsend2, lrecv=llrecv2 )
+      END IF
+      IF( ANY(llsend3) .OR. ANY(llrecv3) ) THEN   ! if need to send/recv in at least one direction
+         CALL lbc_lnk( 'bdyice', v_ice, 'V', -1.0_wp, kfillmode=jpfillnothing ,lsend=llsend3, lrecv=llrecv3 )
+      END IF
       !
       IF( ln_timing )   CALL timing_stop('bdy_ice_dyn')
       !

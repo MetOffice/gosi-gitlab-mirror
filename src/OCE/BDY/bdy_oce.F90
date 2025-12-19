@@ -136,6 +136,8 @@ MODULE bdy_oce
    TYPE(OBC_INDEX), DIMENSION(jp_bdy), TARGET      ::   idx_bdy           !: bdy indices (local process)
    TYPE(OBC_DATA) , DIMENSION(jp_bdy), TARGET      ::   dta_bdy           !: bdy external data (local process)
 !$AGRIF_END_DO_NOT_TREAT
+   LOGICAL, ALLOCATABLE, DIMENSION(:,:,:  ) ::   lsend_bdyper   !: mark needed communication for given boundary, grid and neighbour
+   LOGICAL, ALLOCATABLE, DIMENSION(:,:,:  ) ::   lrecv_bdyper   !:  when periodicity
    LOGICAL, ALLOCATABLE, DIMENSION(:,:,:,:) ::   lsend_bdyolr   !: mark needed communication for given boundary, grid and neighbour
    LOGICAL, ALLOCATABLE, DIMENSION(:,:,:,:) ::   lrecv_bdyolr   !:  when searching in any direction (only for orlansky)
    LOGICAL, ALLOCATABLE, DIMENSION(:,:,:,:) ::   lsend_bdyint   !: mark needed communication for given boundary, grid and neighbour
