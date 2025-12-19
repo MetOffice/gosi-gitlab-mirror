@@ -85,10 +85,7 @@ CONTAINS
                END SELECT
                !
             END DO
-         END DO
-         !
-         IF( ir == 1 ) CYCLE   ! at least 2 halos will be corrected -> no need to correct rim 1 before rim 0
-         DO ib_bdy=1, nb_bdy
+            !
             SELECT CASE( cn_tra(ib_bdy) )
             CASE('neumann','runoff')
                llsend1(:) = llsend1(:) .OR. lsend_bdyint(ib_bdy,1,:,ir)   ! possibly every direction, T points
@@ -98,11 +95,17 @@ CONTAINS
                llrecv1(:) = llrecv1(:) .OR. lrecv_bdyolr(ib_bdy,1,:,ir)   ! possibly every direction, T points
             END SELECT
          END DO
-         IF( ANY(llsend1) .OR. ANY(llrecv1) ) THEN   ! if need to send/recv in at least one direction
-            CALL lbc_lnk( 'bdytra', pts(:,:,:,jn,Kaa), 'T',  1.0_wp, kfillmode=jpfillnothing ,lsend=llsend1, lrecv=llrecv1 )
-         ENDIF
          !
       END DO   ! ir
+      !
+      DO ib_bdy=1, nb_bdy
+         llsend1(:) = llsend1(:) .OR. lsend_bdyper(ib_bdy,1,:)
+         llrecv1(:) = llrecv1(:) .OR. lrecv_bdyper(ib_bdy,1,:)
+      END DO
+      ! at least 2 halos will be corrected -> no need to correct rim 1 before rim 0
+      IF( ANY(llsend1) .OR. ANY(llrecv1) ) THEN   ! if need to send/recv in at least one direction
+         CALL lbc_lnk( 'bdytra', pts(:,:,:,jn,Kaa), 'T',  1.0_wp, kfillmode=jpfillnothing ,lsend=llsend1, lrecv=llrecv1 )
+      ENDIF
       !
    END SUBROUTINE bdy_tra
 
