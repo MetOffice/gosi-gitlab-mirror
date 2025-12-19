@@ -162,15 +162,17 @@ CONTAINS
       INTEGER              , DIMENSION(jpbgrd,jp_bdy) ::   nblendta          ! Length of index arrays 
       INTEGER,  ALLOCATABLE, DIMENSION(:,:,:)         ::   nbidta, nbjdta    ! Index arrays: i and j indices of bdy dta
       INTEGER,  ALLOCATABLE, DIMENSION(:,:,:)         ::   nbrdta            ! Discrete distance from rim points
-      CHARACTER(LEN=1)     , DIMENSION(jpbgrd)        ::   cgrid
+      CHARACTER(LEN=1)     , DIMENSION(jpbgrd)        ::   cgrid, c_GRD
       REAL(wp), ALLOCATABLE, DIMENSION(:,:)     ::   zz_read                 ! work space for 2D global boundary data
       REAL(wp), POINTER    , DIMENSION(:,:)     ::   zmask                   ! pointer to 2D mask fields
       REAL(wp)             , DIMENSION(jpi,jpj) ::   zfmask   ! temporary fmask array excluding coastal boundary condition (shlat)
       REAL(wp)             , DIMENSION(jpi,jpj) ::   ztmask, zumask, zvmask  ! temporary u/v mask array
-      REAL(wp)             , DIMENSION(jpi,jpj) ::   zzbdy
+      REAL(wp)             , DIMENSION(jpi,jpj) ::   zbdy
+      LOGICAL              , DIMENSION(8)       ::   llin, llout
       !!----------------------------------------------------------------------
       !
       cgrid = (/'t','u','v'/)
+      c_GRD = (/'T','U','V'/)
 
       ! -----------------------------------------
       ! Check and write out namelist parameters
@@ -567,9 +569,77 @@ CONTAINS
 
       ! Initialize array indicating communications in bdy
       ! -------------------------------------------------
+      ALLOCATE( lsend_bdyper(nb_bdy,jpbgrd,8), lrecv_bdyper(nb_bdy,jpbgrd,8) )
+
+      DO ib_bdy = 1, nb_bdy
+         DO igrd = 1, jpbgrd
+            
+            IF( l_Iperio .OR. l_Jperio ) THEN
+               zbdy(:,:) = 0.0_wp
+               DO ib = 1, idx_bdy(ib_bdy)%nblen(igrd)
+                  ii = idx_bdy(ib_bdy)%nbi(ib,igrd)
+                  ij = idx_bdy(ib_bdy)%nbj(ib,igrd)
+                  zbdy(ii,ij) = 1.0_wp
+               END DO
+               CALL lbc_lnk( 'bdyini', zbdy, c_GRD(igrd), 1.0_wp )
+            ENDIF
+            
+            ! check if point has to be sent     to   a neighbour
+            llin(:) = mpiSnei(:,nn_hls) > -1
+            llout(:) = .FALSE.
+            IF( l_Iperio ) THEN
+               CALL chkpercom(          nn_hls+1,     2*nn_hls,          nn_hls+1,jpjglo-nn_hls, jpwe, zbdy, llin, llout )   ! we inner side
+               CALL chkpercom( jpiglo-2*nn_hls+1,jpiglo-nn_hls,          nn_hls+1,jpjglo-nn_hls, jpea, zbdy, llin, llout )   ! ea inner side
+            ENDIF
+            IF( l_Jperio ) THEN
+               CALL chkpercom(          nn_hls+1,jpiglo-nn_hls,          nn_hls+1,     2*nn_hls, jpso, zbdy, llin, llout )   ! so inner side
+               CALL chkpercom(          nn_hls+1,jpiglo-nn_hls, jpjglo-2*nn_hls+1,jpjglo-nn_hls, jpno, zbdy, llin, llout )   ! no inner side
+            ENDIF
+            IF( l_Iperio .OR. l_Jperio ) THEN
+               CALL chkpercom(          nn_hls+1,     2*nn_hls,          nn_hls+1,     2*nn_hls, jpsw, zbdy, llin, llout )   ! sw inner side
+               CALL chkpercom( jpiglo-2*nn_hls+1,jpiglo-nn_hls,          nn_hls+1,     2*nn_hls, jpse, zbdy, llin, llout )   ! se inner side
+               CALL chkpercom(          nn_hls+1,     2*nn_hls, jpjglo-2*nn_hls+1,jpjglo-nn_hls, jpnw, zbdy, llin, llout )   ! nw inner side
+               CALL chkpercom( jpiglo-2*nn_hls+1,jpiglo-nn_hls, jpjglo-2*nn_hls+1,jpjglo-nn_hls, jpne, zbdy, llin, llout )   ! ne inner side
+            ENDIF
+            IF( nn_comm /= 2 .AND. ( l_Iperio .OR. l_Jperio ) ) THEN
+               CALL chkpercom(                 1,       nn_hls,          nn_hls+1,     2*nn_hls, jpso, zbdy, llin, llout )   ! so side we-halo
+               CALL chkpercom(   jpiglo-nn_hls+1,       jpiglo,          nn_hls+1,     2*nn_hls, jpso, zbdy, llin, llout )   ! so side ea-halo
+               CALL chkpercom(                 1,       nn_hls, jpjglo-2*nn_hls+1,jpjglo-nn_hls, jpno, zbdy, llin, llout )   ! no side we-halo
+               CALL chkpercom(   jpiglo-nn_hls+1,       jpiglo, jpjglo-2*nn_hls+1,jpjglo-nn_hls, jpno, zbdy, llin, llout )   ! no side ea-halo
+            ENDIF
+            lsend_bdyper(ib_bdy,igrd,:) = llout(:)
+            
+            ! check if point has to be received from a neighbour
+            llin(:) = mpiRnei(:,nn_hls) > -1
+            llout(:) = .FALSE.
+            IF( l_Iperio ) THEN
+               CALL chkpercom(                 1,       nn_hls,          nn_hls+1,jpjglo-nn_hls, jpwe, zbdy, llin, llout )   ! we halo
+               CALL chkpercom(   jpiglo-nn_hls+1,       jpiglo,          nn_hls+1,jpjglo-nn_hls, jpea, zbdy, llin, llout )   ! ea halo
+            ENDIF
+            IF( l_Jperio ) THEN
+               CALL chkpercom(          nn_hls+1,jpiglo-nn_hls,                 1,       nn_hls, jpso, zbdy, llin, llout )   ! so halo
+               CALL chkpercom(          nn_hls+1,jpiglo-nn_hls,   jpjglo-nn_hls+1,       jpjglo, jpno, zbdy, llin, llout )   ! no halo
+            ENDIF
+            IF( l_Iperio .OR. l_Jperio ) THEN
+               CALL chkpercom(                 1,       nn_hls,                 1,       nn_hls, jpsw, zbdy, llin, llout )   ! sw halo
+               CALL chkpercom(   jpiglo-nn_hls+1,       jpiglo,                 1,       nn_hls, jpse, zbdy, llin, llout )   ! se halo
+               CALL chkpercom(                 1,       nn_hls,   jpjglo-nn_hls+1,       jpjglo, jpnw, zbdy, llin, llout )   ! nw halo
+               CALL chkpercom(   jpiglo-nn_hls+1,       jpiglo,   jpjglo-nn_hls+1,       jpjglo, jpne, zbdy, llin, llout )   ! ne halo          
+            ENDIF
+            IF( nn_comm /= 2 .AND. ( l_Iperio .OR. l_Jperio ) ) THEN
+               CALL chkpercom(                 1,       nn_hls,                 1,       nn_hls, jpso, zbdy, llin, llout )   ! so side we-halo
+               CALL chkpercom(   jpiglo-nn_hls+1,       jpiglo,                 1,       nn_hls, jpso, zbdy, llin, llout )   ! so side ea-halo
+               CALL chkpercom(                 1,       nn_hls,   jpjglo-nn_hls+1,       jpjglo, jpno, zbdy, llin, llout )   ! no side we-halo
+               CALL chkpercom(   jpiglo-nn_hls+1,       jpiglo,   jpjglo-nn_hls+1,       jpjglo, jpno, zbdy, llin, llout )   ! no side ea-halo
+            ENDIF
+            lrecv_bdyper(ib_bdy,igrd,:) = llout(:)
+
+         END DO
+      END DO
+
       ALLOCATE( lsend_bdyolr(nb_bdy,jpbgrd,8,0:1), lrecv_bdyolr(nb_bdy,jpbgrd,8,0:1) )
       lsend_bdyolr(:,:,:,:) = .false.
-      lrecv_bdyolr(:,:,:,:) = .false. 
+      lrecv_bdyolr(:,:,:,:) = .false.
 
       DO ib_bdy = 1, nb_bdy
          DO igrd = 1, jpbgrd
@@ -591,19 +661,19 @@ CONTAINS
                   IF( mpiSnei(jpso,nn_hls) > -1                    )   lsend_bdyolr(ib_bdy,igrd,jpso,ir) = .TRUE.
                ENDIF
                IF( ii  < Nis0                          .AND. ij >= Njs0 .AND. ij < Njs0 + nn_hls ) THEN   ! so side we-halo
-                  IF( mpiSnei(jpso,nn_hls) > -1 .AND. nn_comm == 1 )   lsend_bdyolr(ib_bdy,igrd,jpso,ir) = .TRUE.
+                  IF( mpiSnei(jpso,nn_hls) > -1 .AND. nn_comm /= 2 )   lsend_bdyolr(ib_bdy,igrd,jpso,ir) = .TRUE.
                ENDIF
                IF( ii  > Nie0                          .AND. ij >= Njs0 .AND. ij < Njs0 + nn_hls ) THEN   ! so side ea-halo 
-                  IF( mpiSnei(jpso,nn_hls) > -1 .AND. nn_comm == 1 )   lsend_bdyolr(ib_bdy,igrd,jpso,ir) = .TRUE.
+                  IF( mpiSnei(jpso,nn_hls) > -1 .AND. nn_comm /= 2 )   lsend_bdyolr(ib_bdy,igrd,jpso,ir) = .TRUE.
                ENDIF
                IF( ii >= Nis0 .AND. ii <= Nie0         .AND. ij <= Nje0 .AND. ij > Nje0 - nn_hls ) THEN   ! no inner side
                   IF( mpiSnei(jpno,nn_hls) > -1                    )   lsend_bdyolr(ib_bdy,igrd,jpno,ir) = .TRUE.
                ENDIF
                IF( ii  < Nis0                          .AND. ij <= Nje0 .AND. ij > Nje0 - nn_hls ) THEN   ! no side we-halo
-                  IF( mpiSnei(jpno,nn_hls) > -1 .AND. nn_comm == 1 )   lsend_bdyolr(ib_bdy,igrd,jpno,ir) = .TRUE.
+                  IF( mpiSnei(jpno,nn_hls) > -1 .AND. nn_comm /= 2 )   lsend_bdyolr(ib_bdy,igrd,jpno,ir) = .TRUE.
                ENDIF
                IF( ii  > Nie0                          .AND. ij <= Nje0 .AND. ij > Nje0 - nn_hls ) THEN   ! no side ea-halo
-                  IF( mpiSnei(jpno,nn_hls) > -1 .AND. nn_comm == 1 )   lsend_bdyolr(ib_bdy,igrd,jpno,ir) = .TRUE.
+                  IF( mpiSnei(jpno,nn_hls) > -1 .AND. nn_comm /= 2 )   lsend_bdyolr(ib_bdy,igrd,jpno,ir) = .TRUE.
                ENDIF
                IF( ii >= Nis0 .AND. ii < Nis0 + nn_hls .AND. ij >= Njs0 .AND. ij < Njs0 + nn_hls ) THEN   ! sw inner corner
                   IF( mpiSnei(jpsw,nn_hls) > -1                    )   lsend_bdyolr(ib_bdy,igrd,jpsw,ir) = .TRUE.
@@ -619,33 +689,33 @@ CONTAINS
                ENDIF
                !
                ! check if point has to be received from a neighbour
-               IF( ii  < Nis0                  .AND. ij >= Njs0 .AND. ij <= Nje0 ) THEN   ! we side
+               IF( ii  < Nis0                  .AND. ij >= Njs0 .AND. ij <= Nje0 ) THEN   ! we halo
                   IF( mpiRnei(jpwe,nn_hls) > -1                    )   lrecv_bdyolr(ib_bdy,igrd,jpwe,ir) = .TRUE.
                ENDIF
-               IF( ii  > Nie0                  .AND. ij >= Njs0 .AND. ij <= Nje0 ) THEN   ! ea side
+               IF( ii  > Nie0                  .AND. ij >= Njs0 .AND. ij <= Nje0 ) THEN   ! ea halo
                   IF( mpiRnei(jpea,nn_hls) > -1                    )   lrecv_bdyolr(ib_bdy,igrd,jpea,ir) = .TRUE.
                ENDIF
-               IF( ii >= Nis0 .AND. ii <= Nie0 .AND. ij  < Njs0                  ) THEN   ! so side
+               IF( ii >= Nis0 .AND. ii <= Nie0 .AND. ij  < Njs0                  ) THEN   ! so halo
                   IF( mpiRnei(jpso,nn_hls) > -1                    )   lrecv_bdyolr(ib_bdy,igrd,jpso,ir) = .TRUE.
                ENDIF
-               IF( ii >= Nis0 .AND. ii <= Nie0 .AND. ij  > Nje0                  ) THEN   ! no side
+               IF( ii >= Nis0 .AND. ii <= Nie0 .AND. ij  > Nje0                  ) THEN   ! no halo
                   IF( mpiRnei(jpno,nn_hls) > -1                    )   lrecv_bdyolr(ib_bdy,igrd,jpno,ir) = .TRUE.
                ENDIF
-               IF( ii  < Nis0                  .AND. ij  < Njs0                  ) THEN   ! sw corner
+               IF( ii  < Nis0                  .AND. ij  < Njs0                  ) THEN   ! sw halo corner
                   IF( mpiRnei(jpsw,nn_hls) > -1                    )   lrecv_bdyolr(ib_bdy,igrd,jpsw,ir) = .TRUE.
-                  IF( mpiRnei(jpso,nn_hls) > -1 .AND. nn_comm == 1 )   lrecv_bdyolr(ib_bdy,igrd,jpso,ir) = .TRUE.
+                  IF( mpiRnei(jpso,nn_hls) > -1 .AND. nn_comm /= 2 )   lrecv_bdyolr(ib_bdy,igrd,jpso,ir) = .TRUE.
                ENDIF
-               IF( ii  > Nie0                  .AND. ij  < Njs0                  ) THEN   ! se corner
+               IF( ii  > Nie0                  .AND. ij  < Njs0                  ) THEN   ! se halo corner
                   IF( mpiRnei(jpse,nn_hls) > -1                    )   lrecv_bdyolr(ib_bdy,igrd,jpse,ir) = .TRUE.
-                  IF( mpiRnei(jpso,nn_hls) > -1 .AND. nn_comm == 1 )   lrecv_bdyolr(ib_bdy,igrd,jpso,ir) = .TRUE.
+                  IF( mpiRnei(jpso,nn_hls) > -1 .AND. nn_comm /= 2 )   lrecv_bdyolr(ib_bdy,igrd,jpso,ir) = .TRUE.
                ENDIF
-               IF( ii  < Nis0                  .AND. ij  > Nje0                  ) THEN   ! nw corner
+               IF( ii  < Nis0                  .AND. ij  > Nje0                  ) THEN   ! nw halo corner
                   IF( mpiRnei(jpnw,nn_hls) > -1                    )   lrecv_bdyolr(ib_bdy,igrd,jpnw,ir) = .TRUE.
-                  IF( mpiRnei(jpno,nn_hls) > -1 .AND. nn_comm == 1 )   lrecv_bdyolr(ib_bdy,igrd,jpno,ir) = .TRUE.
+                  IF( mpiRnei(jpno,nn_hls) > -1 .AND. nn_comm /= 2 )   lrecv_bdyolr(ib_bdy,igrd,jpno,ir) = .TRUE.
                ENDIF
-               IF( ii  > Nie0                  .AND. ij  > Nje0                  ) THEN   ! ne corner
+               IF( ii  > Nie0                  .AND. ij  > Nje0                  ) THEN   ! ne halo corner
                   IF( mpiRnei(jpne,nn_hls) > -1                    )   lrecv_bdyolr(ib_bdy,igrd,jpne,ir) = .TRUE.
-                  IF( mpiRnei(jpno,nn_hls) > -1 .AND. nn_comm == 1 )   lrecv_bdyolr(ib_bdy,igrd,jpno,ir) = .TRUE.
+                  IF( mpiRnei(jpno,nn_hls) > -1 .AND. nn_comm /= 2 )   lrecv_bdyolr(ib_bdy,igrd,jpno,ir) = .TRUE.
                ENDIF
                !
             END DO
@@ -943,12 +1013,12 @@ CONTAINS
                      IF(  iibi==iiout .OR. ii1==iiout .OR. ii2==iiout .OR. ii3==iiout .OR.   &   ! Neib outside of the MPI domain
                         & ijbi==ijout .OR. ij1==ijout .OR. ij2==ijout .OR. ij3==ijout ) THEN     ! -> I cannot compute it -> recv it
                         IF( mpiRnei(iRdiag,nn_hls) > -1                    )   lrecv_bdyint(ib_bdy,igrd,iRdiag,ir) = .TRUE.   ! Receive directly from diagonal neighbourg
-                        IF( mpiRnei(iRsono,nn_hls) > -1 .AND. nn_comm == 1 )   lrecv_bdyint(ib_bdy,igrd,iRsono,ir) = .TRUE.   ! Receive through the South/North neighbourg
+                        IF( mpiRnei(iRsono,nn_hls) > -1 .AND. nn_comm /= 2 )   lrecv_bdyint(ib_bdy,igrd,iRsono,ir) = .TRUE.   ! Receive through the South/North neighbourg
                      ENDIF
                      ! take care of neighbourg in the exterior of the computational domain
                      IF(  iibe==iiout .OR. ijbe==ijout ) THEN   ! Neib outside of the MPI domain -> I cannot compute it -> recv it
                         IF( mpiRnei(iRdiag,nn_hls) > -1                    )   lrecv_bdyext(ib_bdy,igrd,iRdiag,ir) = .TRUE.   ! Receive directly from diagonal neighbourg
-                        IF( mpiRnei(iRsono,nn_hls) > -1 .AND. nn_comm == 1 )   lrecv_bdyext(ib_bdy,igrd,iRsono,ir) = .TRUE.   ! Receive through the South/North neighbourg
+                        IF( mpiRnei(iRsono,nn_hls) > -1 .AND. nn_comm /= 2 )   lrecv_bdyext(ib_bdy,igrd,iRsono,ir) = .TRUE.   ! Receive through the South/North neighbourg
                      ENDIF
                   ENDIF
                   !
@@ -967,7 +1037,7 @@ CONTAINS
                   ENDIF
                   ! Indirect send to diag (through so/no): rim point is the corner point of a so/no nei with which we communicate
                   IF( ii >= iiSstsono .AND. ii <= iiSndsono .AND. ij >= ijSstsono .AND. ij <= ijSndsono   &
-                     &                .AND. mpiSnei(iSsono,nn_hls) > -1 .AND. nn_comm == 1 ) THEN
+                     &                .AND. mpiSnei(iSsono,nn_hls) > -1 .AND. nn_comm /= 2 ) THEN
                      iiout = ii+iioutdir ; ijout = ij+ijoutdir        ! in which direction do we go outside of the nei MPI domain?
                      ! take care of neighbourg(s) in the interior of the computational domain
                      IF(  iibi==iiout .OR. ii1==iiout .OR. ii2==iiout .OR. ii3==iiout .OR.   &   ! Neib outside of so/no nei MPI
@@ -2093,6 +2163,35 @@ CONTAINS
       CALL iom_close( inum )
 
    END SUBROUTINE bdy_meshwri
+
+
+   SUBROUTINE chkpercom(ki1, ki2, kj1, kj2, kdir, pbdy, ldin, ldout)
+      !!----------------------------------------------------------------------
+      !!                 ***  ROUTINE chkpercom  ***
+      !!         
+      !! ** Purpose :   check if we need to do an MPI communication for the periodicuty
+      !!
+      !!----------------------------------------------------------------------      
+      INTEGER,                      INTENT(in   ) :: ki1, ki2, kj1, kj2   ! loop ranges
+      INTEGER,                      INTENT(in   ) :: kdir                 ! direction of the communication
+      REAL(wp), DIMENSION(jpi,jpj), INTENT(in   ) :: pbdy
+      LOGICAL , DIMENSION(      8), INTENT(in   ) :: ldin
+      LOGICAL , DIMENSION(      8), INTENT(  out) :: ldout
+      !
+      REAL(wp) ::   zsum
+      INTEGER  ::   ji,jj
+      !!----------------------------------------------------------------------
+      IF( .NOT. ldin(kdir) )   RETURN
+      !
+      zsum = 0._wp
+      DO jj = mj0(kj1,nn_hls), mj1(kj2,nn_hls)
+         DO ji = mi0(ki1,nn_hls), mi1(ki2,nn_hls)
+            zsum = zsum + pbdy(ji,jj)
+         END DO
+      END DO
+      IF( zsum > 0._wp )   ldout(kdir) = .TRUE.
+
+   END SUBROUTINE chkpercom
    
    !!=================================================================================
 END MODULE bdyini
