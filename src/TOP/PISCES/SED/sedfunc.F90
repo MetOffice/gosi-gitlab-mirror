@@ -49,35 +49,45 @@ CONTAINS
 
       IF( ln_timing )  CALL timing_start('sed_func')
 !
+      DO ji = 1, jpoce
+         pwcpa(ji,1,jwalk) = 0.0
+         pwcpa(ji,1,jwpo4) = 0.0
+      END DO
 
-      pwcpa(:,1,jwalk) = 0.0
-      pwcpa(:,1,jwpo4) = 0.0
       DO jn = 1, jpvode
          js = jsvode(jn)
-         DO ji = 1, jpoce
-            IF ( accmask(ji) == 0 ) THEN
-               IF ( js <= jpwat ) THEN
+         IF ( js <= jpwat ) THEN
+            DO ji = 1, jpoce
+               IF ( accmask(ji) == 0 ) THEN
                   pwcpa(ji,1,js) = 0.0_wp
-               ELSE
+               ENDIF
+            END DO
+         ELSE
+            DO ji = 1, jpoce
+               IF ( accmask(ji) == 0 ) THEN
                   solcpa(ji,1,js-jpwat) = 0.0_wp
                ENDIF
-            ENDIF
-         END DO
+            END DO
+         ENDIF
       END DO
 
       ! Unpack variables to standard format
       DO jn = 1, NEQ
          jk = jarr(jn,1)
          js = jarr(jn,2)
-         DO ji = 1, jpoce
-            IF ( accmask(ji) == 0 ) THEN
-               IF (js <= jpwat) THEN
-                  pwcp(ji,jk,js) = X(ji,jn) * 1E-6 
-               ELSE
-                  solcp(ji,jk,js-jpwat) = X(ji,jn) * 1E-6
+         IF (js <= jpwat) THEN
+            DO ji = 1, jpoce
+               IF ( accmask(ji) == 0 ) THEN
+                  pwcp(ji,jk,js) = X(ji,jn) * 1.E-6
                ENDIF
-            ENDIF
-         END DO
+            END DO
+         ELSE
+            DO ji = 1, jpoce
+               IF ( accmask(ji) == 0 ) THEN
+                  solcp(ji,jk,js-jpwat) = X(ji,jn) * 1.E-6
+               ENDIF
+            END DO
+         ENDIF
       END DO
 
       CALL sed_dsr( accmask )        ! Redox reactions
@@ -101,15 +111,19 @@ CONTAINS
       DO jn = 1, NEQ
          jk = jarr(jn,1)
          js = jarr(jn,2)
-         DO ji = 1, jpoce
-            IF ( accmask(ji) == 0 ) THEN
-               IF (js <= jpwat) THEN
-                  fval0(ji,jn) = pwcpa(ji,jk,js)  * 1E6
-               ELSE
-                  fval0(ji,jn) = solcpa(ji,jk,js-jpwat) * 1E6
+         IF (js <= jpwat) THEN
+            DO ji = 1, jpoce
+               IF ( accmask(ji) == 0 ) THEN
+                  fval0(ji,jn) = pwcpa(ji,jk,js)  * 1.E6
                ENDIF
-            ENDIF
-         END DO 
+            END DO
+         ELSE
+            DO ji = 1, jpoce
+               IF ( accmask(ji) == 0 ) THEN
+                  fval0(ji,jn) = solcpa(ji,jk,js-jpwat) * 1.E6
+               ENDIF
+            END DO
+         ENDIF
       END DO
 
       IF( ln_timing )  CALL timing_stop('sed_func')
