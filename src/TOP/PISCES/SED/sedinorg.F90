@@ -50,7 +50,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpoce,jpksed) :: psmsdic, psmsalk
       REAL(wp), DIMENSION(jpoce,jpksed) :: zdic1, zalk1, zdic2, zalk2, zdicb, zalkb
       REAL(wp)  ::  ztemp, zsolid1, zunder, zrearat, zdissol
-      REAL(wp)  ::  zsolcpcl, zsolcpsi, zexcess
+      REAL(wp)  ::  zsolcpcl, zsolcpsi, zexcess, zfact
       !!
       !!----------------------------------------------------------------------
 
@@ -110,12 +110,18 @@ CONTAINS
       ! computes co3por from the updated pwcp concentrations (note [co3por] = mol/l)
       ! *densSW(l)**2 converts aksps [mol2/kg sol2] into [mol2/l2] to get [undsat] in [mol/l]
 
-      zdicb = pwcp(:,:,jwdic)
-      zalkb = pwcp(:,:,jwalk)
-      zdic1 = zdicb
-      zalk1 = zalkb
+      DO jk = 1, jpksed
+         DO ji = 1, jpoce
+            zdicb(ji,jk) = pwcp(ji,jk,jwdic)
+            zalkb(ji,jk) = pwcp(ji,jk,jwalk)
+            zdic1(ji,jk) = zdicb(ji,jk)
+            zalk1(ji,jk) = zalkb(ji,jk)
+            preac(ji,jk) = 0.0
+         END DO
+      END DO
+
       CALL sed_co3( kt )
-      preac = 0.0
+
       xirrigtrd(:,jwdic) = 0.0
       xirrigtrd(:,jwalk) = 0.0
 
@@ -125,6 +131,7 @@ CONTAINS
             zunder = MAX(0., co3sat(ji) - co3por(ji,jk) ) / ( co3sat(ji) + rtrn )
             zdissol = reac_cal * zsolid1 * zunder / &
             &                ( 1. + reac_cal * dtsed / 3.0 * zunder )
+            solcp(ji,jk,jscal) = solcp(ji,jk,jscal) - zdissol * 5.0 / 11.0 * dtsed / ( volc(ji,jk,jscal) + rtrn )
             psmsdic(ji,jk) = rearatpom(ji,jk) + zdissol
             psmsalk(ji,jk) = pwcpaa(ji,jk,jwalk) + 2.0 * zdissol
          END DO
@@ -135,8 +142,9 @@ CONTAINS
 
        DO jk = 2, jpksed
           DO ji = 1, jpoce
-             xirrigtrd(ji,jwdic) = xirrigtrd(ji,jwdic) - irrig(ji,jk) * (zdic1(ji,1) - zdic1(ji,jk) ) * volw3d(ji,jk) * 5.0 * dtsed / 11.0
-             xirrigtrd(ji,jwalk) = xirrigtrd(ji,jwalk) - irrig(ji,jk) * (zalk1(ji,1) - zalk1(ji,jk) ) * volw3d(ji,jk) * 5.0 * dtsed / 11.0
+             zfact = irrig(ji,jk) * volw3d(ji,jk) * 5.0 * dtsed / 11.0
+             xirrigtrd(ji,jwdic) = xirrigtrd(ji,jwdic) - (zdic1(ji,1) - zdic1(ji,jk) ) * zfact
+             xirrigtrd(ji,jwalk) = xirrigtrd(ji,jwalk) - (zalk1(ji,1) - zalk1(ji,jk) ) * zfact
           END DO
        END DO
 
@@ -144,21 +152,20 @@ CONTAINS
          DO ji = 1, jpoce
             zdic2(ji,jk) = 4./3. * zdic1(ji,jk) - 1./3. * zdicb(ji,jk)
             zalk2(ji,jk) = 4./3. * zalk1(ji,jk) - 1./3. * zalkb(ji,jk)
+            pwcp(ji,jk,jwdic) = zdic2(ji,jk)
+            pwcp(ji,jk,jwalk) = zalk2(ji,jk)
          END DO
       END DO
 
-      pwcp(:,:,jwdic) = zdic2
-      pwcp(:,:,jwalk) = zalk2
       CALL sed_co3( kt )
 
       DO jk =1 ,jpksed
          DO ji = 1, jpoce
             zsolid1 = volc(ji,jk,jscal) * solcp(ji,jk,jscal)
             zunder = MAX(0., co3sat(ji) - co3por(ji,jk) ) / ( co3sat(ji) + rtrn )
-            solcp(ji,jk,jscal) = solcp(ji,jk,jscal) - reac_cal * zsolid1 * zunder * 5.0 / 11.0 * dtsed   &
-            &                / ( 1. + reac_cal * 5.0 * dtsed / 11.0 * zunder ) / ( volc(ji,jk,jscal) + rtrn )
             zdissol = reac_cal * zsolid1 * zunder / &
-            &                ( 1. + reac_cal * 2.0 * dtsed / 9.0 * zunder )
+              &       ( 1. + reac_cal * 2.0 * dtsed / 9.0 * zunder )
+            solcp(ji,jk,jscal) = solcp(ji,jk,jscal) - zdissol * 4.0 / 11.0 * dtsed / ( volc(ji,jk,jscal) + rtrn )
             psmsdic(ji,jk) = rearatpom(ji,jk) + zdissol
             psmsalk(ji,jk) = pwcpaa(ji,jk,jwalk) + 2.0 * zdissol
          END DO
@@ -169,58 +176,45 @@ CONTAINS
 
        DO jk = 2, jpksed
           DO ji = 1, jpoce
-             xirrigtrd(ji,jwdic) = xirrigtrd(ji,jwdic) - irrig(ji,jk) * (zdic2(ji,1) - zdic2(ji,jk) ) * volw3d(ji,jk) * 4.0 * dtsed / 11.0
-             xirrigtrd(ji,jwalk) = xirrigtrd(ji,jwalk) - irrig(ji,jk) * (zalk2(ji,1) - zalk2(ji,jk) ) * volw3d(ji,jk) * 4.0 * dtsed / 11.0
+             zfact = irrig(ji,jk) * volw3d(ji,jk) * 4.0 * dtsed / 11.0
+             xirrigtrd(ji,jwdic) = xirrigtrd(ji,jwdic) - (zdic2(ji,1) - zdic2(ji,jk) ) * zfact
+             xirrigtrd(ji,jwalk) = xirrigtrd(ji,jwalk) - (zalk2(ji,1) - zalk2(ji,jk) ) * zfact
           END DO
        END DO
 
       DO jk = 1, jpksed
          DO ji = 1, jpoce
-            zdic1(ji,jk) = 18.0/11.0 * zdic2(ji,jk) - 9./11. * zdic1(ji,jk) + 2./11. * zdicb(ji,jk)
-            zalk1(ji,jk) = 18.0/11.0 * zalk2(ji,jk) - 9./11. * zalk1(ji,jk) + 2./11. * zalkb(ji,jk)
+            pwcp(ji,jk,jwdic) = 18.0/11.0 * zdic2(ji,jk) - 9./11. * zdic1(ji,jk) + 2./11. * zdicb(ji,jk)
+            pwcp(ji,jk,jwalk) = 18.0/11.0 * zalk2(ji,jk) - 9./11. * zalk1(ji,jk) + 2./11. * zalkb(ji,jk)
          END DO
       END DO
 
-      pwcp(:,:,jwdic) = zdic1
-      pwcp(:,:,jwalk) = zalk1
       CALL sed_co3( kt )
 
       DO jk =1 ,jpksed
          DO ji = 1, jpoce
             zsolid1 = volc(ji,jk,jscal) * solcp(ji,jk,jscal)
             zunder = MAX(0., co3sat(ji) - co3por(ji,jk) ) / ( co3sat(ji) + rtrn )
-            solcp(ji,jk,jscal) = solcp(ji,jk,jscal) - reac_cal * zsolid1 * zunder * 4.0 / 11.0 * dtsed   &
-            &                / ( 1. + reac_cal * 4.0 * dtsed / 11.0 * zunder ) / ( volc(ji,jk,jscal) + rtrn )
             zdissol = reac_cal * zsolid1 * zunder / &
             &                ( 1. + reac_cal * 2.0 * dtsed / 11.0 * zunder )
+            solcp(ji,jk,jscal) = solcp(ji,jk,jscal) - zdissol * 2.0 / 11.0 * dtsed / ( volc(ji,jk,jscal) + rtrn )
             psmsdic(ji,jk) = rearatpom(ji,jk) + zdissol
             psmsalk(ji,jk) = pwcpaa(ji,jk,jwalk) + 2.0 * zdissol
          END DO
       END DO
 
-      CALL sed_mat_dsri( jwdic, -preac, psmsdic, 2.0 * dtsed/11.0, zdic1(:,:) )
-      CALL sed_mat_dsri( jwalk, -preac, psmsalk, 2.0 * dtsed/11.0, zalk1(:,:) )
+      CALL sed_mat_dsri( jwdic, -preac, psmsdic, 2.0 * dtsed / 11.0, pwcp(:,:,jwdic) )
+      CALL sed_mat_dsri( jwalk, -preac, psmsalk, 2.0 * dtsed / 11.0, pwcp(:,:,jwalk) )
 
        DO jk = 2, jpksed
           DO ji = 1, jpoce
-             xirrigtrd(ji,jwdic) = xirrigtrd(ji,jwdic) - irrig(ji,jk) * (zdic1(ji,1) - zdic1(ji,jk) ) * volw3d(ji,jk) * 2.0 * dtsed / 11.0
-             xirrigtrd(ji,jwalk) = xirrigtrd(ji,jwalk) - irrig(ji,jk) * (zalk1(ji,1) - zalk1(ji,jk) ) * volw3d(ji,jk) * 2.0 * dtsed / 11.0
+             zfact = irrig(ji,jk) * volw3d(ji,jk) * 2.0 * dtsed / 11.0
+             xirrigtrd(ji,jwdic) = xirrigtrd(ji,jwdic) - (pwcp(ji,1,jwdic) - pwcp(ji,jk,jwdic) ) * zfact
+             xirrigtrd(ji,jwalk) = xirrigtrd(ji,jwalk) - (pwcp(ji,1,jwalk) - pwcp(ji,jk,jwalk) ) * zfact
           END DO
        END DO
 
-      pwcp(:,:,jwdic) = zdic1
-      pwcp(:,:,jwalk) = zalk1
       CALL sed_co3( kt )
-
-      DO jk =1 ,jpksed
-         DO ji = 1, jpoce
-            zsolid1 = volc(ji,jk,jscal) * solcp(ji,jk,jscal)
-            zunder = MAX(0., co3sat(ji) - co3por(ji,jk) ) / ( co3sat(ji) + rtrn )
-            solcp(ji,jk,jscal) = solcp(ji,jk,jscal) - reac_cal * zsolid1 * zunder * 4.0 / 11.0 * dtsed   &
-            &                / ( 1. + reac_cal * 4.0 * dtsed / 11.0 * zunder ) / ( volc(ji,jk,jscal) + rtrn )
-         END DO
-      END DO
-
 
       IF( ln_timing )  CALL timing_stop('sed_inorg')
 !      

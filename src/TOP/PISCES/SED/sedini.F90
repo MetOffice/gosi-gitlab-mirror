@@ -263,9 +263,9 @@ CONTAINS
       ! compute the flux of clays and minerals
       ! --------------------------------------------------------------
       DO ji = 1, jpoce
-          ztmp1 = 0.1 / ( 1.0 + ( zkbot(ji) / 200.)**3.3 )
-          ztmp2 = 0.001 / ( 1.0 + ( MIN(zkbot(ji), 4500.) / 4500.)**11.4 )
-          wacc(ji) = ztmp2+ztmp1
+         ztmp1 = 0.06 / ( 1.0 + ( zkbot(ji) / 200.)**3.3 )
+         ztmp2 = 0.0008 / ( 1.0 + ( MIN(zkbot(ji), 5000.) / 5000.)**11.4 )
+         wacc(ji) = ztmp2+ztmp1
       END DO
 
       ! Vertical profile of of the adsorption factor for adsorbed species
@@ -371,7 +371,7 @@ CONTAINS
       za0  = sedzmin - za1 * TANH( (1-sedkth) / sedacr )
       zsur = - za0 - za1 * sedacr * LOG( COSH( (1-sedkth) / sedacr )  )
 
-      dz(1)       = 0.2
+      dz(1)       = 0.4
       profsedw(1) = 0.0
       profsed(1)  = -dz(1) / 2.
       DO jk = 2, jpksed

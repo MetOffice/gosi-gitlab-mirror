@@ -68,9 +68,11 @@ CONTAINS
       !------------------------------------------------------------------
       zfact = dtsed / ( por1(2) * dz(2) )
       DO js = 1, jpsol
-         DO ji = 1, jpoce
-            solcp(ji,2,js) = solcp(ji,2,js) + rainrg(ji,js) * zfact
-         END DO
+         IF ( js /= jsfes .AND. js /= jsfeo) THEN
+            DO ji = 1, jpoce
+               solcp(ji,2,js) = solcp(ji,2,js) + rainrg(ji,js) * zfact
+            END DO
+         ENDIF
       ENDDO
 
       ! --------------------------------------------------

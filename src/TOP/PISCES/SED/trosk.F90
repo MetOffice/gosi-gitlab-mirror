@@ -1257,13 +1257,15 @@ SUBROUTINE rosk(ROSM,N,X,Y,XEND,H, RTOL,ATOL,                  &
 
        DO JI = 1, jpoce
           IF (ACCMASK(ji) == 0 .AND. JU(ji) >= KP1) THEN
+             M1T = M1(ji)
+             MMT = MM(ji)
              DO J = KP1, JU(ji)
-                M1(ji) = M1(ji) - 1
-                MM(ji) = MM(ji) - 1
-                T = A(ji,M1(ji),J)
-                IF (M1(ji) /= MM(ji)) THEN
-                   A(ji,M1(ji),J) = A(ji,MM(ji),J)
-                   A(ji,MM(ji),J) = T
+                M1T = M1T - 1
+                MMT = MMT - 1
+                T = A(ji,M1T,J)
+                IF (M1T /= MMT) THEN
+                   A(ji,M1T,J) = A(ji,MMT,J)
+                   A(ji,MMT,J) = T
                 ENDIF
                 IF (T /= 0.0) THEN
                    JK = J - K

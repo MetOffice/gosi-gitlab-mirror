@@ -69,8 +69,10 @@ CONTAINS
       END DO
       zsolcp(:,1,jpsol+1:jpsol+jpads) = 0.0_wp
       DO jk = 2, jpksed
-         zsolcp(:,jk,jpsol+1) = pwcp(:,jk,jwnh4) * adsnh4 
-         zsolcp(:,jk,jpsol+2) = pwcp(:,jk,jwfe2) * adsfe2
+         DO ji = 1, jpoce
+            zsolcp(ji,jk,jpsol+1) = pwcp(ji,jk,jwnh4) * adsnh4
+            zsolcp(ji,jk,jpsol+2) = pwcp(ji,jk,jwfe2) * adsfe2
+         END DO
       END DO
 
       ! Initialization of data for mass balance calculation
@@ -159,37 +161,38 @@ CONTAINS
             fromsed(ji,js) = refill*burial(ji,js)
             burial(ji,js) = burial(ji,js) - refill*burial(ji,js)
          END DO
-     END DO
+      END DO
 
-     DO jk = jpksed, 3, -1
-        DO ji = 1, jpoce
+      DO jk = jpksed, 3, -1
+         DO ji = 1, jpoce
             zfilled = 0._wp
-            DO js = 1, jpsol
-               zfilled = zfilled + zsolcp(ji,jk,js) / dens_sol(js)
+             DO js = 1, jpsol
+                zfilled = zfilled + zsolcp(ji,jk,js) / dens_sol(js)
+             END DO
+             zwb(ji) = MAX(0._wp, (zfilled - 1._wp) / (zfilled + rtrn) )
+         END DO
+         DO js = 1, jpsol + jpads
+            DO ji = 1, jpoce
+               uebers = zwb(ji) * zsolcp(ji,jk,js)
+               zsolcp(ji,jk,js) = zsolcp(ji,jk,js) - uebers
+               zsolcp(ji,jk-1,js) = zsolcp(ji,jk-1,js) + uebers * dz(jk) * por1(jk) / ( dz(jk-1) * por1(jk-1) )
             END DO
-            zwb(ji) = MAX(0._wp, (zfilled - 1._wp) / (zfilled + rtrn) )
-        END DO
-        DO js = 1, jpsol + jpads
-           DO ji = 1, jpoce
-              uebers = zwb(ji) * zsolcp(ji,jk,js)
-              zsolcp(ji,jk,js) = zsolcp(ji,jk,js) - uebers
-              zsolcp(ji,jk-1,js) = zsolcp(ji,jk-1,js) + uebers * dz(jk) * por1(jk) / ( dz(jk-1) * por1(jk-1) )
-           END DO
-        END DO
-
-     END DO
+         END DO
+      END DO
 
       DO js = 1, jpsol
          solcp(:,:,js) = zsolcp(:,:,js)
       END DO
+
       DO jk = 2, jpksed
-         pwcp(:,jk,jwnh4) = (pwcp(:,jk,jwnh4) + zsolcp(:,jk,jpsol+1) * por1(jk) / por(jk) ) * radssol(jk,jwnh4)
-         pwcp(:,jk,jwfe2) = (pwcp(:,jk,jwfe2) + zsolcp(:,jk,jpsol+2) * por1(jk) / por(jk) ) * radssol(jk,jwfe2)
+         DO ji = 1, jpoce
+            pwcp(ji,jk,jwnh4) = (pwcp(ji,jk,jwnh4) + zsolcp(ji,jk,jpsol+1) * por1(jk) / por(jk) ) * radssol(jk,jwnh4)
+            pwcp(ji,jk,jwfe2) = (pwcp(ji,jk,jwfe2) + zsolcp(ji,jk,jpsol+2) * por1(jk) / por(jk) ) * radssol(jk,jwfe2)
+         END DO
       END DO
 
       IF( ln_timing )  CALL timing_stop('sed_adv')
 
    END SUBROUTINE sed_adv
-
 
 END MODULE sedadv

@@ -45,7 +45,7 @@ CONTAINS
       INTEGER, DIMENSION(jpoce), INTENT(in) :: accmask
 
       INTEGER :: ji, jk   ! dummy looop indices
-      REAL(wp)  ::  zreasat, zreasat1, zlimo2, zlimno3, zlimfeo, zlimso4
+      REAL(wp)  ::  zreasat, zreasat1, zlimo2, zlimno3, zlimfeo, zlimso4, zfact
       !!
       !!----------------------------------------------------------------------
 
@@ -57,6 +57,11 @@ CONTAINS
       !----------------------------------------------------------
       ! 5.  Beginning of solid reaction
       !---------------------------------------------------------
+      zfact = 1.0 / ( por1(2) * dz(2) )
+      DO ji = 1, jpoce
+         solcpa(ji,2,jsfeo) = solcpa(ji,2,jsfeo) + rainrg(ji,jsfeo) * zfact
+         solcpa(ji,2,jsfes) = solcpa(ji,2,jsfes) + rainrg(ji,jsfes) * zfact
+      END DO
       
       ! Computes the SMS of the species which do not affect the remin
       ! processes (Alkalinity, PO4, NH4, and the release of Fe from 

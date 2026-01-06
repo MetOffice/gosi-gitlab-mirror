@@ -35,7 +35,7 @@ CONTAINS
       INTEGER  :: ji, jj, jk, jn
       INTEGER  :: it
       CHARACTER(len = 20)  ::  cltra 
-      REAL(wp) :: zinvdtsed
+      REAL(wp) :: zinvdtsed, ztmp
       REAL(wp), DIMENSION(jpoce, jptrased+1) :: zflx
       REAL(wp), DIMENSION(jpi, jpj, jpksed)   :: trcsedi
       REAL(wp), DIMENSION(jpi, jpj) :: flxsedi2d
@@ -69,8 +69,9 @@ CONTAINS
       zflx(:,jptrased+1) = 0.0
       DO jn = 1, jpsol
          DO ji = 1, jpoce
-            zflx(ji,jpwat+jn) = ( tosed(ji,jn) - fromsed(ji,jn) ) * zinvdtsed
-            zflx(ji,jptrased+1) = zflx(ji,jptrased+1) + ( tosed(ji,jn) - fromsed(ji,jn) ) / ( dtsed * por1(jpksed) * dens_sol(jn) )
+            ztmp              = ( tosed(ji,jn) - fromsed(ji,jn) ) * zinvdtsed
+            zflx(ji,jpwat+jn) = ztmp
+            zflx(ji,jptrased+1) = zflx(ji,jptrased+1) + ztmp / ( por1(jpksed) * dens_sol(jn) )
          ENDDO
       ENDDO
 
