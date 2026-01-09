@@ -116,7 +116,7 @@ CONTAINS
 #if defined key_xios
       !
       TYPE(xios_duration) :: dtime    = xios_duration(0, 0, 0, 0, 0, 0)
-      TYPE(xios_date)     :: start_date
+      TYPE(xios_date)     :: start_date, ref_date
       CHARACTER(len=lc) :: clname, cltmpn
       INTEGER             :: irefyear, irefmonth, irefday
       INTEGER           :: ji
@@ -159,18 +159,16 @@ CONTAINS
 
       llrst_context = llrstr .OR. llrstw
 
-      ! Calendar type is now defined in xml file
-      IF (.NOT.(xios_getvar('ref_year' ,irefyear ))) irefyear  = 1900
-      IF (.NOT.(xios_getvar('ref_month',irefmonth))) irefmonth = 01
-      IF (.NOT.(xios_getvar('ref_day'  ,irefday  ))) irefday   = 01
-
-      SELECT CASE ( nleapy )        ! Choose calendar for IOIPSL
-      CASE ( 1)   ;   CALL xios_define_calendar( TYPE = "Gregorian", time_origin = xios_date(irefyear,irefmonth,irefday,0,0,0),   &
-          &                                                          start_date  = xios_date(   nyear,   nmonth,   nday,0,0,0) )
-      CASE ( 0)   ;   CALL xios_define_calendar( TYPE = "NoLeap"   , time_origin = xios_date(irefyear,irefmonth,irefday,0,0,0),   &
-          &                                                          start_date  = xios_date(   nyear,   nmonth,   nday,0,0,0) )
-      CASE (30)   ;   CALL xios_define_calendar( TYPE = "D360"     , time_origin = xios_date(irefyear,irefmonth,irefday,0,0,0),   &
-          &                                                          start_date  = xios_date(   nyear,   nmonth,   nday,0,0,0) )
+      ! Origin of time axis, start time, and calendar type
+      IF( .NOT. ( xios_getvar( 'ref_year',  irefyear  ) ) ) irefyear  = 1900
+      IF( .NOT. ( xios_getvar( 'ref_month', irefmonth ) ) ) irefmonth = 01
+      IF( .NOT. ( xios_getvar( 'ref_day',   irefday   ) ) ) irefday   = 01
+      ref_date   = xios_date( irefyear, irefmonth, irefday, 0,              0,                                   0 )
+      start_date = xios_date( nyear,    nmonth,    nday,    nn_time0 / 100, nn_time0 - ( nn_time0 / 100 ) * 100, 0 )
+      SELECT CASE ( nleapy )
+      CASE ( 1)   ;   CALL xios_define_calendar( TYPE = "Gregorian", time_origin = ref_date, start_date = start_date )
+      CASE ( 0)   ;   CALL xios_define_calendar( TYPE = "NoLeap",    time_origin = ref_date, start_date = start_date )
+      CASE (30)   ;   CALL xios_define_calendar( TYPE = "D360",      time_origin = ref_date, start_date = start_date )
       END SELECT
 
       ! horizontal grid definition
