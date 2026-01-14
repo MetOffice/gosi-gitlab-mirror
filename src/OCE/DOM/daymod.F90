@@ -83,18 +83,17 @@ CONTAINS
       lrst_oce = .NOT. l_offline   ! force definition of offline
       IF( lrst_oce )   CALL day_rst( nit000, 'READ' )
 
-      ! set the calandar from ndastp (read in restart file and namelist)
+      ! set date and time based on restart information or namelist variables
       nyear   =   ndastp / 10000
       nmonth  = ( ndastp - (nyear * 10000) ) / 100
       nday    =   ndastp - (nyear * 10000) - ( nmonth * 100 )
-
-      nhour   =   nn_time0 / 100
-      nminute = ( nn_time0 - nhour * 100 )
-      isecrst = ( nhour * NINT(rhhmm) + nminute ) * NINT(rmmss)
+      isecrst = ( nhour0 * NINT(rhhmm) + nminute0 ) * NINT(rmmss)
 
       CALL ymds2ju( nyear, nmonth, nday, REAL(isecrst,wp), fjulday )
       IF( ABS(fjulday - REAL(NINT(fjulday),wp)) < 0.1 / rday )   fjulday = REAL(NINT(fjulday),wp)   ! avoid truncation error
-      IF( nhour*NINT(rhhmm*rmmss) + nminute*NINT(rmmss) - ndt05 .LT. 0 ) fjulday = fjulday+1.       ! move back to the day at nit000 (and not at nit000 - 1)
+      IF( nhour0 * NINT( rhhmm * rmmss ) + nminute0 * NINT( rmmss ) - ndt05 .LT. 0 ) THEN
+         fjulday = fjulday + 1.0_wp   ! move back to the day at nit000 (and not at nit000 - 1)
+      END IF
 
       nsec1jan000 = 0
       CALL day_mth
@@ -339,7 +338,6 @@ CONTAINS
                ndastp = NINT( zndastp )
                CALL iom_get( numror, 'adatrj', adatrj  )
 	       CALL iom_get( numror, 'ntime' , ktime   )
-               nn_time0 = NINT(ktime)
                ! calculate start time in hours and minutes
                zdayfrac = adatrj - REAL(INT(adatrj), wp)
 	       ksecs = NINT(zdayfrac * rday)	       ! Nearest second to catch rounding errors in adatrj
@@ -347,27 +345,26 @@ CONTAINS
 	       iminute = ksecs / NINT(rmmss) - ihour*NINT(rhhmm)
 
                ! Add to nn_time0
-               nhour   =   nn_time0 / 100
-               nminute = ( nn_time0 - nhour * 100 )
-	       nminute = nminute + iminute
+               nhour0   =   NINT( ktime ) / 100
+               nminute0 = ( NINT( ktime ) - nhour0 * 100 )
+               nminute0 = nminute0 + iminute
 
-               IF( nminute >= NINT(rhhmm) ) THEN
-	          nminute = nminute - NINT(rhhmm)
-		  nhour = nhour+1
-	       ENDIF
-	       nhour=nhour+ihour
-	       IF( nhour >= NINT(rjjhh) ) THEN
-		  nhour = nhour - NINT(rjjhh)
-	          adatrj = adatrj + 1.
-	       ENDIF
-	       nn_time0 = nhour * 100 + nminute
-               adatrj = REAL(INT(adatrj), wp)                    ! adatrj set to integer as nn_time0 updated
+               IF( nminute0 >= NINT(rhhmm) ) THEN
+                  nminute0 = nminute0 - NINT(rhhmm)
+                  nhour0 = nhour0 + 1
+               ENDIF
+               nhour0 = nhour0 + ihour
+               IF( nhour0 >= NINT(rjjhh) ) THEN
+                  nhour0 = nhour0 - NINT(rjjhh)
+                  adatrj = adatrj + 1.0_wp
+               ENDIF
+               adatrj = REAL( INT( adatrj ), wp )   ! adatrj adjustment after potential update of the initial time of day
             ELSE
                ! parameters corresponding to nit000 - 1 (as we start the step loop with a call to day)
                ndastp = ndate0        ! ndate0 read in the namelist in dom_nam
-               nhour   =   nn_time0 / 100
-               nminute = ( nn_time0 - nhour * 100 )
-               isecond = ( nhour * NINT(rhhmm) + nminute ) * NINT(rmmss)
+               nhour0   =   nn_time0 / 100
+               nminute0 = ( nn_time0 - nhour0 * 100 )
+               isecond = ( nhour0 * NINT( rhhmm ) + nminute0 ) * NINT(rmmss)
                IF( isecond - ndt05 .lt. 0 )   ndastp = ndastp - 1      ! Start hour is specified in the namelist (default 0)
                adatrj = ( REAL( nit000-1, wp ) * rn_Dt ) / rday
                ! note this is wrong if time step has changed during run
@@ -375,9 +372,9 @@ CONTAINS
          ELSE
             ! parameters corresponding to nit000 - 1 (as we start the step loop with a call to day)
             ndastp = ndate0           ! ndate0 read in the namelist in dom_nam
-            nhour   =   nn_time0 / 100
-	    nminute = ( nn_time0 - nhour * 100 )
-            isecond = ( nhour * NINT(rhhmm) + nminute ) * NINT(rmmss)
+            nhour0   =   nn_time0 / 100
+            nminute0 = ( nn_time0 - nhour0 * 100 )
+            isecond = ( nhour0 * NINT( rhhmm ) + nminute0 ) * NINT(rmmss)
             IF( isecond - ndt05 .LT. 0 )   ndastp = ndastp - 1         ! Start hour is specified in the namelist (default 0)
             adatrj = ( REAL( nit000-1, wp ) * rn_Dt ) / rday
          ENDIF
@@ -387,7 +384,7 @@ CONTAINS
             WRITE(numout,*) ' *** Info used values : '
             WRITE(numout,*) '   date ndastp                                      : ', ndastp
             WRITE(numout,*) '   number of elapsed days since the begining of run : ', adatrj
-	    WRITE(numout,*) '   nn_time0                                         : ',nn_time0
+            WRITE(numout,*) '   initial time of day                              : ', nhour0 * 100 + nminute0
             WRITE(numout,*)
          ENDIF
          !
@@ -403,7 +400,7 @@ CONTAINS
          CALL iom_rstput( kt, nitrst, numrow, 'ndastp' , REAL( ndastp, wp)   )   ! date
          CALL iom_rstput( kt, nitrst, numrow, 'adatrj' , adatrj              )   ! number of elapsed days since
          !                                                                                                   ! the begining of the run [s]
-         CALL iom_rstput( kt, nitrst, numrow, 'ntime'  , REAL( nn_time0, wp) ) ! time
+         CALL iom_rstput( kt, nitrst, numrow, 'ntime'  , REAL( nhour0 * 100 + nminute0, wp ) )   ! Initial time of day
       ENDIF
       !
    END SUBROUTINE day_rst

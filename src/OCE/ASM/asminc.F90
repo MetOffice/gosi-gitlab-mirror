@@ -233,7 +233,7 @@ CONTAINS
          WRITE(numout,*) '   Dates referenced to current cycle:'
          WRITE(numout,*) '       ndastp           = ', ndastp
          WRITE(numout,*) '       ndate0           = ', ndate0
-         WRITE(numout,*) '       nn_time0         = ', nn_time0
+         WRITE(numout,*) '       nn_time0         = ', nhour0 * 100 + nminute0
          WRITE(numout,*) '       dlditend_date    = ', dlditend_date
          WRITE(numout,*) '       dlditbkg_date    = ', dlditbkg_date
          WRITE(numout,*) '       dlditdin_date    = ', dlditdin_date
@@ -398,7 +398,7 @@ CONTAINS
             WRITE(numout,*) '~~~~~~~~~~~~'
          ENDIF
          !
-         IF ( ( z_inc_dateb < ndastp + nn_time0*0.0001_wp ) .OR.   &
+         IF ( ( z_inc_dateb < ndastp + ( nhour0 * 100 + nminute0 ) * 0.0001_wp ) .OR.   &
             & ( z_inc_datef > dlditend_date ) ) &
             &    CALL ctl_warn( ' Validity time of assimilation increments is ', &
             &                   ' outside the assimilation interval' )

@@ -263,37 +263,36 @@ CONTAINS
                ndastp = NINT( zndastp )
                CALL iom_get( numrtr, 'adatrj', adatrj  )
                CALL iom_get( numrtr, 'ntime' , ktime   )
-               nn_time0=INT(ktime)
+
                ! calculate start time in hours and minutes
                zdayfrac=adatrj-INT(adatrj)
                ksecs = NINT(zdayfrac*86400)            ! Nearest second to catch rounding errors in adatrj
                ihour = INT(ksecs/3600)
                iminute = ksecs/60-ihour*60
                 
-               ! Add to nn_time0
-               nhour   =   nn_time0 / 100
-               nminute = ( nn_time0 - nhour * 100 )
-               nminute=nminute+iminute
+               ! Update initial time of day
+               nhour0   =   INT( ktime ) / 100
+               nminute0 = ( INT( ktime ) - nhour0 * 100 )
+               nminute0 = nminute0 + iminute
                
-               IF( nminute >= 60 ) THEN
-                  nminute=nminute-60
-                  nhour=nhour+1
+               IF( nminute0 >= 60 ) THEN
+                  nminute0 = nminute0 - 60
+                  nhour0 = nhour0 + 1
                ENDIF
-               nhour=nhour+ihour
-               IF( nhour >= 24 ) THEN
-                  nhour=nhour-24
-                  adatrj=adatrj+1
+               nhour0 = nhour0 + ihour
+               IF( nhour0 >= 24 ) THEN
+                  nhour0 = nhour0 - 24
+                  adatrj = adatrj + 1.0_wp
                ENDIF           
-               nn_time0 = nhour * 100 + nminute
-               adatrj = INT(adatrj)                    ! adatrj set to integer as nn_time0 updated            
+               adatrj = REAL( INT( adatrj ), KIND=wp )   ! adatrj adjustment after potential update of the initial time of day
              ELSE
                ndt05 = NINT( 0.5 * rn_Dt  )   !  --- WARNING --- not defined yet are we did not go through day_init
                ! parameters corresponding to nit000 - 1 (as we start the step
                ! loop with a call to day)
                ndastp = ndate0        ! ndate0 read in the namelist in dom_nam
-               nhour   =   nn_time0 / 100
-               nminute = ( nn_time0 - nhour * 100 )
-               IF( nhour*3600+nminute*60-ndt05 .lt. 0 )  ndastp=ndastp-1      ! Start hour is specified in the namelist (default 0)
+               nhour0   =   nn_time0 / 100
+               nminute0 = ( nn_time0 - nhour0 * 100 )
+               IF( nhour0 * 3600 + nminute0 * 60 - ndt05 .lt. 0 ) ndastp = ndastp - 1   ! Start hour is specified in the namelist (default 0)
                adatrj = ( REAL( nit000-1, wp ) * rn_Dt ) / rday
                ! note this is wrong if time step has changed during run
             ENDIF
@@ -303,7 +302,7 @@ CONTAINS
               WRITE(numout,*) ' *** Info used values : '
               WRITE(numout,*) '   date ndastp                                      : ', ndastp
               WRITE(numout,*) '   number of elapsed days since the begining of run : ', adatrj
-              WRITE(numout,*) '   nn_time0                                         : ', nn_time0
+              WRITE(numout,*) '   initial time of day                              : ', nhour0 * 100 + nminute0
               WRITE(numout,*)
             ENDIF
             !
@@ -322,7 +321,7 @@ CONTAINS
          CALL iom_rstput( kt, nitrst, numrtw, 'ndastp' , REAL( ndastp, wp)   )   ! date
          CALL iom_rstput( kt, nitrst, numrtw, 'adatrj' , adatrj              )   ! number of elapsed days since
          !                                                                     ! the begining of the run [s]
-         CALL iom_rstput( kt, nitrst, numrtw, 'ntime'  , REAL( nn_time0, wp) ) ! time
+         CALL iom_rstput( kt, nitrst, numrtw, 'ntime'  , REAL( nhour0 * 100 + nminute0, wp) )   ! Initial time of day
       ENDIF
 
    END SUBROUTINE trc_rst_cal
