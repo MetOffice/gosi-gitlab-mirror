@@ -14,6 +14,7 @@ MODULE obs_prep
    !!---------------------------------------------------------------------
    USE par_kind, ONLY : wp ! Precision variables
    USE in_out_manager     ! I/O manager
+   USE dom_oce, ONLY : nhour0, nminute0   ! Time of day at the start of the run
    USE obs_profiles_def   ! Definitions for storage arrays for profiles
    USE obs_surf_def       ! Definitions for storage arrays for surface data
    USE obs_mpp, ONLY : &  ! MPP support routines for observation diagnostics
@@ -118,8 +119,8 @@ CONTAINS
       iyea0 =   ndate0 / 10000
       imon0 = ( ndate0 - iyea0 * 10000 ) / 100
       iday0 =   ndate0 - iyea0 * 10000 - imon0 * 100
-      ihou0 = nn_time0 / 100
-      imin0 = ( nn_time0 - ihou0 * 100 )
+      ihou0 = nhour0
+      imin0 = nminute0
 
       icycle = nn_no     ! Assimilation cycle
 
@@ -356,8 +357,8 @@ CONTAINS
       iyea0 =   ndate0 / 10000
       imon0 = ( ndate0 - iyea0 * 10000 ) / 100
       iday0 =   ndate0 - iyea0 * 10000 - imon0 * 100
-      ihou0 = nn_time0 / 100
-      imin0 = ( nn_time0 - ihou0 * 100 )
+      ihou0 = nhour0
+      imin0 = nminute0
 
       icycle = nn_no     ! Assimilation cycle
 

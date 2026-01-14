@@ -1097,8 +1097,8 @@ CONTAINS
       iyea =   ndate0 / 10000
       imon = ( ndate0 - iyea * 10000 ) / 100
       iday =   ndate0 - iyea * 10000 - imon * 100
-      ihou =   nn_time0 / 100
-      imin = ( nn_time0 - ihou * 100 ) 
+      ihou = nhour0
+      imin = nminute0
 
       !!----------------------------------------------------------------------
       !! Compute number of days + number of hours + min since initial time

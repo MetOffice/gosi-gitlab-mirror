@@ -246,8 +246,8 @@ MODULE dom_oce
    INTEGER , PUBLIC ::   nyear         !: current year
    INTEGER , PUBLIC ::   nmonth        !: current month
    INTEGER , PUBLIC ::   nday          !: current day of the month
-   INTEGER , PUBLIC ::   nhour         !: current hour
-   INTEGER , PUBLIC ::   nminute       !: current minute
+   INTEGER , PUBLIC ::   nhour0        !: time of day at the start of the run: hour
+   INTEGER , PUBLIC ::   nminute0      !:    and minute
    INTEGER , PUBLIC ::   ndastp        !: time step date in yyyymmdd format
    INTEGER , PUBLIC ::   nday_year     !: current day counted from jan 1st of the current year
    INTEGER , PUBLIC ::   nsec_year     !: seconds between 00h jan 1st of the current  year and half of the current time step
