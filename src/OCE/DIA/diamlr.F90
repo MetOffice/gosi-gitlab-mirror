@@ -7,21 +7,22 @@ MODULE diamlr
    !!----------------------------------------------------------------------
 
    USE par_oce        , ONLY :   wp, jpi, jpj, ntsi, ntei, ntsj, ntej 
-   USE phycst         , ONLY :   rpi
+   USE phycst         , ONLY :   rpi, rday, rhhmm, rmmss
    USE dom_oce        , ONLY :   adatrj, rn_Dt, lk_RK3
    USE tide_mod
    !
-   USE in_out_manager , ONLY :   lwp, numout, ln_timing
+   USE in_out_manager , ONLY :   lwp, numout, ln_timing, nn_time0, ln_rstart, nrstdt, nit000
    USE iom            , ONLY :   iom_put, iom_use, iom_update_file_name
    USE timing         , ONLY :   timing_start, timing_stop
 #if defined key_xios
    USE xios
 #endif
+   USE lib_mpp        , ONLY :   ctl_warn
 
    IMPLICIT NONE
    PRIVATE
 
-   REAL(wp), ALLOCATABLE , DIMENSION(:,:) ::   adatrj2d
+   REAL(wp), ALLOCATABLE , DIMENSION(:,:) ::   diamlr_time
    LOGICAL, PUBLIC ::   l_diamlr = .FALSE.   !:
 
    PUBLIC ::   dia_mlr_init, dia_mlr_iom_init, dia_mlr
@@ -88,9 +89,11 @@ CONTAINS
       CHARACTER(LEN=32)                           ::   clrepl
       INTEGER                                     ::   jl, jm, jn
       INTEGER                                     ::   itide                       ! Number of available tidal components
-      REAL(wp)                                    ::   ztide_phase                 ! Tidal-constituent phase at adatrj=0
       CHARACTER (LEN=4), DIMENSION(jpmax_harmo)   ::   ctide_selected = 'n/a '
       TYPE(tide_harmonic), DIMENSION(:), POINTER  ::   stideconst
+      REAL(wp)                                    ::   ztime                       ! Time from 00h on the simulation start date
+      REAL(wp)                                    ::   ztide_phase                 ! Tidal-constituent phase at 00h on the
+      !                                                                            !    simulation start date
 
       IF(lwp) THEN
          WRITE(numout, *)
@@ -105,7 +108,7 @@ CONTAINS
          & xios_is_valid_filegroup( "diamlr_files" ) ) THEN
          CALL xios_get_handle("diamlr_fields", slxhdl_fldgrp)
          CALL xios_get_handle("diamlr_files",  slxhdl_filgrp)
-         ALLOCATE( adatrj2d( T2D(0) ) )
+         ALLOCATE( diamlr_time( T2D(0) ) )
       ELSE
          IF (lwp) THEN
             WRITE(numout, *) "diamlr: configuration not found or incomplete (field group 'diamlr_fields'"
@@ -117,6 +120,18 @@ CONTAINS
 
       ! Set up IOM context for multiple-linear-regression analysis
       IF ( l_diamlr ) THEN
+
+         ! Warning about the assumed length of previous time steps if a restart without calendar control has occurred
+         IF( ln_rstart .AND. nrstdt < 2 .AND. nit000 > 1 ) THEN
+            CALL ctl_warn( 'dia_mlr_init: following a model restart without calendar control (nn_rstctl < 2)', &
+               &           '              at a time step other than the first (nit000 > 1), the definition',   &
+               &           '              of the time variable made available for use in the regressor',       &
+               &           '              expressions for multiple-linear-regression analysis (diamlr_time)',  &
+               &           '              is based on the assumption that the current time-step length',       &
+               &           '              (rn_Dt) has also been used for all previous time steps.')
+         END IF
+         ! Time from 00h on the simulation start date (continuous time across model restarts)
+         ztime = adatrj * rday + REAL( INT( rhhmm ) * nn_time0 / 100 + ( nn_time0 - 100 * nn_time0 / 100 ), KIND=wp ) * rmmss
 
          ! Set up output files for grid types scalar, grid_T, grid_U, grid_V,
          ! and grid_W
@@ -187,10 +202,8 @@ CONTAINS
                   ! tidal-forcing implementation (if enabled)
                   DO jn = 1, itide
                      ! Compute phase of tidal constituent (incl. current nodal
-                     ! correction) at the start of the model run (i.e. for
-                     ! adatrj=0)
-                     ztide_phase = MOD( stideconst(jn)%u +  stideconst(jn)%v0 - adatrj * 86400.0_wp * stideconst(jn)%omega, &
-                        & 2.0_wp * rpi )
+                     ! correction) at 00h on the simulation start date
+                     ztide_phase = MOD( stideconst(jn)%u +  stideconst(jn)%v0 - ztime * stideconst(jn)%omega, 2.0_wp * rpi )
                      clrepl = "__TDE_"//TRIM( stideconst(jn)%cname_tide )//"_omega__"
                      DO WHILE ( INDEX( clxatt_expr, TRIM( clrepl ) ) > 0 )
                         WRITE (clfloat, '(e25.18)') stideconst(jn)%omega
@@ -417,21 +430,19 @@ CONTAINS
 
       IF( ln_timing )   CALL timing_start('dia_mlr')
 
-      ! Update time to the continuous time since the start of the model run
-      ! (value of adatrj from the current (RK3) or preceding (MLF) time step
-      ! converted to time in units of seconds)
-      !
+      ! Time in seconds from 00h on the simulation start date (continuous time across model restarts) to the current (RK3) or
+      ! preceding (MLF) time step
+      ztime = adatrj * rday + REAL( INT( rhhmm ) * nn_time0 / 100 + ( nn_time0 - 100 * nn_time0 / 100 ), KIND=wp ) * rmmss
+      IF( .NOT. lk_RK3 ) THEN
+         ztime = ztime - rn_Dt
+      END IF
+
       ! A 2-dimensional field of constant value is sent, and subsequently used directly 
       ! or transformed to a scalar or a constant 3-dimensional field as required.
-      IF( lk_RK3 ) THEN
-         ztime = adatrj * 86400.0_wp
-      ELSE
-         ztime = adatrj * 86400.0_wp - rn_Dt
-      END IF
       DO_2D( 0, 0, 0, 0 )
-         adatrj2d(ji,jj) = ztime
+         diamlr_time(ji,jj) = ztime
       END_2D
-      IF ( iom_use('diamlr_time') ) CALL iom_put('diamlr_time', adatrj2d)
+      IF ( iom_use( 'diamlr_time' ) ) CALL iom_put( 'diamlr_time', diamlr_time )
       !
       IF( ln_timing )   CALL timing_stop('dia_mlr')
       !
