@@ -109,6 +109,8 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER, INTENT(in) ::   kt          ! ocean time step
       !
+      REAL(wp), DIMENSION(A2D(0)) ::   zqicb
+      REAL(wp) ::   zqfr
       INTEGER  ::   ji, jj    ! dummy loop indices
       INTEGER  ::   z_err = 0 ! dummy integer for error handling
       !!----------------------------------------------------------------------
@@ -134,11 +136,17 @@ CONTAINS
             IF( ln_rnf_icb ) THEN
                fwficb(:,:) = rn_rfact * ( sf_i_rnf(1)%fnow(:,:,1) ) * smask0(:,:)  ! updated runoff value at time step kt
                rnf(A2D(0)) = rnf(A2D(0)) + fwficb(:,:)
-               qns(:,:) = qns(:,:) - fwficb(:,:) * rLfus
-               !!qns_tot(:,:) = qns_tot(:,:) - fwficb(:,:) * rLfus
-               !!qns_oce(:,:) = qns_oce(:,:) - fwficb(:,:) * rLfus
-               CALL iom_put( 'iceberg_cea'  ,  fwficb(:,:)  )          ! output iceberg flux
-               CALL iom_put( 'hflx_icb_cea' , -fwficb(:,:) * rLfus )   ! output Heat Flux into Sea Water due to Iceberg Thermodynamics -->
+               ! heat flux (only latent, we suppose icb temp = 0degC)
+               DO_2D( 0, 0, 0, 0 )
+                  ! energy needed to bring ocean surface layer to its freezing (just a guess since sst can also drop because of sea-ice)
+                  zqfr         = MIN( 0._wp, rho0 * rcp * e3t_m(ji,jj) * ( -1.9_wp - sst_m(ji,jj) ) * r1_Dt * smask0(ji,jj) ) ! < 0 [in W/m2]
+                  zqicb(ji,jj) = MAX( - fwficb(ji,jj) * rLfus, zqfr ) ! clem: < 0 and MAX to avoid sst droping well below the freezing point
+                  qns  (ji,jj) = qns(ji,jj) + zqicb(ji,jj)
+                  !!qns_tot(ji,jj) = qns_tot(ji,jj) + zqicb(ji,jj)
+                  !!qns_oce(ji,jj) = qns_oce(ji,jj) + zqicb(ji,jj)
+               END_2D
+               CALL iom_put( 'iceberg_cea'  , fwficb(:,:) )   ! output iceberg flux
+               CALL iom_put( 'hflx_icb_cea' ,  zqicb(:,:) )   ! output Heat Flux into Sea Water due to Iceberg Thermodynamics -->
             ENDIF
          ENDIF
 
