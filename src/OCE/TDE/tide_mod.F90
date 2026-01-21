@@ -57,7 +57,7 @@ MODULE tide_mod
    LOGICAL , PUBLIC ::   ln_tide             !:
    LOGICAL , PUBLIC ::   ln_tide_pot         !:
    INTEGER          ::   nn_tide_var         !  Variant of tidal parameter set and tide-potential computation
-   LOGICAL          ::   ll_diatide         !  Enable tidal diagnostic output
+   LOGICAL          ::   ll_diatide          !  Diagnostic-output flag
    LOGICAL          ::   ln_read_load        !:
    LOGICAL , PUBLIC ::   ln_scal_load        !:
    LOGICAL , PUBLIC ::   ln_tide_ramp        !:
@@ -202,14 +202,8 @@ CONTAINS
          phi_pot(:,:,:) = 0._wp	 
       ENDIF
       !
-      ! diagnostics
+      ! Disable diagnostic output by default
       ll_diatide = .FALSE.
-      IF ( iom_use( 'tide_pot' ) )   ll_diatide = .TRUE. 
-      DO jk = 1, nb_harmo
-         IF( iom_use( 'tide_pot_' // TRIM( tide_harmonics(jk)%cname_tide ) ) )   ll_diatide = .TRUE.
-      ENDDO
-      !
-      IF( ll_diatide )   ALLOCATE( pot_astro_comp(jpi,jpj) )
       !
    END SUBROUTINE tide_init
 
@@ -426,7 +420,16 @@ CONTAINS
       INTEGER, INTENT( in ) ::   kt     ! ocean time-step
       INTEGER               ::   jk     ! dummy loop index
       !!----------------------------------------------------------------------
-      
+      !
+      IF( kt == nit000 ) THEN
+         ! Update the diagnostic-output flag and, if required, allocate a temporary array for diagnostic output
+         IF ( iom_use( 'tide_pot' ) )   ll_diatide = .TRUE.
+         DO jk = 1, nb_harmo
+            IF( iom_use( 'tide_pot_' // TRIM( tide_harmonics(jk)%cname_tide ) ) )   ll_diatide = .TRUE.
+         END DO
+         IF( ll_diatide )   ALLOCATE( pot_astro_comp(jpi,jpj) )
+      END IF
+      !
       IF( nsec_day == NINT(0.5_wp * rn_Dt) .OR. kt == nit000 ) THEN      ! start a new day
          !
          CALL tide_harmo( tide_components, tide_harmonics )   ! Update oscillation parameters of tidal components for 00h of the
