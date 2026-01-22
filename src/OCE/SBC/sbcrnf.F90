@@ -131,62 +131,56 @@ CONTAINS
       !
       IF( MOD( kt - 1, nn_fsbc ) == 0 ) THEN
          !
-         IF( .NOT. l_rnfcpl ) THEN
-            rnf(A2D(0)) = rn_rfact * ( sf_rnf(1)%fnow(:,:,1) ) * smask0(:,:)  ! updated runoff value at time step kt
-            IF( ln_rnf_icb ) THEN
-               fwficb(:,:) = rn_rfact * ( sf_i_rnf(1)%fnow(:,:,1) ) * smask0(:,:)  ! updated runoff value at time step kt
-               rnf(A2D(0)) = rnf(A2D(0)) + fwficb(:,:)
-               ! heat flux (only latent, we suppose icb temp = 0degC)
-               DO_2D( 0, 0, 0, 0 )
-                  ! energy needed to bring ocean surface layer to its freezing (just a guess since sst can also drop because of sea-ice)
-                  zqfr         = MIN( 0._wp, rho0 * rcp * e3t_m(ji,jj) * ( -1.9_wp - sst_m(ji,jj) ) * r1_Dt * smask0(ji,jj) ) ! < 0 [in W/m2]
-                  zqicb(ji,jj) = MAX( - fwficb(ji,jj) * rLfus, zqfr ) ! clem: < 0 and MAX to avoid sst droping well below the freezing point
-                  qns  (ji,jj) = qns(ji,jj) + zqicb(ji,jj)
-                  !!qns_tot(ji,jj) = qns_tot(ji,jj) + zqicb(ji,jj)
-                  !!qns_oce(ji,jj) = qns_oce(ji,jj) + zqicb(ji,jj)
-               END_2D
-               CALL iom_put( 'iceberg_cea'  , fwficb(:,:) )   ! output iceberg flux
-               CALL iom_put( 'hflx_icb_cea' ,  zqicb(:,:) )   ! output Heat Flux into Sea Water due to Iceberg Thermodynamics -->
-            ENDIF
-         ENDIF
+         IF( .NOT. l_rnfcpl ) rnf(A2D(0)) = rn_rfact * ( sf_rnf(1)%fnow(:,:,1) ) * smask0(:,:)  ! updated runoff value at time step kt
 
          IF( ln_rnf_icb ) THEN
-            fwficb(:,:) = rn_rfact * ( sf_i_rnf(1)%fnow(:,:,1) ) * tmask(:,:,1)  ! updated runoff value at time step kt
-            IF( ln_icb_mass ) THEN
-                ! Modify the Iceberg FW flux to be consistent with the change in
-                ! mass of the Antarctic/Greenland ice sheet for FW conservation in
-                ! coupled model. This isn't perfect as FW flux will go into ocean at
-                ! wrong time of year but more important to maintain FW balance
-                tot_flux = SUM(fwficb(:,:)*e1e2t(:,:)*tmask_i(:,:)*greenland_icesheet_mask(:,:)) !Need to multiply by area to convert to kg/s
-                IF( lk_mpp ) CALL mpp_sum( 'icbclv', tot_flux )
-                IF( tot_flux > rsmall ) THEN
-                    WHERE( greenland_icesheet_mask(:,:) == 1.0 )                                                                                 &
-                    &    fwficb(:,:) = fwficb(:,:) * greenland_icesheet_mass_rate_of_change * rn_greenland_calving_fraction &
-                    &                                     / tot_flux
-	                ELSE IF( rn_greenland_calving_fraction < rsmall ) THEN
-                    WHERE( greenland_icesheet_mask(:,:) == 1.0 ) fwficb(:,:) = 0.0
-                ELSE
-                    CALL CTL_STOP('STOP', 'No iceberg runoff data read in for Greenland. Check input file or set rn_greenland_calving_fraction=0.0')
-                ENDIF
-                tot_flux = SUM(fwficb(:,:)*e1e2t(:,:)*tmask_i(:,:)*antarctica_icesheet_mask(:,:))
-                IF( lk_mpp ) CALL mpp_sum( 'icbclv', tot_flux )
-                IF( tot_flux > rsmall ) THEN
-                    WHERE( antarctica_icesheet_mask(:,:) == 1.0 )                                                                                &
-                    &    fwficb(:,:) = fwficb(:,:) * antarctica_icesheet_mass_rate_of_change * rn_antarctica_calving_fraction &
-                    &                                     / (tot_flux  + 1.0e-10_wp )
-                ELSE IF( rn_antarctica_calving_fraction < rsmall ) THEN
-                    WHERE( antarctica_icesheet_mask(:,:) == 1.0 ) fwficb(:,:) = 0.0
-                ELSE
-                    CALL CTL_STOP('STOP', 'No iceberg runoff data read in for Antarctica. Check input file or set rn_antarctica_calving_fraction=0.0')
-                ENDIF
-            ENDIF
-            CALL lbc_lnk('sbcrnf',rnf,'T',1._wp,fwficb,'T',1._wp)
-            CALL iom_put( 'berg_melt'  , fwficb(:,:)  )          ! output iceberg flux
-            CALL iom_put( 'hflx_icb_cea' , fwficb(:,:) * rLfus )   ! output Heat Flux into Sea Water due to Iceberg Thermodynamics -->
-            rnf(:,:) = rnf(:,:) + fwficb(:,:)                      ! fwficb isn't used anywhere else so add it to runoff here
-            qns_tot(:,:) = qns_tot(:,:) - fwficb(:,:) * rLfus      ! TG: I think this is correct
-         ENDIF         !
+            fwficb(:,:) = rn_rfact * ( sf_i_rnf(1)%fnow(:,:,1) ) * smask0(:,:)  ! updated runoff value at time step kt
 
+            ! Modify the Iceberg FW flux to be consistent with the change in mass of the Antarctic/Greenland ice sheet for
+            ! FW conservation in coupled model. This isn't perfect as FW flux will go into ocean at wrong time of year
+            ! but more important to maintain FW balance
+            ! TODO: not currently working- see below
+            IF( ln_icb_mass ) THEN
+               ! Greenland ice sheet
+               ! NOTE: greenland_icesheet_mask, greenland_icesheet_mass_rate_of_change, rn_greenland_calving_fraction are not defined
+               tot_flux = SUM( fwficb(:,:) * e1e2t(A2D(0)) * smask0_i(:,:) * greenland_icesheet_mask(:,:) ) ! Need to multiply by area to convert to kg/s
+               IF( lk_mpp ) CALL mpp_sum( 'icbclv', tot_flux )
+               IF( tot_flux > rsmall ) THEN
+                  WHERE( greenland_icesheet_mask(:,:) == 1._wp ) fwficb(:,:) = &
+                     & fwficb(:,:) * greenland_icesheet_mass_rate_of_change * rn_greenland_calving_fraction / tot_flux
+               ELSE IF( rn_greenland_calving_fraction < rsmall ) THEN
+                  WHERE( greenland_icesheet_mask(:,:) == 1._wp ) fwficb(:,:) = 0._wp
+               ELSE
+                  CALL ctl_stop('STOP', 'No iceberg runoff data read in for Greenland. Check input file or set rn_greenland_calving_fraction=0.0')
+               ENDIF
+
+               ! Antarctic ice sheet
+               ! NOTE: antarctica_icesheet_mask, antarctica_icesheet_mass_rate_of_change, rn_antarctica_calving_fraction are not defined
+               tot_flux = SUM( fwficb(:,:) * e1e2t(A2D(0)) * smask0_i(:,:) * antarctica_icesheet_mask(:,:) )
+               IF( lk_mpp ) CALL mpp_sum( 'icbclv', tot_flux )
+               IF( tot_flux > rsmall ) THEN
+                  WHERE( antarctica_icesheet_mask(:,:) == 1._wp ) fwficb(:,:) = &
+                     & fwficb(:,:) * antarctica_icesheet_mass_rate_of_change * rn_antarctica_calving_fraction / tot_flux
+               ELSE IF( rn_antarctica_calving_fraction < rsmall ) THEN
+                  WHERE( antarctica_icesheet_mask(:,:) == 1._wp ) fwficb(:,:) = 0._wp
+               ELSE
+                  CALL ctl_stop('STOP', 'No iceberg runoff data read in for Antarctica. Check input file or set rn_antarctica_calving_fraction=0.0')
+               ENDIF
+            ENDIF
+
+            rnf(A2D(0)) = rnf(A2D(0)) + fwficb(:,:)
+            ! heat flux (only latent, we suppose icb temp = 0degC)
+            DO_2D( 0, 0, 0, 0 )
+               ! energy needed to bring ocean surface layer to its freezing (just a guess since sst can also drop because of sea-ice)
+               zqfr         = MIN( 0._wp, rho0 * rcp * e3t_m(ji,jj) * ( -1.9_wp - sst_m(ji,jj) ) * r1_Dt * smask0(ji,jj) ) ! < 0 [in W/m2]
+               zqicb(ji,jj) = MAX( - fwficb(ji,jj) * rLfus, zqfr ) ! clem: < 0 and MAX to avoid sst droping well below the freezing point
+               qns  (ji,jj) = qns(ji,jj) + zqicb(ji,jj)
+               !!qns_tot(ji,jj) = qns_tot(ji,jj) + zqicb(ji,jj)
+               !!qns_oce(ji,jj) = qns_oce(ji,jj) + zqicb(ji,jj)
+            END_2D
+            CALL iom_put( 'iceberg_cea'  , fwficb(:,:) )   ! output iceberg flux
+            CALL iom_put( 'hflx_icb_cea' ,  zqicb(:,:) )   ! output Heat Flux into Sea Water due to Iceberg Thermodynamics -->
+         ENDIF
          !
          !                                                           ! set temperature & salinity content of runoffs
          IF( ln_rnf_tem ) THEN                                       ! use runoffs temperature data

@@ -473,6 +473,7 @@
    ln_rnf_tem   = .false.   !  read in temperature information for runoff
    ln_rnf_sal   = .false.   !  read in salinity information for runoff
    ln_rnf_icb   = .false.   !  read iceberg flux
+   ln_icb_mass  = .false.   !  scale iceberg flux to match mass flux from atmosphere model
    ln_rnf_depth_ini = .false.  ! compute depth at initialisation from runoff file
       rn_rnf_max  = 5.735e-4   !  max value of the runoff climatologie over global domain ( ln_rnf_depth_ini = .true )
       rn_dep_max  = 150.       !  depth over which runoffs is spread ( ln_rnf_depth_ini = .true )
