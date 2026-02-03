@@ -889,7 +889,7 @@ that are available in the tidal-forcing implementation (see
     <field id="sopsteiv"      long_name="Salt Transport from mesoscale eddy advection : All basins"    unit="Giga g/s"   grid_ref="grid_znl_T_2D" />
     <field id="sopstadv"      long_name="Advective Salt Transport"                                     unit="Giga g/s"   grid_ref="grid_znl_T_2D" />
     <field id="sophtgyre"     long_name="Overturning heat transport due to gyre" field_ref="sophtove"  unit="W"          grid_ref="grid_znl_T_2D" > sophtvtr - sophtove  </field>
-    <field id="sopstgyre"     long_name="Overturning salt transport due to gyre" field_ref="sopstove"  unit="kg/s"       grid_ref="grid_znl_T_2D" > sophtvtr - sopstove  </field>
+    <field id="sopstgyre"     long_name="Overturning salt transport due to gyre" field_ref="sopstove"  unit="kg/s"       grid_ref="grid_znl_T_2D" > sopstvtr - sopstove  </field>
   </field_group>
 
   <field_group id="constant_fields"  grid_ref="grid_T_2D"  operation="once" >
