@@ -49,7 +49,7 @@ set +x
   . ${SETTE_DIR}/all_functions.sh
 #
 # Load environment if exists
-  env_file=`find ${TOOLS_DIR}/../arch -name arch-${CMP_NAM}.env`
+  env_file=`find ${CONFIG_DIR}/../arch -name arch-${CMP_NAM}.env`
   if [ -f "${env_file}" ] ; then
      echo "Load environment file arch-${CMP_NAM}.env"
      . ${env_file}
