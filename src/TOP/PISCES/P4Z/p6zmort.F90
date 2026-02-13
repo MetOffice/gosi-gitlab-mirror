@@ -56,6 +56,7 @@ CONTAINS
       !!---------------------------------------------------------------------
       INTEGER, INTENT(in) ::   kt ! ocean time step
       INTEGER, INTENT(in) ::   Kbb, Krhs  ! time level indices
+      INTEGER :: ji,jj,jk
       !!---------------------------------------------------------------------
       
       CALL p6z_mort_nano( Kbb, Krhs )            ! nanophytoplankton
@@ -90,7 +91,8 @@ CONTAINS
 
          ! Quadratic mortality of nano due to aggregation during
          ! blooms (Doney et al. 1996)
-         ! -----------------------------------------------------
+         ! Increased efficiency when highly limited due to EPS production
+         ! --------------------------------------------------------------
          zlim2   = xlimphy(ji,jj,jk) * xlimphy(ji,jj,jk)
          zlim1   = 0.0625 / ( 0.0625 + zlim2 ) * tr(ji,jj,jk,jpphy,Kbb)
          zrespp = wchln * 1.e6 * xstep * zlim1 * xdiss(ji,jj,jk) * zcompaph
@@ -98,9 +100,10 @@ CONTAINS
          ! Phytoplankton linear mortality
          ! A michaelis-menten like term is introduced to avoid 
          ! extinction of nanophyto in highly limited areas
+         ! A background mortality set to 20% is applied to kill 
+         ! phytoplankton in the deep ocean
          ! ----------------------------------------------------
-         zlim1  = zlim1 / ( xkmort + tr(ji,jj,jk,jpphy,Kbb) )
-         ztortp = ( mpratn * tgfunc(ji,jj,jk) * zlim1 + 0.01 ) * xstep * zcompaph
+         ztortp = ( 0.8 * tr(ji,jj,jk,jpphy,Kbb) / ( xkmort + tr(ji,jj,jk,jpphy,Kbb) ) + 0.2 ) * mpratn * xstep * zcompaph
          zmortp = zrespp + ztortp
 
          !   Update the arrays TRA which contains the biological sources and sinks
@@ -114,7 +117,7 @@ CONTAINS
          tr(ji,jj,jk,jpnch,Krhs) = tr(ji,jj,jk,jpnch,Krhs) - zmortp * zfactch
          tr(ji,jj,jk,jpnfe,Krhs) = tr(ji,jj,jk,jpnfe,Krhs) - zmortp * zfactfe
 
-                       ! Production PIC particles due to mortality
+         ! Production PIC particles due to mortality
          zprcaca = xfracal(ji,jj,jk) * zmortp
          prodcal(ji,jj,jk) = prodcal(ji,jj,jk) + zprcaca  ! prodcal=prodcal(nanophy)+prodcal(microzoo)+prodcal(mesozoo)
          !
@@ -164,19 +167,21 @@ CONTAINS
       DO_3D( 0, 0, 0, 0, 1, jpkm1)
          zcompaph = MAX( ( tr(ji,jj,jk,jppic,Kbb) - 1e-9 ), 0.e0 )
 
-         ! Quadratic mortality of pico due to aggregation during
+         ! Quadratic mortality of phyto due to aggregation during
          ! blooms (Doney et al. 1996)
-         ! -----------------------------------------------------
+         ! Increased efficiency when highly limited due to EPS production
+         ! --------------------------------------------------------------
          zlim2   = xlimpic(ji,jj,jk) * xlimpic(ji,jj,jk)
          zlim1   = 0.0625 / ( 0.0625 + zlim2 ) * tr(ji,jj,jk,jppic,Kbb)
          zrespp  = wchlp * 1.e6 * xstep * zlim1 * xdiss(ji,jj,jk) * zcompaph
 
          ! Phytoplankton linear mortality
          ! A michaelis-menten like term is introduced to avoid 
-         ! extinction of picophyto in highly limited areas
-         ! ----------------------------------------------------
-         zlim1   = zlim1 / ( xkmort + tr(ji,jj,jk,jppic,Kbb) )
-         ztortp  = ( mpratp * tgfunc(ji,jj,jk) * zlim1 + 0.01 ) * xstep * zcompaph
+         ! extinction of phyto in highly limited areas
+         ! A background mortality set to 20% is applied to kill 
+         ! phytoplankton in the deep ocean
+         ! -----------------------------------------------------
+         ztortp = ( 0.8 * tr(ji,jj,jk,jppic,Kbb) / ( xkmort + tr(ji,jj,jk,jppic,Kbb) ) + 0.2 ) * mpratp * xstep * zcompaph
          zmortp  = zrespp + ztortp
 
          !   Update the arrays TRA which contains the biological sources and sinks
@@ -229,26 +234,24 @@ CONTAINS
       !
       IF( ln_timing )   CALL timing_start('p6z_mort_diat')
       !
-
       DO_3D( 0, 0, 0, 0, 1, jpkm1)
          zcompadi = MAX( ( tr(ji,jj,jk,jpdia,Kbb) - 1E-9), 0. )
 
-         !   Aggregation term for diatoms is increased in case of nutrient
-         !   stress as observed in reality. The stressed cells become more
-         !   sticky and coagulate to sink quickly out of the euphotic zone
-         !   -------------------------------------------------------------
-         !  Phytoplankton squared mortality
-         !  -------------------------------
+         ! Quadratic mortality of nano due to aggregation during
+         ! blooms (Doney et al. 1996)
+         ! Increased efficiency when highly limited due to EPS production
+         ! --------------------------------------------------------------
          zlim2   = xlimdia(ji,jj,jk) * xlimdia(ji,jj,jk)
          zlim1   = 0.0625 / ( 0.0625 + zlim2 ) * tr(ji,jj,jk,jpdia,Kbb)
          zrespp  = 1.e6 * xstep * wchld * zlim1 * xdiss(ji,jj,jk) * zcompadi
 
          ! Phytoplankton linear mortality
          ! A michaelis-menten like term is introduced to avoid 
-         ! extinction of diatoms in highly limited areas
-         !  ---------------------------------------------------
-         zlim1  = zlim1 / ( xkmort + tr(ji,jj,jk,jpdia,Kbb) )
-         ztortp = ( mpratd * tgfunc(ji,jj,jk) * zlim1 + 0.01 ) * xstep * zcompadi
+         ! extinction of phyto in highly limited areas
+         ! A background mortality set to 20% is applied to kill 
+         ! phytoplankton in the deep ocean
+         ! -----------------------------------------------------
+         ztortp = ( 0.8 * tr(ji,jj,jk,jpdia,Kbb) / ( xkmort + tr(ji,jj,jk,jpdia,Kbb) ) + 0.2 ) * mpratd * xstep * zcompadi
          zmortp  = zrespp + ztortp
 
          !   Update the arrays tr(:,:,:,:,Krhs) which contains the biological sources and sinks
@@ -307,19 +310,21 @@ CONTAINS
       DO_3D( 0, 0, 0, 0, 1, jpkm1)
          zcompaph = MAX( ( tr(ji,jj,jk,jpdzc,Kbb) - 1e-9 ), 0.e0 )
 
-         ! Quadratic mortality of diatom due to aggregation during
+         ! Quadratic mortality of phyto due to aggregation during
          ! blooms (Doney et al. 1996)
-         ! -----------------------------------------------------
+         ! Increased efficiency when highly limited due to EPS production
+         ! --------------------------------------------------------------
          zlim2   = xlimdiaz(ji,jj,jk) * xlimdiaz(ji,jj,jk)
          zlim1   = 0.0625 / ( 0.0625 + zlim2 ) * tr(ji,jj,jk,jpdzc,Kbb)
          zrespp = wchldz * 1.e6 * xstep * zlim1 * xdiss(ji,jj,jk) * zcompaph
 
          ! Phytoplankton linear mortality
          ! A michaelis-menten like term is introduced to avoid 
-         ! extinction of nanophyto in highly limited areas
-         ! ----------------------------------------------------
-         zlim1  = zlim1 / ( xkmort + tr(ji,jj,jk,jpdzc,Kbb) )
-         ztortp = ( mpratdz * tgfunc(ji,jj,jk) * zlim1 + 0.01 ) * xstep * zcompaph
+         ! extinction of phyto in highly limited areas
+         ! A background mortality set to 20% is applied to kill 
+         ! phytoplankton in the deep ocean
+         ! -----------------------------------------------------
+         ztortp = ( 0.8 * tr(ji,jj,jk,jpdzc,Kbb) / ( xkmort + tr(ji,jj,jk,jpdzc,Kbb) ) + 0.2 ) * mpratdz * xstep * zcompaph
          zmortp = zrespp + ztortp
 
          !   Update the arrays TRA which contains the biological sources and sinks
@@ -338,11 +343,11 @@ CONTAINS
          tr(ji,jj,jk,jpdop,Krhs) = tr(ji,jj,jk,jpdop,Krhs) + ztortp * zfactp
          tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + ztortp * zfactfe
          !
-         tr(ji,jj,jk,jpgoc,Krhs) = tr(ji,jj,jk,jpgoc,Krhs) + zrespp
-         tr(ji,jj,jk,jpgon,Krhs) = tr(ji,jj,jk,jpgon,Krhs) + zrespp * zfactn
-         tr(ji,jj,jk,jpgop,Krhs) = tr(ji,jj,jk,jpgop,Krhs) + zrespp * zfactp
-         tr(ji,jj,jk,jpbfe,Krhs) = tr(ji,jj,jk,jpbfe,Krhs) + zrespp * zfactfe
-         prodgoc(ji,jj,jk)       = prodgoc(ji,jj,jk) + zrespp
+         tr(ji,jj,jk,jppoc,Krhs) = tr(ji,jj,jk,jppoc,Krhs) + zrespp
+         tr(ji,jj,jk,jppon,Krhs) = tr(ji,jj,jk,jppon,Krhs) + zrespp * zfactn
+         tr(ji,jj,jk,jppop,Krhs) = tr(ji,jj,jk,jppop,Krhs) + zrespp * zfactp
+         tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) + zrespp * zfactfe
+         prodpoc(ji,jj,jk)       = prodpoc(ji,jj,jk) + zrespp
       END_3D
       !
        IF(sn_cfctl%l_prttrc)   THEN  ! print mean trends (used for debugging)

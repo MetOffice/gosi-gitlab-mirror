@@ -76,14 +76,14 @@ CONTAINS
       !
       INTEGER  :: ji, jj, jk
       REAL(wp) :: zcompadi, zcompaz , zcompaph, zcompapoc
-      REAL(wp) :: zgraze, zdenom, zdenom2, zfact, zfood, zfoodlim, zbeta
+      REAL(wp) :: zgraze, zdenom, zdenom2, zdenomwi, zfact, zfood, zfoodlim, zbeta, zfoodfe
       REAL(wp) :: zepsherf, zepshert, zepsherq, zepsherv, zgrarsig, zgraztotc, zgraztotn, zgraztotf
       REAL(wp) :: zgrarem, zgrafer, zgrapoc, zprcaca, zmortz
       REAL(wp) :: zrespz, ztortz, zgrasratf, zgrasratn
       REAL(wp) :: zgraznc, zgrazz, zgrazpoc, zgrazdc, zgrazpof, zgrazdf, zgraznf
       REAL(wp) :: zsigma, zsigma2, zdiffdn, zsizedn, ztmp1, ztmp2, ztmp3, ztmp4, ztmptot
       REAL(wp) :: zmaxsi, zpexpod, zrsize, zrsizen, zrsized, znano, zdiat
-      REAL(wp), DIMENSION(A2D(0),jpk) :: zproportn, zproportd, zprodlig
+      REAL(wp), DIMENSION(A2D(0),jpk) :: zproportd, zproportn, zprodlig, zavaildia
       REAL(wp), DIMENSION(:,:,:)  , ALLOCATABLE :: zgrazing, zfezoo, zzligprod
       CHARACTER (len=25) :: charout
 
@@ -112,11 +112,13 @@ CONTAINS
       ! ------------------------------------------------------------------------------------
       DO_3D( 0, 0, 0, 0, 1, jpkm1)
          IF ( tmask(ji,jj,jk) == 1 ) THEN
-            zproportd(ji,jj,jk) = EXP( 0.067 - 0.033 * sized(ji,jj,jk) * 6.0) / ( EXP( 0.067 -0.033 * 6.0 ) )
-            zproportn(ji,jj,jk) = EXP( 0.05 - 0.036 * sizen(ji,jj,jk) * 1.67) / ( EXP( 0.05 -0.036 * 1.67 ) )
+            zavaildia(ji,jj,jk)  = (1.0 - (sized(ji,jj,jk)**1.6 - 1.0) / 14.0)
+            zproportd(ji,jj,jk)  = sized(ji,jj,jk)**(-0.48) * zavaildia(ji,jj,jk) 
+            zproportn(ji,jj,jk)  = sizen(ji,jj,jk)**(-0.48)
          ELSE
-            zproportn(ji,jj,jk) = 1.0
+            zavaildia(ji,jj,jk) = 1.0
             zproportd(ji,jj,jk) = 1.0
+            zproportn(ji,jj,jk) = 1.0
          ENDIF
       END_3D
 
@@ -152,8 +154,8 @@ CONTAINS
          !   exceed a certain value, diatoms are suppposed to be too 
          !   big for microzooplankton.
          !   --------------------------------------------------------
-         zcompadi  = zproportd(ji,jj,jk) * MAX( ( tr(ji,jj,jk,jpdia,Kbb) - xthreshdia ), 0.e0 )
-         zcompaph  = zproportn(ji,jj,jk) * MAX( ( tr(ji,jj,jk,jpphy,Kbb) - xthreshphy ), 0.e0 )
+         zcompadi  = zavaildia(ji,jj,jk) * MAX( ( tr(ji,jj,jk,jpdia,Kbb) - xthreshdia ), 0.e0 )
+         zcompaph  = MAX( ( tr(ji,jj,jk,jpphy,Kbb) - xthreshphy ), 0.e0 )
          zcompapoc = MAX( ( tr(ji,jj,jk,jppoc,Kbb) - xthreshpoc ), 0.e0 )
          zcompaz   = MAX( ( tr(ji,jj,jk,jpzoo,Kbb) - xthreshzoo ), 0.e0 )
  
@@ -165,8 +167,17 @@ CONTAINS
          ! accumulation of food in the mesozoopelagic domain
          ! -------------------------------------------------------------------------------
          zfood     = xprefn * zcompaph + xprefc * zcompapoc + xprefd * zcompadi + xprefz * zcompaz
+         zfoodfe   = xprefn * zcompaph * tr(ji,jj,jk,jpnfe,Kbb) / ( tr(ji,jj,jk,jpphy,Kbb) + rtrn )      &
+           &         + xprefc * zcompapoc * tr(ji,jj,jk,jpsfe,Kbb) / ( tr(ji,jj,jk,jppoc,Kbb) + rtrn )  &  
+           &         + xprefd * zcompadi * tr(ji,jj,jk,jpdfe,Kbb) / ( tr(ji,jj,jk,jpdia,Kbb) + rtrn )   & 
+           &         + xprefz * zcompaz * feratz
+         zdenomwi  = MIN( zfood / ( xkgraz + zfood ), zfoodfe / ( xkgraz * feratz + zfoodfe ) )
+
+         zcompadi  = zproportd(ji,jj,jk) * MAX( ( tr(ji,jj,jk,jpdia,Kbb) - xthreshdia ), 0.e0 )
+         zcompaph  = zproportn(ji,jj,jk) * MAX( ( tr(ji,jj,jk,jpphy,Kbb) - xthreshphy ), 0.e0 )
+         zfood     = xprefn * zcompaph + xprefc * zcompapoc + xprefd * zcompadi + xprefz * zcompaz
          zfoodlim  = zfood - MIN(xthresh,0.5*zfood)
-         zdenom    = zfoodlim / ( xkgraz + zfoodlim )
+         zdenom    = zfoodlim / ( xkgraz + zfood )
          zgraze    = grazrat * xstep * tgfunc2(ji,jj,jk) * tr(ji,jj,jk,jpzoo,Kbb) * (1. - nitrfac(ji,jj,jk))
 
          ! An active switching parameterization is used here.
@@ -181,7 +192,7 @@ CONTAINS
          ! have low abundance, .i.e. zooplankton become less specific 
          ! to avoid starvation.
          ! ----------------------------------------------------------
-         zdenom2   = zdenom * zdenom
+         zdenom2   = zdenomwi * zdenomwi
          zsigma    = 1.0 - zdenom2/(0.05 * 0.05 + zdenom2)
          zsigma    = xsigma + xsigmadel * zsigma
          zsigma2   = 2.0 * zsigma * zsigma

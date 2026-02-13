@@ -93,7 +93,7 @@ CONTAINS
       REAL(wp) :: zepsherf, zepshert, zepsherq, zepsherv, zgraztotc, zgraztotn, zgraztotf
       REAL(wp) :: zmigreltime, zprcaca, zmortz, zgrasratf, zgrasratn
       REAL(wp) :: zrespz, ztortz, zgrazdc, zgrazz, zgrazpof, zgraznc, zgrazpoc, zgraznf, zgrazdf
-      REAL(wp) :: zgrazm, zgrazfffp, zgrazfffg, zgrazffep, zgrazffeg, zdep
+      REAL(wp) :: zgrazm, zgrazfffp, zgrazfffg, zgrazffep, zgrazffeg, zdep, zfoodfe, zdenomwi
       REAL(wp) :: zsigma, zsigma2, zsizedn, zdiffdn, ztmp1, ztmp2, ztmp3, ztmp4, ztmp5, ztmptot, zmigthick 
       CHARACTER (len=25) :: charout
       REAL(wp), DIMENSION(A2D(0),jpk) :: zgrarem, zgraref, zgrapoc, zgrapof, zgrabsi
@@ -144,7 +144,6 @@ CONTAINS
       DO_3D( 0, 0, 0, 0, 1, jpkm1)
          zcompam   = MAX( ( tr(ji,jj,jk,jpmes,Kbb) - 1.e-9 ), 0.e0 )
          zfact     = xstep * tgfunc2(ji,jj,jk) * zcompam
-
          
          !  linear mortality of mesozooplankton
          !  A michaelis menten modulation term is used to avoid extinction of 
@@ -164,11 +163,11 @@ CONTAINS
          !   Computation of the abundance of the preys
          !   A threshold can be specified in the namelist
          !   --------------------------------------------
-         zcompadi  = zproportd(ji,jj,jk) * MAX( ( tr(ji,jj,jk,jpdia,Kbb) - xthresh2dia ), 0.e0 )
+         zcompadi  = MAX( ( tr(ji,jj,jk,jpdia,Kbb) - xthresh2dia ), 0.e0 )
          zcompaz   = MAX( ( tr(ji,jj,jk,jpzoo,Kbb) - xthresh2zoo ), 0.e0 )
          zcompapoc = MAX( ( tr(ji,jj,jk,jppoc,Kbb) - xthresh2poc ), 0.e0 )
          zcompames = MAX( ( tr(ji,jj,jk,jpmes,Kbb) - xthresh2mes ), 0.e0 )
-         zcompaph  = zproportn(ji,jj,jk) * MAX( ( tr(ji,jj,jk,jpphy,Kbb) - xthresh2phy ), 0.e0 )
+         zcompaph  = MAX( ( tr(ji,jj,jk,jpphy,Kbb) - xthresh2phy ), 0.e0 )
 
          ! Mesozooplankton grazing
          ! The total amount of food is the sum of all preys accessible to mesozooplankton 
@@ -179,8 +178,18 @@ CONTAINS
          ! -------------------------------------------------------------------------------
          zfood     = xpref2d * zcompadi + xpref2z * zcompaz + xpref2n * zcompaph + xpref2c * zcompapoc    &
            &         + xpref2m * zcompames 
+         zfoodfe   = xpref2n * zcompaph * tr(ji,jj,jk,jpnfe,Kbb) / ( tr(ji,jj,jk,jpphy,Kbb) + rtrn )      &
+           &         + xpref2c * zcompapoc * tr(ji,jj,jk,jpsfe,Kbb) / ( tr(ji,jj,jk,jppoc,Kbb) + rtrn )  &
+           &         + xpref2d * zcompadi * tr(ji,jj,jk,jpdfe,Kbb) / ( tr(ji,jj,jk,jpdia,Kbb) + rtrn )   &
+           &         + xpref2z * zcompaz * feratz + xpref2m * zcompam * feratm
+         zdenomwi  = MIN( zfood / ( xkgraz2 + zfood ), zfoodfe / ( xkgraz2 * feratm + zfoodfe ) )
+         zcompadi  = zproportd(ji,jj,jk) * MAX( ( tr(ji,jj,jk,jpdia,Kbb) - xthresh2dia ), 0.e0 )
+         zcompaph  = zproportn(ji,jj,jk) * MAX( ( tr(ji,jj,jk,jpphy,Kbb) - xthresh2phy ), 0.e0 )
+         zfood     = xpref2d * zcompadi + xpref2z * zcompaz + xpref2n * zcompaph + xpref2c * zcompapoc    &
+           &         + xpref2m * zcompames
          zfoodlim  = MAX( 0., zfood - MIN( 0.5 * zfood, xthresh2 ) )
-         zdenom    = zfoodlim / ( xkgraz2 + zfoodlim )
+
+         zdenom    = zfoodlim / ( xkgraz2 + zfood )
          zgraze2   = grazrat2 * xstep * tgfunc2(ji,jj,jk) * tr(ji,jj,jk,jpmes,Kbb) * (1. - nitrfac(ji,jj,jk)) 
 
          ! An active switching parameterization is used here.
@@ -195,10 +204,11 @@ CONTAINS
          ! have low abundance, .i.e. zooplankton become less specific 
          ! to avoid starvation.
          ! ----------------------------------------------------------
-         zdenom2 = zdenom * zdenom
-         zsigma  = 1.0 - zdenom2/(0.05*0.05+zdenom2)
+         zdenom2 = zdenomwi * zdenomwi
+         zsigma  = 1.0 - zdenom2 / (0.05 * 0.05 + zdenom2)
          zsigma  = xsigma2 + xsigma2del * zsigma
          zsigma2 = 2.0 * zsigma * zsigma
+
          ! Nanophytoplankton and diatoms are the only preys considered
          ! to be close enough to have potential interference
          ! -----------------------------------------------------------
@@ -245,17 +255,16 @@ CONTAINS
 
          ! Compute the proportion of filter feeders. It is assumed steady state.
          ! ---------------------------------------------------------------------
-         zproport  = (zgrazffep + zgrazffeg)/(rtrn + zgraztotc)
-         zproport = zproport * zproport
+         zproport  = 0._wp
+         IF( gdepw(ji,jj,jk+1,Kmm) > MAX(hmld(ji,jj), heup(ji,jj) ) ) THEN
+            zproport  = (zgrazffep + zgrazffeg)/(rtrn + zgraztotc)
+            zproport  = zproport * zproport
+         ENDIF
 
          ! Compute fractionation of aggregates. It is assumed that 
          ! diatoms based aggregates are more prone to fractionation
          ! since they are more porous (marine snow instead of fecal pellets)
          ! -----------------------------------------------------------------
-
-         ! Compute fractionation of aggregates. It is assumed that 
-         ! diatoms based aggregates are more prone to fractionation
-         ! since they are more porous (marine snow instead of fecal pellets)
          zratio    = tr(ji,jj,jk,jpgsi,Kbb) / ( tr(ji,jj,jk,jpgoc,Kbb) + rtrn )
          zratio2   = zratio * zratio
          zfrac     = zproport * grazflux  * xstep * wsbio4(ji,jj,jk)      &

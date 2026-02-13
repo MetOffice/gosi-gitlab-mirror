@@ -109,14 +109,14 @@
    concpnh4   =  7.E-7    ! NH4 half saturation for picophytoplankton
    concdnh4   =  3.E-6    ! NH4 half saturation for diatoms
    concdznh4  =  2.E-6    ! NH4 half saturation for diazotrophs
-   concnpo4   =  12.E-6   ! PO4 half saturation for nanophytoplankton
-   concppo4   =  4.E-6    ! PO4 half saturation for picophytoplankton
-   concdpo4   =  18.E-6   ! PO4 half saturation for diatoms
-   concdzpo4  =  12.E-6   ! PO4 half saturation for diazotrophs
+   concnpo4   =  8.E-6   ! PO4 half saturation for nanophytoplankton
+   concppo4   =  3.E-6    ! PO4 half saturation for picophytoplankton
+   concdpo4   =  12.E-6   ! PO4 half saturation for diatoms
+   concdzpo4  =  8.E-6   ! PO4 half saturation for diazotrophs
    concnfer   =  3.E-9    ! Iron half saturation for nanophytoplankton
    concpfer   =  1.E-9    ! Iron half saturation for picophytoplankton
    concdfer   =  4.5E-9   ! Iron half saturation for diatoms
-   concdzfer  =  10.E-9   ! Iron half saturation for diazotrophs
+   concdzfer  =  3.E-9   ! Iron half saturation for diazotrophs
    concbfe    =  5.E-11   ! Half-saturation for Fe limitation of Bacteria
    concbno3   =  3.E-7    ! NO3 half saturation for Bacteria
    concbnh4   =  3.E-7    ! NH4 half saturation for Bacteria
@@ -127,11 +127,11 @@
    xsizern    =  3.0      ! Size ratio for nanophytoplankton
    xsizerp    =  2.0      ! Size ratio for picophytoplankton
    xsizerd    =  4.0      ! Size ratio for diatoms
-   xsizerdz   =  3.0      ! size ratio for diazotrophs
+   xsizerdz   =  1.0      ! size ratio for diazotrophs
    xksi1      =  8.E-6    ! half saturation constant for Si uptake
    xksi2      =  20.E-6   ! half saturation constant for Si/C
    xkdoc      =  417.E-6  ! half-saturation constant of DOC remineralization
-   caco3r     =  0.3      ! mean rain ratio
+   caco3r     =  0.25     ! mean rain ratio
    oxymin     =  1.E-6    ! Half-saturation constant for anoxia
    ratchl     =  10.0     ! C associated with Chlorophyll
    kustkaFe   =  13.E-6   ! Fe limitation of diazotrophy based off kustka 2003
@@ -163,7 +163,7 @@
    qfpmax     =  60.E-6   ! Maximal Fe quota for pico
    qfdmax     =  60.E-6   ! Maximal Fe quota for diatoms
    qfdzmax    =  60.E-6   ! Maximal Fe quota for diazotrophs
-   qfdzopt    =  23.E-6   ! Optimal Fe quota of diazotrophs (10e-6 from nano + 13e-6 kustka Fe cost)
+   qfdzopt    =  10.E-6   ! Optimal Fe quota of diazotrophs (10e-6 from nano + 13e-6 kustka Fe cost)
 /
 !-----------------------------------------------------------------------
 &nampisopt     !   parameters for optics
@@ -212,7 +212,7 @@
    excretdz   =  0.05     ! excretion ratio of diazotrophs
    bresp      =  0.03     ! Basal respiration rate
    chlcmin    =  0.0025   ! Minimum Chl/c in phytoplankton
-   grosip     =  0.11     ! mean Si/C ratio
+   grosip     =  0.12     ! mean Si/C ratio
 /
 !-----------------------------------------------------------------------
 &namp2zmort    !   parameters for phytoplankton sinks for PISCES std   - ln_p2z
@@ -249,7 +249,7 @@
    resrat2     =  0.005    ! exsudation rate of mesozooplankton
    mzrat2      =  0.01     ! mesozooplankton mortality rate
    xpref2d     =  1.       ! mesozoo preference for diatoms
-   xpref2n     =  0.45     ! mesozoo preference for nanophyto.
+   xpref2n     =  0.3      ! mesozoo preference for nanophyto.
    xpref2z     =  1.       ! mesozoo preference for microzoo.
    xpref2c     =  0.3      ! mesozoo preference for poc
    xpref2m     =  0.0      ! mesozoo preference for meso
@@ -277,10 +277,10 @@
    grazrat2    =  0.5      ! maximal mesozoo grazing rate
    bmetexc2    =  .true.   ! Metabolic use of excess carbon
    resrat2     =  0.005    ! exsudation rate of mesozooplankton
-   lmzrat2     =  0.00     ! Linear mortality rate of mesozooplankton
+   lmzrat2     =  0.005    ! Linear mortality rate of mesozooplankton
    mzrat2      =  0.01     ! mesozooplankton mortality rate
    xpref2d     =  1.       ! meso preference for diatoms
-   xpref2n     =  0.6      ! meso preference for nano
+   xpref2n     =  0.45     ! meso preference for nano
    xpref2z     =  1.       ! meso preference for zoo
    xpref2m     =  0.       ! meso preference for zoo
    xpref2c     =  0.3      ! meso preference for poc
@@ -293,15 +293,15 @@
    xthresh2poc =  1.E-8    ! poc feeding threshold for mesozooplankton
    xthresh2    =  3.E-7    ! Food threshold for grazing
    xkgraz2     =  20.E-6   ! half sturation constant for meso grazing
-   epsher2     =  0.5      ! Efficicency of Mesozoo growth
-   epsher2min  =  0.5      ! Minimum efficiency of mesozoo growth
+   epsher2     =  0.55     ! Efficicency of Mesozoo growth
+   epsher2min  =  0.55     ! Minimum efficiency of mesozoo growth
    ssigma2     =  0.5      ! Fraction excreted as semi-labile DOM
    srespir2    =  0.15     ! Active respiration
    unass2c     =  0.3      ! non assimilated fraction of C by mesozoo
    unass2n     =  0.3      ! non assimilated fraction of N by mesozoo
    unass2p     =  0.3      ! non assimilated fraction of P by mesozoo
    xsigma2     =  0.5      ! Predation window size
-   xsigma2del  =  1.0      ! Predation window size scaling
+   xsigma2del  =  0.5      ! Predation window size scaling
    grazflux    =  3.E3     ! flux-feeding rate
    ln_dvm_meso =  .false.  ! Activates DVM for mesozooplankton
    xfracmig    =  0.25     ! Fraction of mesozooplankton performing DVM
@@ -357,12 +357,12 @@
    grazrat    =  2.0      ! maximal zoo grazing rate
    bmetexc    =  .true.   ! Metabolic use of excess carbon
    resrat     =  0.02     ! exsudation rate of zooplankton
-   lmzrat     =  0.0      ! Linear mortality rate of zooplankton
+   lmzrat     =  0.01     ! Linear mortality rate of zooplankton
    mzrat      =  0.005    ! zooplankton mortality rate
    xprefc     =  0.15     ! Microzoo preference for POM
    xprefn     =  1.0      ! Microzoo preference for Nanophyto
    xprefp     =  1.0      ! Microzoo preference for picophyto
-   xprefd     =  0.8      ! Microzoo preference for Diatoms
+   xprefd     =  0.9      ! Microzoo preference for Diatoms
    xprefz     =  0.       ! Microzoo preference for microzooplankton
    xprefdz    =  0.4      ! microzoo preference for diazotrophs
    xthreshdia =  1.E-8    ! Diatoms feeding threshold for microzooplankton
@@ -373,15 +373,15 @@
    xthreshpoc =  1.E-8    ! POC feeding threshold for microzooplankton
    xthresh    =  3.E-7    ! Food threshold for feeding
    xkgraz     =  20.E-6   ! half saturation constant for grazing
-   epsher     =  0.5      ! Efficiency of microzoo growth
-   epshermin  =  0.5      ! Minimum efficiency of microzoo growth
+   epsher     =  0.55     ! Efficiency of microzoo growth
+   epshermin  =  0.55     ! Minimum efficiency of microzoo growth
    ssigma     =  0.5      ! Fraction excreted as semi-labile DOM
    srespir    =  0.15     ! Active respiration
    unassc     =  0.3      ! non assimilated fraction of C by zoo
    unassn     =  0.3      ! non assimilated fraction of N by zoo
    unassp     =  0.3      ! non assimilated fraction of P by zoo
    xsigma     =  0.5      ! Predation window size
-   xsigmadel  =  1.0      ! Predation window size scaling
+   xsigmadel  =  0.5      ! Predation window size scaling
 /
 !-----------------------------------------------------------------------
 &nampisfer     !   parameters for iron chemistry
@@ -413,9 +413,9 @@
    jcpoc     =  15        ! Number of lability classes
    rshape    =  1.0       ! Shape of the gamma function
 !                         ! ln_p6z
-   xremipc   =  0.035     ! remineralisation rate of POC
-   xremipn   =  0.03      ! remineralisation rate of PON
-   xremipp   =  0.035     ! remineralisation rate of POP
+   xremipc   =  0.03      ! remineralisation rate of POC
+   xremipn   =  0.033     ! remineralisation rate of PON
+   xremipp   =  0.033     ! remineralisation rate of POP
 /
 !-----------------------------------------------------------------------
 &nampisdiaz     !   Namelist parameters for diazotrophy
@@ -443,7 +443,7 @@
    ln_ironsed  =  .false.  ! boolean for Fe input from sediments
    ln_ironice  =  .false.  ! boolean for Fe input from sea ice
    ln_hydrofe  =  .false.  ! boolean for from hydrothermal vents
-   sedfeinput  =  1.E-9    ! Coastal release of Iron
+   sedfeinput  =  1.5E-9   ! Coastal release of Iron
    distcoast   =  5.E3     ! Distance off the coast for Iron from sediments
    mfrac       =  0.035    ! Fe mineral fraction of dust
    wdust       =  2.0      ! Dust sinking speed
