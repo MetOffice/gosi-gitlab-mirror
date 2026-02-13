@@ -152,7 +152,11 @@ CONTAINS
       CALL Agrif_step_child_adj(Agrif_Check_parent_bat)
       !
       DO WHILE( istp <= nitend .AND. nstop == 0 )
-         !
+         !GCJ
+         IF( Agrif_Root() .AND. lk_oasis ) THEN
+            CALL sbc_cpl_snd( istp ) 
+         ENDIF
+         !/GCJ
 #  if defined key_qco   ||   defined key_linssh
          CALL stp_MLF
 #  else

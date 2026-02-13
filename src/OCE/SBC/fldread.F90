@@ -7,6 +7,7 @@ MODULE fldread
    !!            3.0  !  2008-05  (S. Alderson)  Modified for Interpolation in memory from input grid to model grid
    !!            3.4  !  2013-10  (D. Delrosso, P. Oddo)  suppression of land point prior to interpolation
    !!                 !  12-2015  (J. Harle) Adding BDY on-the-fly interpolation
+   !!                 !  2026-02  (G. Ching-Johnson)   Modified for agrif coupling through file (Changed lines encased in !GCJ,!/GCJ comments)
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -139,7 +140,7 @@ MODULE fldread
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE fld_read( kt, kn_fsbc, sd, kit, pt_offset, Kmm )
+   SUBROUTINE fld_read( kt, kn_fsbc, sd, kit, pt_offset, Kmm, agrif_update )
       !!---------------------------------------------------------------------
       !!                    ***  ROUTINE fld_read  ***
       !!                   
@@ -154,6 +155,9 @@ CONTAINS
       INTEGER  , INTENT(in   )               ::   kt        ! ocean time step
       INTEGER  , INTENT(in   )               ::   kn_fsbc   ! sbc computation period (in time step) 
       TYPE(FLD), INTENT(inout), DIMENSION(:) ::   sd        ! input field related variables
+!GCJ
+      LOGICAL  , INTENT(in   ),              ::   agrif_update ! flag for update child field     
+!/GCJ 
       INTEGER  , INTENT(in   ), OPTIONAL     ::   kit       ! subcycle timestep for timesplitting option
       REAL(wp) , INTENT(in   ), OPTIONAL     ::   pt_offset ! provide fields at time other than "now"
       INTEGER  , INTENT(in   ), OPTIONAL     ::   Kmm       ! ocean time level index
@@ -200,6 +204,14 @@ CONTAINS
             !
             IF( TRIM(sd(jf)%clrootname) == 'NOT USED' )   CYCLE
             CALL fld_update( isecsbc, sd(jf), Kmm )
+!GCJ                                                       ! ============================ ! 
+            if (agrif_update .AND. .NOT. ll_firstcall):    ! agrif force field update/get
+            CALL iom_close(sd(jf)%num)                     ! ============================ ! 
+            CALL fld_clopn(sd(jf))                         ! reopen file, reloads field, includes current cpling time
+            iaa = sd(jf)%naa                               
+            sd(jf)%nrec(1, iaa) = sd(jf)%nrec(1, iaa) + 1  ! update record number/index to next time 
+            fld_get(sd(jf), Kmm)                           ! read data
+!/GCJ
             !
          END DO                                    ! --- end loop over field --- !
 
