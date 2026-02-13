@@ -80,17 +80,19 @@ CONTAINS
 
          ! Quadratic mortality of nano due to aggregation during
          ! blooms (Doney et al. 1996)
-         ! -----------------------------------------------------
+         ! Increased efficiency when highly limited due to EPS production
+         ! --------------------------------------------------------------
          zlim2   = xlimphy(ji,jj,jk) * xlimphy(ji,jj,jk)
          zlim1   = 0.0625 / ( 0.0625 + zlim2 ) * tr(ji,jj,jk,jpphy,Kbb) 
          zrespp  = wchln * 1.e6 * xstep * zlim1 * xdiss(ji,jj,jk) * zcompaph
 
          ! Phytoplankton linear mortality
          ! A michaelis-menten like term is introduced to avoid 
-         ! extinction of nanophyto in highly limited areas
-         ! ----------------------------------------------------
-         zlim1  = zlim1 / ( xkmort + tr(ji,jj,jk,jpphy,Kbb) ) 
-         ztortp = ( mpratn * tgfunc(ji,jj,jk) * zlim1 + 0.01 ) * xstep * zcompaph
+         ! extinction of phyto in highly limited areas
+         ! A background mortality set to 20% is applied to kill 
+         ! phytoplankton in the deep ocean
+         ! -----------------------------------------------------
+         ztortp = ( 0.8 * tr(ji,jj,jk,jpphy,Kbb) / ( xkmort + tr(ji,jj,jk,jpphy,Kbb) ) + 0.2 ) * mpratn * xstep * zcompaph
          zmortp = zrespp + ztortp
          
          !   Update the arrays TRA which contains the biological sources and sinks
@@ -148,30 +150,25 @@ CONTAINS
       !
       IF( ln_timing )   CALL timing_start('p4z_mort_diat')
       !
-      ! Aggregation term for diatoms is increased in case of nutrient
-      ! stress as observed in reality. The stressed cells become more
-      ! sticky and coagulate to sink quickly out of the euphotic zone
-      ! This is due to the production of EPS by stressed cells
-      ! -------------------------------------------------------------
-
       DO_3D( 0, 0, 0, 0, 1, jpkm1)
 
          zcompadi = MAX( ( tr(ji,jj,jk,jpdia,Kbb) - 1e-9), 0. )
 
-         ! Aggregation term for diatoms is increased in case of nutrient
-         ! stress as observed in reality. The stressed cells become more
-         ! sticky and coagulate to sink quickly out of the euphotic zone
-         ! ------------------------------------------------------------
+         ! Quadratic mortality of nano due to aggregation during
+         ! blooms (Doney et al. 1996)
+         ! Increased efficiency when highly limited due to EPS production
+         ! --------------------------------------------------------------
          zlim2   = xlimdia(ji,jj,jk) * xlimdia(ji,jj,jk)
          zlim1   = 0.0625 / ( 0.0625 + zlim2 ) * tr(ji,jj,jk,jpdia,Kbb)
          zrespp  = 1.e6 * xstep * wchld * zlim1 * xdiss(ji,jj,jk) * zcompadi
 
          ! Phytoplankton linear mortality
          ! A michaelis-menten like term is introduced to avoid 
-         ! extinction of diatoms in highly limited areas
-         !  ---------------------------------------------------
-         zlim1  = zlim1 / ( xkmort + tr(ji,jj,jk,jpdia,Kbb) )
-         ztortp = ( mpratd * tgfunc(ji,jj,jk) * zlim1 + 0.01 ) * xstep * zcompadi 
+         ! extinction of phyto in highly limited areas
+         ! A background mortality set to 20% is applied to kill 
+         ! phytoplankton in the deep ocean
+         ! -----------------------------------------------------
+         ztortp = ( 0.8 * tr(ji,jj,jk,jpdia,Kbb) / ( xkmort + tr(ji,jj,jk,jpdia,Kbb) ) + 0.2 ) * mpratd * xstep * zcompadi
          zmortp = zrespp + ztortp
 
          !   Update the arrays trends which contains the biological sources and sinks

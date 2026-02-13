@@ -83,7 +83,7 @@ CONTAINS
       INTEGER  :: ji, jj, jk
       REAL(wp) :: zcompadi, zcompaz , zcompaph, zcompapoc, zcompapon, zcompapop
       REAL(wp) :: zcompapi, zgraze  , zdenom, zdenom2, zfact, zfood, zfoodlim
-      REAL(wp) :: ztmp1, ztmp2, ztmp3, ztmp4, ztmp5, ztmptot
+      REAL(wp) :: ztmp1, ztmp2, ztmp3, ztmp4, ztmp5, ztmptot, zdenomwi, zfoodfe, zfoodn, zfoodp
       REAL(wp) :: zepsherf, zepshert, zepsherq, zepsherv, zrespirc, zrespirn, zrespirp, zbasresb, zbasresi
       REAL(wp) :: zgraztotc, zgraztotn, zgraztotp, zgraztotf, zbasresn, zbasresp, zbasresf
       REAL(wp) :: zgradoc, zgradon, zgradop, zgraref, zgradoct, zgradont, zgradopt, zgrareft
@@ -100,6 +100,7 @@ CONTAINS
       REAL(wp) :: zcompadz, ztmp6, zgrazdzc, zgrazdzn, zgrazdzp, zgrazdzf, zdiffdzn, zdiffdzp, zdiffdzd
       REAL(wp) :: zsizedzn, zsizedzp, zsizedzd
       REAL(wp), DIMENSION(A2D(0),jpk) :: zproportn, zproportd, zproportdz, zprodlig
+      REAL(wp), DIMENSION(A2D(0),jpk) :: zavaildia, zavailphy, zavaildzc
       REAL(wp), DIMENSION(:,:,:)  , ALLOCATABLE :: zgrazing, zfezoo, zzligprod
       CHARACTER (len=25) :: charout
       !!---------------------------------------------------------------------
@@ -131,10 +132,16 @@ CONTAINS
       ! -------------------------------------------------------------
       DO_3D( 0, 0, 0, 0, 1, jpkm1)
          IF ( tmask(ji,jj,jk) == 1 ) THEN
-            zproportd(ji,jj,jk)  = EXP( 0.067 - 0.033 * sized(ji,jj,jk)  * 6.0) / ( EXP( 0.067 -0.033 * 6.0 ) )
-            zproportn(ji,jj,jk)  = EXP( 0.131 - 0.047 * sizen(ji,jj,jk)  * 4.0) / ( EXP( 0.131 -0.047 * 4.0 ) )
-            zproportdz(ji,jj,jk) = EXP( 0.131 - 0.047 * sizedz(ji,jj,jk) * 4.0) / ( EXP( 0.131 -0.047 * 4.0 ) )
+            zavaildia(ji,jj,jk)  = (1.0 - (sized(ji,jj,jk)**1.6 - 1.0) / 14.0)
+            zavailphy(ji,jj,jk)  = (1.0 - (sizen(ji,jj,jk)**3.0 - 1.0) / 100.0)
+            zavaildzc(ji,jj,jk)  = (1.0 - (sizedz(ji,jj,jk)**3.0 - 1.0) / 100.0)
+            zproportd(ji,jj,jk)  = sized(ji,jj,jk)**(-0.48) * zavaildia(ji,jj,jk)
+            zproportn(ji,jj,jk)  = sizen(ji,jj,jk)**(-0.48) * zavailphy(ji,jj,jk)
+            zproportdz(ji,jj,jk) = sizedz(ji,jj,jk)**(-0.48) * zavaildzc(ji,jj,jk)
          ELSE
+            zavaildia(ji,jj,jk)  = 1.0
+            zavailphy(ji,jj,jk)  = 1.0
+            zavaildzc(ji,jj,jk)  = 1.0
             zproportn(ji,jj,jk)  = 1.0
             zproportd(ji,jj,jk)  = 1.0
             zproportdz(ji,jj,jk) = 1.0
@@ -171,18 +178,18 @@ CONTAINS
          !   Nanophyto and diatoms have a specific treatment with 
          !   teir preference decreasing with size.
          !   --------------------------------------------------------
-         zcompadi  = zproportd(ji,jj,jk)  * MAX( ( tr(ji,jj,jk,jpdia,Kbb) - xthreshdia ), 0.e0 )
-         zcompaph  = zproportn(ji,jj,jk) * MAX( ( tr(ji,jj,jk,jpphy,Kbb) - xthreshphy ), 0.e0 )
+         zcompadi  = zavaildia(ji,jj,jk)  * MAX( ( tr(ji,jj,jk,jpdia,Kbb) - xthreshdia ), 0.e0 )
+         zcompaph  = zavailphy(ji,jj,jk) * MAX( ( tr(ji,jj,jk,jpphy,Kbb) - xthreshphy ), 0.e0 )
+         zcompadz  = zavaildzc(ji,jj,jk) * MAX( ( tr(ji,jj,jk,jpdzc,Kbb) - xthreshdz ), 0.e0 )
          zcompaz   = MAX( ( tr(ji,jj,jk,jpzoo,Kbb) - xthreshzoo ), 0.e0 )
          zcompapi  = MAX( ( tr(ji,jj,jk,jppic,Kbb) - xthreshpic ), 0.e0 )
          zcompapoc = MAX( ( tr(ji,jj,jk,jppoc,Kbb) - xthreshpoc ), 0.e0 )
-         zcompadz  = zproportdz(ji,jj,jk) * MAX( ( tr(ji,jj,jk,jpdzc,Kbb) - xthreshdz ),0.e0 )      
-         zr_phy    = 1.0 / (tr(ji,jj,jk,jpphy,Kbb) + rtrn) 
+         zr_phy    = 1.0 / (tr(ji,jj,jk,jpphy,Kbb) + rtrn)
          zr_pic    = 1.0 / (tr(ji,jj,jk,jppic,Kbb) + rtrn)
          zr_dia    = 1.0 / (tr(ji,jj,jk,jpdia,Kbb) + rtrn)
          zr_dz     = 1.0 / (tr(ji,jj,jk,jpdzc,Kbb) + rtrn)
          zr_poc    = 1.0 / (tr(ji,jj,jk,jppoc,Kbb) + rtrn)
-         
+
          ! Microzooplankton grazing
          ! The total amount of food is the sum of all preys accessible to mesozooplankton 
          ! multiplied by their food preference
@@ -191,9 +198,36 @@ CONTAINS
          ! accumulation of food in the mesozoopelagic domain
          ! -------------------------------------------------------------------------------
          zfood     = xprefn * zcompaph + xprefc * zcompapoc + xprefd * zcompadi   &
+           &         + xprefz * zcompaz + xprefp * zcompapi + xprefdz * zcompadz
+         zfoodfe   = xprefn * zcompaph * tr(ji,jj,jk,jpnfe,Kbb) * zr_phy      &
+           &         + xprefc * zcompapoc * tr(ji,jj,jk,jpsfe,Kbb) * zr_poc   &
+           &         + xprefd * zcompadi * tr(ji,jj,jk,jpdfe,Kbb) * zr_dia    &
+           &         + xprefp * zcompapi * tr(ji,jj,jk,jppfe,Kbb) * zr_pic    &
+           &         + xprefdz * zcompadz * tr(ji,jj,jk,jpdzfe,Kbb) * zr_dz   &
+           &         + xprefz * zcompaz * feratz
+         zfoodn    = xprefn * zcompaph * tr(ji,jj,jk,jpnph,Kbb) * zr_phy      &
+           &         + xprefc * zcompapoc * tr(ji,jj,jk,jppon,Kbb) * zr_poc   &
+           &         + xprefd * zcompadi * tr(ji,jj,jk,jpndi,Kbb) * zr_dia    &
+           &         + xprefp * zcompapi * tr(ji,jj,jk,jpnpi,Kbb) * zr_pic    &
+           &         + xprefdz * zcompadz * tr(ji,jj,jk,jpndz,Kbb) * zr_dz   &
+           &         + xprefz * zcompaz * no3rat3
+         zfoodp    = xprefn * zcompaph * tr(ji,jj,jk,jppph,Kbb) * zr_phy      &
+           &         + xprefc * zcompapoc * tr(ji,jj,jk,jppop,Kbb) * zr_poc   &
+           &         + xprefd * zcompadi * tr(ji,jj,jk,jppdi,Kbb) * zr_dia    &
+           &         + xprefp * zcompapi * tr(ji,jj,jk,jpppi,Kbb) * zr_pic    &
+           &         + xprefdz * zcompadz * tr(ji,jj,jk,jppdz,Kbb) * zr_dz   &
+           &         + xprefz * zcompaz * po4rat3
+
+         zdenomwi  = MIN( zfood / ( xkgraz + zfood ), zfoodfe / ( xkgraz * feratz + zfoodfe ),  &
+           &         zfoodn / ( xkgraz + zfoodn ), zfoodp / ( xkgraz + zfoodp ) )
+
+         zcompadi  = zproportd(ji,jj,jk)  * MAX( ( tr(ji,jj,jk,jpdia,Kbb) - xthreshdia ), 0.e0 )
+         zcompaph  = zproportn(ji,jj,jk)  * MAX( ( tr(ji,jj,jk,jpphy,Kbb) - xthreshphy ), 0.e0 )
+         zcompadz  = zproportdz(ji,jj,jk) * MAX( ( tr(ji,jj,jk,jpdzc,Kbb) - xthreshdz ),0.e0 )
+         zfood     = xprefn * zcompaph + xprefc * zcompapoc + xprefd * zcompadi   &
          &           + xprefz * zcompaz + xprefp * zcompapi + xprefdz * zcompadz
          zfoodlim  = zfood - min(xthresh,0.5*zfood)
-         zdenom    = zfoodlim / ( xkgraz + zfoodlim )
+         zdenom    = zfoodlim / ( xkgraz + zfood )
          zgraze    = grazrat * zfact * (1. - nitrfac(ji,jj,jk)) 
 
          ! An active switching parameterization is used here.
@@ -208,7 +242,7 @@ CONTAINS
          ! have low abundance, .i.e. zooplankton become less specific 
          ! to avoid starvation.
          ! ----------------------------------------------------------
-         zdenom2 = zdenom * zdenom
+         zdenom2 = zdenomwi * zdenomwi
          zsigma = 1.0 - zdenom2/( 0.05 * 0.05 + zdenom2 )
          zsigma = xsigma + xsigmadel * zsigma
          zsigma2 = 2.0 * zsigma * zsigma
@@ -502,12 +536,12 @@ CONTAINS
          WRITE(numout,*) '    Maximum additional width of the grazing window  xsigmadel   =', xsigmadel
       ENDIF
       !
-      rlogfactpn  = LOG(0.7 / 3.0)
-      rlogfactdn  = LOG(3.0 / 5.0)
-      rlogfactdp  = LOG(0.7 / 5.0)
-      rlogfactdzp = LOG(3.0 / 0.7)
-      rlogfactdzn = LOG(3.0 / 3.0)
-      rlogfactdzd = LOG(3.0 / 5.0)
+      rlogfactpn  = LOG(0.8 / 4.0)
+      rlogfactdn  = LOG(4.0 / 6.0)
+      rlogfactdp  = LOG(0.8 / 6.0)
+      rlogfactdzp = LOG(4.0 / 0.8)
+      rlogfactdzn = LOG(4.0 / 6.0)
+      rlogfactdzd = LOG(4.0 / 6.0)
       !
    END SUBROUTINE p6z_micro_init
    

@@ -84,8 +84,8 @@ CONTAINS
       DO_3D( 0, 0, 0, 0, 1, jpkm1)
          !
          zlight  =  ( 1.- EXP( -etot_ndcy(ji,jj,jk) / diazolight ) ) * ( 1. - fr_i(ji,jj) )
-         zsoufer = zlight * 1.5E-11**2 / ( 1.5E-11**2 + biron(ji,jj,jk)**2 )
-         tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + 0.01 * 4E-10 * zsoufer * rfact2 / rday
+         zsoufer = zlight * 2E-11**2 / ( 2E-11**2 + biron(ji,jj,jk)**2 )
+         tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + 0.02 * 4E-10 * zsoufer * rfact2 / rday
          !
       END_3D
       !

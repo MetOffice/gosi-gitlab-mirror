@@ -308,7 +308,7 @@ CONTAINS
          ! Bacteries are obliged to take up iron from the water. Some
          ! studies (especially at Papa) have shown this uptake to be significant
          ! ----------------------------------------------------------
-         zbactfer = feratb * 0.4_wp * xstep * tgfunc(ji,jj,jk) * xlimbacl(ji,jj,jk) * biron(ji,jj,jk)    &
+         zbactfer = feratb * 0.45_wp * xstep * tgfunc(ji,jj,jk) * xlimbacl(ji,jj,jk) * biron(ji,jj,jk)    &
            &        / ( xkferb + biron(ji,jj,jk) ) * zdepeff(ji,jj,jk) * zdepbac(ji,jj,jk)
          
          ! Only the transfer of iron from its dissolved form to particles
