@@ -123,7 +123,7 @@
         <file id="file303" name_suffix="_M2detided_grid_V" description="M2-detided ocean V-grid variables">
           <field id="diadetide_voce" field_ref="diadetide_weight_grid_V_3D" operation="accumulate"> this * voce </field>
         </file>
-      </field_group>
+      </file_group>
 
     </file_definition>
 
