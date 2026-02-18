@@ -154,13 +154,13 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER  , INTENT(in   )               ::   kt        ! ocean time step
       INTEGER  , INTENT(in   )               ::   kn_fsbc   ! sbc computation period (in time step) 
-      TYPE(FLD), INTENT(inout), DIMENSION(:) ::   sd        ! input field related variables
-!GCJ
-      LOGICAL  , INTENT(in   ),              ::   agrif_update ! flag for update child field     
-!/GCJ 
+      TYPE(FLD), INTENT(inout), DIMENSION(:) ::   sd        ! input field related variables 
       INTEGER  , INTENT(in   ), OPTIONAL     ::   kit       ! subcycle timestep for timesplitting option
       REAL(wp) , INTENT(in   ), OPTIONAL     ::   pt_offset ! provide fields at time other than "now"
       INTEGER  , INTENT(in   ), OPTIONAL     ::   Kmm       ! ocean time level index
+!GCJ
+      LOGICAL  , INTENT(in   ), OPTIONAL     ::   agrif_update ! flag for update child field     
+!/GCJ
       !!
       INTEGER  ::   imf          ! size of the structure sd
       INTEGER  ::   jf           ! dummy indices
@@ -171,6 +171,9 @@ CONTAINS
       REAL(wp) ::   ztinta       ! ratio applied to after  records when doing time interpolation
       REAL(wp) ::   ztintb       ! ratio applied to before records when doing time interpolation
       CHARACTER(LEN=1000) ::   clfmt  ! write format
+!GCJ
+      LOGICAL  ::   agrif_update_flag ! flag for update child field     
+!/GCJ
       !!---------------------------------------------------------------------
       ll_firstcall = kt == nit000
       IF( PRESENT(kit) )   ll_firstcall = ll_firstcall .and. kit == 1
@@ -179,6 +182,11 @@ CONTAINS
       ELSE                                     ;   zt_offset = 0.
       ENDIF
       IF( PRESENT(pt_offset) )   zt_offset = pt_offset
+
+!GCJ  
+      agrif_update_flag = .FALSE.
+      IF (PRESENT(agrif_update)) agrif_update_flag = .TRUE.
+!/GCJ
 
       ! Note that all varibles starting by nsec_* are shifted time by +1/2 time step to be centrered
       IF( PRESENT(kit) ) THEN   ! ignore kn_fsbc in this case
@@ -205,7 +213,7 @@ CONTAINS
             IF( TRIM(sd(jf)%clrootname) == 'NOT USED' )   CYCLE
             CALL fld_update( isecsbc, sd(jf), Kmm )
 !GCJ                                                       ! ============================ ! 
-            if (agrif_update .AND. .NOT. ll_firstcall):    ! agrif force field update/get
+            IF (agrif_update_flag .AND. .NOT. ll_firstcall):    ! agrif force field update/get
             CALL iom_close(sd(jf)%num)                     ! ============================ ! 
             CALL fld_clopn(sd(jf))                         ! reopen file, reloads field, includes current cpling time
             iaa = sd(jf)%naa                               
