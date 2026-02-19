@@ -3,9 +3,8 @@ MODULE sbcflx
    !!                       ***  MODULE  sbcflx  ***
    !! Ocean forcing:  momentum, heat and freshwater flux formulation
    !!=====================================================================
-   !! History :  1.0  !  2006-06  (G. Madec)           Original code
-   !!            3.3  !  2010-10  (S. Masson)          add diurnal cycle
-   !!                 !  2026-02  (G. Ching-Johnson)   add Agrif Coupling through file (Changed lines encased in !GCJ,!/GCJ comments)
+   !! History :  1.0  !  2006-06  (G. Madec)  Original code
+   !!            3.3  !  2010-10  (S. Masson)  add diurnal cycle
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -32,14 +31,11 @@ MODULE sbcflx
 
    INTEGER , PARAMETER ::   jp_utau = 1   ! index of wind stress (i-component) file
    INTEGER , PARAMETER ::   jp_vtau = 2   ! index of wind stress (j-component) file
-   INTEGER , PARAMETER ::   jp_qtot = 3   ! index of non-solar heat file                 !GCJ AGRIF change -> instead of total (nonsolar - solar)  
+   INTEGER , PARAMETER ::   jp_qtot = 3   ! index of total (non solar+solar) heat file
    INTEGER , PARAMETER ::   jp_qsr  = 4   ! index of solar heat file
-!GCJ   INTEGER , PARAMETER ::   jp_emp  = 5   ! index of evaporation-precipation file
-   !!INTEGER , PARAMETER ::   jp_sfx  = 6   ! index of salt flux flux
-   INTEGER, PARAMETER  ::   jp_evap = 5   ! index of evaporation
-   INTEGER, PARAMETER  ::   jp_rain = 6   ! index of precipatation
-   INTEGER , PARAMETER ::   jpfld   = 6   ! maximum number of files to read
-!/GCJ
+   INTEGER , PARAMETER ::   jp_emp  = 5   ! index of evaporation-precipation file
+ !!INTEGER , PARAMETER ::   jp_sfx  = 6   ! index of salt flux flux
+   INTEGER , PARAMETER ::   jpfld   = 5 !! 6 ! maximum number of files to read
    TYPE(FLD), ALLOCATABLE, DIMENSION(:) ::   sf    ! structure of input fields (file informations, fields read)
 
    !! * Substitutions
@@ -76,7 +72,7 @@ CONTAINS
       !!              - qns         non solar heat flux including heat flux due to emp
       !!              - qsr         solar heat flux
       !!              - emp         upward mass flux (evap. - precip.)
-      !!  (not used)  - sfx         salt flux; set to zero at nit000 but possibly non-zero
+      !!              - sfx         salt flux; set to zero at nit000 but possibly non-zero
       !!                            if ice
       !!----------------------------------------------------------------------
       INTEGER, INTENT(in) ::   kt   ! ocean time step
@@ -91,11 +87,8 @@ CONTAINS
       !!
       CHARACTER(len=100) ::  cn_dir                               ! Root directory for location of flx files
       TYPE(FLD_N), DIMENSION(jpfld) ::   slf_i                    ! array of namelist information structures
-!GCJ      TYPE(FLD_N) ::   sn_utau, sn_vtau, sn_qtot, sn_qsr, sn_emp !!, sn_sfx ! informations about the fields to be read
-!         NAMELIST/namsbc_flx/ cn_dir, sn_utau, sn_vtau, sn_qtot, sn_qsr, sn_emp !!, sn_sfx        
-      TYPE(FLD_N) ::   sn_utau, sn_vtau, sn_qtot, sn_qsr, sn_evap, sn_rain!!, sn_sfx ! informations about the fields to be read
-      NAMELIST/namsbc_flx/ cn_dir, sn_utau, sn_vtau, sn_qtot, sn_qsr, sn_evap, sn_rain !!, sn_sfx
-!/GCJ
+      TYPE(FLD_N) ::   sn_utau, sn_vtau, sn_qtot, sn_qsr, sn_emp !!, sn_sfx ! informations about the fields to be read
+      NAMELIST/namsbc_flx/ cn_dir, sn_utau, sn_vtau, sn_qtot, sn_qsr, sn_emp !!, sn_sfx
       !!---------------------------------------------------------------------
       !
       IF( kt == nit000 ) THEN                ! First call kt=nit000
@@ -114,9 +107,7 @@ CONTAINS
          !                                         ! store namelist information in an array
          slf_i(jp_utau) = sn_utau   ;   slf_i(jp_vtau) = sn_vtau
          slf_i(jp_qtot) = sn_qtot   ;   slf_i(jp_qsr ) = sn_qsr
-!GCJ         slf_i(jp_emp ) = sn_emp !! ;   slf_i(jp_sfx ) = sn_sfx
-         slf_i(jp_evap) = sn_evap   ;   slf_i(jp_rain) = sn_rain
-!/GCJ
+         slf_i(jp_emp ) = sn_emp !! ;   slf_i(jp_sfx ) = sn_sfx
          !
          ALLOCATE( sf(jpfld), STAT=ierror )        ! set sf structure
          IF( ierror > 0 ) THEN
@@ -158,10 +149,8 @@ CONTAINS
          DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )                  ! set the ocean fluxes from read fields
             utau(ji,jj) =   sf(jp_utau)%fnow(ji,jj,1)                              * umask(ji,jj,1)
             vtau(ji,jj) =   sf(jp_vtau)%fnow(ji,jj,1)                              * vmask(ji,jj,1)
-!GCJ            qns (ji,jj) = ( sf(jp_qtot)%fnow(ji,jj,1) - sf(jp_qsr)%fnow(ji,jj,1) ) * tmask(ji,jj,1)
-            qns (ji,jj) =   sf(jp_qtot)%fnow(ji,jj,1)                              * tmask(ji,jj,1)         !qtot is read in as non-solar heat flux (AGRIF)
-            emp (ji,jj) =   sf(jp_evap)%fnow(ji,jj,1) - sf(jp_rain)%fnow(ji,jj,1)  * tmask(ji,jj,1)
-!/GCJ            !!emp (ji,jj) =   sf(jp_emp )%fnow(ji,jj,1)                              * tmask(ji,jj,1)
+            qns (ji,jj) = ( sf(jp_qtot)%fnow(ji,jj,1) - sf(jp_qsr)%fnow(ji,jj,1) ) * tmask(ji,jj,1)
+            emp (ji,jj) =   sf(jp_emp )%fnow(ji,jj,1)                              * tmask(ji,jj,1)
             !!sfx (ji,jj) = sf(jp_sfx )%fnow(ji,jj,1)                              * tmask(ji,jj,1)
          END_2D
          !                                                        ! add to qns the heat due to e-p
@@ -174,9 +163,7 @@ CONTAINS
             DO jf = 1, jpfld
                IF( jf == jp_utau .OR. jf == jp_vtau )   zfact =     1.
                IF( jf == jp_qtot .OR. jf == jp_qsr  )   zfact =     0.1
-!GCJ               IF( jf == jp_emp                     )   zfact = 86400.
-               IF( jf == jp_evap .OR. jf == jp_rain )   zfact = 86400.
-!/GCJ
+               IF( jf == jp_emp                     )   zfact = 86400.
                WRITE(numout,*)
                WRITE(numout,*) ' day: ', ndastp , TRIM(sf(jf)%clvar), ' * ', zfact
             END DO
