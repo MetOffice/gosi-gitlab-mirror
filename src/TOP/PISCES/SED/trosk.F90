@@ -130,15 +130,14 @@ SUBROUTINE rosk(ROSM,N,X,Y,XEND,H, RTOL,ATOL,                  &
 !          DECLARATIONS
 ! *** *** *** *** *** *** *** *** *** *** *** *** ***
       INTEGER, INTENT(in) :: ROSM, N, MLJAC, MUJAC
-      REAL(wp), DIMENSION(1), INTENT(in) :: ATOL, RTOL
+      REAL(wp), DIMENSION(N), INTENT(in) :: ATOL, RTOL
       INTEGER, INTENT(inout) :: IDID
       INTEGER , DIMENSION(jpoce,3), INTENT(out) :: ISTAT
-      REAL(wp), INTENT(in) :: X, XEND
-      REAL(wp), INTENT(out), DIMENSION(jpoce, N) :: Y
-      REAL(wp), INTENT(out), DIMENSION(jpoce) :: H
 
       INTEGER :: NMAX, LDJAC, LDE
-      REAL(wp) :: UROUND, HMAX, FAC1, FAC2, FACREJ
+      REAL(wp) :: UROUND, HMAX, XEND, FAC1, FAC2, FACREJ, X
+      REAL(wp), DIMENSION(jpoce) :: H
+      REAL(wp), DIMENSION(jpoce, N) :: Y
       EXTERNAL JAC
 ! --------------------------------------------------------------------
 ! --- COMMON STAT CAN BE USED FOR STATISTICS
@@ -167,7 +166,7 @@ SUBROUTINE rosk(ROSM,N,X,Y,XEND,H, RTOL,ATOL,                  &
 ! -------- NMAX , THE MAXIMAL NUMBER OF STEPS -----
       NMAX = 100000
 ! -------- UROUND   SMALLEST NUMBER SATISFYING 1.D0+UROUND>1.D0
-      UROUND = 1.E-16_wp
+      UROUND = 1.E-16
 ! -------- MAXIMAL STEP SIZE
       HMAX = XEND-X
 ! -------  FAC1,FAC2     PARAMETERS FOR STEP SIZE SELECTION
@@ -214,7 +213,7 @@ SUBROUTINE rosk(ROSM,N,X,Y,XEND,H, RTOL,ATOL,                  &
 
       END SUBROUTINE rosk
 
-      SUBROUTINE RO2COR(N,X,Y,XEND,HMAX,H,RTOL,ATOL,JAC,      &
+      SUBROUTINE RO2COR(N,X,Y,XEND,HMAX,H,RTOL,ATOL,JAC,         &
         MLJAC,MUJAC,IDID, NMAX,UROUND,FAC1,FAC2,FACREJ,       &
         LFJAC,LE)
 ! ----------------------------------------------------------
@@ -224,24 +223,16 @@ SUBROUTINE rosk(ROSM,N,X,Y,XEND,H, RTOL,ATOL,                  &
 ! ----------------------------------------------------------
 !         DECLARATIONS
 ! ----------------------------------------------------------
-      REAL(wp), INTENT(in), DIMENSION(1) :: RTOL,ATOL
-      REAL(wp), INTENT(in) :: X,XEND,HMAX,UROUND,FAC1,FAC2,FACREJ
-      REAL(wp), INTENT(out), DIMENSION(jpoce,N) :: Y
-      REAL(wp), INTENT(out), DIMENSION(jpoce) :: H
-      INTEGER , INTENT(in) :: N,MLJAC,MUJAC,NMAX,LFJAC,LE
-      INTEGER , INTENT(out) :: IDID
-      EXTERNAL JAC
-      !
-      REAL(wp) :: A21,C21,B1,B2,E1,E2,DGAMMA
-      REAL(wp) :: FACT,S,SK
-      REAL(wp), DIMENSION(jpoce,N) :: YNEW, DY1, DY, AK1, AK2
+      IMPLICIT REAL(wp) (A-H,O-Z)
+      IMPLICIT INTEGER (I-N)
+
+      REAL(wp) :: ATOL(N),RTOL(N)
+      REAL(wp), DIMENSION(jpoce,N) :: Y, YNEW, DY1, DY, AK1, AK2
       REAL(wp), DIMENSION(jpoce,LFJAC,N) :: FJAC
       REAL(wp), DIMENSION(jpoce, LE, N)  :: E
-      REAL(wp), DIMENSION(jpoce) :: HNEW, XI
+      REAL(wp), DIMENSION(jpoce) :: H, HNEW, XI
       REAL(wp), DIMENSION(jpoce) :: HC21
       REAL(wp), DIMENSION(jpoce) :: ERR, FACT1
-      INTEGER :: I, I1, I2, J, ji, jk, jn, js
-      INTEGER :: MBJAC, MDIAG, MLE, MUE
       INTEGER, DIMENSION(jpoce,N) :: IP
       LOGICAL, DIMENSION(jpoce) :: REJECT,RJECT2
       INTEGER, DIMENSION(jpoce) :: ACCMASK, ENDMASK, ERRMASK
@@ -259,7 +250,7 @@ SUBROUTINE rosk(ROSM,N,X,Y,XEND,H, RTOL,ATOL,                  &
       CALL ROS2 (A21,C21,B1,B2,E1,E2,DGAMMA)
 ! --- INITIAL PREPARATIONS
       DO ji = 1, jpoce
-         H(ji)=MIN(MAX(1.E-10_wp,H(ji)),HMAX)
+         H(ji)=MIN(MAX(1.E-10,H(ji)),HMAX)
          REJECT(ji)=.FALSE.
          XI(ji) = X
       END DO
@@ -463,26 +454,17 @@ SUBROUTINE rosk(ROSM,N,X,Y,XEND,H, RTOL,ATOL,                  &
 ! ----------------------------------------------------------
 ! ----------------------------------------------------------
 !         DECLARATIONS
-! ----------------------------------------------------------     
-      REAL(wp), INTENT(in), DIMENSION(1) :: RTOL,ATOL
-      REAL(wp), INTENT(in) :: X,XEND,HMAX,UROUND,FAC1,FAC2,FACREJ
-      REAL(wp), INTENT(out), DIMENSION(jpoce,N) :: Y
-      REAL(wp), INTENT(out), DIMENSION(jpoce) :: H
-      INTEGER , INTENT(in) :: N,MLJAC,MUJAC,NMAX,LFJAC,LE
-      INTEGER , INTENT(out) :: IDID
-      EXTERNAL JAC
-      !
-      REAL(wp) :: A21,A31,A32,A41,A42,A43,C21,C31,C32,C41,C42,C43,  &
-     &            B1,B2,B3,B4,E1,E2,E3,E4,DGAMMA
-      REAL(wp) :: FACT,S,SK
-      REAL(wp), DIMENSION(jpoce,N) :: YNEW, DY1, DY, AK1, AK2, AK3, AK4
+! ----------------------------------------------------------
+      IMPLICIT REAL(wp) (A-H,O-Z)
+      IMPLICIT INTEGER (I-N)
+
+      REAL(wp) :: ATOL(N),RTOL(N)
+      REAL(wp), DIMENSION(jpoce,N) :: Y, YNEW, DY1, DY, AK1, AK2, AK3, AK4
       REAL(wp), DIMENSION(jpoce,LFJAC,N) :: FJAC
       REAL(wp), DIMENSION(jpoce, LE, N)  :: E
-      REAL(wp), DIMENSION(jpoce) :: HNEW, XI
+      REAL(wp), DIMENSION(jpoce) :: H, HNEW, XI
       REAL(wp), DIMENSION(jpoce) :: HC21, HC31, HC32, HC41, HC42, HC43
       REAL(wp), DIMENSION(jpoce) :: ERR, FACT1
-      INTEGER :: I, I1, I2, J, ji, jk, jn, js
-      INTEGER :: MBJAC, MDIAG, MLE, MUE
       INTEGER, DIMENSION(jpoce,N) :: IP
       LOGICAL, DIMENSION(jpoce) :: REJECT,RJECT2
       INTEGER, DIMENSION(jpoce) :: ACCMASK, ENDMASK, ERRMASK
@@ -502,7 +484,7 @@ SUBROUTINE rosk(ROSM,N,X,Y,XEND,H, RTOL,ATOL,                  &
 
 ! --- INITIAL PREPARATIONS
       DO ji = 1, jpoce
-         H(ji)=MIN(MAX(1.E-10_wp,H(ji)),HMAX)
+         H(ji)=MIN(MAX(1.E-10,H(ji)),HMAX)
          REJECT(ji)=.FALSE.
          XI(ji) = X
       END DO
@@ -761,28 +743,19 @@ SUBROUTINE rosk(ROSM,N,X,Y,XEND,H, RTOL,ATOL,                  &
 ! ----------------------------------------------------------
 !         DECLARATIONS
 ! ----------------------------------------------------------
-      REAL(wp), INTENT(in), DIMENSION(1) :: RTOL,ATOL
-      REAL(wp), INTENT(in) :: X,XEND,HMAX,UROUND,FAC1,FAC2,FACREJ
-      REAL(wp), INTENT(out), DIMENSION(jpoce,N) :: Y
-      REAL(wp), INTENT(out), DIMENSION(jpoce) :: H
-      INTEGER , INTENT(in) :: N,MLJAC,MUJAC,NMAX,LFJAC,LE
-      INTEGER , INTENT(out) :: IDID
-      EXTERNAL JAC
-      !
-      REAL(wp) :: A21,A31,A32,A41,A42,A43,A51,A52,A53,A54,A61,A62,A63,  &
-         &        A64,A65,C21,C31,C32,C41,C42,C43,C51,C52,C53,C54,C61,C62,C63,  &
-         &        C64,C65,B1,B2,B3,B4,B5,B6,E1,E2,E3,E4,E5,E6,DGAMMA
-      REAL(wp) :: FACT,S,SK
-      REAL(wp), DIMENSION(jpoce,N) :: YNEW, DY1, DY, AK1, AK2, AK3, AK4, AK5, AK6
+      IMPLICIT REAL(wp) (A-H,O-Z)
+      IMPLICIT INTEGER (I-N)
+
+      REAL(wp) :: ATOL(N),RTOL(N)
+      REAL(wp), DIMENSION(jpoce,N) :: Y, YNEW, DY1, DY, AK1, AK2, AK3, AK4
+      REAL(wp), DIMENSION(jpoce,N) :: AK5, AK6
       REAL(wp), DIMENSION(jpoce,LFJAC,N) :: FJAC
       REAL(wp), DIMENSION(jpoce, LE, N)  :: E
-      REAL(wp), DIMENSION(jpoce) :: HNEW, XI
+      REAL(wp), DIMENSION(jpoce) :: H, HNEW, XI
       REAL(wp), DIMENSION(jpoce) :: HC21, HC31, HC32, HC41, HC42, HC43
       REAL(wp), DIMENSION(jpoce) :: HC51, HC52, HC53, HC54, HC61, HC62
       REAL(wp), DIMENSION(jpoce) :: HC63, HC64, HC65
       REAL(wp), DIMENSION(jpoce) :: ERR, FACT1
-      INTEGER :: I, I1, I2, J, ji, jk, jn, js
-      INTEGER :: MBJAC, MDIAG, MLE, MUE
       INTEGER, DIMENSION(jpoce,N) :: IP
       LOGICAL, DIMENSION(jpoce) :: REJECT,RJECT2
       INTEGER, DIMENSION(jpoce) :: ACCMASK, ENDMASK, ERRMASK
@@ -800,7 +773,7 @@ SUBROUTINE rosk(ROSM,N,X,Y,XEND,H, RTOL,ATOL,                  &
 
 ! --- INITIAL PREPARATIONS
       DO ji = 1, jpoce
-         H(ji) = MIN(MAX(1.E-10_wp,H(ji)),HMAX)
+         H(ji) = MIN(MAX(1.E-10,H(ji)),HMAX)
          REJECT(ji) = .FALSE.
          XI(ji) = X
       END DO
@@ -1076,8 +1049,8 @@ SUBROUTINE rosk(ROSM,N,X,Y,XEND,H, RTOL,ATOL,                  &
       REAL(wp), INTENT(out) :: DGAMMA
 
          DGAMMA= 1.0 + 1.0/SQRT(2.)
-         A21=1._wp/DGAMMA
-         C21=-2._wp/DGAMMA
+         A21=1.D0/DGAMMA
+         C21=-2.D0/DGAMMA
          B1=3./2./DGAMMA
          B2=1./2./DGAMMA
          E1=1./2./DGAMMA
