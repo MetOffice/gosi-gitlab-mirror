@@ -220,8 +220,8 @@ CONTAINS
          IF( ln_zdfosm ) CALL ctl_stop( 'zdf_phy_init: the combination of ice-shelf cavities and the OSMOSIS scheme is not supported' )
       ENDIF
       !                                ! shear production term flag
-      IF( ln_zdfcst .OR. ln_zdfosm ) THEN   ;   l_zdfsh2 = .FALSE.
-      ELSE                                  ;   l_zdfsh2 = .TRUE.
+      IF( ln_zdfcst .OR. ln_zdfosm .OR. ln_zdfric ) THEN   ;   l_zdfsh2 = .FALSE.
+      ELSE                                                 ;   l_zdfsh2 = .TRUE.
       ENDIF
       !                          !== Mass Flux Convectiive algorithm  ==!
       IF( ln_zdfmfc )   CALL zdf_mfc_init       ! Convection computed with eddy diffusivity mass flux
