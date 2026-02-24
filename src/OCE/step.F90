@@ -95,6 +95,10 @@ CONTAINS
          IF( Agrif_Root() .and. lwp)   WRITE(*,*) '---'
          IF(lwp)   WRITE(*,*) 'Grid Number', Agrif_Fixed(),' time step ', kstp, 'int tstep', Agrif_NbStepint()
       ENDIF
+!GCJ
+      IF (Agrif_Root()) THEN ; WRITE(numout,*) '============================ PARENT STEP ============================'
+      ELSE                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' STEP ========================='  
+!/GCJ    
       IF( kstp == nit000 + 1 )   lk_agrif_fstep = .FALSE.
 # if defined key_xios
       IF( Agrif_Nbstepint() == 0 )   CALL iom_swap( cxios_context )

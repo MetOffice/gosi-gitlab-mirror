@@ -110,6 +110,8 @@ CONTAINS
       !
       IF(lwp) THEN
          WRITE(numout,*)
+         IF (Agrif_Root()) THEN ; WRITE(numout,*) '============================ PARENT SBC INIT ==========================='
+         ELSE                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' SBC INIT ========================='
          WRITE(numout,*) 'sbc_init : surface boundary condition setting'
          WRITE(numout,*) '~~~~~~~~ '
       ENDIF

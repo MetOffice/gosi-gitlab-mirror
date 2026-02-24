@@ -31,6 +31,8 @@ MODULE nemogcm
    !!            3.6  ! 2012-05  (C. Calone, J. Simeon, G. Madec, C. Ethe) Add grid coarsening
    !!             -   ! 2014-12  (G. Madec) remove KPP scheme and cross-land advection (cla)
    !!            4.0  ! 2016-10  (G. Madec, S. Flavoni)  domain configuration / user defined interface
+   !!                 ! 2026-02  (G. Ching-Johnson) Modified for agrif coupling one-way through oasis (Changed lines encased in !GCJ,!/GCJ comments)
+
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -152,11 +154,13 @@ CONTAINS
       CALL Agrif_step_child_adj(Agrif_Check_parent_bat)
       !
       DO WHILE( istp <= nitend .AND. nstop == 0 )
-         !GCJ
+!GCJ
          IF( Agrif_Root() .AND. lk_oasis ) THEN
+            IF (Agrif_Root()) THEN ; WRITE(numout,*) '============================ PARENT SEND============================'
+            ELSE                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' SEND ========================='
             CALL sbc_cpl_snd( istp ) 
          ENDIF
-         !/GCJ
+!/GCJ
 #  if defined key_qco   ||   defined key_linssh
          CALL stp_MLF
 #  else
@@ -325,6 +329,10 @@ CONTAINS
       lwp = (narea == 1) .OR. sn_cfctl%l_oceout    ! control of all listing output print
       !
       IF(lwp) THEN                      ! open listing units
+!GCJ
+         IF (Agrif_Root()) THEN ; WRITE(numout,*) '============================ PARENT NEMO INIT============================'
+         ELSE                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' NEMO INIT ========================='
+!/GCJ
          !
          IF( .NOT. lwm )   &            ! alreay opened for narea == 1
             &            CALL ctl_opn( numout, 'ocean.output', 'REPLACE', 'FORMATTED', 'SEQUENTIAL', -1, -1, .FALSE., narea )
