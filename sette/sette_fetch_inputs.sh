@@ -8,7 +8,8 @@
 #########################################################################################
 #
 # LOAD param variable ( only FORCING_DIR required)
-  . ./param.cfg
+  . ./param.default
+  [ -f ./param.cfg ] && . ./param.cfg || echo "warning: \"param.cfg\" file not found; SETTE will use default paramaters from \"param.default\" file"
   if [ $# -gt 0 ]; then
     while getopts lh option ; do 
        case $option in

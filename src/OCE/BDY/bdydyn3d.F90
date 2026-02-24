@@ -71,10 +71,7 @@ CONTAINS
             CASE('neumann')     ;   CALL bdy_dyn3d_nmn( puu, pvv, Kaa, idx_bdy(ib_bdy), ib_bdy, llrim0 )
             CASE DEFAULT        ;   CALL ctl_stop( 'bdy_dyn3d : unrecognised option for open boundaries for baroclinic velocities' )
             END SELECT
-         END DO
-         !
-         IF( ir == 1 ) CYCLE   ! at least 2 halos will be corrected -> no need to correct rim 1 before rim 0
-         DO ib_bdy=1, nb_bdy
+            !
             SELECT CASE( cn_dyn3d(ib_bdy) )
             CASE('orlanski', 'orlanski_npo')
                llsend2(:) = llsend2(:) .OR. lsend_bdyolr(ib_bdy,2,:,ir)   ! possibly every direction, U points
@@ -96,13 +93,19 @@ CONTAINS
             END SELECT
          END DO
          !
-         IF( ANY(llsend2) .OR. ANY(llrecv2) ) THEN   ! if need to send/recv in at least one direction
-            CALL lbc_lnk( 'bdydyn2d', puu(:,:,:,Kaa), 'U', -1.0_wp, kfillmode=jpfillnothing ,lsend=llsend2, lrecv=llrecv2 )
-         END IF
-         IF( ANY(llsend3) .OR. ANY(llrecv3) ) THEN   ! if need to send/recv in at least one direction
-            CALL lbc_lnk( 'bdydyn2d', pvv(:,:,:,Kaa), 'V', -1.0_wp, kfillmode=jpfillnothing ,lsend=llsend3, lrecv=llrecv3 )
-         END IF
       END DO   ! ir
+      !
+      DO ib_bdy=1, nb_bdy
+         llsend2(:) = llsend2(:) .OR. lsend_bdyper(ib_bdy,2,:)   ;   llrecv2(:) = llrecv2(:) .OR. lrecv_bdyper(ib_bdy,2,:)
+         llsend3(:) = llsend3(:) .OR. lsend_bdyper(ib_bdy,3,:)   ;   llrecv3(:) = llrecv3(:) .OR. lrecv_bdyper(ib_bdy,3,:)
+      END DO
+      ! at least 2 halos will be corrected -> no need to correct rim 1 before rim 0
+      IF( ANY(llsend2) .OR. ANY(llrecv2) ) THEN   ! if need to send/recv in at least one direction
+         CALL lbc_lnk( 'bdydyn2d', puu(:,:,:,Kaa), 'U', -1.0_wp, kfillmode=jpfillnothing ,lsend=llsend2, lrecv=llrecv2 )
+      END IF
+      IF( ANY(llsend3) .OR. ANY(llrecv3) ) THEN   ! if need to send/recv in at least one direction
+         CALL lbc_lnk( 'bdydyn2d', pvv(:,:,:,Kaa), 'V', -1.0_wp, kfillmode=jpfillnothing ,lsend=llsend3, lrecv=llrecv3 )
+      END IF
       !
    END SUBROUTINE bdy_dyn3d
 

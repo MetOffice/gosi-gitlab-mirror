@@ -61,10 +61,10 @@ CONTAINS
       REAL(wp) ::   zscave, zaggdfea, zaggdfeb, ztrc, zdust, zklight
       REAL(wp) ::   ztfe, zxlam, zaggliga, zaggligb
       REAL(wp) ::   zhplus, zhplus2, zhplus3
-      REAL(wp) ::   zprecip, zprecipno3,  zconsfe, za1, zfel1
-      REAL(wp) ::   zrfact2
+      REAL(wp) ::   zprecip, zprecipno3,  zconsfe, za1, zoxy, zoxyrat
+      REAL(wp) ::   zrfact2, zscavepoc, zscavegoc
       CHARACTER (len=25) :: charout
-      REAL(wp), DIMENSION(A2D(0),jpk) ::   zFe3, ztotlig,  zfecoll
+      REAL(wp), DIMENSION(A2D(0),jpk) ::   zFe3, ztotlig, zfecoll, zfel1
       REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) :: zcoll3d, zscav3d, zfeprecip
       !!---------------------------------------------------------------------
       !
@@ -82,20 +82,20 @@ CONTAINS
       ! -------------------------------------------------
       IF ( ln_ligvar .OR. ln_ligand ) THEN
          DO_3D( 0, 0, 0, 0, 1, jpkm1)
-            xfecolagg(ji,jj,jk) = 0.225 + 0.01 * MAX(0., (chemo2(ji,jj,jk) - tr(ji,jj,jk,jpoxy,Kbb) ) * 1E6 )**0.8
+            xfecolagg(ji,jj,jk) = 0.225 + 0.01 * MAX(0., (chemo2(ji,jj,jk) - tr(ji,jj,jk,jpoxy,Kbb) ) * 1.E6 )**0.8
          END_3D
          IF ( ln_ligvar ) THEN
             DO_3D( 0, 0, 0, 0, 1, jpkm1)
-               ztotlig(ji,jj,jk) =  0.225 + 0.07 * 0.667 * (tr(ji,jj,jk,jpdoc,Kbb) * 1E6)**0.8  + xfecolagg(ji,jj,jk)
+               ztotlig(ji,jj,jk) =  0.225 + 0.07 * 0.667 * (tr(ji,jj,jk,jpdoc,Kbb) * 1.E6)**0.8  + xfecolagg(ji,jj,jk)
                ztotlig(ji,jj,jk) =  MIN( ztotlig(ji,jj,jk), 10. )
             END_3D
          ELSE
             DO_3D( 0, 0, 0, 0, 1, jpkm1)
-               ztotlig(ji,jj,jk) = tr(ji,jj,jk,jplgw,Kbb) * 1E9
+               ztotlig(ji,jj,jk) = tr(ji,jj,jk,jplgw,Kbb) * 1.E9
             END_3D
          ENDIF
       ELSE
-         ztotlig(:,:,:) = ligand * 1E9 
+         ztotlig(:,:,:) = ligand * 1.E9 
       ENDIF
 
       ! ------------------------------------------------------------
@@ -107,11 +107,15 @@ CONTAINS
          zkeq            = fekeq(ji,jj,jk)
          zklight         = 4.77E-7 * etot(ji,jj,jk) * 0.5 / xcons
          zconsfe         = consfe3(ji,jj,jk) / xcons
-         zfesatur        = ztotlig(ji,jj,jk) * 1E-9
+         zfesatur        = ztotlig(ji,jj,jk) * 1.E-9
          ztfe            = (1.0 + zklight) * tr(ji,jj,jk,jpfer,Kbb) 
+         zoxy            = akfe2ox(ji,jj,jk) * (akw3(ji,jj,jk) / ( MAX( hi(ji,jj,1), 1.e-10 ) ) )**2  &
+           &               * tr(ji,jj,jk,jpoxy,Kbb)
+         zoxyrat         = 4.77E-7 * etot(ji,jj,jk) * 0.5 / ( consfe3(ji,jj,jk) + zoxy + rtrn )
          ! Fe' is the root of a 2nd order polynom
-         za1 =  1. + zfesatur * zkeq + zklight +  zconsfe - zkeq * tr(ji,jj,jk,jpfer,Kbb)
+         za1             =  1. + (1.0 + zoxyrat) * (zfesatur * zkeq + zconsfe) + zklight - zkeq * tr(ji,jj,jk,jpfer,Kbb)
          zFe3 (ji,jj,jk) = ( -1 * za1 + SQRT( ( za1 * za1 ) + 4. * ztfe * zkeq) ) / ( 2. * zkeq + rtrn )
+         zFeL1(ji,jj,jk) = (zkeq * zfesatur + zconsfe) / ( 1.0 + zklight + zkeq * zFe3 (ji,jj,jk) ) * zFe3 (ji,jj,jk)
       END_3D
       !
       zdust = 0.         ! if no dust available
@@ -129,16 +133,12 @@ CONTAINS
       ! ----------------------------------------------------------------------
       IF ( ln_ligvar .OR. ln_ligand ) THEN
          DO_3D( 0, 0, 0, 0, 1, jpkm1)
-            zfel1 = MAX( 0., tr(ji,jj,jk,jpfer,Kbb) - zFe3(ji,jj,jk) )
-            zfecoll(ji,jj,jk) = 0.5 * zfel1 * MAX(0., ztotlig(ji,jj,jk) - xfecolagg(ji,jj,jk) ) &
+            zfecoll(ji,jj,jk) = 0.5 * zFeL1(ji,jj,jk) * MAX(0., ztotlig(ji,jj,jk) - xfecolagg(ji,jj,jk) ) &
                   &              / ( ztotlig(ji,jj,jk) + rtrn ) 
-            plig(ji,jj,jk) =  ( zfel1 / ( tr(ji,jj,jk,jpfer,Kbb) + rtrn ) )
          END_3D
       ELSE
          DO_3D( 0, 0, 0, 0, 1, jpkm1)
-            zfel1 = MAX( 0., tr(ji,jj,jk,jpfer,Kbb) - zFe3(ji,jj,jk) )
-            zfecoll(ji,jj,jk) = 0.5 * zfel1
-            plig(ji,jj,jk) =  ( zfel1 / ( tr(ji,jj,jk,jpfer,Kbb) + rtrn ) )
+            zfecoll(ji,jj,jk) = 0.5 * zFeL1(ji,jj,jk)
          END_3D
       ENDIF
 
@@ -147,6 +147,7 @@ CONTAINS
          ! This parameterization assumes a simple second order kinetics (k[Particles][Fe]).
          ! Scavenging onto dust is also included as evidenced from the DUNE experiments.
          ! --------------------------------------------------------------------------------------
+         plig(ji,jj,jk) =  MAX( 0., ( zFeL1(ji,jj,jk) / ( tr(ji,jj,jk,jpfer,Kbb) + rtrn ) ) )
          zhplus  = max( rtrn, hi(ji,jj,jk) )
          zhplus2 = zhplus * zhplus
          zhplus3 = zhplus2 * zhplus
@@ -175,23 +176,26 @@ CONTAINS
          IF( ln_p2z ) THEN
             ztrc = tr(ji,jj,jk,jppoc,Kbb) * 1e6
          ELSE
-            ztrc = ( tr(ji,jj,jk,jppoc,Kbb) + tr(ji,jj,jk,jpgoc,Kbb) + tr(ji,jj,jk,jpcal,Kbb) + tr(ji,jj,jk,jpgsi,Kbb) ) * 1.e6
+            ztrc = ( tr(ji,jj,jk,jppoc,Kbb) + tr(ji,jj,jk,jpgoc,Kbb) + tr(ji,jj,jk,jpcal,Kbb) + tr(ji,jj,jk,jpgsi,Kbb) * 2.0 ) * 1.e6
          ENDIF
-         ztrc = MAX( rtrn, ztrc )
-         zlam1b = 3.e-5 + ( xlamdust * zdust + xlam1 * ztrc ) * zxlam
-         zscave = zFe3(ji,jj,jk) * zlam1b * xstep
 
+         ztrc      = MAX( rtrn, ztrc )
+         zlam1b    = 3.e-5 + ( xlamdust * zdust + xlam1 * ztrc ) * zxlam
+         zscave    = zFe3(ji,jj,jk) * zlam1b * xstep
+         zscavepoc = zFe3(ji,jj,jk) * xlam1 * tr(ji,jj,jk,jppoc,Kbb) * 1.E6 * zxlam * xstep
          !
          IF( ln_p2z ) THEN
             zaggdfeb = 0._wp
             xcoagfe(ji,jj,jk) = zlam1a
          ELSE
+            zscavegoc = zFe3(ji,jj,jk) * xlam1 * (tr(ji,jj,jk,jpgoc,Kbb) + tr(ji,jj,jk,jpcal,Kbb) + tr(ji,jj,jk,jpgsi,Kbb) * 2.0 ) &
+              &         * 1.E6 * zxlam * xstep
             zlam1b   = ( 1.94 * xdiss(ji,jj,jk) + 1.37 ) * tr(ji,jj,jk,jpgoc,Kbb)
             zaggdfeb = zlam1b * xstep * zfecoll(ji,jj,jk)
             xcoagfe(ji,jj,jk) =  zlam1a + zlam1b
             !
-            tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) + zscave * scaveff * tr(ji,jj,jk,jppoc,Kbb) / ztrc
-            tr(ji,jj,jk,jpbfe,Krhs) = tr(ji,jj,jk,jpbfe,Krhs) + zscave * scaveff * tr(ji,jj,jk,jppoc,Kbb) / ztrc
+            tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) + zscavepoc * scaveff
+            tr(ji,jj,jk,jpbfe,Krhs) = tr(ji,jj,jk,jpbfe,Krhs) + zscavegoc * scaveff
             !
             ! Precipitated iron is supposed to be permanently lost.
             ! Scavenged iron is supposed to be released back to seawater

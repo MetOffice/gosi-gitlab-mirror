@@ -1,7 +1,7 @@
 #!/bin/bash -f
 # simple SETTE report generator.
 #
-# This version should be run in the SETTE directory. 
+# This version should be run in the SETTE directory.
 # The machine name will be picked up from the sette.sh script but the location of the
 # validation directory needs to be set here (currently assumed to reside in the ../cfgs directory)
 #
@@ -16,7 +16,7 @@ format_field1="%-35s"
 declare -i {REPRO_EC,RESTA_EC,TRANSFORM_EC,REFCMP_EC,CPUCMP_EC,OCEOUT_EC,AGRIF_EC,PHYOPT_EC}=0
 
 function get_dorv() {
-  if [ $lastchange == 'old' ] ; then 
+  if [ $lastchange == 'old' ] ; then
     dorv=`ls -1rt $vdir/$mach/ | tail -1l `
     dorv=`echo $dorv | sed -e 's:.*/::'`
     dorv2=`ls -1rt $vdir/$mach/ 2>/dev/null | tail -1l `
@@ -35,7 +35,7 @@ function get_ktdiff2() {
   ktdiff=`diff ${1} ${2} |  head -2 | tail -1l | awk '{print $2}'`
 }
 
-function resttest() { 
+function resttest() {
 #
 # Restartability checks. Expects LONG and SHORT run directories
 # Compares end of LONG stat files with equivalent entries from the SHORT stat files.
@@ -69,12 +69,12 @@ function resttest() {
     f2t=$vdir/$mach/$dorv/$nam/SHORT/tracer.stat
     f2h=$vdir/$mach/$dorv/$nam/SHORT/obs.stat
 
-    if  [ ! -f $f1s ] &&  [ ! -f $f1t ] ; then 
+    if  [ ! -f $f1s ] &&  [ ! -f $f1t ] ; then
       printf "${format_field1} %s\n" $nam " incomplete test"
       RESTA_EC=1
       return
     fi
-    if  [ ! -f $f2s ] &&  [ ! -f $f2t ] ; then 
+    if  [ ! -f $f2s ] &&  [ ! -f $f2t ] ; then
       printf "${format_field1} %s\n" $nam " incomplete test"
       RESTA_EC=1
       return
@@ -82,12 +82,12 @@ function resttest() {
 #
     done_oce=0
 
-    if  [  -f $f1s ] && [  -f $f2s ]; then 
+    if  [  -f $f1s ] && [  -f $f2s ]; then
       nl=(`wc -l $f2s`)
       tail -${nl[0]} $f1s > f1.tmp$$
       cmp -s f1.tmp$$ $f2s
       if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then 
+        if [ $pass == 0 ]; then
           printf "${format_field1} %s %s\n" $nam "run.stat    restartability   passed  :" $dorv
         fi
       else
@@ -118,7 +118,7 @@ function resttest() {
       tail -${nl[0]} $f1t > f1.tmp$$
       cmp -s f1.tmp$$ $f2t
       if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then 
+        if [ $pass == 0 ]; then
           printf "${format_field1} %s %s\n" $nam "tracer.stat restartability   passed  :" $dorv
         fi
       else
@@ -153,7 +153,7 @@ function resttest() {
       tail -${nl[0]} $f1h > f1.tmp$$
       cmp -s f1.tmp$$ $f2h
       if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then 
+        if [ $pass == 0 ]; then
           printf "${format_field1} %s %s\n" $nam "obs.stat    restartability   passed  :" $dorv
         fi
       else
@@ -223,12 +223,12 @@ function reprotest(){
     f2t=$vdir/$mach/$dorv/$nam/$rep2/tracer.stat
     f2h=$vdir/$mach/$dorv/$nam/$rep2/obs.stat
 
-    if  [ ! -f $f1s ] && [ ! -f $f1t ] ; then 
+    if  [ ! -f $f1s ] && [ ! -f $f1t ] ; then
       printf "${format_field1} %s\n" $nam " incomplete test"
       REPRO_EC=1
       return
     fi
-    if  [ ! -f $f2s ] && [ ! -f $f2t ] ; then 
+    if  [ ! -f $f2s ] && [ ! -f $f2t ] ; then
       printf "${format_field1} %s\n" $nam " incomplete test"
       REPRO_EC=1
       return
@@ -239,7 +239,7 @@ function reprotest(){
     if  [ -f $f1s ] && [ -f $f2s ] ; then
       cmp -s $f1s $f2s
       if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then 
+        if [ $pass == 0 ]; then
           printf "${format_field1} %s %s\n" $nam  "run.stat    reproducibility  passed  :" $dorv
         fi
       else
@@ -520,7 +520,7 @@ function runcmpres(){
     if  [ -f $f1t ] && [ -f $f2t ] ; then
       cmp -s $f1t $f2t
       if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then          
+        if [ $pass == 0 ]; then
           printf "${format_field1} %-28s %s (%s)\n" $nam "tracer.stat" "files are identical " ${TESTD}
         fi
       else
@@ -542,7 +542,7 @@ function runcmpres(){
     if  [ -f $f1h ] && [ -f $f2h ] ; then
       cmp -s $f1h $f2h
       if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then          
+        if [ $pass == 0 ]; then
           printf "${format_field1} %-28s %s (%s)\n" $nam "obs.stat" "files are identical " ${TESTD}
         fi
       else
@@ -625,7 +625,8 @@ function runtest(){
   naml=$2                                                   # test configuration
   pass=$3                                                   # pass (0 or 1)
   ttype=$4                                                  # test-run type: test-run name,
-  [[ $ttype == 'RST' ]] && ttype="LONG|SHORT" && phyopt=0   #    'RST' (checks both 'LONG' and 'SHORT' test runs), or
+  phyopt=0
+  [[ $ttype == 'RST' ]] && ttype="LONG|SHORT"               #    'RST' (checks both 'LONG' and 'SHORT' test runs), or
   [[ $ttype == 'EXP' ]] && ttype="^EXP-"      && phyopt=1   #    'EXP' (checks PHYOPTS test runs)
 #
 # get $dorv
@@ -645,10 +646,10 @@ function runtest(){
           if [ $pass == 0 ]; then printf "${format_field1} %s %s\n" "${naml2}" "ocean.output                 MISSING :" $dorv ; fi
           [ $phyopt == 0 ] && OCEOUT_EC=1 && return   # record error and stop testing unless there are
           [ $phyopt == 1 ] && PHYOPT_EC=1             #    further PHYOPTS test variants to be tested
-       else 
+       else
           nerr=`grep 'E R R O R' $f1o | wc -l`
           if [[ $nerr > 0 ]]; then
-             printf "\e[38;5;196m${format_field1} %s %s %s\e[0m\n" "${naml2}" "run                          FAILED : " $dorv " ( E R R O R in ocean.output) " 
+             printf "\e[38;5;196m${format_field1} %s %s %s\e[0m\n" "${naml2}" "run                          FAILED : " $dorv " ( E R R O R in ocean.output) "
              if [ $pass == 1 ]; then
                 echo "<return> to view end of ocean.output"
                 read y
@@ -690,7 +691,7 @@ function identictest(){
    if  [ -f $f1s ] && [ -f $f2s ] ; then
       cmp -s $f1s $f2s
       if [ $? == 0 ]; then
-          if [ $pass == 0 ]; then 
+          if [ $pass == 0 ]; then
 	      printf "${format_field1} %s %s %s\n" "${rep} AGRIF vs ${rep} NOAGRIF" "run.stat    unchanged        passed  :" $dorv $dorv2
           fi
       else
@@ -710,9 +711,11 @@ function identictest(){
       fi
    else
       printf "${format_field1} %-27s %s\n" $nam $nam2 " incomplete test"
+      AGRIF_EC=1
    fi
   else
       printf "${format_field1} %-27s %s\n" " " " " " non-existent test directory"
+      AGRIF_EC=1
   fi
 }
 ########################### END of function definitions #################################
@@ -724,19 +727,44 @@ function identictest(){
 # LOAD param variable (COMPILER, NEMO_VALIDATION_DIR )
   SETTE_DIR=$(cd $(dirname "$0"); pwd)
   MAIN_DIR=$(dirname $SETTE_DIR)
-  . ./param.cfg
+  . ./param.default
+  [ -f ./param.cfg ] && . ./param.cfg || echo "warning: \"param.cfg\" file not found; SETTE will use default paramaters from \"param.default\" file"
   TEST_CONFIGS_AVAILABLE=${TEST_CONFIGS_AVAILABLE[@]:-${TEST_CONFIGS[@]}}     # Workaround for some dated param.cfgs files
   if [ -z $USER_INPUT ] ; then USER_INPUT='yes' ; fi        # Default: yes => request user input on decisions.
                                                             # (but may br inherited/imported from sette.sh)
   mach=${COMPILER}
-# overwrite revision (later) or compiler
+# Processing of command-line arguments
+rev=""; sha=""
   if [ $# -gt 0 ]; then
     echo ""
-    while getopts n:r:R:c:v:V:ubh option; do
+    while getopts n:r:s:R:S:c:x:v:V:ubh option; do
        case $option in
           c) mach=$OPTARG;;
-          r) rev=$OPTARG;;
-          R) refrev=$OPTARG;;
+          r) rev=$OPTARG
+             echo "-r: will use ${rev} revision for current report"
+             echo "";;
+          s) sha=$OPTARG
+             [[ ! ${sha} =~ ^[[:alnum:]]{8}$ ]] && echo "-s: wrong SHA digits number (8 digits needed)" && exit 1
+             echo "-s: will use \"${sha}\" SHA (\"$(git show -s --format=%s ${sha})\") for current report"
+             echo "";;
+          R) refrev=$OPTARG
+             DO_COMPARE=1
+             ;;
+          S) refsha=$OPTARG
+             [[ ! ${refsha} =~ ^[[:alnum:]]{8}$ ]] && echo "-S: wrong SHA digits number (8 digits needed)" && exit 1
+             echo "-S: will compare current results with \"${refsha}\" SHA (\"$(git show -s --format=%s ${refsha})\")"
+             echo ""
+             DO_COMPARE=1
+             ;;
+          x) TEST_TYPES=$OPTARG
+             [[ ${TEST_TYPES[*]} =~ .*RESTART.*   ]] && export DO_RESTART=1   || DO_RESTART=0
+             [[ ${TEST_TYPES[*]} =~ .*REPRO.*     ]] && export DO_REPRO=1     || DO_REPRO=0
+             [[ ${TEST_TYPES[*]} =~ .*CORRUPT.*   ]] && export DO_CORRUPT=1   || DO_CORRUPT=0
+             [[ ${TEST_TYPES[*]} =~ .*PHYOPTS.*   ]] && export DO_PHYOPTS=1   || DO_PHYOPTS=0
+             [[ ${TEST_TYPES[*]} =~ .*TRANSFORM.* ]] && export DO_TRANSFORM=1 || DO_TRANSFORM=0
+             [[ ${TEST_TYPES[*]} =~ .*COMPARE.*   ]] && export DO_COMPARE=1   || DO_COMPARE=0
+             echo "-x: will check ${TEST_TYPES[*]} test(s) for current report"
+             echo "";;
           v) SETTE_SUB_VAL=$OPTARG;;
           V) SETTE_SUB_VAL2=$OPTARG
              if [ -d ${NEMO_VALIDATION_DIR}/${SETTE_SUB_VAL2} ] ; then
@@ -755,14 +783,20 @@ function identictest(){
              echo "-n: Configuration(s) ${TEST_CONFIGS[@]} will be tested if they are available"
              echo "";;
           h | *) echo ''
-                 echo 'sette_rpt.sh : ' 
+                 echo 'sette_rpt.sh : '
                  echo '     display result for the latest change'
                  echo ' -c COMPILER_name :'
                  echo '     display result for the specified compiler'
                  echo ' -r REVISION_number :'
                  echo '     display sette results for the specified revision (set old for the latest revision available for each config)'
+                 echo ' -s commit short (8-digits) SHA :'
+                 echo '     display sette results for the specified SHA (set old for the latest revision available for each config)'
                  echo ' -R REFERENCE REVISION_number :'
                  echo '     compare sette results against the specified revision (use to over-ride value set in param.cfg)'
+                 echo ' -S REFERENCE commit short (8-digits) SHA :'
+                 echo '     compare sette results against the specified SHA (use to over-ride value set in param.cfg)'
+                 echo ' -x test :'
+                 echo '     select specific tests to be reported (RESTART, REPRO, PHYOPTS, CORRUPT, TRANSFORM, COMPARE)'
                  echo ' -v sub_dir :'
                  echo '     validation sub-directory below NEMO_VALIDATION_DIR'
                  echo ' -V sub_dir2 :'
@@ -810,8 +844,20 @@ else
 fi
 NEMO_VALID=${NEMO_VALIDATION_DIR}
 NEMO_VALID_REF=${NEMO_VALIDATION_REF}
-if [ ! -z $refrev ] ; then
+if [ -n "${refrev}" ] ; then
    NEMO_REV_REF=${refrev}
+fi
+if [ -n "${refsha}" ] ; then
+   NEMO_REF_SHA=${refsha}
+   NEMO_REF_DATE=$(date --date=@$(git show --no-patch --format=%ct ${NEMO_REF_SHA}) +"%y%j")
+   NEMO_REV_REF=${NEMO_REF_DATE}_${NEMO_REF_SHA}
+   NEMO_REF_BRC=( $(git branch --contains ${NEMO_REF_SHA} | sed -e 's/* //;/HEAD/d' | tac ) )
+   [ -z "${NEMO_REF_BRC[*]}" ] && NEMO_REF_BRC=( $(git branch -r --contains ${NEMO_REF_SHA} | sed -e "s|.*origin/||") )
+   for b in ${NEMO_REF_BRC[@]}; do
+     [ -d $(dirname ${NEMO_VALIDATION_REF})/${b}/${mach}/${NEMO_REV_REF} ] && NEMO_REF_DIR=$(dirname ${NEMO_VALIDATION_REF})/${b} && break
+   done
+   [ -z "${NEMO_REF_DIR}" ] && NEMO_REV_REF=0000 && NEMO_REF_DIR="/path/to/reference/sette/results" && echo "${NEMO_REF_SHA} commit results not found in validation directory"
+   NEMO_VALID_REF=$NEMO_REF_DIR
 fi
 
 if [ ! -d $NEMO_VALID ]; then
@@ -823,19 +869,24 @@ fi
 # Show current revision tag and branch name
 #
 echo ""
-nemo_revision=$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)
-rev_date0=`git log -1 | grep Date | sed -e 's/.*Date: *//' -e's/ +.*$//'`
-rev_date=`${DATE_CONV}"${rev_date0}" +"%y%j"`
-revision=${rev_date}_${nemo_revision}
-localchanges=`git status --short -uno | wc -l`
-if [[ $localchanges > 0 ]] ; then
- lastchange=${revision}+
+localchanges=0
+# -r option
+if [ -n "${rev}" ]; then
+  nemo_revision=${rev}
+  lastchange=${rev}
+# -s option
+elif [ -n "${sha}" ]; then
+  nemo_revision=${sha}
+  rev_date=$(date --date=@$(git show --no-patch --format=%ct ${nemo_revision}) +"%y%j")
+  lastchange=${rev_date}_${nemo_revision}
+# current git repo SHA
 else
- lastchange=$revision
+  nemo_revision=$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)
+  rev_date=$(date --date=@$(git show --no-patch --format=%ct ${nemo_revision}) +"%y%j")
+  lastchange=${rev_date}_${nemo_revision}
+  localchanges=`git status --short -uno | wc -l`
+  if [[ $localchanges -gt 0 ]] ; then lastchange="${lastchange}+"; fi
 fi
-
-# by default use the current lastchanged revision
-lastchange=${rev:-$lastchange}
 
 echo ""
 echo "SETTE validation report generated for : "
@@ -851,95 +902,103 @@ echo ""
 
 #
 # The script also needs the date or revision tag. Currently this is taken from the latest sub-directory found in each directory
-#  
-for pass in  $RPT_PASSES 
+#
+for pass in  $RPT_PASSES
 do
-#
- if [ $pass == 0 ]; then 
-   echo "" 
-   echo "!!---------------1st pass------------------!!"
- fi
- if [ $pass == 1 ]; then
-    echo ""
-    echo "!!---------------2nd pass------------------!!"
- fi
-#
 
-# Restartability test
- echo ""
- echo "   !----restart----!   "
- for restart_test in ${TEST_CONFIGS[@]/ORCA2_ICE_OBS}
- do
-   [ "${restart_test}" != "ORCA2_ICE_OBS" ] && resttest $NEMO_VALID $restart_test $pass
- done
-#
-# Reproducibility tests
- echo ""
- echo "   !----repro----!   "
- for repro_test in ${TEST_CONFIGS[@]/C1D_PAPA}
- do
-   if [[ ${repro_test} != *"OVERFLOW"* && ${repro_test} != *"LOCK_EXCHANGE"* && ${repro_test} != *"IWAVE"* ]]; then
-      reprotest $NEMO_VALID $repro_test $pass
-   fi
- done
-# Transformability tests
- echo ""
- echo "   !----transform----!   "
- for transform_test in ${TEST_CONFIGS[@]}
- do
-   transformtest ${NEMO_VALID} ${transform_test} ${pass}
- done
-
-# PHYOPTS tests
- echo ""
- echo "   !----phyopt----!   "
- for phyopt_test in ${TEST_CONFIGS[@]}; do
-    runtest $NEMO_VALID $phyopt_test $pass "EXP"
- done
-
-# AGRIF special check to ensure results are unchanged with and without key_agrif
- if [[ ${TEST_CONFIGS[@]} =~ "AGRIF" ]]; then
-   echo ""
-   echo "   !----agrif check----!   "
-   dir1=AGRIF_DEMO_NOAGRIF
-   dir2=AGRIF_DEMO
-   identictest $NEMO_VALID $dir1 $dir2 $pass 
- fi
-#
-# before/after tests
- if [ $lastchange == 'old' ] ; then
+  if [ $pass == 0 ]; then
     echo ""
-    echo "   !---- 'old' specified as revision => no comparison with reference results ----!   "
+    echo "!!---------------1st pass------------------!!"
+  fi
+  if [ $pass == 1 ]; then
+     echo ""
+     echo "!!---------------2nd pass------------------!!"
+  fi
+
+  # Restartability test
+  if [ ${DO_RESTART} -eq 1 ]; then
     echo ""
- else
-   echo ""
-   echo "   !----result comparison check----!   "
-   if [ $NEMO_VALID_REF != "/path/to/reference/sette/results" ] && [ $NEMO_REV_REF != "0000" ]; then
-     echo ''
-     echo 'check result differences between :'
-     echo "VALID directory : $NEMO_VALID at rev $lastchange"
-     echo 'and'
-     echo "REFERENCE directory : $NEMO_VALID_REF at rev $NEMO_REV_REF"
-     echo ''
-     for runcmp_test in ${TEST_CONFIGS[@]}
-     do
-       runcmpres $NEMO_VALID $runcmp_test $NEMO_VALID_REF $NEMO_REV_REF $pass
-     done
-     echo ''
-     echo 'Report timing differences between REFERENCE and VALID (if available) :'
-     for repro_test in ${TEST_CONFIGS[@]}
-     do
-       runcmptim $NEMO_VALID $repro_test $NEMO_VALID_REF $NEMO_REV_REF $pass
-     done
-   else
-     echo ''
-     echo ' No path or revision for comparison specified. Result are not compare with any other revision. '
-     echo ' To do it please fill NEMO_VALID_REF and NEMO_REV_REF in param.cfg. '
-     echo ''
-   fi
- fi
+    echo "   !----restart----!   "
+    for restart_test in ${TEST_CONFIGS[@]/ORCA2_ICE_OBS}
+    do
+      [ "${restart_test}" != "ORCA2_ICE_OBS" ] && resttest $NEMO_VALID $restart_test $pass
+    done
+  fi
+
+  # Reproducibility tests
+  if [ ${DO_REPRO} -eq 1 ]; then 
+    echo ""
+    echo "   !----repro----!   "
+    for repro_test in ${TEST_CONFIGS[@]/C1D*}
+    do
+      if [[ ${repro_test} != *"OVERFLOW"* && ${repro_test} != *"LOCK_EXCHANGE"* && ${repro_test} != *"IWAVE"* ]]; then
+         reprotest $NEMO_VALID $repro_test $pass
+      fi
+    done
+  fi
+
+  # Transformability tests
+  if [ ${DO_TRANSFORM} -eq 1 ]; then
+    echo ""
+    echo "   !----transform----!   "
+    for transform_test in ${TEST_CONFIGS[@]}
+    do
+      transformtest ${NEMO_VALID} ${transform_test} ${pass}
+    done
+  fi
+
+  # PHYOPTS tests
+  if [ ${DO_PHYOPTS} -eq 1 ]; then
+    echo ""
+    echo "   !----phyopt----!   "
+    for phyopt_test in ${TEST_CONFIGS[@]}; do
+       runtest $NEMO_VALID $phyopt_test $pass "EXP"
+    done
+  fi
+
+  # AGRIF special check to ensure results are unchanged with and without key_agrif
+  if [[ ${TEST_CONFIGS[@]} =~ "AGRIF_DEMO" && ${DO_CORRUPT} -eq 1 ]]; then
+     echo ""
+     echo "   !----agrif check----!   "
+     dir1=AGRIF_DEMO_NOAGRIF
+     dir2=AGRIF_DEMO
+     identictest $NEMO_VALID $dir1 $dir2 $pass
+  fi
+
+  # before/after tests
+  if [ ${DO_COMPARE:-0} -eq 1 ]; then
+    echo ""
+    echo "   !----result comparison check----!   "
+    if [ $NEMO_VALID_REF != "/path/to/reference/sette/results" ] && [ $NEMO_REV_REF != "0000" ]; then
+      echo ''
+      echo 'check result differences between :'
+      echo "VALID directory : $NEMO_VALID at rev $lastchange"
+      echo 'and'
+      echo "REFERENCE directory : $NEMO_VALID_REF at rev $NEMO_REV_REF"
+      echo ''
+      for runcmp_test in ${TEST_CONFIGS[@]}
+      do
+        runcmpres $NEMO_VALID $runcmp_test $NEMO_VALID_REF $NEMO_REV_REF $pass
+      done
+      echo ''
+      echo 'Report timing differences between REFERENCE and VALID (if available) :'
+      for repro_test in ${TEST_CONFIGS[@]}
+      do
+        runcmptim $NEMO_VALID $repro_test $NEMO_VALID_REF $NEMO_REV_REF $pass
+      done
+    else
+      echo ''
+      echo ' No path or revision for comparison specified. Result are not compare with any other revision. '
+      echo ' To do it please fill NEMO_VALID_REF and NEMO_REV_REF in param.cfg. '
+      echo ''
+    fi
+  fi
+
 done
-#
+
+# error code
 SETTE_EC=$((REPRO_EC+RESTA_EC+TRANSFORM_EC+REFCMP_EC+CPUCMP_EC+OCEOUT_EC+AGRIF_EC+PHYOPT_EC))
+echo ""
 echo "SETTE Report Exit Code: ${SETTE_EC}"
+
 exit $SETTE_EC

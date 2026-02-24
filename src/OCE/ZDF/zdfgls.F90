@@ -953,12 +953,12 @@ CONTAINS
       IF( zdf_gls_alloc() /= 0 )   CALL ctl_stop( 'STOP', 'zdf_gls_init : unable to allocate arrays' )
 
       !                                !* Check of some namelist values
-      IF( nn_bc_surf < 0   .OR. nn_bc_surf   > 1 )              CALL ctl_stop( 'zdf_gls_init: bad flag: nn_bc_surf is 0 or 1' )
-      IF( nn_bc_surf < 0   .OR. nn_bc_surf   > 1 )              CALL ctl_stop( 'zdf_gls_init: bad flag: nn_bc_surf is 0 or 1' )
-      IF( nn_z0_met  < 0   .OR. nn_z0_met    > 3 )              CALL ctl_stop( 'zdf_gls_init: bad flag: nn_z0_met is 0, 1, 2 or 3' )
-      IF( nn_z0_met == 3  .AND. .NOT. (ln_wave .AND. ln_sdw ) ) CALL ctl_stop( 'zdf_gls_init: nn_z0_met=3 requires ln_wave=T and ln_sdw=T' )
-      IF( nn_stab_func < 0 .OR. nn_stab_func > 3 )              CALL ctl_stop( 'zdf_gls_init: bad flag: nn_stab_func is 0, 1, 2 and 3' )
-      IF( nn_clos      < 0 .OR. nn_clos      > 3 )              CALL ctl_stop( 'zdf_gls_init: bad flag: nn_clos is 0, 1, 2 or 3' )
+      IF( nn_bc_surf < 0   .OR. nn_bc_surf   > 1 )   CALL ctl_stop( 'zdf_gls_init: bad flag: nn_bc_surf is 0 or 1' )
+      IF( nn_bc_surf < 0   .OR. nn_bc_surf   > 1 )   CALL ctl_stop( 'zdf_gls_init: bad flag: nn_bc_surf is 0 or 1' )
+      IF( nn_z0_met  < 0   .OR. nn_z0_met    > 3 )   CALL ctl_stop( 'zdf_gls_init: bad flag: nn_z0_met is 0, 1, 2 or 3' )
+      IF( nn_z0_met == 3  .AND. .NOT. ln_sdw     )   CALL ctl_stop( 'zdf_gls_init: nn_z0_met=3 requires ln_sdw=T' )
+      IF( nn_stab_func < 0 .OR. nn_stab_func > 3 )   CALL ctl_stop( 'zdf_gls_init: bad flag: nn_stab_func is 0, 1, 2 and 3' )
+      IF( nn_clos      < 0 .OR. nn_clos      > 3 )   CALL ctl_stop( 'zdf_gls_init: bad flag: nn_clos is 0, 1, 2 or 3' )
 
       SELECT CASE ( nn_clos )          !* set the parameters for the chosen closure
       !

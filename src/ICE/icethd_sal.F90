@@ -166,7 +166,9 @@ CONTAINS
       !! ** References
       !! Thomas, M., Vancoppenolle, M., France, J. L., Sturges, W. T., Bakker, D. C. E., Kaiser, J., & von Glasow, R. (2020).
       !!             Tracer measurements in growing sea ice support convective gravity drainage parameterizations.
-      !              Journal of Geophysical Research: Oceans, 125, e2019JC015791. https://doi.org/10. 1029/2019JC015791
+      !!             Journal of Geophysical Research: Oceans, 125, e2019JC015791. https://doi.org/10. 1029/2019JC015791
+      !! Ortega, E., Vancoppenolle, M., Rousset, C., & Lemaire, E. (2025).
+      !!             New representation of sea ice salt dynamics within NEMO-SI3: Evaluation and impacts.
       !!---------------------------------------------------------------------
       INTEGER  ::   ji, jk, jk2            ! dummy loop indices 
       REAL(wp) ::   z1_time_gd, z1_time_fl
@@ -297,7 +299,7 @@ CONTAINS
                !               
                zcfl_max = 0._wp
                zs_min   = 0._wp
-               IF( h_i_1d(ji) >= rn_sal_himin .AND. zhmelt >= 0._wp .AND. zs_brmax > sss_1d(ji) ) THEN
+               IF( h_i_1d(ji) >= rn_sal_himin .AND. zhmelt >= 0._wp .AND. zs_brmax > sss_1d(ji) .AND. t_su_1d(ji) <= t_bo_1d(ji) ) THEN 
                   !                               ! during melting season, salt flux can turn upward
                   !
                   WHERE( (t_i_1d(ji,:)-rt0) <  - epsi06 ) ; zmsk(:) = 1._wp

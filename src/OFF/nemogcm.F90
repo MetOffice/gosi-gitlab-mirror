@@ -553,7 +553,7 @@ CONTAINS
                            CALL tra_ldf_init              ! lateral mixing
       IF( l_ldfslp     )   CALL ldf_slp_init              ! slope of lateral mixing
       IF( ln_traqsr    )   CALL tra_qsr_init              ! penetrative solar radiation
-      IF( ln_trabbl    )   CALL tra_bbl_init              ! advective (and/or diffusive) bottom boundary layer scheme
+                           CALL tra_bbl_init              ! advective (and/or diffusive) bottom boundary layer scheme
 
       !                                      ! Passive tracers
                            CALL trc_nam_run    ! Needed to get restart parameters for passive tracers
@@ -567,6 +567,12 @@ CONTAINS
       !
       IF( ln_timing    )   CALL timing_stop( 'nemo_init' )
       !
+# if defined key_agrif
+      IF( Agrif_Root() ) THEN
+          CALL Agrif_MPI_Init(mpi_comm_oce) ! Must be done after initialization (nemo_alloc)
+      ENDIF
+# endif
+
    END SUBROUTINE nemo_init
 
 

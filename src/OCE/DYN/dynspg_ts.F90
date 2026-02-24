@@ -29,6 +29,7 @@ MODULE dynspg_ts
    !!----------------------------------------------------------------------
    USE oce             ! ocean dynamics and tracers
    USE dom_oce         ! ocean space and time domain
+   USE daymod, ONLY : ndt05   ! half the time-step length
    USE sbc_oce         ! surface boundary condition: ocean
    USE isf_oce         ! ice shelf variable (fwfisf)
    USE zdf_oce         ! vertical physics: variables
@@ -183,7 +184,7 @@ LOGICAL, SAVE :: ll_bt_av    ! =T : boxcard time averaging   =F : foreward backw
       REAL(wp), DIMENSION(jpi,jpj)          :: zuwdav2, zvwdav2    ! averages over the sub-steps of zuwdmask and zvwdmask
 #endif
       REAL(wp), ALLOCATABLE, DIMENSION(:,:) :: z2d          ! 2D workspace
-      REAL(wp) ::   zt0substep !   Time of day at the beginning of the time substep
+      REAL(wp) ::   zttide   ! Time of day for tidal updates
       !!----------------------------------------------------------------------
       !
       !                                         !* Allocate temporary arrays
@@ -522,10 +523,10 @@ LOGICAL, SAVE :: ll_bt_av    ! =T : boxcard time averaging   =F : foreward backw
          !                    !==  Update the forcing ==! (BDY and tides)
          !
          IF( ln_bdy      .AND. ln_tide )   CALL bdy_dta_tides( kt, kit=jn, pt_offset= REAL(noffset+1,wp) )
-         ! Update tide potential at the beginning of current time substep
+         ! Update the tide potential at the center of the current time sub-step
          IF( ln_tide_pot .AND. ln_tide ) THEN
-            zt0substep = REAL(nsec_day, wp) - 0.5_wp*rn_Dt + (jn + noffset - 1) * rn_Dt / REAL(nn_e, wp)
-            CALL upd_tide(zt0substep, Kmm)
+            zttide = REAL( nsec_day - ndt05, wp ) + ( jn + noffset - 0.5_wp ) * rDt_e
+            CALL upd_tide(zttide, Kmm)
          END IF
          !
          !                    !==  extrapolation at mid-step  ==!   (jn+1/2)
@@ -855,6 +856,8 @@ LOGICAL, SAVE :: ll_bt_av    ! =T : boxcard time averaging   =F : foreward backw
       pssh   (:,:,Kaa) = pssh   (:,:,Kaa) / r1_wgt1s
 
       IF( ln_wd_dl .AND. ln_wd_dl_bc ) THEN
+         zuwdav2(:,:) = zuwdav2(:,:) / r1_wgt2s
+         zvwdav2(:,:) = zvwdav2(:,:) / r1_wgt2s
          CALL lbc_lnk( 'dynspg_ts', un_adv, 'U', -1._wp, vn_adv, 'V', -1._wp, zuwdav2, 'U', -1._wp, zvwdav2, 'V', -1._wp ) ! Boundary conditions
       ELSE
          CALL lbc_lnk( 'dynspg_ts', un_adv, 'U', -1._wp, vn_adv, 'V', -1._wp ) ! Boundary conditions
@@ -1133,6 +1136,13 @@ LOGICAL, SAVE :: ll_bt_av    ! =T : boxcard time averaging   =F : foreward backw
                CALL iom_get( numror, jpdom_auto, 'vb2_b'  , vb2_b  (:,:), cd_type = 'V', psgn = -1._wp )
                CALL iom_get( numror, jpdom_auto, 'un_bf'  , un_bf  (:,:), cd_type = 'U', psgn = -1._wp )  
                CALL iom_get( numror, jpdom_auto, 'vn_bf'  , vn_bf  (:,:), cd_type = 'V', psgn = -1._wp )
+               !
+# if defined key_agrif
+               IF ( .NOT.Agrif_Root() ) THEN
+                  CALL iom_get( numror, jpdom_auto, 'ub2_i_b'  , ub2_i_b(:,:), cd_type = 'U', psgn = -1._wp )
+                  CALL iom_get( numror, jpdom_auto, 'vb2_i_b'  , vb2_i_b(:,:), cd_type = 'V', psgn = -1._wp )
+               ENDIF
+# endif
             ENDIF
 # else
          IF( ln_rstart ) THEN                           !* RK3: Read the restart file
@@ -1149,32 +1159,6 @@ LOGICAL, SAVE :: ll_bt_av    ! =T : boxcard time averaging   =F : foreward backw
                   ll_cold_start = .TRUE. 
                ENDIF
             ENDIF
-#if defined key_agrif
-            ! Read time integrated fluxes
-            IF ( .NOT.Agrif_Root() ) THEN
-               CALL iom_get( numror, jpdom_auto, 'ub2_i_b'  , ub2_i_b(:,:), cd_type = 'U', psgn = -1._wp )
-               CALL iom_get( numror, jpdom_auto, 'vb2_i_b'  , vb2_i_b(:,:), cd_type = 'V', psgn = -1._wp )
-            ELSE
-               ub2_i_b(:,:) = 0._wp   ;   vb2_i_b(:,:) = 0._wp   ! used in the 1st update of agrif
-            ENDIF
-# if defined key_RK3
-            CALL iom_get( numror, jpdom_auto, 'un_adv'      ,  un_adv(:,:), cd_type = 'U', psgn = -1._wp )   
-            CALL iom_get( numror, jpdom_auto, 'vn_adv'      ,  vn_adv(:,:), cd_type = 'V', psgn = -1._wp )
-# endif
-#endif
-         ELSE
-            !                      !* Start from rest or use RK3 time-step
-            IF(lwp) WRITE(numout,*)
-            IF(lwp) WRITE(numout,*) '   ==>>>   start from rest: set barotropic values to 0'
-# if ! defined key_RK3
-            ub2_b  (:,:) = 0._wp   ;   vb2_b  (:,:) = 0._wp   ! used in the 1st interpol of agrif
-            un_bf  (:,:) = 0._wp   ;   vn_bf  (:,:) = 0._wp   ! used in the 1st update   of agrif
-#else
-            un_adv (:,:) = 0._wp   ;   vn_adv (:,:) = 0._wp   ! used in the 1st interpol of agrif
-#endif
-#if defined key_agrif
-            ub2_i_b(:,:) = 0._wp   ;   vb2_i_b(:,:) = 0._wp   ! used in the 1st update of agrif
-#endif
          ENDIF
          !
       ELSEIF( TRIM(cdrw) == 'WRITE' ) THEN   ! Create restart file
@@ -1186,6 +1170,12 @@ LOGICAL, SAVE :: ll_bt_av    ! =T : boxcard time averaging   =F : foreward backw
             CALL iom_rstput( kt, nitrst, numrow, 'vb2_b'   , vb2_b  (:,:) )
             CALL iom_rstput( kt, nitrst, numrow, 'un_bf'   , un_bf  (:,:) )
             CALL iom_rstput( kt, nitrst, numrow, 'vn_bf'   , vn_bf  (:,:) )
+# if defined key_agrif
+            IF ( .NOT.Agrif_Root() ) THEN
+               CALL iom_rstput( kt, nitrst, numrow, 'ub2_i_b'  , ub2_i_b(:,:) )
+               CALL iom_rstput( kt, nitrst, numrow, 'vb2_i_b'  , vb2_i_b(:,:) )
+            ENDIF
+# endif
          ENDIF
 # endif
          !
@@ -1197,17 +1187,6 @@ LOGICAL, SAVE :: ll_bt_av    ! =T : boxcard time averaging   =F : foreward backw
             CALL iom_rstput( kt, nitrst, numrow, 'ub_e'     ,    ub_e(:,:) )
             CALL iom_rstput( kt, nitrst, numrow, 'vb_e'     ,    vb_e(:,:) )
          ENDIF
-#if defined key_agrif
-         ! Save time integrated fluxes
-         IF ( .NOT.Agrif_Root() ) THEN
-            CALL iom_rstput( kt, nitrst, numrow, 'ub2_i_b'  , ub2_i_b(:,:) )
-            CALL iom_rstput( kt, nitrst, numrow, 'vb2_i_b'  , vb2_i_b(:,:) )
-         ENDIF
-# if defined key_RK3
-         CALL iom_rstput( kt, nitrst, numrow, 'un_adv'      ,  un_adv(:,:) )
-         CALL iom_rstput( kt, nitrst, numrow, 'vn_adv'      ,  vn_adv(:,:) )
-# endif
-#endif
       ENDIF
       !
    END SUBROUTINE ts_rst

@@ -230,7 +230,7 @@ CONTAINS
          !
          !                             !* surface wave load *!   (Bernoulli head)
          !
-         IF( ln_wave .AND. ln_bern_srfc ) THEN
+         IF( ln_bern_srfc ) THEN
             DO_2D( 0, 0, 0, 0 )
                Ue_rhs(ji,jj) = Ue_rhs(ji,jj) + ( bhd_wave(ji+1,jj) - bhd_wave(ji,jj) ) * r1_e1u(ji,jj)   !++ bhd_wave from wave model in m2/s2 [BHD parameters in WW3]
                Ve_rhs(ji,jj) = Ve_rhs(ji,jj) + ( bhd_wave(ji,jj+1) - bhd_wave(ji,jj) ) * r1_e1u(ji,jj)

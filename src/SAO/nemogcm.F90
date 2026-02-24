@@ -16,9 +16,9 @@ MODULE nemogcm
    !!----------------------------------------------------------------------
    USE step_oce       ! module used in the ocean time stepping module (step.F90)
    USE domain         ! domain initialization   (dom_init & dom_cfg routines)
+   USE usrdef_nam     ! user-defined configuration
    USE istate         ! initial state setting          (istate_init routine)
    USE phycst         ! physical constant                  (par_cst routine)
-   USE step           ! NEMO time-stepping                 (stp     routine)
    USE cpl_oasis3     ! OASIS3 coupling
    USE diaobs         ! Observation diagnostics       (dia_obs_init routine)
 #if defined key_nemocice_decomp
@@ -37,6 +37,10 @@ MODULE nemogcm
    USE xios           ! xIOserver
 #endif
    USE timing         ! timing
+#if defined key_si3
+   USE par_ice, ONLY : jpl, nlay_i, nlay_s   ! Sea-ice array-dimension extents
+   USE ice,     ONLY : ice_alloc             ! Sea-ice array allocation
+#endif
 
    IMPLICIT NONE
    PRIVATE
@@ -74,19 +78,27 @@ CONTAINS
          !
          CALL sao_data_init   ! Initialise Stand Alone Observation operator data
          !
-         CALL dia_obs_init    ! Initialise obs_operator
+         CALL dia_obs_init( Nnn )   ! Initialise obs_operator
          !
-         CALL sao_interp      ! Interpolate to observation space
+         CALL sao_interp( Nnn )     ! Interpolate to observation space
          !
          CALL dia_obs_wri     ! Pipe to output files
          !
-         CALL dia_obs_dealloc ! Reset the obs_oper between
+         IF( nstop /= 0 .AND. lwp ) CALL ctl_stop('', '   ==>>>   nemo_gcm: errors have been found', '',   &
+            &                                     '           Look for "E R R O R" messages in ocean_output_<process> files' )
          !
          CALL nemo_dealloc()  ! free memory as soon as possible as the timing finalization can use large arrays if jpnij is big...
          !
          CALL timing_stop( 'full code', ld_finalize = .TRUE. )
          !
+#if defined key_xios
+         CALL xios_finalize()
+#else
          IF(lk_mpp)   CALL mppstop  ! Safely stop MPI (end mpp communications)
+#endif
+         !
+         IF(lwm .AND. nstop /= 0 ) STOP 123
+         IF(lwm)                   STOP 0
          !
    END SUBROUTINE nemo_gcm
 
@@ -105,7 +117,6 @@ CONTAINS
       !!----------------------------------------------------------------------
       !
       cxios_context = 'nemo'
-      nn_hls = 1
       !
       !                             !-------------------------------------------------!
       !                             !     set communicator & select the local rank    !
@@ -227,6 +238,22 @@ CONTAINS
       ! Now we know the dimensions of the grid and numout has been set: we can allocate arrays
       CALL nemo_alloc()
 
+      ! Initialise time-level indices
+      Nbb = 1
+      Nnn = 2
+      Naa = 3
+      Nrhs = Naa
+      !
+      !                             !----------------------------!
+      !                             !  Vertical-grid constraint  !
+      !                             !----------------------------!
+      !
+      IF( lwp .AND. .NOT. lk_linssh ) THEN
+         CALL ctl_stop( 'STOP', 'The SAO does not support time-varying vertical coordinates yet, successful',   &
+            &                   '     SAO runs require compilation of SAO for the linear free surface',         &
+            &                   "     option ('key_linssh')" )
+      END IF
+      !
       !                             !-------------------------------!
       !                             !  NEMO general initialization  !
       !                             !-------------------------------!
@@ -245,8 +272,20 @@ CONTAINS
       IF( sn_cfctl%l_prtctl )   &
          &                 CALL prt_ctl_init       ! Print control
 
-                           CALL istate_init        ! ocean initial state (Dynamics and tracers)
+                           CALL istate_init( Nbb, Nnn, Naa )   ! ocean initial state (Dynamics and tracers)
+      !
+#if defined key_si3
+      jpl = 1 ; nlay_i = 1 ; nlay_s = 1   ! Reduce sea-ice array memory requirements
+      IF( ice_alloc() /= 0 ) CALL ctl_stop( '   SAO: allocation of sea-ice arrays failed' )
+#endif
+      !
       IF( ln_timing    )   CALL timing_stop( 'nemo_init' )
+
+# if defined key_agrif
+      IF( Agrif_Root() ) THEN
+          CALL Agrif_MPI_Init(mpi_comm_oce) ! Must be done after initialization (nemo_alloc)
+      ENDIF
+# endif
                            
   END SUBROUTINE nemo_init
 
@@ -267,15 +306,16 @@ CONTAINS
          WRITE(numout,*) '   Namelist namctl'
          WRITE(numout,*) '                              sn_cfctl%l_runstat = ', sn_cfctl%l_runstat
          WRITE(numout,*) '                              sn_cfctl%l_trcstat = ', sn_cfctl%l_trcstat
+         WRITE(numout,*) '                              sn_cfctl%l_obsstat = ', sn_cfctl%l_obsstat
          WRITE(numout,*) '                              sn_cfctl%l_oceout  = ', sn_cfctl%l_oceout
          WRITE(numout,*) '                              sn_cfctl%l_layout  = ', sn_cfctl%l_layout
          WRITE(numout,*) '                              sn_cfctl%l_prtctl  = ', sn_cfctl%l_prtctl
          WRITE(numout,*) '                              sn_cfctl%l_prttrc  = ', sn_cfctl%l_prttrc
          WRITE(numout,*) '                              sn_cfctl%l_oasout  = ', sn_cfctl%l_oasout
-         WRITE(numout,*) '                              sn_cfctl%procmin   = ', sn_cfctl%procmin  
-         WRITE(numout,*) '                              sn_cfctl%procmax   = ', sn_cfctl%procmax  
-         WRITE(numout,*) '                              sn_cfctl%procincr  = ', sn_cfctl%procincr 
-         WRITE(numout,*) '                              sn_cfctl%ptimincr  = ', sn_cfctl%ptimincr 
+         WRITE(numout,*) '                              sn_cfctl%procmin   = ', sn_cfctl%procmin
+         WRITE(numout,*) '                              sn_cfctl%procmax   = ', sn_cfctl%procmax
+         WRITE(numout,*) '                              sn_cfctl%procincr  = ', sn_cfctl%procincr
+         WRITE(numout,*) '                              sn_cfctl%ptimincr  = ', sn_cfctl%ptimincr
          WRITE(numout,*) '      timing by routine               ln_timing  = ', ln_timing
          WRITE(numout,*) '      CFL diagnostics                 ln_diacfl  = ', ln_diacfl
       ENDIF
@@ -361,25 +401,28 @@ CONTAINS
       !
    END SUBROUTINE nemo_dealloc
 
-   SUBROUTINE nemo_set_cfctl(sn_cfctl, setto )
+   SUBROUTINE nemo_set_cfctl(sdcfctl, ldsetto )
       !!----------------------------------------------------------------------
       !!                     ***  ROUTINE nemo_set_cfctl  ***
       !!
-      !! ** Purpose :   Set elements of the output control structure to setto.
+      !! ** Purpose :   Set elements of the output control structure to ldsetto.
       !!
       !! ** Method  :   Note this routine can be used to switch on/off some
       !!                types of output for selected areas.
       !!----------------------------------------------------------------------
-      TYPE(sn_ctl), INTENT(inout) :: sn_cfctl
-      LOGICAL     , INTENT(in   ) :: setto
+      TYPE(sn_ctl), INTENT(inout) ::   sdcfctl
+      LOGICAL     , INTENT(in   ) ::   ldsetto
       !!----------------------------------------------------------------------
-      sn_cfctl%l_runstat = setto
-      sn_cfctl%l_trcstat = setto
-      sn_cfctl%l_oceout  = setto
-      sn_cfctl%l_layout  = setto
-      sn_cfctl%l_prtctl  = setto
-      sn_cfctl%l_prttrc  = setto
-      sn_cfctl%l_oasout  = setto
+      !
+      sdcfctl%l_runstat = ldsetto
+      sdcfctl%l_trcstat = ldsetto
+      sdcfctl%l_obsstat = ldsetto
+      sdcfctl%l_oceout  = ldsetto
+      sdcfctl%l_layout  = ldsetto
+      sdcfctl%l_prtctl  = ldsetto
+      sdcfctl%l_prttrc  = ldsetto
+      sdcfctl%l_oasout  = ldsetto
+      !
    END SUBROUTINE nemo_set_cfctl
 
    !!======================================================================

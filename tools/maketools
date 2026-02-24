@@ -161,6 +161,15 @@ echo "${CUR_CONF} "  > ${TOOLS_DIR}/tools.txt
 #- Make the building directory
 ${COMPIL_DIR}/Fmake_tools_bld.sh ${TOOLS_DIR} ${CUR_CONF} ${NEMO_TDIR} || exit
 
+#- Load environment if exists
+env_file=`find ${MAIN_DIR}/arch -name arch-${CMP_NAM}.env`
+if [ -f "${env_file}" ] ; then
+   echo -e "\nEnvironment file arch-${CMP_NAM}.env loaded"
+   . ${env_file}
+else
+   echo -e "\nWARNING: Environment file arch-${CMP_NAM}.env not found"
+fi
+
 #- At this stage cpp keys have been updated. we can check the arch file
 #- When used for the first time, choose a compiler ---
 ${COMPIL_DIR}/Fcheck_archfile.sh ${TOOLS_DIR}/${CUR_CONF}/BLD/arch_tools.fcm ${TOOLS_DIR}/${CUR_CONF}/BLD/cpp_tools.fcm ${MAIN_DIR}/arch/arch-${CMP_NAM}.fcm ${x_b} || exit

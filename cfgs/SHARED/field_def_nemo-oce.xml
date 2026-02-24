@@ -1,5 +1,4 @@
 <?xml version="1.0"?>
-<!-- $id$ -->
 
 <field_definition level="1" prec="4" operation="average" enabled=".TRUE." default_value="1.e20" > <!-- time step automaticaly defined -->
 
@@ -1213,7 +1212,7 @@ that are available in the tidal-forcing implementation (see
       <field id="sopsteiv"      long_name="Salt Transport from mesoscale eddy advection : All basins"    unit="Giga g/s"   />
       <field id="sopstadv"      long_name="Advective Salt Transport"                                     unit="Giga g/s"   />
       <field id="sophtgyre"     long_name="Overturning heat transport due to gyre" field_ref="sophtove"  unit="W"          > sophtvtr - sophtove  </field>
-      <field id="sopstgyre"     long_name="Overturning salt transport due to gyre" field_ref="sopstove"  unit="kg/s"       > sophtvtr - sopstove  </field>
+      <field id="sopstgyre"     long_name="Overturning salt transport due to gyre" field_ref="sopstove"  unit="kg/s"       > sopstvtr - sopstove  </field>
     </field_group>     <!-- End of field group for grid_znl_T_2D -->
   </field_group>
 

@@ -1,10 +1,4 @@
-# compiler options for KARA (using GNU compiler)
-#
-# GNU_OMPI (NEMO-4.0 + XIOS-2.5)
-# gcc/9.3.0 openmpi/4.0.5_gcc9.3.0 hdf5/1.8.18_gcc9.3.0 netcdf/4.7.1_gcc9.3.0 xios/2.5_rev1903_gcc9.3.0
-#
-# GNU_OMPI (NEMO-4.2 + XIOS-TRUNK)
-# gcc/9.3.0 openmpi/4.0.5_gcc9.3.0 hdf5/1.8.18_gcc9.3.0 netcdf/4.7.1_gcc9.3.0 xios/trunk_rev2136_gcc9.3.0
+# compiler options for AA (using INTEL compiler)
 #
 #
 # NCDF_INC    netcdf4 include file
@@ -40,27 +34,26 @@
 #---------------------------------------------------------------------------------------------
 #
 #
-%NCDF_INC            -I${NETCDF_INC}
-%NCDF_LIB            -L${NETCDF_LIB} -lnetcdff -lnetcdf -L${HDF5_LIB} -lhdf5_hl -lhdf5
+%NCDF_INC            ${NETCDF4_INCLUDE}
+%NCDF_LIB            ${NETCDF4_LIB} ${HDF5_LIB}
 %XIOS_INC            -I${XIOS_INC}
-%XIOS_LIB            -L${XIOS_LIB} -lxios
-%OASIS_INC           -I${OASIS_DIR}/build/lib/mct -I${OASIS_DIR}/build/lib/psmile.MPI1
+%XIOS_LIB            -L${XIOS_LIB} -lxios -lstdc++
+%OASIS_INC           -I${OASIS_DIR}/include
 %OASIS_LIB           -L${OASIS_DIR}/lib -lpsmile.MPI1 -lmct -lmpeu -lscrip
 
-%CPP                 cpp -Dkey_nosignedzero
-%FC                  mpif90 -c -cpp
-#%PROD_FCFLAGS       -fdefault-real-8 -O2 -ftree-vectorize -funroll-all-loops -march=skylake-avx512 -ffree-line-length-none -Wno-missing-include-dirs
-%PROD_FCFLAGS        -fdefault-real-8 -O1 -march=skylake-avx512 -ffree-line-length-none -Wno-missing-include-dirs
-%DEBUG_FCFLAGS       -fdefault-real-8 -O0 -g -fbacktrace -ftree-vectorize -funroll-all-loops -march=skylake-avx512 -ffree-line-length-none -fcheck=all -finit-real=snan -Wno-missing-include-dirs -ffpe-trap=invalid,zero,overflow
+%CPP                 cpp
+%FC                  mpif90
+%PROD_FCFLAGS        -i4 -r8 -O3 -fp-model strict -xHost -fno-alias
+%DEBUG_FCFLAGS       -i4 -r8 -g -O0 -debug all -traceback -fp-model strict -ftrapuv -check all,noarg_temp_created -fpe-all0 -ftz -init=arrays,snan,huge
 %FFLAGS              %FCFLAGS
-%LD                  mpif90
-%LDFLAGS             -lstdc++
+%LD                  %FC
+%LDFLAGS             -Wl,-rpath,%HDF5_PREFIX/lib -Wl,-rpath,%NCDF_F_PREFIX/lib -Wl,-rpath,%XIOS_PREFIX/lib
 %FPPFLAGS            -P -traditional
 %AR                  ar
 %ARFLAGS             rs
-%MK                  gmake
+%MK                  make
 %USER_INC            %XIOS_INC %OASIS_INC %NCDF_INC
 %USER_LIB            %XIOS_LIB %OASIS_LIB %NCDF_LIB
 
-%CC                  gcc
+%CC                  icx -fcommon
 %CFLAGS              -O0

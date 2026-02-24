@@ -154,6 +154,7 @@ extern YYSTYPE convert_lval;
 
 int convert_parse (void);
 
+extern int convert_lex (void);
 
 
 /* Copy the second part of user declarations.  */
@@ -2638,8 +2639,6 @@ static int input (void );
  */
 #ifndef YY_DECL
 #define YY_DECL_IS_OURS 1
-
-extern int convert_lex (void);
 
 #define YY_DECL int convert_lex (void)
 #endif /* !YY_DECL */

@@ -87,8 +87,7 @@ CONTAINS
          WRITE(numout,*) 'zdf_swm_init : surface wave-driven mixing'
          WRITE(numout,*) '~~~~~~~~~~~~'
       ENDIF
-      IF(  .NOT.ln_wave .OR.   &
-         & .NOT.ln_sdw    )   CALL ctl_stop ( 'zdf_swm_init: ln_zdfswm=T but ln_wave and ln_sdw /= T')
+      IF( .NOT. ( ln_wave .AND. ln_sdw ) )   CALL ctl_stop ( 'zdf_swm_init: ln_zdfswm=T but ln_wave and ln_sdw /= T')
       !
    END SUBROUTINE zdf_swm_init
 

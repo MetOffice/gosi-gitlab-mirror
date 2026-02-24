@@ -33,10 +33,10 @@
 %OASIS_INC           -I%OASIS_HOME/build/lib/mct -I%OASIS_HOME/build/lib/psmile.MPI1
 %OASIS_LIB           -L%OASIS_HOME/lib -lpsmile.MPI1 -lmct -lmpeu -lscrip
 
-%CPP	             cpp -Dkey_nosignedzero 
-%FC	             mpif90 
+%CPP                 cpp -Dkey_nosignedzero 
+%FC                  mpif90 
 %PROD_FCFLAGS        -fdefault-real-8 -O3 -funroll-all-loops -fcray-pointer -ffree-line-length-none -fallow-argument-mismatch 
-%DEBUG_FCFLAGS       -fdefault-real-8 -O0 -g -fbacktrace -funroll-all-loops -fcray-pointer -ffree-line-length-none -fcheck=all -finit-real=nan -fallow-argument-mismatch 
+%DEBUG_FCFLAGS       -fdefault-real-8 -O0 -g -fbacktrace -funroll-all-loops -fcray-pointer -ffree-line-length-none -fcheck=all,no-array-temps -finit-real=nan -finit-logical=true -finit-integer=2147483647 -fallow-argument-mismatch
 %FFLAGS              %FCFLAGS
 %LD                  %FC
 %LDFLAGS             
