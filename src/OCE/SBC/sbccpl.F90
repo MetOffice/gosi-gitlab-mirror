@@ -1394,8 +1394,11 @@ CONTAINS
       !!----------------------------------------------------------------------
       !
       !
+!GCJ
       IF (Agrif_Root()) THEN ; WRITE(numout,*) '============================ PARENT RECEIVE START ============================'
       ELSE                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' RECEIVE START========================='
+      END IF
+!/GCJ
       IF (ln_timing) CALL timing_start('sbc_cpl_rcv')
       !
       ll_wrtstp  = ( MOD( kt, sn_cfctl%ptimincr ) == 0 ) .OR. ( kt == nitend )

@@ -97,7 +97,8 @@ CONTAINS
       ENDIF
 !GCJ
       IF (Agrif_Root()) THEN ; WRITE(numout,*) '============================ PARENT STEP ============================'
-      ELSE                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' STEP ========================='  
+      ELSE                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' STEP ========================='
+      END IF
 !/GCJ    
       IF( kstp == nit000 + 1 )   lk_agrif_fstep = .FALSE.
 # if defined key_xios

@@ -158,6 +158,7 @@ CONTAINS
          IF( Agrif_Root() .AND. lk_oasis ) THEN
             IF (Agrif_Root()) THEN ; WRITE(numout,*) '============================ PARENT SEND============================'
             ELSE                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' SEND ========================='
+            END IF
             CALL sbc_cpl_snd( istp ) 
          ENDIF
 !/GCJ
@@ -332,6 +333,7 @@ CONTAINS
 !GCJ
          IF (Agrif_Root()) THEN ; WRITE(numout,*) '============================ PARENT NEMO INIT============================'
          ELSE                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' NEMO INIT ========================='
+         END IF
 !/GCJ
          !
          IF( .NOT. lwm )   &            ! alreay opened for narea == 1
