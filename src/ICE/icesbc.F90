@@ -421,6 +421,10 @@ CONTAINS
          !
       END_2D
 
+      ! If ln_leadhfx is false
+      ! => do not use transmitted solar flux to melt sea-ice (equivalent of setting frq_m=0)
+      IF( .NOT.ln_leadhfx )   frq_m(:,:) = 0._wp
+
       ! In case we bypass open-water ice formation
       IF( .NOT. ln_icedO )  qlead(:,:) = 0._wp
       ! In case we bypass growing/melting from top and bottom
