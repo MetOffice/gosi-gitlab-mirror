@@ -1,0 +1,34 @@
+#
+# This arch file was automatically created by ./build_arch-auto.sh
+# Tue Oct 21 16:04:46 CEST 2025
+#
+%NCDF_C_PREFIX       /usr/local/apps/netcdf4-parallel/4.9.3/GNU/14.2/HPCX/2.9
+%NCDF_F_PREFIX       /usr/local/apps/netcdf4-parallel/4.9.3/GNU/14.2/HPCX/2.9
+%HDF5_PREFIX         /usr/local/apps/hdf5-parallel/1.14.6/GNU/14.2/HPCX/2.9
+%XIOS_PREFIX         /home/ar0s/SRC/XIOS/trunk/r2752_GCC_XMPI.may25v2
+%OASIS_PREFIX        notdef
+%PSYCLONE_HOME       notdef
+
+%NCDF_INC            -I%NCDF_F_PREFIX/include -I%NCDF_C_PREFIX/include
+%NCDF_LIB            -L%NCDF_F_PREFIX/lib -lnetcdff -L%NCDF_C_PREFIX/lib -lnetcdf -L%HDF5_PREFIX/lib -lhdf5_hl -lhdf5 -L/usr/lib64 -lcurl  -lz  -lm
+%XIOS_INC            -I%XIOS_PREFIX/inc
+%XIOS_LIB            -L%XIOS_PREFIX/lib -lxios -lstdc++
+%OASIS_INC           
+%OASIS_LIB           
+
+%CPP                 cpp -Dkey_nosignedzero
+%FC                  mpif90
+%PROD_FCFLAGS        -fdefault-real-8 -march=native -O2 -fno-expensive-optimizations -funroll-all-loops -fcray-pointer -ffree-line-length-none -fallow-argument-mismatch
+%DEBUG_FCFLAGS       -fdefault-real-8 -Og -g -fbacktrace -funroll-all-loops -fcray-pointer -ffree-line-length-none -fcheck=all,no-array-temps -finit-real=nan -finit-logical=true -finit-integer=2147483647 -ffpe-trap=invalid,zero,overflow -ffpe-summary=invalid,zero,overflow -fallow-argument-mismatch
+%FFLAGS              %FCFLAGS
+%LD                  %FC
+%LDFLAGS             -Wl,-rpath,%HDF5_PREFIX/lib -Wl,-rpath,%NCDF_F_PREFIX/lib -Wl,-rpath,%XIOS_PREFIX/lib
+%FPPFLAGS            -P -traditional
+%AR                  ar
+%ARFLAGS             rs
+%MK                  make
+%USER_INC            %XIOS_INC %OASIS_INC %NCDF_INC
+%USER_LIB            %XIOS_LIB %OASIS_LIB %NCDF_LIB
+
+%CC                  gcc
+%CFLAGS              -O0 -fcommon

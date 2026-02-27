@@ -293,10 +293,12 @@ CONTAINS
             !
             zepsilon = 0.1_wp
             DO ji = 1, npti
-               zcnd_i = SUM( ztcond_i(ji,:) ) / REAL( nlay_i+1, wp )                            ! Mean sea ice thermal conductivity
-               zhe = ( rcnd_s * h_i_1d(ji) + zcnd_i * h_s_1d(ji) ) / ( rcnd_s + zcnd_i )        ! Effective thickness he (zhe)
-               IF( zhe >=  zepsilon * 0.5_wp * EXP(1._wp) )  &
-                  &   zghe(ji) = MIN( 2._wp, 0.5_wp * ( 1._wp + LOG( 2._wp * zhe / zepsilon ) ) )   ! G(he)
+               IF( .NOT. l_T_converged(ji) ) THEN
+                  zcnd_i = SUM( ztcond_i(ji,:) ) / REAL( nlay_i+1, wp )                            ! Mean sea ice thermal conductivity
+                  zhe = ( rcnd_s * h_i_1d(ji) + zcnd_i * h_s_1d(ji) ) / ( rcnd_s + zcnd_i )        ! Effective thickness he (zhe)
+                  IF( zhe >=  zepsilon * 0.5_wp * EXP(1._wp) )  &
+                     &   zghe(ji) = MIN( 2._wp, 0.5_wp * ( 1._wp + LOG( 2._wp * zhe / zepsilon ) ) )   ! G(he)
+               ENDIF
             END DO
             !
          ENDIF

@@ -300,9 +300,9 @@ if [ ${config} == "GYRE_GO" ] ; then
     SETTE_CONFIG="GYRE_GO"${CONFIG_SUFFIX}
     if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
     then
-        ITEND=12    # 1 day
+        ITEND=16    # 1.25 days (RK3) or 0.5 days (MLF)
     else
-        ITEND=1080  # 90 days
+        ITEND=1152  # 90 days (RK3) or 36 days (MLF)
     fi
 
     if [ ${DO_COMPILE} -eq 1 ] ;  then
@@ -334,14 +334,14 @@ if [ ${config} == "GYRE_GO" ] ; then
         # Increase horizontal and vertical resolution
         set_namelist namelist_cfg nn_GYRE 2
         set_namelist namelist_cfg jpkglo 75
-        set_namelist namelist_cfg rn_Dt 6300.
+        set_namelist namelist_cfg rn_Dt 6750.
         # Accomodate QCO option
         set_namelist namelist_cfg ln_hpg_zco .false.
         set_namelist namelist_cfg ln_hpg_sco .true.
         if [ ${USING_RK3} == 'no' ] ; then
             set_namelist namelist_cfg nn_bt_flt 1
             set_namelist namelist_cfg rn_bt_alpha 0.
-            set_namelist namelist_cfg rn_Dt 3150.
+            set_namelist namelist_cfg rn_Dt 2700.
         fi
         set_namelist namelist_cfg sn_cfctl%l_runstat .true.
         set_namelist_opt namelist_cfg ln_timing ${USING_TIMING} .true. .false.
@@ -1234,12 +1234,28 @@ if [ ${config} == "AGRIF_DEMO" ] ;  then
             for nname in namelist_cfg 1_namelist_cfg 2_namelist_cfg 3_namelist_cfg; do
                 if [[ ${name} == "REPRO_2_8" ]]; then
                     set_namelist ${nname} cn_exp \"AGRIF_DEMO_28\"
-                    set_namelist ${nname} jpni 2
-                    set_namelist ${nname} jpnj 8
+                    if [[   ${nname} == "1_namelist_cfg" ]]; then
+			set_namelist ${nname} jpni 1
+			set_namelist ${nname} jpnj 7
+                    elif [[ ( ${nname} == "2_namelist_cfg" ) || ( ${nname} == "3_namelist_cfg" ) ]]; then
+			set_namelist ${nname} jpni 3
+			set_namelist ${nname} jpnj 3
+		    else
+			set_namelist ${nname} jpni 2
+			set_namelist ${nname} jpnj 8
+		    fi
                 else
                     set_namelist ${nname} cn_exp \"AGRIF_DEMO_44\"
-                    set_namelist ${nname} jpni 4
-                    set_namelist ${nname} jpnj 4
+                    if [[   ${nname} == "1_namelist_cfg" ]]; then
+			set_namelist ${nname} jpni 7
+			set_namelist ${nname} jpnj 1
+                    elif [[ ( ${nname} == "2_namelist_cfg" ) || ( ${nname} == "3_namelist_cfg" ) ]]; then
+			set_namelist ${nname} jpni 1
+			set_namelist ${nname} jpnj 9
+		    else
+			set_namelist ${nname} jpni 4
+			set_namelist ${nname} jpnj 4
+		    fi
                 fi
             done
             cd ${SETTE_DIR}
@@ -1287,7 +1303,7 @@ if [ ${config} == "AGRIF_DEMO" ] ;  then
             sync_config  ${CONFIG_DIR0}/${config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
             #
             ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r AGRIF_DEMO ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
-                       -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "key_agrif ${DEL_KEYS}" || exit 1
+                       -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS}" del_key "key_agrif key_agrif_psisters ${DEL_KEYS}" || exit 1
             EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
             cd ${EXE_DIR}
             set_namelist namelist_cfg cn_exp \"ORCA2\"
@@ -1452,21 +1468,34 @@ if [[ ${config} =~ "C1D" ]]  ; then
     then
         ITEND=240   # 1 day
     else
-        ITEND=87600 # 365 days
+        ITEND=87600 # PAPA (365 days)
+        [[ ${config} =~ "ASICS" ]] && ITEND=17040
+        [[ ${config} =~ "BATS"  ]] && ITEND=26280
+        [[ ${config} =~ "SAS"   ]] && ITEND=8760
     fi
 
     if [ ${DO_COMPILE} -eq 1 ] ;  then
         cd ${MAIN_DIR}
         #
-        # syncronisation if target directory/file exist (not done by makenemo)
+        # change EXPREF symlink
         rm -fv ${CONFIG_DIR0}/${config/_*}/EXPREF
-        ln -svr ${CONFIG_DIR0}/${config/_*}/EXP_${config#*_} ${CONFIG_DIR0}/${config/_*}/EXPREF
+        if [[ ${config} == "C1D" || ${config} == "C1D_PAPA" ]]; then
+          ln -svr ${CONFIG_DIR0}/${config/_*}/EXP_PAPA ${CONFIG_DIR0}/${config/_*}/EXPREF
+        else
+          ln -svr ${CONFIG_DIR0}/${config/_*}/EXP_${config#*_} ${CONFIG_DIR0}/${config/_*}/EXPREF
+        fi
+        # syncronisation if target directory/file exist (not done by makenemo)
         clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         sync_config  ${CONFIG_DIR0}/${config/_*} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
         #
         # C1D uses linssh so remove key_qco if added by default
-        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r ${config/_*} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
-                   -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS}" || exit 1
+        # if ASICS we remove key_top
+        [[ ${config} =~ "ASICS" ]] && DEL_KEYS_LOCAL="${DEL_KEYS} key_top" || DEL_KEYS_LOCAL="${DEL_KEYS}"
+        # if SAS we add SAS src directory
+        [[ ${config} =~ "SAS" ]] && ADD_SRC="OCE ICE TOP SAS" || ADD_SRC=""
+        ./makenemo -m ${CMP_NAM} -n ${SETTE_CONFIG} -r ${config/_*} ${ADD_SRC:+-d "${ADD_SRC}"} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 ${NEMO_DEBUG} \
+                   -j ${CMPL_CORES} ${TRANSFORM_OPT} add_key "${ADD_KEYS/key_qco/}" del_key "${DEL_KEYS_LOCAL}" || exit 1
+        # restore EXPREF symlink
         rm -fv ${CONFIG_DIR0}/${config/_*}/EXPREF
         ln -svr ${CONFIG_DIR0}/${config/_*}/EXP_PAPA ${CONFIG_DIR0}/${config/_*}/EXPREF
     fi

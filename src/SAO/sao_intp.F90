@@ -23,7 +23,7 @@ MODULE sao_intp
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE sao_interp
+   SUBROUTINE sao_interp( Kmm )
       !!----------------------------------------------------------------------
       !!                    ***  SUBROUTINE sao_interp ***
       !!
@@ -32,22 +32,24 @@ CONTAINS
       !! ** Method : 1. Populate model counterparts
       !!             2. Call dia_obs at appropriate time steps
       !!----------------------------------------------------------------------
-      INTEGER ::   istp    ! time step index
-      INTEGER ::   ifile   ! file index
+      INTEGER, INTENT(in) ::   Kmm     ! Time-level index
+      INTEGER             ::   istp    ! Time-step index
+      INTEGER             ::   ifile   ! File index
       !!----------------------------------------------------------------------
       istp = nit000 - 1
-      nstop = 0
       ifile = 1
-      CALL sao_rea_dri(ifile)
+      CALL sao_rea_dri( Kmm, ifile )
+      CALL mpp_max( 'sao_interp', nstop )   ! Error check across all processes
       !
       DO WHILE ( istp <= nitend .AND. nstop == 0 )
          IF (ifile <= n_files + 1) THEN
-            IF ( MOD(istp, nn_sao_freq) == nit000 ) THEN
-               CALL sao_rea_dri(ifile)
+            IF ( MOD( istp, nn_sao_freq ) == MOD( nit000, nn_sao_freq ) ) THEN
+               CALL sao_rea_dri( Kmm, ifile )
                ifile = ifile + 1
             ENDIF
-            CALL dia_obs(istp)
+            CALL dia_obs( istp, Kmm )
          ENDIF
+         CALL mpp_max( 'sao_interp', nstop )   ! Error check across all processes
          istp = istp + 1
       END DO
       !

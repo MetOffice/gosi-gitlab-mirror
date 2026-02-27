@@ -201,6 +201,9 @@ MODULE lib_mpp
    INTEGER, PUBLIC :: ndlrstuse
    INTEGER, PUBLIC :: ndlrstoff
 
+   LOGICAL, PUBLIC :: l_perpetual_ts = .FALSE.      ! Avoid time update to ensure stability
+                                                    ! ( BENCH test case only )
+
    LOGICAL, PUBLIC ::   ln_nnogather                !: namelist control of northfold comms
    LOGICAL, PUBLIC ::   ln_mppdelay                 !: namelist control of delayed mpi communications
    INTEGER, PUBLIC ::   nn_comm                     !: namelist control of comms
@@ -247,11 +250,23 @@ CONTAINS
       ENDIF
 
 # if defined key_agrif
-      IF( Agrif_Root() )   CALL Agrif_MPI_Init(localComm)
-      mpi_comm_oce = Agrif_MPI_get_grid_comm()   ! works for parent and children
+      IF( Agrif_Root() ) THEN
+         IF( PRESENT(localComm) ) THEN
+            mpi_comm_oce = localComm ! use given communicator, we should not touch MPI_COMM_WORLD
+         ELSE
+            ! similar to mpi_comm_oce=mpi_comm_world, MPI doc "no library routine should use MPI_COMM_WORLD as the communicator"
+            CALL mpi_comm_dup( mpi_comm_world, mpi_comm_oce, ierr)
+            IF( ierr /= MPI_SUCCESS ) CALL ctl_stop( 'STOP', ' lib_mpp: Error in routine mpi_comm_dup' )
+         ENDIF
+      ELSE
+         mpi_comm_oce = Agrif_MPI_get_grid_comm()
+      ENDIF
 # else
-      mpi_comm_oce = mpi_comm_world   ! default
-      IF( PRESENT(localComm) )   mpi_comm_oce = localComm
+      IF( PRESENT(localComm) ) THEN
+         mpi_comm_oce = localComm
+      ELSE
+         mpi_comm_oce = mpi_comm_world   ! default
+      ENDIF
 # endif
 
       CALL mpi_comm_rank( mpi_comm_oce, mpprank, ierr )

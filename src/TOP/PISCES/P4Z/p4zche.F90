@@ -31,8 +31,9 @@ MODULE p4zche
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   :: sio3eq   ! chemistry of Si
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   :: fekeq    ! chemistry of Fe
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   :: chemc    ! Solubilities of O2 and CO2
-   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   :: chemo2    ! Solubilities of O2 and CO2
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:)   :: chemo2   ! Solubilities of O2 and CO2
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:,:) :: fesol    ! solubility of Fe
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   akfe2ox  ! Oxydation rate of FEII
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   salinprac  ! Practical salinity
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   tempis   ! In situ temperature
 
@@ -221,7 +222,7 @@ CONTAINS
          ! OLD:  chemc(ji,jj,1) = EXP( zcek1 ) * 1E-6 * rhop(ji,jj,1) / 1000. ! mol/(L atm)
          ! The units indicated in the above line are wrong. They are actually "mol/(L*uatm)"
          ! NEW:
-         chemc(ji,jj,1) = EXP( zcek1 ) * 1E-6 ! mol/(L * uatm)
+         chemc(ji,jj,1) = EXP( zcek1 ) * 1.E-6 ! mol/(L * uatm)
          chemc(ji,jj,2) = -1636.75 + 12.0408*ztkel - 0.0327957*ztkel2 + 0.0000316528*ztkel3
          chemc(ji,jj,3) = 57.7 - 0.118*ztkel
       END_2D
@@ -437,6 +438,9 @@ CONTAINS
           fluorid(ji,jj,jk) = zft 
 
           fekeq (ji,jj,jk)  = EXP( LOG(10.) * ( 17.27 - 1565.7 / ztkel ) ) 
+
+          ! Oxydation kinetic of FeII
+          akfe2ox(ji,jj,jk) = EXP( LOG(10.) * (21.56 - 1545.0 / ztkel - 3.23 * zisqrt + 1.52 * zis) ) / total2free / 60.0
 
           ! Liu and Millero (1999) only valid 5 - 50 degC
           ztkel1 = MAX( 5. , tempis(ji,jj,jk) ) + 273.16 
@@ -832,7 +836,8 @@ CONTAINS
 
       ierr(:) = 0
 
-      ALLOCATE( fekeq(A2D(0),jpk), chemc(A2D(0),3), chemo2(A2D(0),jpk), STAT=ierr(1) )
+      ALLOCATE( fekeq(A2D(0),jpk)  , chemc(A2D(0),3), chemo2(A2D(0),jpk),   &
+         &      akfe2ox(A2D(0),jpk),                   STAT=ierr(1) )
 
       ALLOCATE( akb3(A2D(0),jpk)     , tempis(A2D(0),jpk),       &
          &      akw3(A2D(0),jpk)     , borat (A2D(0),jpk)  ,       &

@@ -87,7 +87,7 @@
       !                      !  (=F) user defined configuration           (F => create/check namusr_def)
       cn_domcfg = "domain_cfg"  ! domain configuration filename
       !
-      ln_closea    = .true. !  (=T => fill namclo) 
+      ln_closea    = .true. !  (=T => fill namclo)
       !                      !  (=F) no control of net precip/evap over closed sea
       !
    ln_write_cfg = .false.    !  (=T) create the domain configuration file
@@ -430,7 +430,11 @@
    !                       !  RGB, 2BD & 5BD choices:
    rn_abs      =   0.58       !  RGB & 2BD: fraction absorbed in the very near surface
    rn_si0      =   0.35       !  RGB & 2BD: shortess depth of extinction
-   nn_chldta   =      1       !  RGB : 3D Chl data (=2), Surface Chl data (=1) or Cst value (=0)
+   nn_chldta   =      0       !  RGB & 5BD: cst value (=0) or Chl data (=1)
+      nn_chlprfl  =      1       !  Chl vertical profile (nn_chldta = 1)
+                                 !  0 = vertical extrapolation of surface data
+                                 !  1 = vertical analytical profile deduced from surface data
+                                 !  2 = 3D Chl data
    rn_si1      =   23.0       !  2BD : longest depth of extinction
    rn_par      =   0.47       !  5BD : fraction of photosynthetically active radiation
 

@@ -159,7 +159,7 @@
    sn_par      = 'par.orca'       ,     24.           , 'fr_par'  ,  .true.      , .true. , 'yearly'  , ''       , ''       , ''
    cn_dir      = './'      !  root directory for the location of the dynamical files
    ln_varpar   =  .true.   ! boolean for PAR variable
-   parlux      =  0.43      ! Fraction of shortwave as PAR
+   parlux      =  0.43     ! Fraction of shortwave as PAR
    ln_p4z_dcyc =  .false.  ! Diurnal cycle in PISCES
 / 
 !-----------------------------------------------------------------------
@@ -299,8 +299,8 @@
    xthreshzoo =  1.E-8    ! Microzoo feeding threshold for microzooplankton
    xthresh    =  3.E-7    ! Food threshold for feeding
    xkgraz     =  20.E-6   ! half sturation constant for grazing
-   epsher     =  0.4     ! Efficiency of microzoo growth
-   epshermin  =  0.4     ! Minimum efficiency of microzoo growth
+   epsher     =  0.4      ! Efficiency of microzoo growth
+   epshermin  =  0.4      ! Minimum efficiency of microzoo growth
    sigma1     =  0.6      ! Fraction of microzoo excretion as DOM
    unass      =  0.3      ! non assimilated fraction of phyto by zoo
 /
@@ -363,9 +363,9 @@
 &nampisfer     !   parameters for iron chemistry
 !-----------------------------------------------------------------------
    ln_ligvar =  .false.   ! variable ligand concentration
-   xlam1     =  0.02      ! scavenging rate of Iron by biogenic particles
-   xlamdust  =  150.0     ! Scavenging rate of Iron by dust
-   ligand    =  1E-9     ! Ligands concentration 
+   xlam1     =  0.04      ! scavenging rate of Iron by biogenic particles
+   xlamdust  =  700.0     ! Scavenging rate of Iron by dust
+   ligand    =  1.E-9     ! Ligands concentration 
    kfep      =  0.01      ! Nanoparticle formation rate constant
    scaveff   =  1.0       ! Fraction of scavenged Fe that goes to POFe
 /
@@ -403,7 +403,7 @@
 !-----------------------------------------------------------------------
 &nampiscal     !   parameters for Calcite chemistry
 !-----------------------------------------------------------------------
-   kdca       =  100.     ! calcite dissolution rate constant (1/time)
+   kdca       =  1000.    ! calcite dissolution rate constant (1/time)
    nca        =  4.7      ! order of dissolution reaction (dimensionless)
 /
 !-----------------------------------------------------------------------
@@ -416,10 +416,10 @@
    sn_hydrofe  = 'hydrofe.orca'    ,    -12            , 'epsdb'       ,  .false.     , .true. , 'yearly'  , ''       , ''    , ''
 !
    cn_dir      = './'      !  root directory for the location of the dynamical files
-   ln_ironsed  =  .false.   ! boolean for Fe input from sediments
-   ln_ironice  =  .false.   ! boolean for Fe input from sea ice
-   ln_hydrofe  =  .false.   ! boolean for from hydrothermal vents
-   sedfeinput  =  2.e-9    ! Coastal release of Iron
+   ln_ironsed  =  .false.  ! boolean for Fe input from sediments
+   ln_ironice  =  .false.  ! boolean for Fe input from sea ice
+   ln_hydrofe  =  .false.  ! boolean for from hydrothermal vents
+   sedfeinput  =  1.e-9    ! Coastal release of Iron
    distcoast   =  5.e3     ! Distance off the coast for Iron from sediments
    mfrac       =  0.035    ! Fe mineral fraction of dust
    wdust       =  2.0      ! Dust sinking speed
@@ -440,12 +440,12 @@
 !-----------------------------------------------------------------------
 &nampissed     !   Namelist parameters for burial in sediments ( Dune et Al. 2007 )
 !-----------------------------------------------------------------------
-   bureffmin     = 0.020   !: Minimum burial efficiency
-   bureffvar     = 0.053   !: Variable coef. for burial efficiency
+   bureffmin     = 0.020   ! Minimum burial efficiency
+   bureffvar     = 0.053   ! Variable coef. for burial efficiency
    sedsilfrac    = 0.03    ! percentage of silica loss in the sediments
    sedcalfrac    = 0.78    ! percentage of calcite loss in the sediments ( 0.78 is for river x1.5 )
-   sedfactcalmin = 0.3     !: Minimum value for dissolving calcite at the bottom
-   sedfactcalvar = 0.7     !: Variable  value for dissolving calcite at the bottom
+   sedfactcalmin = 0.3     ! Minimum value for dissolving calcite at the bottom
+   sedfactcalvar = 0.7     ! Variable  value for dissolving calcite at the bottom
 /
 !-----------------------------------------------------------------------
 &nampisice     !   Prescribed sea ice tracers
