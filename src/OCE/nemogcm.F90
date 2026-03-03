@@ -159,7 +159,7 @@ CONTAINS
             IF (Agrif_Root()) THEN ; WRITE(numout,*) '============================ PARENT SEND============================'
             ELSE                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' SEND ========================='
             END IF
-            CALL sbc_cpl_snd( istp ) 
+            CALL sbc_cpl_snd( istp, Nbb, Naa ) 
          ENDIF
 !/GCJ
 #  if defined key_qco   ||   defined key_linssh
