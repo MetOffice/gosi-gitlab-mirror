@@ -48,6 +48,10 @@ MODULE eosbn2
    USE prtctl         ! Print control
    USE timing         ! Timing
 
+#if defined key_gswlib
+   USE gsw_mod_toolbox, ONLY : gsw_p_from_z, gsw_sa_from_sp, gsw_ct_from_pt, gsw_ct_from_t
+#endif
+
    IMPLICIT NONE
    PRIVATE
 
@@ -71,6 +75,7 @@ MODULE eosbn2
    PUBLIC   eos_fzp        ! called by traadv_cen2 and sbcice_... modules
    PUBLIC   eos_pen        ! used for pe diagnostics in trdpen module
    PUBLIC   eos_init       ! called by istate module
+   PUBLIC   gsw_p_from_z, gsw_sa_from_sp, gsw_ct_from_pt, gsw_ct_from_t
 
    !                               !!** Namelist nameos **
    LOGICAL , PUBLIC ::   ln_TEOS10
@@ -2353,6 +2358,33 @@ CONTAINS
       IF(lwp) WRITE(numout,*) '      1. / ( rho0 * rcp )           r1_rho0_rcp = ', r1_rho0_rcp
       !
    END SUBROUTINE eos_init
+
+#if ! defined key_gswlib
+   FUNCTION gsw_p_from_z (z, lat, geo_strf_dyn_height, sea_surface_geopotental)
+      REAL(wp), INTENT(in) :: z, lat
+      REAL(wp), INTENT(in), OPTIONAL :: geo_strf_dyn_height, sea_surface_geopotental
+      REAL(wp) :: gsw_p_from_z
+      CALL ctl_stop( 'STOP', 'gsw_p_from_z: GSW toolbox functions not available- compile with them using key_gswlib' )
+   END FUNCTION gsw_p_from_z
+
+   FUNCTION gsw_sa_from_sp (sp, p, long, lat)
+      REAL(wp), INTENT(in) :: sp, p, long, lat
+      REAL(wp)             :: gsw_sa_from_sp
+      CALL ctl_stop( 'STOP', 'gsw_sa_from_sp: GSW toolbox functions not available- compile with them using key_gswlib' )
+   END FUNCTION gsw_sa_from_sp
+
+   FUNCTION gsw_ct_from_pt (sa, pt)
+      REAL(wp), INTENT(in) :: sa, pt
+      REAL(wp) :: gsw_ct_from_pt
+      CALL ctl_stop( 'STOP', 'gsw_ct_from_pt: GSW toolbox functions not available- compile with them using key_gswlib' )
+   END FUNCTION gsw_ct_from_pt
+
+   FUNCTION gsw_ct_from_t (sa, t, p)
+      REAL(wp), INTENT(in) :: sa, t, p
+      REAL(wp) :: gsw_ct_from_t
+      CALL ctl_stop( 'STOP', 'gsw_ct_from_t: GSW toolbox functions not available- compile with them using key_gswlib' )
+   END FUNCTION gsw_ct_from_t
+#endif
 
    !!======================================================================
 END MODULE eosbn2
