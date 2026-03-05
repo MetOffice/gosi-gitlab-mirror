@@ -39,16 +39,16 @@ MODULE obs_group_def
    INTEGER, PARAMETER :: jpmaxnfiles = 1000   ! Maximum number of files for each obs group
 
    INTEGER, PARAMETER, PUBLIC ::   jpmaxavtypes = 20   !: Max number of daily avgd obs types
-   
+
    ! Expected names for observation types with special behaviours (not needed for all observation types)
    CHARACTER(LEN=8), PUBLIC :: cobsname_uvel = 'UVEL' ! Expected variable name for U velocity (2D or 3D)
    CHARACTER(LEN=8), PUBLIC :: cobsname_vvel = 'VVEL' ! Expected variable name for V velocity (2D or 3D)
    CHARACTER(LEN=8), PUBLIC :: cobsname_sla  = 'SLA'  ! Expected variable name for sea level anomaly
    CHARACTER(LEN=8), PUBLIC :: cobsname_fbd  = 'FBD'  ! Expected variable name for sea ice freeboard
-   CHARACTER(LEN=8), PUBLIC :: cobsname_t3d  = 'POTM' ! Expected variable name for 3D temperature
-   CHARACTER(LEN=8), PUBLIC :: cobsname_s3d  = 'PSAL' ! Expected variable name for 3D salinity
-   CHARACTER(LEN=8), PUBLIC :: cobsname_t2d  = 'SST'  ! Expected variable name for 2D temperature
-   CHARACTER(LEN=8), PUBLIC :: cobsname_s2d  = 'SSS'  ! Expected variable name for 2D salinity
+   CHARACTER(LEN=8), PUBLIC :: cobsname_t3d  = 'POTM' ! Expected variable name for 3D potential temperature
+   CHARACTER(LEN=8), PUBLIC :: cobsname_s3d  = 'PSAL' ! Expected variable name for 3D practical salinity
+   CHARACTER(LEN=8), PUBLIC :: cobsname_t2d  = 'SST'  ! Expected variable name for 2D potential temperature
+   CHARACTER(LEN=8), PUBLIC :: cobsname_s2d  = 'SSS'  ! Expected variable name for 2D practical salinity
 
    !! * Type definition for observation groups
    TYPE obs_group
@@ -82,6 +82,7 @@ MODULE obs_group_def
       INTEGER  :: nadd_fbd           !: Index of additional variable representing ice freeboard
       INTEGER  :: next_snow          !: Index of extra variable representing snow thickness
       INTEGER  :: next_rhosw         !: Index of extra variable representing seawater density
+      INTEGER  :: next_sss           !: Index of extra variable representing sss at sst obs locations
       INTEGER  :: nadd_clm           !: Index of additional variable representing climatology
       !
       LOGICAL  :: lenabled           !: Logical switch for group being processed and not ignored
@@ -89,6 +90,7 @@ MODULE obs_group_def
       LOGICAL  :: lprof              !: Logical switch for profile data
       LOGICAL  :: lvel               !: Logical switch for velocity data
       LOGICAL  :: lsla               !: Logical switch for SLA data
+      LOGICAL  :: lsss_at_sst        !: Logical switch for SSS data at SST locations
       LOGICAL  :: lfbd               !: Logical switch for ice freeboard data
       LOGICAL  :: laltbias           !: Logical switch for altimeter bias correction
       LOGICAL  :: lobsbias           !: Logical switch for bias correction
@@ -106,7 +108,7 @@ MODULE obs_group_def
       REAL(wp) :: rmdtcorr           !: MDT correction
       REAL(wp) :: rmdtcutoff         !: MDT cutoff for computed correction
       REAL(wp) :: rtime_mean_period  !: Meaning period if ltime_mean_bkg
-      REAL(wp) :: radar_snow_penetr  !: Snow depth penetration factor for radar freeboard conversion to ice thickness 
+      REAL(wp) :: radar_snow_penetr  !: Snow depth penetration factor for radar freeboard conversion to ice thickness
       !
       REAL(wp), POINTER, DIMENSION(:,:,:)   :: rglam  !: Longitudes
       REAL(wp), POINTER, DIMENSION(:,:,:)   :: rgphi  !: Latitudes
@@ -219,6 +221,7 @@ CONTAINS
       LOGICAL                                    :: ln_night
       LOGICAL                                    :: ln_time_mean_bkg
       LOGICAL                                    :: ln_output_clim
+      LOGICAL                                    :: ln_sss_at_sst
       LOGICAL                                    :: ln_fp_indegs
       REAL(wp)                                   :: rn_avglamscl
       REAL(wp)                                   :: rn_avgphiscl
@@ -235,7 +238,7 @@ CONTAINS
          &                cn_obsbiasfile_varname, ln_night, ln_time_mean_bkg,   &
          &                rn_time_mean_period, ln_altbias, cn_altbiasfile,      &
          &                nn_msshc, rn_mdtcorr, rn_mdtcutoff, ln_all_at_all,    &
-         &                ln_output_clim, rn_radar_snow_penetr
+         &                ln_output_clim, ln_sss_at_sst, rn_radar_snow_penetr
       !!----------------------------------------------------------------------
 
       cn_obstypes(:)     = ''
@@ -266,7 +269,7 @@ CONTAINS
       READ  ( numnam_cfg( jobs_rdstart: ), namobs_dta, IOSTAT = ios, ERR = 902)
 902   IF( ios >  0 )   CALL ctl_nam ( ios , 'namobs_dta in configuration namelist' )
       IF(lwm) WRITE( numond, namobs_dta )
-      
+
       sdobsgroup%cgroupname = cn_groupname
       sdobsgroup%lenabled   = ln_enabled
 
@@ -281,6 +284,7 @@ CONTAINS
          sdobsgroup%lsla          = .false.
          sdobsgroup%lfbd          = .false.
          sdobsgroup%loutput_clim  = .false.
+         sdobsgroup%lsss_at_sst   = .false.
          sdobsgroup%nuvel         = 0
          sdobsgroup%nvvel         = 0
          sdobsgroup%nsla          = 0
@@ -291,6 +295,7 @@ CONTAINS
          sdobsgroup%nadd_clm      = 0
          sdobsgroup%next_snow     = 0
          sdobsgroup%next_rhosw    = 0
+         sdobsgroup%next_sss      = 0
 
          DO jtype = 1, jpmaxntypes
             IF ( TRIM(cn_obstypes(jtype)) /= '' ) THEN
@@ -334,13 +339,18 @@ CONTAINS
                   sdobsgroup%nextvars = sdobsgroup%nextvars + 1
                   sdobsgroup%nadd_ssh = sdobsgroup%naddvars
                   sdobsgroup%next_mdt = sdobsgroup%nextvars
+               ELSEIF ( TRIM(sdobsgroup%cobstypes(itype)) == cobsname_t2d .AND. ln_sss_at_sst ) THEN
+                  sdobsgroup%lsss_at_sst = .true.
+                  ! SSS=extra
+                  sdobsgroup%nextvars = sdobsgroup%nextvars + 1
+                  sdobsgroup%next_sss = sdobsgroup%nextvars
                ELSEIF ( TRIM(sdobsgroup%cobstypes(itype)) == cobsname_fbd ) THEN
                   sdobsgroup%lfbd = .true.
                   sdobsgroup%nfbd = itype
                   ! freeboard=additional, snow thickness=extra, seawater density=extra
                   ! Freeboard is treated as an additional variable because ultimately we
                   ! want to calculate the ice thickness derived from freeboard measurements
-                  ! The extra variables will be used in the conversion from freeboard 
+                  ! The extra variables will be used in the conversion from freeboard
                   ! to thickness
                   sdobsgroup%naddvars  = sdobsgroup%naddvars + 1
                   sdobsgroup%nextvars  = sdobsgroup%nextvars + 1
@@ -514,6 +524,7 @@ CONTAINS
             WRITE(numout,*) '             MDT cutoff for computed correction                 rn_mdtcutoff = ', sdobsgroup%rmdtcutoff
             WRITE(numout,*) '          Settings only for temperature/salinity data'
             WRITE(numout,*) '             Logical switch for outputting climatology        ln_output_clim = ', sdobsgroup%loutput_clim
+            WRITE(numout,*) '             Logical switch for outputting sss at sst         ln_sss_at_sst  = ', sdobsgroup%lsss_at_sst
 
             IF ( (       sdobsgroup%lsurf .AND.       sdobsgroup%lprof ) .OR. &
                & ( .NOT. sdobsgroup%lsurf .AND. .NOT. sdobsgroup%lprof ) ) THEN

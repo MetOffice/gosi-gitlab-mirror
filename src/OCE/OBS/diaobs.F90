@@ -2,7 +2,7 @@ MODULE diaobs
    !!======================================================================
    !!                       ***  MODULE diaobs  ***
    !! Observation diagnostics: Computation of the misfit between data and
-   !!                          their model equivalent 
+   !!                          their model equivalent
    !!======================================================================
    !! History :  1.0  !  2006-03  (K. Mogensen) Original code
    !!             -   !  2006-05  (K. Mogensen, A. Weaver) Reformatted
@@ -11,7 +11,7 @@ MODULE diaobs
    !!             -   !  2007-04  (G. Smith) Generalized surface operators
    !!            2.0  !  2008-10  (M. Valdivieso) obs operator for velocity profiles
    !!            3.4  !  2014-08  (J. While) observation operator for profiles in all vertical coordinates
-   !!             -   !                      Incorporated SST bias correction  
+   !!             -   !                      Incorporated SST bias correction
    !!            3.6  !  2015-02  (M. Martin) Simplification of namelist and code
    !!             -   !  2015-08  (M. Martin) Combined surface/profile routines.
    !!            4.0  !  2017-11  (G. Madec) style only
@@ -46,6 +46,8 @@ MODULE diaobs
    USE obs_types               ! Definitions for observation types
    USE obs_group_def           ! Definitions for observation groups
    USE obs_mpp                 ! Obs MPP operations
+   USE eosbn2, ONLY: &
+      & ln_TEOS10                ! Equation of state option
    !
    USE mpp_map                 ! MPP mapping
    USE lib_mpp                 ! For ctl_warn/stop
@@ -76,7 +78,7 @@ CONTAINS
    SUBROUTINE dia_obs_init( Kmm )
       !!----------------------------------------------------------------------
       !!                    ***  ROUTINE dia_obs_init  ***
-      !!          
+      !!
       !! ** Purpose : Initialize and read observations
       !!
       !! ** Method  : Read the namelist and call reading routines
@@ -315,6 +317,18 @@ CONTAINS
                   END DO
                ENDIF
                !
+               IF( sobsgroups(jgroup)%lsss_at_sst ) THEN
+                  IF( ln_teos10 ) THEN
+                     sobsgroups(jgroup)%ssurfdata%cextvars(sobsgroups(jgroup)%next_sss) = 'ASSS_Hx'
+                     sobsgroups(jgroup)%ssurfdata%cextlong(sobsgroups(jgroup)%next_sss) = 'Model Absolute Sea Surface Salinity'
+                     sobsgroups(jgroup)%ssurfdata%cextunit(sobsgroups(jgroup)%next_sss) = 'g/kg'
+                  ELSE
+                     sobsgroups(jgroup)%ssurfdata%cextvars(sobsgroups(jgroup)%next_sss) = 'PSSS_Hx'
+                     sobsgroups(jgroup)%ssurfdata%cextlong(sobsgroups(jgroup)%next_sss) = 'Model Practical Sea Surface Salinity'
+                     sobsgroups(jgroup)%ssurfdata%cextunit(sobsgroups(jgroup)%next_sss) = 'PSI'
+                  ENDIF
+               ENDIF
+               !
                IF( sobsgroups(jgroup)%lfbd ) THEN
                   sobsgroups(jgroup)%ssurfdata%cextvars(sobsgroups(jgroup)%next_snow)  = 'SNOW'
                   sobsgroups(jgroup)%ssurfdata%cextlong(sobsgroups(jgroup)%next_snow)  = 'Snow thickness'
@@ -409,7 +423,7 @@ CONTAINS
    SUBROUTINE dia_obs( kstp, Kmm )
       !!----------------------------------------------------------------------
       !!                    ***  ROUTINE dia_obs  ***
-      !!          
+      !!
       !! ** Purpose : Call the observation operators on each time step
       !!
       !! ** Method  : Call the observation operators on each time step to
@@ -453,7 +467,8 @@ CONTAINS
          & zprofclim               ! Climatology values for variables in a prof ob
       REAL(wp), DIMENSION(:,:), ALLOCATABLE :: &
          & zsurfvar, &             ! Model values for variables in a surf ob
-         & zsurfclim               ! Climatology values for variables in a surf ob
+         & zsurfclim, &            ! Climatology values for variables in a surf ob
+         & zsurfsal                ! SSS equivalent for SST ob
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: zdept, zdepw
 
       !-----------------------------------------------------------------------
@@ -476,6 +491,7 @@ CONTAINS
          &      zprofclim(jpi,jpj,jpk), &
          &      zsurfvar(jpi,jpj),      &
          &      zsurfclim(jpi,jpj),     &
+         &      zsurfsal(jpi,jpj),      &
          &      zdept(jpi,jpj,jpk),     &
          &      zdepw(jpi,jpj,jpk) )
 
@@ -494,12 +510,12 @@ CONTAINS
                DO jvar = 1, sobsgroups(jgroup)%nobstypes
 
                   SELECT CASE ( TRIM(sobsgroups(jgroup)%cobstypes(jvar)) )
-                  CASE('POTM')
+                  CASE('POTM', 'COTM')
                      zprofvar(:,:,:) = ts(:,:,:,jp_tem,Kmm)
                      IF (sobsgroups(jgroup)%loutput_clim) THEN
                         zprofclim(:,:,:) = tclim(:,:,:)
                      ENDIF
-                  CASE('PSAL')
+                  CASE('PSAL', 'ASAL')
                      zprofvar(:,:,:) = ts(:,:,:,jp_sal,Kmm)
                      IF (sobsgroups(jgroup)%loutput_clim) THEN
                         zprofclim(:,:,:) = sclim(:,:,:)
@@ -534,15 +550,19 @@ CONTAINS
             ELSEIF (sobsgroups(jgroup)%lsurf) THEN
 
                zsurfclim(:,:) = fbrmdi
+               zsurfsal(:,:)  = fbrmdi
 
                DO jvar = 1, sobsgroups(jgroup)%nobstypes
 
                   lstp0 = .FALSE.
                   SELECT CASE ( TRIM(sobsgroups(jgroup)%cobstypes(jvar)) )
-                  CASE('SST')
+                  CASE('SST', 'CSST')
                      zsurfvar(:,:) = ts(:,:,1,jp_tem,Kmm)
                      IF (sobsgroups(jgroup)%loutput_clim) THEN
                         zsurfclim(:,:) = tclim(:,:,1)
+                     ENDIF
+                     IF ( sobsgroups(jgroup)%lsss_at_sst .OR. ln_TEOS10 ) THEN
+                        zsurfsal(:,:) = ts(:,:,1,jp_sal,Kmm)
                      ENDIF
                   CASE('SLA')
                      zsurfvar(:,:) = ssh(:,:,Kmm)
@@ -618,6 +638,8 @@ CONTAINS
                         &               sobsgroups(jgroup)%nadd_clm,                             &
                         &               zsurfclim,                                               &
                         &               sobsgroups(jgroup)%rmask(:,:,1,jvar),                    &
+                        &               sobsgroups(jgroup)%lsss_at_sst,                          &
+                        &               zsurfsal,                                                &
                         &               sobsgroups(jgroup)%n2dint,                               &
                         &               sobsgroups(jgroup)%lnight,                               &
                         &               sobsgroups(jgroup)%ravglamscl,                           &
@@ -627,6 +649,7 @@ CONTAINS
                         &               imeanstp,                                                &
                         &               kssh=sobsgroups(jgroup)%nadd_ssh,                        &
                         &               kmdt=sobsgroups(jgroup)%next_mdt,                        &
+                        &               ksss=sobsgroups(jgroup)%next_sss,                        &
                         &               kfbd=sobsgroups(jgroup)%nadd_fbd,                        &
                         &               ksnow=sobsgroups(jgroup)%next_snow,                      &
                         &               krhosw=sobsgroups(jgroup)%next_rhosw,                    &
@@ -641,7 +664,8 @@ CONTAINS
       END DO
 
       DEALLOCATE( zprofvar, zprofclim, &
-         &        zsurfvar, zsurfclim )
+         &        zsurfvar, zsurfclim, &
+         &        zsurfsal )
 
       IF ( sn_cfctl%l_obsstat ) THEN
          IF ( lwm ) THEN
@@ -731,7 +755,7 @@ CONTAINS
    SUBROUTINE dia_obs_wri
       !!----------------------------------------------------------------------
       !!                    ***  ROUTINE dia_obs_wri  ***
-      !!          
+      !!
       !! ** Purpose : Call observation diagnostic output routines
       !!
       !! ** Method  : Call observation diagnostic output routines
@@ -1027,7 +1051,7 @@ CONTAINS
    SUBROUTINE calc_date( kstp, ddobs )
       !!----------------------------------------------------------------------
       !!                    ***  ROUTINE calc_date  ***
-      !!          
+      !!
       !! ** Purpose : Get date in double precision YYYYMMDD.HHMMSS format
       !!
       !! ** Method  : Get date in double precision YYYYMMDD.HHMMSS format
@@ -1073,23 +1097,23 @@ CONTAINS
       imon = ( ndate0 - iyea * 10000 ) / 100
       iday =   ndate0 - iyea * 10000 - imon * 100
       ihou =   nn_time0 / 100
-      imin = ( nn_time0 - ihou * 100 ) 
+      imin = ( nn_time0 - ihou * 100 )
 
       !!----------------------------------------------------------------------
       !! Compute number of days + number of hours + min since initial time
       !!----------------------------------------------------------------------
       zdayfrc = kstp * rn_Dt / rday
       zdayfrc = zdayfrc - aint(zdayfrc)
-      imin = imin + int( zdayfrc * 24 * 60 ) 
-      DO WHILE (imin >= 60) 
+      imin = imin + int( zdayfrc * 24 * 60 )
+      DO WHILE (imin >= 60)
         imin=imin-60
         ihou=ihou+1
       END DO
       DO WHILE (ihou >= 24)
         ihou=ihou-24
         iday=iday+1
-      END DO 
-      iday = iday + kstp * rn_Dt / rday 
+      END DO
+      iday = iday + kstp * rn_Dt / rday
 
       !-----------------------------------------------------------------------
       ! Convert number of days (iday) into a real date
@@ -1099,7 +1123,7 @@ CONTAINS
 
       DO WHILE ( iday > imonth_len(imon) )
          iday = iday - imonth_len(imon)
-         imon = imon + 1 
+         imon = imon + 1
          IF ( imon > 12 ) THEN
             imon = 1
             iyea = iyea + 1

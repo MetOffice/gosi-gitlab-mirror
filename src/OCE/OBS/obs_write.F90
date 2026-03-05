@@ -28,6 +28,10 @@ MODULE obs_write
    USE obs_const
    USE obs_mpp              ! MPP support routines for observation diagnostics
    USE lib_mpp		    ! MPP routines
+   USE eosbn2, ONLY : &
+      & ln_EOS80, ln_TEOS10, &
+      & gsw_p_from_z, gsw_sa_from_sp, &
+      & gsw_ct_from_pt, gsw_ct_from_t
 
    IMPLICIT NONE
 
@@ -36,7 +40,7 @@ MODULE obs_write
    PUBLIC obs_wri_prof, &    ! Write profile observation files
       &   obs_wri_surf, &    ! Write surface observation files
       &   obswriinfo
-   
+
    TYPE obswriinfo
       INTEGER :: inum
       INTEGER, POINTER, DIMENSION(:) :: ipoint
@@ -62,7 +66,7 @@ CONTAINS
       !! ** Purpose : Write profile feedback files
       !!
       !! ** Method  : NetCDF
-      !! 
+      !!
       !! ** Action  :
       !!
       !! History :
@@ -92,7 +96,9 @@ CONTAINS
       INTEGER :: ilevel
       INTEGER :: jvar
       INTEGER :: jvar2
-      INTEGER :: jsal
+      INTEGER :: jpsal
+      INTEGER :: jpotm
+      INTEGER :: jtemp
       INTEGER :: jo
       INTEGER :: jk
       INTEGER :: ik
@@ -241,46 +247,146 @@ CONTAINS
          ENDIF
       END DO
 
-      ! Convert insitu temperature to potential temperature using the model
-      ! salinity if no potential temperature
+      ! identify index associated with PSAL, if it exists
+      jpsal = 0
+      DO jvar = 1, profdata%nvar
+         IF ( TRIM(profdata%cvars(jvar)) == 'PSAL' ) THEN
+            jpsal = jvar
+            EXIT
+         ENDIF
+      END DO
+
+      ! identify index associated with POTM, if it exists
+      jpotm = 0
+      DO jvar = 1, profdata%nvar
+         IF ( TRIM(profdata%cvars(jvar)) == 'POTM' ) THEN
+            jpotm = jvar
+            EXIT
+         ENDIF
+      END DO
+
+      ! identify extra index associated with (in-situ) TEMP, if it exists
+      jtemp = 0
       IF (iext > 0) THEN
-         DO jvar = 1, profdata%nvar
-            IF ( TRIM(profdata%cvars(jvar)) == 'POTM' ) THEN
-               jsal = 0
-               DO jvar2 = 1, profdata%nvar
-                  IF ( TRIM(profdata%cvars(jvar2)) == 'PSAL' ) THEN
-                     jsal = jvar2
-                     EXIT
-                  ENDIF
-               END DO
-               IF (jsal > 0) THEN
-                  DO je = 1, iext
-                     IF ( TRIM(fbdata%cextname(je)) == 'TEMP' ) THEN
-                        DO jo = 1, fbdata%nobs
-                           IF ( fbdata%pphi(jo) < 9999.0_wp ) THEN
-                              DO jk = 1, fbdata%nlev
-                                 IF ( ( fbdata%pob(jk,jo,jvar)   >= 9999.0_wp ) .AND. &
-                                    & ( fbdata%pdep(jk,jo)        < 9999.0_wp ) .AND. &
-                                    & ( fbdata%padd(jk,jo,1,jsal) < 9999.0_wp ) .AND. &
-                                    & ( fbdata%padd(jk,jo,1,jvar) < 9999.0_wp ) .AND. &
-                                    & ( fbdata%pext(jk,jo,je)     < 9999.0_wp ) ) THEN
-                                    zpres = dep_to_p( REAL(fbdata%pdep(jk,jo),wp), &
-                                       &              REAL(fbdata%pphi(jo),wp) )
-                                    fbdata%pob(jk,jo,jvar) = potemp( &
-                                       &                     REAL(fbdata%padd(jk,jo,1,jsal), wp), &
-                                       &                     REAL(fbdata%pext(jk,jo,je), wp),     &
-                                       &                     zpres, 0.0_wp )
-                                 ENDIF
-                              END DO
-                           ENDIF
-                        END DO
-                        EXIT
-                     ENDIF
-                  END DO
-               ENDIF
+         DO je = 1, iext
+            IF ( TRIM(fbdata%cextname(je)) == 'TEMP' ) THEN
+               jtemp = je
                EXIT
             ENDIF
          END DO
+      ENDIF
+
+      IF ( ln_EOS80 ) THEN
+         ! Convert insitu temperature to potential temperature using the model
+         ! salinity if no potential temperature
+         IF ( jpotm > 0 ) THEN           ! check for POTM
+            IF ( jpsal > 0 ) THEN        ! check for PSAL
+               IF ( jtemp > 0 ) THEN     ! check for INSITU-TEMP
+                  DO jo = 1, fbdata%nobs
+                      IF ( fbdata%pphi(jo) < 9999.0_wp ) THEN
+                        DO jk = 1, fbdata%nlev
+                           IF ( ( fbdata%pob(jk,jo,jpotm)   >= 9999.0_wp ) .AND. &
+                              & ( fbdata%pdep(jk,jo)        < 9999.0_wp ) .AND. &
+                              & ( fbdata%padd(jk,jo,1,jpotm) < 9999.0_wp ) .AND. &
+                              & ( fbdata%pext(jk,jo,jtemp)     < 9999.0_wp ) ) THEN
+                              IF ( fbdata%padd(jk,jo,1,jpsal) < 9999.0_wp ) THEN
+                                 zpres = dep_to_p( REAL(fbdata%pdep(jk,jo),wp), &
+                                    &              REAL(fbdata%pphi(jo),wp) )
+                                 fbdata%pob(jk,jo,jpotm) = potemp( &
+                                    &                     REAL(fbdata%padd(jk,jo,1,jpsal), wp), &
+                                    &                     REAL(fbdata%pext(jk,jo,jtemp), wp),     &
+                                    &                     zpres, 0.0_wp )
+                              ELSE
+                                 CALL ctl_stop( 'No salinity available for insitu to pot T obs conversion, try setting ln_all_at_all to true' )
+                              ENDIF
+                           ENDIF
+                        END DO
+                     ENDIF
+                  END DO
+               ENDIF
+            ENDIF
+         ENDIF
+      ENDIF
+
+      IF ( ln_TEOS10 ) THEN
+         IF ( jpotm > 0 ) THEN
+            IF(lwp) THEN
+               WRITE(numout,*)
+               WRITE(numout,*) 'Converting profile obs from EOS80 variables to TEOS10 variables'
+            ENDIF
+            IF ( jpsal == 0 ) THEN
+               CALL ctl_stop( 'No salinity available in obs structure, T obs conversion will fail ' )
+            ENDIF
+            ! Convert practical salinity to absolute salinity
+            ! Convert potential or insitu temperature to conservative temperature
+            ! where observed salinity doesn't exist, use model salinity.
+            DO jo = 1, fbdata%nobs
+               IF ( fbdata%pphi(jo) < 9999.0_wp ) THEN
+                  DO jk = 1, fbdata%nlev
+                     IF ( fbdata%pdep(jk,jo) < 9999.0_wp ) THEN
+                        zpres = gsw_p_from_z( &
+                                 & -1.0_wp * REAL(fbdata%pdep(jk,jo),wp), &
+                                 & REAL(fbdata%pphi(jo),wp) )
+                        IF ( fbdata%pob(jk,jo,jpsal) < 9999.0_wp ) THEN
+                           ! convert salinity
+                           fbdata%pob(jk,jo,jpsal) = gsw_sa_from_sp( &
+                                                         & REAL(fbdata%pob(jk,jo,jpsal),wp), &
+                                                         & zpres, REAL(fbdata%plam(jo),wp), &
+                                                         & REAL(fbdata%pphi(jo),wp) )
+                        ENDIF
+                        IF ( fbdata%padd(jk,jo,1,jpotm) < 9999.0_wp ) THEN
+                           IF ( fbdata%pob(jk,jo,jpotm) < 9999.0_wp ) THEN
+                              ! use observed potential temperature
+                              IF ( fbdata%pob(jk,jo,jpsal) < 9999.0_wp ) THEN
+                                 ! use observed salinity
+                                 fbdata%pob(jk,jo,jpotm) = gsw_ct_from_pt( &
+                                                            & REAL(fbdata%pob(jk,jo,jpsal),wp), &
+                                                            & REAL(fbdata%pob(jk,jo,jpotm),wp) )
+                              ELSEIF ( fbdata%padd(jk,jo,1,jpsal) < 9999.0_wp ) THEN
+                                 ! use model salinity
+                                 fbdata%pob(jk,jo,jpotm) = gsw_ct_from_pt( &
+                                                            & REAL(fbdata%padd(jk,jo,1,jpsal),wp), &
+                                                            & REAL(fbdata%pob(jk,jo,jpotm),wp) )
+                              ELSE
+                                 CALL ctl_stop( 'No salinity available for pot to con T obs conversion, try setting ln_all_at_all to true ' )
+                              ENDIF
+                           ELSEIF ( jtemp > 0 ) THEN
+                              ! use observed in-situ temperature
+
+                              IF ( fbdata%pext(jk,jo,jtemp) < 9999.0_wp ) THEN
+                                 ! Use observed insitu temperature
+                                 IF ( fbdata%pob(jk,jo,jpsal) < 9999.0_wp ) THEN
+                                    ! observed salinity exists
+                                    fbdata%pob(jk,jo,jpotm) = gsw_ct_from_t( &
+                                                               & REAL(fbdata%pob(jk,jo,jpsal),wp), &
+                                                               & REAL(fbdata%pext(jk,jo,jtemp),wp), &
+                                                               & zpres )
+                                 ELSEIF ( fbdata%padd(jk,jo,1,2) < 9999.0_wp ) THEN
+                                    ! use model salinity
+                                    fbdata%pob(jk,jo,jpotm) = gsw_ct_from_t( &
+                                                               & REAL(fbdata%padd(jk,jo,1,jpsal),wp), &
+                                                               & REAL(fbdata%pext(jk,jo,jtemp),wp), &
+                                                               & zpres )
+                                 ELSE
+                                    CALL ctl_stop( 'No salinity available for in-situ to con T obs conversion, try setting ln_all_at_all to true ' )
+                                 ENDIF
+                              ENDIF
+                           ENDIF
+                        ENDIF
+                     ENDIF
+                  END DO
+               ENDIF
+            END DO
+            ! Update names and attributes for converted T and S variables
+            fbdata%cname(jpotm) = 'COTM'
+            fbdata%cname(jpsal) = 'ASAL'
+            fbdata%coblong(jpotm) = "conservative temperature"
+            fbdata%coblong(jpsal) = "absolute salinity"
+            fbdata%caddlong(1,jpotm) = 'Model interpolated ' // TRIM(fbdata%coblong(jpotm))
+            fbdata%caddlong(1,jpsal) = 'Model interpolated ' // TRIM(fbdata%coblong(jpsal))
+            fbdata%cobunit(jpsal)    = 'g/kg'
+            fbdata%caddunit(1,jpsal)  = fbdata%cobunit(jpsal)
+         ENDIF
       ENDIF
 
       ! Write the obfbdata structure
@@ -301,7 +407,7 @@ CONTAINS
       !! ** Purpose : Write surface observation files
       !!
       !! ** Method  : NetCDF
-      !! 
+      !!
       !! ** Action  :
       !!
       !!      ! 07-03  (K. Mogensen) Original
@@ -331,6 +437,7 @@ CONTAINS
       INTEGER :: jvar
       INTEGER :: iadd
       INTEGER :: iext
+      REAL(wp) :: zpres
 
       IF ( PRESENT( padd ) ) THEN
          iadd = padd%inum
@@ -369,6 +476,18 @@ CONTAINS
                fbdata%cextlong(je) = pext%cdlong(je,1)
                fbdata%cextunit(je) = pext%cdunit(je,1)
             END DO
+         ENDIF
+         IF ( surfdata%cvars(jvar) == 'SST' .AND. ln_TEOS10 ) THEN
+            ! Update names and attributes for converted SST variables
+            fbdata%cname(jvar) = 'CSST'
+            fbdata%coblong(jvar) = 'Conservative sea surface temperature'
+            fbdata%caddlong(1,jvar) = 'Model interpolated ' // TRIM(fbdata%coblong(jvar))
+         ENDIF
+         IF ( surfdata%cvars(jvar) == 'SSS' .AND. ln_TEOS10 ) THEN
+            ! Update names and attributes for converted SSS variables
+            fbdata%cname(jvar) = 'ASSS'
+            fbdata%coblong(jvar) = 'Absolute sea surface salinity'
+            fbdata%caddlong(1,jvar) = 'Model interpolated '// TRIM(fbdata%coblong(jvar))
          ENDIF
       END DO
 
@@ -428,12 +547,21 @@ CONTAINS
             &           surfdata%nyea(jo), &
             &           fbdata%ptim(jo),   &
             &           krefdate = 19500101 )
-         fbdata%pdep(1,jo)     = 0.0
+         fbdata%pdep(1,jo)     = 0.0_wp
          fbdata%idqc(1,jo)     = 0
          fbdata%idqcf(:,1,jo)  = 0
          DO jvar = 1, surfdata%nvar
             fbdata%padd(1,jo,1,jvar) = surfdata%rmod(jo,jvar)
-            fbdata%pob(1,jo,jvar)    = surfdata%robs(jo,jvar)
+            IF ( ( surfdata%cvars(jvar) == 'SSS' ) .AND. &
+               & ( surfdata%robs(jo,jvar) < 9999.0_wp ) .AND. &
+               & ln_TEOS10 ) THEN
+               zpres = gsw_p_from_z( 0.0_wp, surfdata%rphi(jo) )
+               fbdata%pob(1,jo,jvar) = gsw_sa_from_sp( surfdata%robs(jo,jvar), &
+                  &                                    zpres, surfdata%rlam(jo), &
+                  &                                    surfdata%rphi(jo) )
+            ELSE
+               fbdata%pob(1,jo,jvar)    = surfdata%robs(jo,jvar)
+            ENDIF
             IF ( surfdata%nqc(jo) > 255 ) THEN
                fbdata%ivqc(jo,jvar)       = 4
                fbdata%ivlqc(1,jo,jvar)    = 4
@@ -480,10 +608,10 @@ CONTAINS
       !! ** Purpose : Output some basic statistics of the data being written out
       !!
       !! ** Method  :
-      !! 
+      !!
       !! ** Action  :
       !!
-      !!      ! 2014-08  (D. Lea) Initial version 
+      !!      ! 2014-08  (D. Lea) Initial version
       !!-----------------------------------------------------------------------
 
       !! * Arguments
@@ -498,7 +626,7 @@ CONTAINS
       REAL(wp) :: zsumx
       REAL(wp) :: zsumx2
       REAL(wp) :: zomb
-      
+
 
       IF (lwp) THEN
          WRITE(numout,*) ''

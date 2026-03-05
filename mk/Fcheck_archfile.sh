@@ -215,6 +215,19 @@ do
     fi
 done
 
+# Do we need the GSW library?
+if [[ ! "$2" =~ "nocpp" ]]
+then
+    use_gsw=$( sed -e "s/#.*$//" $2 | grep -c key_gswlib )
+else
+    use_gsw=0
+fi
+have_libgsw=$( sed -e "s/#.*$//" $1 | grep -c "\-l[ ]*gsw" )
+if [[ ( ${use_gsw} -eq 0 ) && ( ${have_libgsw} -ge 1 ) ]] ; then
+    sed -e "s/-l[ ]*gsw//g" ${1} > $(dirname ${1})/tmp$$
+    mv -f $(dirname ${1})/tmp$$ ${1}
+fi
+
 # Nemo debug ?
 if [ -n "${4}" ]; then
     if (! grep -q "^%DEBUG_FCFLAGS" $1 ); then

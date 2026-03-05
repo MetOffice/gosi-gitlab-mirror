@@ -18,7 +18,8 @@ MODULE obs_oper
    USE lib_mpp,       ONLY :   ctl_warn, ctl_stop           ! Warning and stopping routines
    USE sbcdcy,        ONLY :   sbc_dcy, nday_qsr            ! For calculation of where it is night-time
    USE obs_grid,      ONLY :   obs_level_search
-   USE obs_group_def, ONLY : cobsname_sla, cobsname_fbd, jpmaxavtypes
+   USE obs_group_def, ONLY : cobsname_sla, cobsname_fbd, jpmaxavtypes, cobsname_t2d
+   USE eosbn2,        ONLY : ln_TEOS10, gsw_ct_from_t
 #if defined key_si3 || defined key_cice
    USE phycst,        ONLY : rhos, rhoi                     ! For conversion from sea ice freeboard to thickness
 #endif
@@ -46,7 +47,7 @@ CONTAINS
       &                     pvar,                        &
       &                     ldclim, kclim, pclim,        &
       &                     pgdept, pgdepw,              &
-      &                     pmask,                       &  
+      &                     pmask,                       &
       &                     plam, pphi,                  &
       &                     k1dint, k2dint,              &
       &                     knavtypes, kdailyavtypes )
@@ -54,10 +55,10 @@ CONTAINS
       !!                     ***  ROUTINE obs_pro_opt  ***
       !!
       !! ** Purpose : Compute the model counterpart of profiles
-      !!              data by interpolating from the model grid to the 
+      !!              data by interpolating from the model grid to the
       !!              observation point.
       !!
-      !! ** Method  : Linearly interpolate to each observation point using 
+      !! ** Method  : Linearly interpolate to each observation point using
       !!              the model values at the corners of the surrounding grid box.
       !!
       !!    First, a vertical profile of horizontally interpolated model
@@ -75,8 +76,8 @@ CONTAINS
       !!        - linear       (k1dint = 0)
       !!        - Cubic spline (k1dint = 1)
       !!
-      !!    For the cubic spline the 2nd derivative of the interpolating 
-      !!    polynomial is computed before entering the vertical interpolation 
+      !!    For the cubic spline the 2nd derivative of the interpolating
+      !!    polynomial is computed before entering the vertical interpolation
       !!    routine.
       !!
       !!    If the logical is switched on, the model equivalent is
@@ -85,7 +86,7 @@ CONTAINS
       !!
       !!    Note: in situ temperature observations must be converted
       !!    to potential temperature (the model variable) prior to
-      !!    assimilation. 
+      !!    assimilation.
       !!
       !! ** Action  :
       !!
@@ -117,7 +118,7 @@ CONTAINS
       REAL(KIND=wp) , INTENT(in   ), DIMENSION(kpi,kpj,kpk) ::   pmask            ! Land-sea mask
       REAL(KIND=wp) , INTENT(in   ), DIMENSION(kpi,kpj)     ::   plam             ! Model longitude
       REAL(KIND=wp) , INTENT(in   ), DIMENSION(kpi,kpj)     ::   pphi             ! Model latitudes
-      REAL(KIND=wp) , INTENT(in   ), DIMENSION(kpi,kpj,kpk) ::   pgdept, pgdepw   ! depth of T and W levels 
+      REAL(KIND=wp) , INTENT(in   ), DIMENSION(kpi,kpj,kpk) ::   pgdept, pgdepw   ! depth of T and W levels
       INTEGER       , INTENT(in   )                         ::   knavtypes        ! Number of daily average types
       INTEGER, DIMENSION(knavtypes), INTENT(in), OPTIONAL   ::   kdailyavtypes    ! Types for daily averages
 
@@ -132,7 +133,7 @@ CONTAINS
       INTEGER ::   ista
       INTEGER ::   iend
       INTEGER ::   iobs
-      INTEGER ::   iin, ijn, ikn, ik   ! looping indices over interpolation nodes 
+      INTEGER ::   iin, ijn, ikn, ik   ! looping indices over interpolation nodes
       INTEGER ::   inum_obs
       INTEGER, DIMENSION(knavtypes) :: &
          & idailyavtypes
@@ -156,7 +157,7 @@ CONTAINS
          & zclim,  &
          & zint,   &
          & zinm,   &
-         & zgdept, & 
+         & zgdept, &
          & zgdepw
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: &
          & zglam,  &
@@ -168,7 +169,7 @@ CONTAINS
       LOGICAL :: ld_dailyav
 
       !------------------------------------------------------------------------
-      ! Local initialization 
+      ! Local initialization
       !------------------------------------------------------------------------
       ! Record and data counters
       inrc = kt - kit000 + 2
@@ -213,8 +214,8 @@ CONTAINS
          & zgphi(2,2,ipro),      &
          & zmask(2,2,kpk,ipro),  &
          & zint(2,2,kpk,ipro),   &
-         & zgdept(2,2,kpk,ipro), & 
-         & zgdepw(2,2,kpk,ipro)  & 
+         & zgdept(2,2,kpk,ipro), &
+         & zgdepw(2,2,kpk,ipro)  &
          & )
 
       IF ( ldclim ) THEN
@@ -242,8 +243,8 @@ CONTAINS
       CALL obs_int_comm_3d( 2, 2, ipro, kpi, kpj, kpk, igrdi, igrdj, pmask, zmask )
       CALL obs_int_comm_3d( 2, 2, ipro, kpi, kpj, kpk, igrdi, igrdj, pvar,   zint )
 
-      CALL obs_int_comm_3d( 2, 2, ipro, kpi, kpj, kpk, igrdi, igrdj, pgdept, zgdept ) 
-      CALL obs_int_comm_3d( 2, 2, ipro, kpi, kpj, kpk, igrdi, igrdj, pgdepw, zgdepw ) 
+      CALL obs_int_comm_3d( 2, 2, ipro, kpi, kpj, kpk, igrdi, igrdj, pgdept, zgdept )
+      CALL obs_int_comm_3d( 2, 2, ipro, kpi, kpj, kpk, igrdi, igrdj, pgdepw, zgdepw )
 
       IF ( ldclim ) THEN
          CALL obs_int_comm_3d( 2, 2, ipro, kpi, kpj, kpk, igrdi, igrdj, pclim, zclim )
@@ -259,10 +260,10 @@ CONTAINS
 
       ENDIF
 
-      ! Return if no observations to process 
-      ! Has to be done after comm commands to ensure processors 
-      ! stay in sync 
-      IF ( ipro == 0 ) RETURN 
+      ! Return if no observations to process
+      ! Has to be done after comm commands to ensure processors
+      ! stay in sync
+      IF ( ipro == 0 ) RETURN
 
       DO jobs = prodatqc%nprofup + 1, prodatqc%nprofup + ipro
 
@@ -288,8 +289,8 @@ CONTAINS
          zlam = prodatqc%rlam(jobs)
          zphi = prodatqc%rphi(jobs)
 
-         ! Horizontal weights 
-         ! Masked values are calculated later.  
+         ! Horizontal weights
+         ! Masked values are calculated later.
          IF ( prodatqc%npvend(jobs,kvar) > 0 ) THEN
 
             CALL obs_int_h2d_init( 1, 1, k2dint, zlam, zphi,     &
@@ -307,22 +308,22 @@ CONTAINS
                IF ( idayend == 0 )  THEN
                   ! Daily averaged data
 
-                  ! vertically interpolate all 4 corners 
-                  ista = prodatqc%npvsta(jobs,kvar) 
-                  iend = prodatqc%npvend(jobs,kvar) 
-                  inum_obs = iend - ista + 1 
+                  ! vertically interpolate all 4 corners
+                  ista = prodatqc%npvsta(jobs,kvar)
+                  iend = prodatqc%npvend(jobs,kvar)
+                  inum_obs = iend - ista + 1
                   ALLOCATE(interp_corner(2,2,inum_obs),iv_indic(inum_obs))
                   IF ( ldclim ) THEN
                      ALLOCATE( interp_corner_clim(2,2,inum_obs) )
                   ENDIF
 
-                  DO iin=1,2 
-                     DO ijn=1,2 
+                  DO iin=1,2
+                     DO ijn=1,2
 
-                        IF ( k1dint == 1 ) THEN 
-                           CALL obs_int_z1d_spl( kpk, & 
-                              &     zinm(iin,ijn,:,iobs), & 
-                              &     zobs2k, zgdept(iin,ijn,:,iobs), & 
+                        IF ( k1dint == 1 ) THEN
+                           CALL obs_int_z1d_spl( kpk, &
+                              &     zinm(iin,ijn,:,iobs), &
+                              &     zobs2k, zgdept(iin,ijn,:,iobs), &
                               &     zmask(iin,ijn,:,iobs))
 
                            IF ( ldclim ) THEN
@@ -332,17 +333,17 @@ CONTAINS
                                  &     zmask(iin,ijn,:,iobs))
                            ENDIF
                         ENDIF
-       
-                        CALL obs_level_search(kpk, & 
-                           &    zgdept(iin,ijn,:,iobs), & 
-                           &    inum_obs, prodatqc%var(kvar)%vdep(ista:iend), & 
-                           &    iv_indic) 
 
-                        CALL obs_int_z1d(kpk, iv_indic, k1dint, inum_obs, & 
-                           &    prodatqc%var(kvar)%vdep(ista:iend), & 
-                           &    zinm(iin,ijn,:,iobs), & 
-                           &    zobs2k, interp_corner(iin,ijn,:), & 
-                           &    zgdept(iin,ijn,:,iobs), & 
+                        CALL obs_level_search(kpk, &
+                           &    zgdept(iin,ijn,:,iobs), &
+                           &    inum_obs, prodatqc%var(kvar)%vdep(ista:iend), &
+                           &    iv_indic)
+
+                        CALL obs_int_z1d(kpk, iv_indic, k1dint, inum_obs, &
+                           &    prodatqc%var(kvar)%vdep(ista:iend), &
+                           &    zinm(iin,ijn,:,iobs), &
+                           &    zobs2k, interp_corner(iin,ijn,:), &
+                           &    zgdept(iin,ijn,:,iobs), &
                            &    zmask(iin,ijn,:,iobs))
 
                         IF ( ldclim ) THEN
@@ -354,30 +355,30 @@ CONTAINS
                               &    zmask(iin,ijn,:,iobs))
                         ENDIF
 
-                     ENDDO 
-                  ENDDO 
+                     ENDDO
+                  ENDDO
 
                ENDIF !idayend
 
-            ELSE   
+            ELSE
 
-               ! Point data 
-     
-               ! vertically interpolate all 4 corners 
-               ista = prodatqc%npvsta(jobs,kvar) 
-               iend = prodatqc%npvend(jobs,kvar) 
-               inum_obs = iend - ista + 1 
+               ! Point data
+
+               ! vertically interpolate all 4 corners
+               ista = prodatqc%npvsta(jobs,kvar)
+               iend = prodatqc%npvend(jobs,kvar)
+               inum_obs = iend - ista + 1
                ALLOCATE(interp_corner(2,2,inum_obs), iv_indic(inum_obs))
                IF ( ldclim ) THEN
                   ALLOCATE( interp_corner_clim(2,2,inum_obs) )
                ENDIF
                DO iin=1,2
-                  DO ijn=1,2 
-                    
-                     IF ( k1dint == 1 ) THEN 
-                        CALL obs_int_z1d_spl( kpk, & 
-                           &    zint(iin,ijn,:,iobs),& 
-                           &    zobs2k, zgdept(iin,ijn,:,iobs), & 
+                  DO ijn=1,2
+
+                     IF ( k1dint == 1 ) THEN
+                        CALL obs_int_z1d_spl( kpk, &
+                           &    zint(iin,ijn,:,iobs),&
+                           &    zobs2k, zgdept(iin,ijn,:,iobs), &
                            &    zmask(iin,ijn,:,iobs))
 
                         IF ( ldclim ) THEN
@@ -387,17 +388,17 @@ CONTAINS
                               &    zmask(iin,ijn,:,iobs))
                         ENDIF
                      ENDIF
-       
-                     CALL obs_level_search(kpk, & 
-                         &        zgdept(iin,ijn,:,iobs),& 
-                         &        inum_obs, prodatqc%var(kvar)%vdep(ista:iend), & 
-                         &        iv_indic) 
 
-                     CALL obs_int_z1d(kpk, iv_indic, k1dint, inum_obs,     & 
-                         &          prodatqc%var(kvar)%vdep(ista:iend),     & 
-                         &          zint(iin,ijn,:,iobs),            & 
-                         &          zobs2k,interp_corner(iin,ijn,:), & 
-                         &          zgdept(iin,ijn,:,iobs),         & 
+                     CALL obs_level_search(kpk, &
+                         &        zgdept(iin,ijn,:,iobs),&
+                         &        inum_obs, prodatqc%var(kvar)%vdep(ista:iend), &
+                         &        iv_indic)
+
+                     CALL obs_int_z1d(kpk, iv_indic, k1dint, inum_obs,     &
+                         &          prodatqc%var(kvar)%vdep(ista:iend),     &
+                         &          zint(iin,ijn,:,iobs),            &
+                         &          zobs2k,interp_corner(iin,ijn,:), &
+                         &          zgdept(iin,ijn,:,iobs),         &
                          &          zmask(iin,ijn,:,iobs) )
 
                      IF ( ldclim ) THEN
@@ -409,47 +410,47 @@ CONTAINS
                             &          zmask(iin,ijn,:,iobs) )
                      ENDIF
 
-                  ENDDO 
-               ENDDO 
-             
-            ENDIF 
+                  ENDDO
+               ENDDO
 
-            !------------------------------------------------------------- 
-            ! Compute the horizontal interpolation for every profile level 
-            !------------------------------------------------------------- 
-             
-            DO ikn=1,inum_obs 
+            ENDIF
+
+            !-------------------------------------------------------------
+            ! Compute the horizontal interpolation for every profile level
+            !-------------------------------------------------------------
+
+            DO ikn=1,inum_obs
                iend=ista+ikn-1
-                  
-               zweig(:,:,1) = 0._wp 
-   
-               ! This code forces the horizontal weights to be  
-               ! zero IF the observation is below the bottom of the  
-               ! corners of the interpolation nodes, Or if it is in  
-               ! the mask. This is important for observations near  
-               ! steep bathymetry 
-               DO iin=1,2 
-                  DO ijn=1,2 
-     
-                     depth_loop: DO ik=kpk,2,-1 
-                        IF(zmask(iin,ijn,ik-1,iobs ) > 0.9 )THEN   
-                            
-                           zweig(iin,ijn,1) = &  
-                              & zweig1(iin,ijn,1) * & 
-                              & MAX( SIGN(1._wp,(zgdepw(iin,ijn,ik,iobs) ) & 
-                              &  - prodatqc%var(kvar)%vdep(iend)),0._wp) 
-                            
-                           EXIT depth_loop 
 
-                        ENDIF 
+               zweig(:,:,1) = 0._wp
+
+               ! This code forces the horizontal weights to be
+               ! zero IF the observation is below the bottom of the
+               ! corners of the interpolation nodes, Or if it is in
+               ! the mask. This is important for observations near
+               ! steep bathymetry
+               DO iin=1,2
+                  DO ijn=1,2
+
+                     depth_loop: DO ik=kpk,2,-1
+                        IF(zmask(iin,ijn,ik-1,iobs ) > 0.9 )THEN
+
+                           zweig(iin,ijn,1) = &
+                              & zweig1(iin,ijn,1) * &
+                              & MAX( SIGN(1._wp,(zgdepw(iin,ijn,ik,iobs) ) &
+                              &  - prodatqc%var(kvar)%vdep(iend)),0._wp)
+
+                           EXIT depth_loop
+
+                        ENDIF
 
                      ENDDO depth_loop
-     
-                  ENDDO 
-               ENDDO 
-   
-               CALL obs_int_h2d( 1, 1, zweig, interp_corner(:,:,ikn), & 
-                  &              prodatqc%var(kvar)%vmod(iend:iend) ) 
+
+                  ENDDO
+               ENDDO
+
+               CALL obs_int_h2d( 1, 1, zweig, interp_corner(:,:,ikn), &
+                  &              prodatqc%var(kvar)%vmod(iend:iend) )
 
                IF ( ldclim ) THEN
                   CALL obs_int_h2d( 1, 1, zweig, interp_corner_clim(:,:,ikn), &
@@ -459,9 +460,9 @@ CONTAINS
                ! Set QC flag for any observations found below the bottom
                ! needed as the check here is more strict than that in obs_prep
                IF (sum(zweig) == 0.0_wp) prodatqc%var(kvar)%nvqc(iend:iend)=4
- 
-            ENDDO 
- 
+
+            ENDDO
+
             DEALLOCATE(interp_corner,iv_indic)
             IF ( ldclim ) THEN
                DEALLOCATE( interp_corner_clim )
@@ -493,7 +494,7 @@ CONTAINS
       ENDIF
 
       IF ( kvar == prodatqc%nvar ) THEN
-         prodatqc%nprofup = prodatqc%nprofup + ipro 
+         prodatqc%nprofup = prodatqc%nprofup + ipro
       ENDIF
 
    END SUBROUTINE obs_prof_opt
@@ -501,9 +502,10 @@ CONTAINS
    SUBROUTINE obs_surf_opt( surfdataqc, kt, kpi, kpj,                     &
       &                     kit000, kdaystp, cdgroupname, kvar, psurf,    &
       &                     ldclim, kclim, pclim, psurfmask,              &
+      &                     ldsssatsst, psurfsal,                         &
       &                     k2dint, ldnightav, plamscl, pphiscl,          &
       &                     lindegrees, ldtime_mean, kmeanstp,            &
-      &                     kssh, kmdt, kfbd, ksnow, krhosw,              &
+      &                     kssh, kmdt, ksss, kfbd, ksnow, krhosw,        &
       &                     kradar_snow_penetr )
 
       !!-----------------------------------------------------------------------
@@ -511,10 +513,10 @@ CONTAINS
       !!                     ***  ROUTINE obs_surf_opt  ***
       !!
       !! ** Purpose : Compute the model counterpart of surface
-      !!              data by interpolating from the model grid to the 
+      !!              data by interpolating from the model grid to the
       !!              observation point.
       !!
-      !! ** Method  : Linearly interpolate to each observation point using 
+      !! ** Method  : Linearly interpolate to each observation point using
       !!              the model values at the corners of the surrounding grid box.
       !!
       !!    The new model value is first computed at the obs (lon, lat) point.
@@ -547,7 +549,7 @@ CONTAINS
       INTEGER, INTENT(IN) :: kt        ! Time step
       INTEGER, INTENT(IN) :: kpi       ! Model grid parameters
       INTEGER, INTENT(IN) :: kpj
-      INTEGER, INTENT(IN) :: kit000    ! Number of the first time step 
+      INTEGER, INTENT(IN) :: kit000    ! Number of the first time step
                                        !   (kit000-1 = restart time)
       INTEGER, INTENT(IN) :: kdaystp   ! Number of time steps per day
       CHARACTER(LEN=25), INTENT(IN) :: &
@@ -556,9 +558,11 @@ CONTAINS
       INTEGER, INTENT(IN) :: kclim     ! Index of climatology in surfdataqc
       INTEGER, INTENT(IN) :: k2dint    ! Horizontal interpolation type (see header)
       LOGICAL, INTENT(IN) :: ldclim    ! Switch to interpolate climatology
+      LOGICAL, INTENT(IN) :: ldsssatsst ! Switch to interpolate sss at sst locations
       REAL(wp), INTENT(IN), DIMENSION(kpi,kpj) :: &
          & psurf,  &                   ! Model surface field
          & pclim,  &                   ! Climatology surface field
+         & psurfsal, &                 ! Salinity surface field
          & psurfmask                   ! Land-sea mask
       LOGICAL, INTENT(IN) :: ldnightav ! Logical for averaging night-time data
       REAL(KIND=wp), INTENT(IN) :: &
@@ -569,6 +573,8 @@ CONTAINS
       LOGICAL, INTENT(IN) :: &
          & ldtime_mean                 ! Observations/background represent a time mean
       INTEGER, INTENT(IN) :: kmeanstp  ! Number of time steps for meaning if ldtime_mean
+      INTEGER, OPTIONAL, INTENT(IN)  :: &
+         & ksss                        ! Index of extra variable representing SSS
       INTEGER, OPTIONAL, INTENT(IN)  :: &
          & kssh                        ! Index of additional variable representing SSH
       INTEGER, OPTIONAL, INTENT(IN)  :: &
@@ -603,7 +609,7 @@ CONTAINS
          & imask_night
       REAL(wp) :: zlam
       REAL(wp) :: zphi
-      REAL(wp), DIMENSION(1) :: zext, zobsmask, zclm
+      REAL(wp), DIMENSION(1) :: zext, zobsmask, zclm, zsss
       REAL(wp) :: zdaystp
       REAL(wp) :: zmeanstp
       REAL(wp), DIMENSION(:,:,:), ALLOCATABLE :: &
@@ -613,6 +619,7 @@ CONTAINS
          & zsurfm, &
          & zsurftmp, &
          & zclim,  &
+         & zsurfsal, &
          & zglam,  &
          & zgphi,  &
          & zglamf, &
@@ -624,13 +631,13 @@ CONTAINS
          & zmeanday    ! to compute model sst in region of 24h daylight (pole)
 
       !------------------------------------------------------------------------
-      ! Local initialization 
+      ! Local initialization
       !------------------------------------------------------------------------
       ! Record and data counters
       inrc = kt - kit000 + 2
       isurf = surfdataqc%nsstp(inrc)
 
-      ! Work out the maximum footprint size for the 
+      ! Work out the maximum footprint size for the
       ! interpolation/averaging in model grid-points - has to be even.
 
       CALL obs_max_fpsize( k2dint, plamscl, pphiscl, lindegrees, psurfmask, imaxifp, imaxjfp )
@@ -761,6 +768,10 @@ CONTAINS
          ALLOCATE( zclim(imaxifp,imaxjfp,isurf) )
       ENDIF
 
+      IF ( ldsssatsst .OR. ln_TEOS10 ) THEN
+         ALLOCATE( zsurfsal(imaxifp,imaxjfp,isurf) )
+      ENDIF
+
       DO jobs = surfdataqc%nsurfup + 1, surfdataqc%nsurfup + isurf
          iobs = jobs - surfdataqc%nsurfup
          DO ji = 0, imaxifp
@@ -821,6 +832,11 @@ CONTAINS
       IF ( ldclim ) THEN
          CALL obs_int_comm_2d( imaxifp, imaxjfp, isurf, kpi, kpj, &
             &                  igrdi, igrdj, pclim, zclim )
+      ENDIF
+
+      IF ( ldsssatsst .OR. ln_TEOS10 ) THEN
+         CALL obs_int_comm_2d( imaxifp, imaxjfp, isurf, kpi, kpj, &
+            &                  igrdi, igrdj, psurfsal, zsurfsal )
       ENDIF
 
       ! At the end of the day get interpolated means
@@ -886,6 +902,10 @@ CONTAINS
                   CALL obs_int_h2d( 1, 1, zweig, zclim(:,:,iobs), zclm )
                ENDIF
 
+               IF ( ldsssatsst .OR. ln_TEOS10 ) THEN
+                  CALL obs_int_h2d( 1, 1, zweig, zsurfsal(:,:,iobs), zsss )
+               ENDIF
+
             ELSE
 
                ! Get weights to average the model field to the observation footprint
@@ -902,6 +922,11 @@ CONTAINS
                IF ( ldclim ) THEN
                   CALL obs_avg_h2d( 1, 1, imaxifp, imaxjfp, &
                      &              zweig, zclim(:,:,iobs),  zclm )
+               ENDIF
+
+               IF ( ldsssatsst .OR. ln_TEOS10 ) THEN
+                  CALL obs_avg_h2d( 1, 1, imaxifp, imaxjfp, &
+                     &              zweig, zsurfsal(:,:,iobs),  zsss )
                ENDIF
 
             ENDIF
@@ -941,6 +966,14 @@ CONTAINS
                surfdataqc%robs(jobs,kvar) = (surfdataqc%robs(jobs,kvar)*surfdataqc%rext(jobs,krhosw) +  &
                   &                          surfdataqc%rext(jobs,ksnow)*rhos)/(surfdataqc%rext(jobs,krhosw) - rhoi)
 #endif
+            ELSE IF ( TRIM(surfdataqc%cvars(kvar)) == cobsname_t2d ) THEN
+               IF ( ln_TEOS10 ) THEN
+                  surfdataqc%robs(jobs,kvar) = gsw_ct_from_t( REAL(zsss(1), wp), REAL(surfdataqc%robs(jobs,kvar), wp), 0.0_wp )
+               ENDIF
+               IF ( ldsssatsst .AND. PRESENT(ksss) ) THEN
+                  surfdataqc%rext(jobs,ksss) = zsss(1)
+               ENDIF
+               surfdataqc%rmod(jobs,kvar) = zext(1)
             ELSE
                surfdataqc%rmod(jobs,kvar) = zext(1)
             ENDIF
@@ -981,6 +1014,10 @@ CONTAINS
 
       IF ( ldclim ) THEN
          DEALLOCATE( zclim )
+      ENDIF
+
+      IF ( ldsssatsst .OR. ln_TEOS10 ) THEN
+         DEALLOCATE( zsurfsal )
       ENDIF
 
       ! At the end of the day also deallocate time mean array
