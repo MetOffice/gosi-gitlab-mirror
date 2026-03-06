@@ -15,7 +15,7 @@
   -->
 
 
-  <field_group id="inerttrc" grid_ref="grid_T_2D_inner">
+  <field_group id="inerttrc" grid_ref="grid_T_sfc_inner">
 
     <!-- CFC11 : variables available with ln_cfc11 -->
     <field id="CFC11"        long_name="Chlorofluoro carbon11 Concentration"      unit="umol/m3"   grid_ref="grid_T_3D" />
