@@ -356,7 +356,7 @@ CONTAINS
             zb = zab(ji+1,jj,jp_sal) + zab(ji,jj,jp_sal)
             !                                                         ! 2*masked bottom density gradient
             zgdrho = (  za * ( zts(ji+1,jj,jp_tem) - zts(ji,jj,jp_tem) )    &
-               &      - zb * ( zts(ji+1,jj,jp_sal) - zts(ji,jj,jp_sal) )  ) * umask(ji,jj,1)
+               &      - zb * ( zts(ji+1,jj,jp_sal) - zts(ji,jj,jp_sal) )  ) * ssumask(ji,jj)
             !
             zsign  = SIGN(  0.5_wp, -zgdrho * REAL( mgrhu(ji,jj) )  )    ! sign of ( i-gradient * i-slope )
             ahu_bbl(ji,jj) = ( 0.5 - zsign ) * ahu_bbl_0(ji,jj)       ! masked diffusive flux coeff.
@@ -366,7 +366,7 @@ CONTAINS
             zb = zab(ji,jj+1,jp_sal) + zab(ji,jj,jp_sal)
             !                                                         ! 2*masked bottom density gradient
             zgdrho = (  za * ( zts(ji,jj+1,jp_tem) - zts(ji,jj,jp_tem) )    &
-               &      - zb * ( zts(ji,jj+1,jp_sal) - zts(ji,jj,jp_sal) )  ) * vmask(ji,jj,1)
+               &      - zb * ( zts(ji,jj+1,jp_sal) - zts(ji,jj,jp_sal) )  ) * ssvmask(ji,jj)
             !
             zsign = SIGN(  0.5_wp, -zgdrho * REAL( mgrhv(ji,jj) )  )     ! sign of ( j-gradient * j-slope )
             ahv_bbl(ji,jj) = ( 0.5 - zsign ) * ahv_bbl_0(ji,jj)
@@ -386,7 +386,7 @@ CONTAINS
                zb = zab(ji+1,jj,jp_sal) + zab(ji,jj,jp_sal)
                !                                                          ! 2*masked bottom density gradient
                zgdrho = (  za * ( zts(ji+1,jj,jp_tem) - zts(ji,jj,jp_tem) )    &
-                         - zb * ( zts(ji+1,jj,jp_sal) - zts(ji,jj,jp_sal) )  ) * umask(ji,jj,1)
+                         - zb * ( zts(ji+1,jj,jp_sal) - zts(ji,jj,jp_sal) )  ) * ssumask(ji,jj)
                !
                zsign = SIGN(  0.5_wp, - zgdrho   * REAL( mgrhu(ji,jj) )  )   ! sign of i-gradient * i-slope
                zsigna= SIGN(  0.5_wp, zub(ji,jj) * REAL( mgrhu(ji,jj) )  )   ! sign of u * i-slope
@@ -399,7 +399,7 @@ CONTAINS
                zb = zab(ji,jj+1,jp_sal) + zab(ji,jj,jp_sal)
                !                                                          ! 2*masked bottom density gradient
                zgdrho = (  za * ( zts(ji,jj+1,jp_tem) - zts(ji,jj,jp_tem) )    &
-                  &      - zb * ( zts(ji,jj+1,jp_sal) - zts(ji,jj,jp_sal) )  ) * vmask(ji,jj,1)
+                  &      - zb * ( zts(ji,jj+1,jp_sal) - zts(ji,jj,jp_sal) )  ) * ssvmask(ji,jj)
                zsign = SIGN(  0.5_wp, - zgdrho   * REAL( mgrhv(ji,jj) )  )   ! sign of j-gradient * j-slope
                zsigna= SIGN(  0.5_wp, zvb(ji,jj) * REAL( mgrhv(ji,jj) )  )   ! sign of u * i-slope
                !
@@ -422,7 +422,7 @@ CONTAINS
                zb = zab(ji+1,jj,jp_sal) + zab(ji,jj,jp_sal)
                !                                                          !   masked bottom density gradient
                zgdrho = 0.5 * (  za * ( zts(iid,jj,jp_tem) - zts(iis,jj,jp_tem) )    &
-                  &            - zb * ( zts(iid,jj,jp_sal) - zts(iis,jj,jp_sal) )  ) * umask(ji,jj,1)
+                  &            - zb * ( zts(iid,jj,jp_sal) - zts(iis,jj,jp_sal) )  ) * ssumask(ji,jj)
                zgdrho = MAX( 0.e0, zgdrho )                               ! only if shelf is denser than deep
                !
                !                                                          ! bbl transport (down-slope direction)
@@ -440,7 +440,7 @@ CONTAINS
                zb = zab(ji,jj+1,jp_sal) + zab(ji,jj,jp_sal)
                !                                                          !   masked bottom density gradient
                zgdrho = 0.5 * (  za * ( zts(ji,ijd,jp_tem) - zts(ji,ijs,jp_tem) )    &
-                  &            - zb * ( zts(ji,ijd,jp_sal) - zts(ji,ijs,jp_sal) )  ) * vmask(ji,jj,1)
+                  &            - zb * ( zts(ji,ijd,jp_sal) - zts(ji,ijs,jp_sal) )  ) * ssvmask(ji,jj)
                zgdrho = MAX( 0.e0, zgdrho )                               ! only if shelf is denser than deep
                !
                !                                                          ! bbl transport (down-slope direction)
@@ -531,8 +531,8 @@ CONTAINS
       CALL lbc_lnk( 'trabbl', e3u_bbl_0, 'U', 1.0_wp , e3v_bbl_0, 'V', 1.0_wp )      ! lateral boundary conditions
       !
       !                             !* masked diffusive flux coefficients
-      ahu_bbl_0(:,:) = rn_ahtbbl * e2_e1u(:,:) * e3u_bbl_0(:,:) * umask(:,:,1)
-      ahv_bbl_0(:,:) = rn_ahtbbl * e1_e2v(:,:) * e3v_bbl_0(:,:) * vmask(:,:,1)
+      ahu_bbl_0(:,:) = rn_ahtbbl * e2_e1u(:,:) * e3u_bbl_0(:,:) * ssumask(:,:)
+      ahv_bbl_0(:,:) = rn_ahtbbl * e1_e2v(:,:) * e3v_bbl_0(:,:) * ssvmask(:,:)
       !
    END SUBROUTINE tra_bbl_init
 
