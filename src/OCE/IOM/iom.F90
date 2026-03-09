@@ -2244,7 +2244,11 @@ CONTAINS
 #endif
             CALL xios_set_domain_attr( cldom, ni_glo = ni_glo, nj_glo = nj_glo, ibegin = ibegin, jbegin = jbegin, ni = ni, nj = nj,   &
                &    lonvalue_1D = lonvalue, latvalue_1D = latvalue, bounds_lon_1D = bounds_lon, bounds_lat_1D = bounds_lat,           &
+#if defined key_xios3
+               &    mask_1D = mask_1D, nvertex = nvertex, area_2d = area, TYPE = 'curvilinear', data_dim = data_dim )
+#else
                &    mask_1D = mask_1D, nvertex = nvertex, area = area, TYPE = 'curvilinear', data_dim = data_dim )
+#endif
 
             IF( lldogrd ) THEN                                            ! add new grid definitions
                ! 2D grid (not representing any particular vertical level)
