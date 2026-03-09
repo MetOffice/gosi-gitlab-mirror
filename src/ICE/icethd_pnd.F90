@@ -100,7 +100,7 @@ CONTAINS
    END FUNCTION ice_thd_pnd_alloc
 
    
-   SUBROUTINE ice_thd_pnd
+   SUBROUTINE ice_thd_pnd( kt )
 
       !!-------------------------------------------------------------------
       !!               ***  ROUTINE ice_thd_pnd   ***
@@ -111,9 +111,22 @@ CONTAINS
       !!              No heat, no salt.
       !!              The current diagnostics lacks a contribution from drainage
       !!-------------------------------------------------------------------
+      INTEGER, INTENT(in) :: kt      ! Ocean time step
+      !
       INTEGER ::   ji, jj, jl        ! loop indices
       !!-------------------------------------------------------------------
       IF( ln_timing )   CALL timing_start('icethd_pnd')
+
+      ! Melt pond diagnostics
+      IF( kt == nit000 ) THEN
+         IF( iom_use('dvpn_mlt') .OR. iom_use('dvpn_lid') .OR. iom_use('dvpn_drn') .OR. iom_use('dvpn_rnf') ) THEN
+            ll_diag_pnd = .TRUE.
+            ! Allocate arrays
+            IF( ice_thd_pnd_alloc() /= 0 )   CALL ctl_stop( 'STOP', 'ice_thd_pnd: unable to allocate arrays' )
+         ELSE
+            ll_diag_pnd = .FALSE.
+         ENDIF
+      ENDIF
 
       IF( ln_icediachk )   CALL ice_cons_hsm( 0, 'icethd_pnd', rdiag_v, rdiag_s, rdiag_t, rdiag_fv, rdiag_fs, rdiag_ft )
       IF( ln_icediachk )   CALL ice_cons2D  ( 0, 'icethd_pnd',  diag_v,  diag_s,  diag_t,  diag_fv,  diag_fs,  diag_ft )
@@ -1418,16 +1431,6 @@ CONTAINS
       CASE( np_pndCST )
          IF( ln_pnd_lids ) THEN ; ln_pnd_lids = .FALSE. ; CALL ctl_warn( 'ln_pnd_lids=false when constant ponds' ) ; ENDIF
       END SELECT
-      !
-      IF( iom_use('dvpn_mlt') .OR. iom_use('dvpn_lid') .OR. iom_use('dvpn_drn') .OR. iom_use('dvpn_rnf') ) THEN
-         ll_diag_pnd = .TRUE.
-      ELSE
-         ll_diag_pnd = .FALSE.
-      ENDIF
-      !                              ! allocate arrays
-      IF( ll_diag_pnd ) THEN
-         IF( ice_thd_pnd_alloc() /= 0 )   CALL ctl_stop( 'STOP', 'ice_thd_pnd_init: unable to allocate arrays' )
-      ENDIF
       !
    END SUBROUTINE ice_thd_pnd_init
 
