@@ -150,7 +150,7 @@
       <field id="SedCO3por"   long_name="Bicarbonates"                            unit="mol/m3"    />
     </field_group>     <!-- End of field group for grid_T_3DS (Diag_S) -->
 
-    <field_group id="group_DS_T_2D" grid_ref="grid_T_2D" >  <!-- Start of field group for grid_T_2D (Diag_S) -->
+    <field_group id="group_DS_T_2D" grid_ref="grid_T_sfc" >  <!-- Start of field group for grid_T_2D (Diag_S) -->
       <field id="FlxSi"       long_name="Si sediment flux"                        unit="mol/cm2/s"     />
       <field id="FlxO2"       long_name="O2 sediment flux"                        unit="mol/cm2/s"     />
       <field id="FlxDIC"      long_name="DIC sediment flux"                       unit="mol/cm2/s"     />
@@ -288,7 +288,7 @@
       <field id="TPP"         long_name="Total Primary production of phyto"       unit="mol/m3/s"   />
       <field id="TPNEW"       long_name="New Primary production of phyto"         unit="mol/m3/s"   />
       <field id="TPBFE"       long_name="Total biogenic iron production"          unit="mol/m3/s"   />
-      
+
       <field id="Nfix_e3t"    long_name="Nfix * e3t"                              unit="molN/m2/s"   > Nfix   * e3t </field >
       <field id="PPPHYN_e3t"  long_name="PPPHYN * e3t"                            unit="mol/m2/s"    > PPPHYN * e3t </field >
       <field id="PPPHYD_e3t"  long_name="PPPHYD * e3t"                            unit="mol/m2/s"    > PPPHYD * e3t </field >
@@ -315,8 +315,8 @@
      <field id="RASSDZ"       long_name="Size of the protein machinery (Diazo)"   unit="-"           />
      <field id="GPPHYDZ"      long_name="Gross Primary production of diazotrophs" unit="molC/m3/s"   />
      </field_group>     <!-- End of field group for grid_T_3D_inner (diad_T) -->
-    
-    <field_group id="group_diad_T_2D_inner" grid_ref="grid_T_2D_inner" >  <!-- Start of field group for grid_T_2D_inner (diad_T) -->
+
+    <field_group id="group_diad_T_2D_inner" grid_ref="grid_T_sfc_inner" >  <!-- Start of field group for grid_T_2D_inner (diad_T) -->
       <field id="pdust"       long_name="dust concentration"                      unit="kg/m3"       />
       <field id="Sdenit"      long_name="Nitrate reduction in the sediments"      unit="mol/m2/s"    />
       <field id="Ironice"     long_name="Iron input/uptake due to sea ice"        unit="mol/m2/s"    />
@@ -340,7 +340,7 @@
       <field id="Sildep"      long_name="silicate deposition at surface"          unit="molC/m2/s"   />
       <field id="Po4dep"      long_name="Phosphorus deposition at surface"        unit="molP/m2/s"   />
       <field id="Nh4dep"      long_name="Ammonium deposition at surface"          unit="molN/m2/s"   />
-      
+
       <!-- PISCES tracers trends -->
       <field id="INTdtAlk"    long_name="Vertically int. of change of alkalinity"             unit="mol/m2/s" />
       <field id="INTdtDIC"    long_name="Vertically int. of change of dissic    "             unit="mol/m2/s" />
@@ -348,7 +348,7 @@
       <field id="INTdtDIN"    long_name="Vertically int. of change of nitrogen  "             unit="mol/m2/s" />
       <field id="INTdtDIP"    long_name="Vertically int. of change of phophate  "             unit="mol/m2/s" />
       <field id="INTdtSil"    long_name="Vertically int. of change of silicon   "             unit="mol/m2/s" />
-      
+
       <field id="INTDIC"      long_name="DIC content"                                         unit="kg/m2"    />
       <field id="O2MIN"       long_name="Oxygen minimum concentration"                        unit="mol/m3"   />
       <field id="ZO2MIN"      long_name="Depth of oxygen minimum concentration"               unit="m"        />
