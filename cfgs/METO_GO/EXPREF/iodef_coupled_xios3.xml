@@ -12,9 +12,12 @@
 	  <variable id="info_level"                type="int">-1</variable>
 	  <variable id="using_server"              type="bool">true</variable>
 	  <variable id="using_oasis"               type="bool">true</variable>
-	  <variable id="oasis_codes_id"            type="string" >toyoce</variable>
+      <variable id="clients_code_id"           type="string" >toyoce</variable>
       <!-- This must be true if xios_oasis_enddef is called from SBC/cpl_oasis3.F90 -->
       <variable id="call_oasis_enddef"         type="bool">true</variable>
+      <!-- These seem to be critical for running XIOS 3 in detached mode -->
+      <variable id="transport_protocol"          type="string">p2p</variable>
+      <variable id="services_use_window_manager" type="bool">false</variable>
 
       </variable_definition>
   </context>
@@ -23,6 +26,6 @@
 <!-- NEMO  CONTEXT add and suppress the components you need                                       -->
 <!-- ============================================================================================ -->
 
-  <context id="nemo" src="./context_nemo.xml"/>       <!--  NEMO       -->
+  <context id="nemo" src="./context_nemo_xios3.xml"/>       <!--  NEMO       -->
 
 </simulation>
