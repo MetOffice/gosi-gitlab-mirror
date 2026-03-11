@@ -1130,7 +1130,8 @@ do
   if [ ${DO_ROTSYM} -eq 1 ]; then
      echo ""
      echo "   !----rotational symmetry----!   "
-     for rotational_test in ${TEST_CONFIGS[@]}
+     ROTSYM_CONFIGS=(${TEST_CONFIGS[@]/CPL_OASIS})
+     for rotational_test in ${ROTSYM_CONFIGS[@]}
      do
         rottest $NEMO_VALID ${rotational_test} $pass
      done
@@ -1176,7 +1177,8 @@ do
   if [ ${DO_PHYOPTS} -eq 1 ]; then
     echo ""
     echo "   !----phyopt----!   "
-    for phyopt_test in ${TEST_CONFIGS[@]}; do
+    PHYOPTS_CONFIGS=(${TEST_CONFIGS[@]/CPL_OASIS})
+    for phyopt_test in ${PHYOPTS_CONFIGS[@]}; do
        runtest $NEMO_VALID $phyopt_test $pass "EXP"
     done
   fi
@@ -1186,9 +1188,11 @@ do
      echo ""
      echo "   !----coupling----!   "
      COUPLING_CONFIGS=( "CPL_OASIS" )
-     for coupling_test in ${COUPLING_CONFIGS[@]}
+     for coupling_test in ${TEST_CONFIGS[@]}
      do
-        runtest $NEMO_VALID ${coupling_test} $pass "CPL"
+        for valid_test in ${COUPLING_CONFIGS[@]} ; do
+            [[ ${coupling_test} == ${valid_test} ]] && runtest $NEMO_VALID ${coupling_test} $pass "CPL" && break
+        done
      done
   fi
 
