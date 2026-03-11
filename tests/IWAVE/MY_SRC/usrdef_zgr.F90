@@ -158,10 +158,15 @@ CONTAINS
                pe3vw(:,:,jk) = pe3w_1d (jk)
             END DO
          ELSEIF( ld_zps ) THEN
-            k_bot(:,:) = jpkm1 * k_top(:,:)     ! here use k_top as a land mask
-            DO jk = 1, jpkm1
-               WHERE( pdept_1d(jk) < zht(:,:) .AND. zht(:,:) <= pdept_1d(jk+1) )   k_bot(:,:) = jk * k_top(:,:)
+            ze3min = 0.1_wp * rn_dz
+            IF(lwp) WRITE(numout,*) '   minimum thickness of the partial cells = 10 % of e3 = ', ze3min
+            !
+            k_bot(:,:) = jpkm1 
+            !
+            DO jk = jpkm1, 1, -1
+               WHERE( zht(:,:) < pdepw_1d(jk) + ze3min )   k_bot(:,:) = jk-1
             END DO
+            !
             !         !* horizontally uniform coordinate (reference z-co everywhere)
             DO jk = 1, jpk
                pdept(:,:,jk) = pdept_1d(jk)
@@ -177,17 +182,40 @@ CONTAINS
                pe3v (:,:,jk) = pe3t_1d (jk)
                pe3f (:,:,jk) = pe3t_1d (jk)
             END DO
-            DO_2D( 0, 0, 0, 0 )
+
+            DO_2D( 1, 1, 1, 1 )
                ik = k_bot(ji,jj)
-               pe3t (ji,jj,ik  ) = MIN( zht(ji,jj) , pdepw_1d(ik+1) ) - pdepw_1d(ik)   ! last wet level thickness
+               pdepw(ji,jj,ik+1) = MIN( zht(ji,jj) , pdepw_1d(ik+1) )
+               pe3t (ji,jj,ik  ) = pdepw(ji,jj,ik+1) - pdepw(ji,jj,ik)
                pe3t (ji,jj,ik+1) = pe3t (ji,jj,ik  )
+               !
+               pdept(ji,jj,ik  ) = pdepw(ji,jj,ik  ) + pe3t (ji,jj,ik  ) * 0.5_wp
+               pdept(ji,jj,ik+1) = pdepw(ji,jj,ik+1) + pe3t (ji,jj,ik+1) * 0.5_wp
+               pe3w (ji,jj,ik+1) = pdept(ji,jj,ik+1) - pdept(ji,jj,ik)              ! = pe3t (ji,jj,ik  )
+               pe3w (ji,jj,ik  ) = pdept(ji,jj,ik  ) - pdept(ji,jj,ik-1)            ! st caution ik > 1
             END_2D
-            !                                   ! bottom scale factors and depth at  U-, V-, UW and VW-points
-            !                                   ! usually Computed as the minimum of neighbooring scale factors
-            pe3u (:,:,:) = pe3t(:,:,:)          ! HERE OVERFLOW configuration : 
-            pe3v (:,:,:) = pe3t(:,:,:)          !    e3 increases with i-index and identical with j-index
-            pe3f (:,:,:) = pe3t(:,:,:)          !    so e3 minimum of (i,i+1) points is (i) point in j-direction e3v=e3t and e3f=e3v
-            !                                   !    ==>>  no need of lbc_lnk calls
+            !
+            DO_3D( 0, 0, 0, 0, 1, jpkm1 )
+               pe3u (ji,jj,jk) = MIN( pe3t(ji,jj,jk), pe3t(ji+1,jj,jk) )
+               pe3v (ji,jj,jk) = MIN( pe3t(ji,jj,jk), pe3t(ji,jj+1,jk) )
+               pe3uw(ji,jj,jk) = MIN( pe3w(ji,jj,jk), pe3w(ji+1,jj,jk) )
+               pe3vw(ji,jj,jk) = MIN( pe3w(ji,jj,jk), pe3w(ji,jj+1,jk) )
+            END_3D
+            !
+            CALL lbc_lnk('usrdef_zgr', pe3u , 'U', 1._wp, pe3uw, 'U', 1._wp )
+            CALL lbc_lnk('usrdef_zgr', pe3v , 'V', 1._wp, pe3vw, 'V', 1._wp )
+            !
+            DO jk = 1, jpk
+               WHERE( pe3u (:,:,jk) == 0._wp )   pe3u (:,:,jk) = pe3t_1d(jk)
+               WHERE( pe3v (:,:,jk) == 0._wp )   pe3v (:,:,jk) = pe3t_1d(jk)
+               WHERE( pe3uw(:,:,jk) == 0._wp )   pe3uw(:,:,jk) = pe3w_1d(jk)
+               WHERE( pe3vw(:,:,jk) == 0._wp )   pe3vw(:,:,jk) = pe3w_1d(jk)
+            END DO
+
+            DO_3D( 0, 0, 0, 0, 1, jpk )
+               pe3f(ji,jj,jk) = MIN( pe3v(ji,jj,jk), pe3v(ji+1,jj,jk) )
+            END_3D
+            CALL lbc_lnk('usrdef_zgr', pe3f, 'F', 1._wp )
          ENDIF
       ENDIF
       !
@@ -204,17 +232,17 @@ CONTAINS
       !
       IF( lk_vco_1d3d ) THEN    !==  zps-coordinate  ==!   (partial bottom-steps)
          !
-         ze3min = 0.1_wp * rn_dz
-         IF(lwp) WRITE(numout,*) '   minimum thickness of the partial cells = 10 % of e3 = ', ze3min
-         !
-         !
-         !                                !* bottom ocean compute from the depth of grid-points
-         k_bot(:,:) = jpkm1
-         DO jk = jpkm1, 1, -1
-            WHERE( zht(:,:) < pdepw_1d(jk) + ze3min )   k_bot(:,:) = jk-1
-         END DO
-         !
          IF( ld_zps ) THEN                !* vertical coordinate system
+            ze3min = 0.1_wp * rn_dz
+            IF(lwp) WRITE(numout,*) '   minimum thickness of the partial cells = 10 % of e3 = ', ze3min
+            !
+            !
+            !                                !* bottom ocean compute from the depth of grid-points
+            k_bot(:,:) = jpkm1
+            DO jk = jpkm1, 1, -1
+               WHERE( zht(:,:) < pdepw_1d(jk) + ze3min )   k_bot(:,:) = jk-1
+            END DO
+            !
             DO jk = 1, jpk                      ! initialization to the reference z-coordinate
                pe3t (:,:,jk) = pe3t_1d (jk)
                pe3u (:,:,jk) = pe3t_1d (jk)
@@ -227,12 +255,29 @@ CONTAINS
                pe3t (ji,jj,ik+1) = pe3t (ji,jj,ik  ) 
             END_2D
             !                                   ! bottom scale factors and depth at  U-, V-, UW and VW-points
-            !                                   ! usually Computed as the minimum of neighbooring scale factors
-            pe3u (:,:,:) = pe3t(:,:,:)          ! HERE OVERFLOW configuration : 
-            pe3v (:,:,:) = pe3t(:,:,:)          !    e3 increases with i-index and identical with j-index
-            pe3f (:,:,:) = pe3t(:,:,:)          !    so e3 minimum of (i,i+1) points is (i) point in j-direction e3v=e3t and e3f=e3v
-            !                                   !    ==>>  no need of lbc_lnk calls
+            DO_3D( 0, 0, 0, 0, 1, jpkm1 )
+               pe3u (ji,jj,jk) = MIN( pe3t(ji,jj,jk), pe3t(ji+1,jj,jk) )
+               pe3v (ji,jj,jk) = MIN( pe3t(ji,jj,jk), pe3t(ji,jj+1,jk) )
+            END_3D
+            !
+            CALL lbc_lnk('usrdef_zgr', pe3u , 'U', 1._wp, pe3v, 'V', 1._wp )
+            !
+            DO jk = 1, jpk
+               WHERE( pe3u (:,:,jk) == 0._wp )   pe3u (:,:,jk) = pe3t_1d(jk)
+               WHERE( pe3v (:,:,jk) == 0._wp )   pe3v (:,:,jk) = pe3t_1d(jk)
+            END DO
+
+            DO_3D( 0, 0, 0, 0, 1, jpk )
+               pe3f(ji,jj,jk) = MIN( pe3v(ji,jj,jk), pe3v(ji+1,jj,jk) )
+            END_3D
+            CALL lbc_lnk('usrdef_zgr', pe3f, 'F', 1._wp )
+            !
          ELSEIF( ld_zco ) THEN
+            k_bot(:,:) = jpkm1 * k_top(:,:)     ! here use k_top as a land mask
+            DO jk = 1, jpkm1
+               WHERE( pdept_1d(jk) < zht(:,:) .AND. zht(:,:) <= pdept_1d(jk+1) )   k_bot(:,:) = jk * k_top(:,:)
+            END DO
+
             DO jk = 1, jpk                      ! initialization to the reference z-coordinate
                pe3t (:,:,jk) = pe3t_1d (jk)
                pe3u (:,:,jk) = pe3t_1d (jk)
