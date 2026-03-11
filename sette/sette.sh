@@ -40,7 +40,7 @@ export USER_INPUT='yes'        # Default: yes => request user input on decisions
                                #                 3. regarding creation of directories
 export SETTE_THIS_BRANCH=${CI_COMMIT_BRANCH:-$(git log -1 --pretty=%D HEAD | sed 's|.*origin/||g;s|, .*||g;s|.*-> ||g' )}
 export SETTE_SUB_VAL=${SETTE_THIS_BRANCH}
-export NEMO_REV=$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)
+export NEMO_REV=${CI_COMMIT_SHORT_SHA:-$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)}
 
 # Parse command-line arguments
 if [ $# -gt 0 ]; then

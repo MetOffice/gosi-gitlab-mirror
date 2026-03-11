@@ -175,12 +175,16 @@ clean_config() {
 
 # define validation dir
 set_valid_dir () {
-    REVISION_NB=`git -C ${MAIN_DIR} rev-parse --short=8 HEAD`
-    REV_DATE0="`git -C ${MAIN_DIR} show --no-patch --format=%ct ${REVISION_NB}`"
-    REV_DATE=`${DATE_CONV}"${REV_DATE0}" +"%y%j"`
+    REVISION_NB=${CI_COMMIT_SHORT_SHA:-$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD)}
+    if [ -n "${CI_COMMIT_TIMESTAMP}" ]; then
+      REV_DATE=$(date --date=${CI_COMMIT_TIMESTAMP} +%y%j)
+    else
+      REV_DATE0="$(git -C ${MAIN_DIR} show --no-patch --format=%ct ${REVISION_NB})"
+      REV_DATE=`${DATE_CONV}"${REV_DATE0}" +"%y%j"`
+    fi
     REVISION_NB=${REV_DATE}_${NEMO_REV}
     echo "value of revision number of NEMOGCM: ${REVISION_NB}"
-    localchanges=`git -C ${MAIN_DIR} status --short -uno | wc -l`
+    [ -z "${CI_COMMIT_SHORT_SHA}" ] && localchanges=`git -C ${MAIN_DIR} status --short -uno | wc -l` || localchanges=0
     if [[ $localchanges > 0 ]] ; then
      REVISION_NB=${REVISION_NB}+
     fi
