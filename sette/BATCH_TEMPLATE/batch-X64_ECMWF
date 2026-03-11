@@ -36,8 +36,6 @@ set +x
 #
   export SETTE_DIR="DEF_SETTE_DIR"
   export MPIRUN="srun"
-  export CONFIG_DIR="DEF_CONFIG_DIR"
-  export TOOLS_DIR="DEF_TOOLS_DIR"
   export NEMO_VALIDATION_DIR="DEF_NEMO_VALIDATION"
   export NEW_CONF="DEF_NEW_CONF"
   export CMP_NAM="DEF_CMP_NAM"
@@ -49,7 +47,7 @@ set +x
   . ${SETTE_DIR}/all_functions.sh
 #
 # Load environment if exists
-  env_file=`find ${CONFIG_DIR}/../arch -name arch-${CMP_NAM}.env`
+  env_file=`find ${SETTE_DIR}/../arch -name arch-${CMP_NAM}.env`
   if [ -f "${env_file}" ] ; then
      echo "Load environment file arch-${CMP_NAM}.env"
      . ${env_file}

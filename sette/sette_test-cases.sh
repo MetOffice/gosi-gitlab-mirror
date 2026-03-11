@@ -206,6 +206,26 @@ for config in ${TEST_CONFIGS[@]} ; do
         # currently processed SETTE configuration
         SETTE_CONFIG="${config}${CONFIG_SUFFIX}"
 
+        # Skip CPL_OASIS test case if an OASIS build is not specified
+        if [[ ${config} == "CPL_OASIS" ]] ; then
+            cd ${MAIN_DIR}
+
+            ARCH_FILE=$(find arch/ -name arch-${CMP_NAM}.fcm)
+            # Generate archfile if compiler is set to "auto"
+            if [[ -z "${ARCH_FILE}" && ${CMP_NAM_A} == "auto" ]]; then
+              ENV_FILE=$(find arch/ -name arch-${CMP_NAM_A}.env)
+              [ -n "${ENV_FILE}" ] && source ${ENV_FILE}
+              ./arch/build_arch-auto.sh
+              ARCH_FILE=$(find arch/ -name arch-${CMP_NAM_A}.fcm)
+            fi
+            # Test that OASIS path is defined in the arch file and that it exists
+            [[ ! -f ${ARCH_FILE} ]] && echo "WARNING: arch-${CMP_NAM_A}.fcm file not found -> cannot check for OASIS directory -> CPL_OASIS testcase skipped !" && break
+            OASIS_DIR=$(sed -rn "/^%OASIS_(PREFIX|HOME) /s/%OASIS_(PREFIX|HOME) +(.*)/\2/p" ${ARCH_FILE})
+            [[ -z ${OASIS_DIR} ]] && echo "WARNING: String matching \"%OASIS_(PREFIX|HOME)\" not found in arch-${CMP_NAM_A}.fcm file -> CPL_OASIS testcase skipped !" && break
+            OASIS_DIR=$(eval "echo ${OASIS_DIR}")       # Expand environment variables
+            [[ ! -d ${OASIS_DIR} ]] && echo "WARNING: OASIS directory \"${OASIS_DIR}\" in arch-${CMP_NAM_A}.fcm file does not exist -> CPL_OASIS testcase skipped !" && break
+        fi
+
         # Compilation of the baseline configuration
         if [ ${DO_COMPILE_BASELINE} -eq 1 ] ; then
 
@@ -995,17 +1015,6 @@ fi
 # ---------
 if [ ${config} == "CPL_OASIS" ] ;  then
 
-    ARCH_FILE=$(find ../arch/ -name arch-${CMP_NAM}.fcm)
-    # generate archfile if compiler is set to "auto"
-    if [[ -z "${ARCH_FILE}" && ${CMP_NAM} == "auto" ]]; then
-      ENV_FILE=$(find ../arch/ -name arch-${CMP_NAM}.env)
-      [ -n "${ENV_FILE}" ] && source ${ENV_FILE}
-      ../arch/build_arch-auto.sh
-      ARCH_FILE=$(find ../arch/ -name arch-${CMP_NAM}.fcm)
-    fi
-    # test if OASIS is defined in archfile and if OASIS directory exists
-    OASIS_DIR=$(sed -rn "/^%OASIS_(PREFIX|HOME) /s/%OASIS_(PREFIX|HOME) +(.*)/\2/p" ${ARCH_FILE})
-    [ ! -d ${OASIS_DIR} ] && echo "WARNING: OASIS directory not found in arch-${CMP_NAM}.fcm file -> CPL_OASIS testcase skipped !" && break
     # TOYATM PATH
     export TOYATM_DIR="${MAIN_DIR}/tools/TOYATM/BLD/bin"
 
