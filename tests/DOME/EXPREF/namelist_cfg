@@ -267,7 +267,7 @@
 &nambdy_index   !  bdy segment definition         
 !-----------------------------------------------------------------------
    ctypebdy='W'
-   nbdyind = 2 
-   nbdybeg = 1 
-   nbdyend = 164 
+   nbdyind = -1 
+   nbdybeg = -1 
+   nbdyend = -1 
 /
