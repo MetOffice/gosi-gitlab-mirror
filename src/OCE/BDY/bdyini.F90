@@ -1398,8 +1398,13 @@ CONTAINS
       CASE( 'N' )
          IF( nbdyind == -1 ) THEN  ! Automatic boundary definition: if nbdysegX = -1
             nbdyind  = Nj0glo - 2  ! set boundary to whole side of model domain.
-            nbdybeg  = 2
-            nbdyend  = Ni0glo - 1
+            IF (l_Iperio) THEN
+               nbdybeg  = 1 
+               nbdyend  = Ni0glo
+            ELSE
+               nbdybeg  = 2
+               nbdyend  = Ni0glo - 1
+            ENDIF
          ENDIF
          nbdysegn = nbdysegn + 1
          npckgn(nbdysegn) = kb_bdy ! Save bdy package number
@@ -1410,8 +1415,13 @@ CONTAINS
       CASE( 'S' )
          IF( nbdyind == -1 ) THEN  ! Automatic boundary definition: if nbdysegX = -1
             nbdyind  = 2           ! set boundary to whole side of model domain.
-            nbdybeg  = 2
-            nbdyend  = Ni0glo - 1
+            IF (l_Iperio) THEN
+               nbdybeg  = 1 
+               nbdyend  = Ni0glo
+            ELSE
+               nbdybeg  = 2
+               nbdyend  = Ni0glo - 1
+            ENDIF
          ENDIF
          nbdysegs = nbdysegs + 1
          npckgs(nbdysegs) = kb_bdy ! Save bdy package number
@@ -1422,8 +1432,13 @@ CONTAINS
       CASE( 'E' )
          IF( nbdyind == -1 ) THEN  ! Automatic boundary definition: if nbdysegX = -1
             nbdyind  = Ni0glo - 2  ! set boundary to whole side of model domain.
-            nbdybeg  = 2
-            nbdyend  = Nj0glo - 1
+            IF (l_Jperio) THEN
+               nbdybeg  = 1 
+               nbdyend  = Nj0glo
+            ELSE
+               nbdybeg  = 2
+               nbdyend  = Nj0glo - 1
+            ENDIF
          ENDIF
          nbdysege = nbdysege + 1 
          npckge(nbdysege) = kb_bdy ! Save bdy package number
@@ -1434,8 +1449,13 @@ CONTAINS
       CASE( 'W' )
          IF( nbdyind == -1 ) THEN  ! Automatic boundary definition: if nbdysegX = -1
             nbdyind  = 2           ! set boundary to whole side of model domain.
-            nbdybeg  = 2
-            nbdyend  = Nj0glo - 1
+            IF (l_Jperio) THEN
+               nbdybeg  = 1 
+               nbdyend  = Nj0glo
+            ELSE
+               nbdybeg  = 2
+               nbdyend  = Nj0glo - 1
+            ENDIF
          ENDIF
          nbdysegw = nbdysegw + 1
          npckgw(nbdysegw) = kb_bdy ! Save bdy package number
@@ -1483,9 +1503,9 @@ CONTAINS
       !----------------
       DO ib = 1, nbdysegn
          IF (lwp) WRITE(numout,*) '**check north seg bounds pckg: ', npckgn(ib)
-         IF ((jpjnob(ib).ge.Nj0glo-1).or.& 
+         IF ((jpjnob(ib).gt.Nj0glo-1).or.& 
             &(jpjnob(ib).le.1))        CALL ctl_stop( 'nbdyind out of domain' )
-         IF (jpindt(ib).ge.jpinft(ib)) CALL ctl_stop( 'Bdy start index is greater than end index' )
+         IF (jpindt(ib).gt.jpinft(ib)) CALL ctl_stop( 'Bdy start index is greater than end index' )
          IF (jpindt(ib).lt.1     )     CALL ctl_stop( 'Start index out of domain' )
          IF (jpinft(ib).gt.Ni0glo)     CALL ctl_stop( 'End index out of domain' )
       END DO
@@ -1494,16 +1514,16 @@ CONTAINS
          IF (lwp) WRITE(numout,*) '**check south seg bounds pckg: ', npckgs(ib)
          IF ((jpjsob(ib).ge.Nj0glo-1).or.& 
             &(jpjsob(ib).le.1))        CALL ctl_stop( 'nbdyind out of domain' )
-         IF (jpisdt(ib).ge.jpisft(ib)) CALL ctl_stop( 'Bdy start index is greater than end index' )
+         IF (jpisdt(ib).gt.jpisft(ib)) CALL ctl_stop( 'Bdy start index is greater than end index' )
          IF (jpisdt(ib).lt.1     )     CALL ctl_stop( 'Start index out of domain' )
          IF (jpisft(ib).gt.Ni0glo)     CALL ctl_stop( 'End index out of domain' )
       END DO
       !
       DO ib = 1, nbdysege
          IF (lwp) WRITE(numout,*) '**check east  seg bounds pckg: ', npckge(ib)
-         IF ((jpieob(ib).ge.Ni0glo-1).or.& 
+         IF ((jpieob(ib).gt.Ni0glo-1).or.& 
             &(jpieob(ib).le.1))        CALL ctl_stop( 'nbdyind out of domain' )
-         IF (jpjedt(ib).ge.jpjeft(ib)) CALL ctl_stop( 'Bdy start index is greater than end index' )
+         IF (jpjedt(ib).gt.jpjeft(ib)) CALL ctl_stop( 'Bdy start index is greater than end index' )
          IF (jpjedt(ib).lt.1     )     CALL ctl_stop( 'Start index out of domain' )
          IF (jpjeft(ib).gt.Nj0glo)     CALL ctl_stop( 'End index out of domain' )
       END DO
@@ -1512,7 +1532,7 @@ CONTAINS
          IF (lwp) WRITE(numout,*) '**check west  seg bounds pckg: ', npckgw(ib)
          IF ((jpiwob(ib).ge.Ni0glo-1).or.& 
             &(jpiwob(ib).le.1))        CALL ctl_stop( 'nbdyind out of domain' )
-         IF (jpjwdt(ib).ge.jpjwft(ib)) CALL ctl_stop( 'Bdy start index is greater than end index' )
+         IF (jpjwdt(ib).gt.jpjwft(ib)) CALL ctl_stop( 'Bdy start index is greater than end index' )
          IF (jpjwdt(ib).lt.1     )     CALL ctl_stop( 'Start index out of domain' )
          IF (jpjwft(ib).gt.Nj0glo)     CALL ctl_stop( 'End index out of domain' )
       ENDDO
@@ -1670,8 +1690,10 @@ CONTAINS
 
          IF (ztestmask(1)==1._wp) THEN
             IF (icornw(ib,1)==0) THEN
-               WRITE(ctmp1,*) ' Open boundary segment ', npckgw(ib)
-               CALL ctl_stop( ctmp1, ' does not start on land or on a corner' )
+               IF ( jpjwdt(ib)>2 ) THEN
+                  WRITE(ctmp1,*) ' Open boundary segment ', npckgw(ib)
+                  CALL ctl_stop( ctmp1, ' does not start on land or on a corner' )
+               ENDIF
             ELSE
                ! This is a corner
                IF(lwp) WRITE(numout,*) 'Found a South-West corner at (i,j): ', jpiwob(ib), jpjwdt(ib)
@@ -1681,8 +1703,10 @@ CONTAINS
          ENDIF
          IF (ztestmask(2)==1._wp) THEN
             IF (icornw(ib,2)==0) THEN
-               WRITE(ctmp1,*) ' Open boundary segment ', npckgw(ib)
-               CALL ctl_stop( ' ', ctmp1, ' does not end on land or on a corner' )
+               IF ( jpjwft(ib)<Nj0glo-1 ) THEN
+                  WRITE(ctmp1,*) ' Open boundary segment ', npckgw(ib)
+                  CALL ctl_stop( ' ', ctmp1, ' does not end on land or on a corner' )
+               ENDIF
             ELSE
                ! This is a corner
                IF(lwp) WRITE(numout,*) 'Found a North-West corner at (i,j): ', jpiwob(ib), jpjwft(ib)
@@ -1704,9 +1728,11 @@ CONTAINS
 
          IF (ztestmask(1)==1._wp) THEN
             IF (icorne(ib,1)==0) THEN
-               WRITE(ctmp1,*) ' Open boundary segment ', npckge(ib)
-               CALL ctl_stop( ctmp1, ' does not start on land or on a corner' )
-            ELSE
+               IF ( jpjedt(ib)>2 ) THEN
+                  WRITE(ctmp1,*) ' Open boundary segment ', npckge(ib)
+                  CALL ctl_stop( ctmp1, ' does not start on land or on a corner' )
+               ENDIF
+             ELSE
                ! This is a corner
                IF(lwp) WRITE(numout,*) 'Found a South-East corner at (i,j): ', jpieob(ib)+1, jpjedt(ib)
                CALL bdy_ctl_corn(npckge(ib), icorne(ib,1))
@@ -1715,8 +1741,10 @@ CONTAINS
          ENDIF
          IF (ztestmask(2)==1._wp) THEN
             IF (icorne(ib,2)==0) THEN
-               WRITE(ctmp1,*) ' Open boundary segment ', npckge(ib)
-               CALL ctl_stop( ctmp1, ' does not end on land or on a corner' )
+               IF ( jpjeft(ib)<Nj0glo-1 ) THEN
+                  WRITE(ctmp1,*) ' Open boundary segment ', npckge(ib)
+                  CALL ctl_stop( ctmp1, ' does not end on land or on a corner' )
+               ENDIF
             ELSE
                ! This is a corner
                IF(lwp) WRITE(numout,*) 'Found a North-East corner at (i,j): ', jpieob(ib)+1, jpjeft(ib)
@@ -1736,11 +1764,11 @@ CONTAINS
          END_2D 
          CALL mpp_sum( 'bdyini', ztestmask )   ! sum over the global domain
 
-         IF ((ztestmask(1)==1._wp).AND.(icorns(ib,1)==0)) THEN
+         IF ((ztestmask(1)==1._wp).AND.(icorns(ib,1)==0).AND.( jpisdt(ib)>2)) THEN
             WRITE(ctmp1,*) ' Open boundary segment ', npckgs(ib)
             CALL ctl_stop( ctmp1, ' does not start on land or on a corner' )
          ENDIF
-         IF ((ztestmask(2)==1._wp).AND.(icorns(ib,2)==0)) THEN
+         IF ((ztestmask(2)==1._wp).AND.(icorns(ib,2)==0).AND.( jpisft(ib)<(Ni0glo-1))) THEN
             WRITE(ctmp1,*) ' Open boundary segment ', npckgs(ib)
             CALL ctl_stop( ctmp1, ' does not end on land or on a corner' )
          ENDIF
