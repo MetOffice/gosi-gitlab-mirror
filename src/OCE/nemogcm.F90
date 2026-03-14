@@ -117,8 +117,11 @@ CONTAINS
       REAL(wp)::   zstptiming   ! elapsed time for 1 time step
       !!----------------------------------------------------------------------
       !
+      WRITE(numout,*) "Start Nemo GCM"
 #if defined key_agrif
+      WRITE(numout,*) "Enter Agrif init grids"
       CALL Agrif_Init_Grids()      ! AGRIF: set the meshes
+      WRITE(numout,*) "Exit Agrif init grids"
 #endif
       !                            !-----------------------!
       CALL nemo_init               !==  Initialisations  ==!
