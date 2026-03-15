@@ -112,7 +112,7 @@ CONTAINS
          WRITE(numout,*)
 !GCJ
          IF (Agrif_Root() .AND. lwp) THEN ; WRITE(numout,*) '============================ PARENT SBC INIT ==========================='
-         ELSE IF (lwp)                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' SBC INIT ========================='
+         ELSE IF (lwp) THEN               ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' SBC INIT ========================='
          END IF
 !/GCJ
          WRITE(numout,*) 'sbc_init : surface boundary condition setting'

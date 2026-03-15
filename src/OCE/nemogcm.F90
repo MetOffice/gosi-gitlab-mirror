@@ -160,7 +160,7 @@ CONTAINS
 !GCJ
          IF( Agrif_Root() .AND. lk_oasis ) THEN
             IF (Agrif_Root() .AND. lwp) THEN ; WRITE(numout,*) '============================ PARENT SEND============================'
-            ELSE IF (lwp)                  ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' SEND ========================='
+            ELSE IF (lwp) THEN               ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' SEND ========================='
             END IF
             CALL sbc_cpl_snd( istp, Nbb, Naa ) 
          ENDIF
@@ -340,7 +340,7 @@ CONTAINS
          !
 !GCJ
          IF (Agrif_Root() .AND. lwp) THEN ; WRITE(numout,*) '============================ PARENT NEMO INIT============================'
-         ELSE IF (lwp)                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' NEMO INIT ========================='
+         ELSE IF (lwp) THEN               ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' NEMO INIT ========================='
          END IF
 !/GCJ
          !
