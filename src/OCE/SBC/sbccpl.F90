@@ -1395,8 +1395,8 @@ CONTAINS
       !
       !
 !GCJ
-      IF (Agrif_Root()) THEN ; WRITE(numout,*) '============================ PARENT RECEIVE START ============================'
-      ELSE                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' RECEIVE START========================='
+      IF (Agrif_Root() .AND. lwp) THEN ; WRITE(numout,*) '============================ PARENT RECEIVE START ============================'
+      ELSE IF (lwp)                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' RECEIVE START========================='
       END IF
 !/GCJ
       IF (ln_timing) CALL timing_start('sbc_cpl_rcv')

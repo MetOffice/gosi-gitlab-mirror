@@ -96,8 +96,8 @@ CONTAINS
          IF(lwp)   WRITE(*,*) 'Grid Number', Agrif_Fixed(),' time step ', kstp, 'int tstep', Agrif_NbStepint()
       ENDIF
 !GCJ
-      IF (Agrif_Root()) THEN ; WRITE(numout,*) '============================ PARENT STEP ============================'
-      ELSE                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' STEP ========================='
+      IF (Agrif_Root() .AND. lwp) THEN ; WRITE(numout,*) '============================ PARENT STEP ============================'
+      ELSE IF (lwp)                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' STEP ========================='
       END IF
 !/GCJ    
       IF( kstp == nit000 + 1 )   lk_agrif_fstep = .FALSE.

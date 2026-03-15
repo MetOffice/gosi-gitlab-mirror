@@ -117,11 +117,11 @@ CONTAINS
       REAL(wp)::   zstptiming   ! elapsed time for 1 time step
       !!----------------------------------------------------------------------
       !
-      WRITE(numout,*) "Start Nemo GCM"
+      WRITE(*,*) "Start Nemo GCM"
 #if defined key_agrif
-      WRITE(numout,*) "Enter Agrif init grids"
+      WRITE(*,*) "Enter Agrif init grids"
       CALL Agrif_Init_Grids()      ! AGRIF: set the meshes
-      WRITE(numout,*) "Exit Agrif init grids"
+      WRITE(*,*) "Exit Agrif init grids"
 #endif
       !                            !-----------------------!
       CALL nemo_init               !==  Initialisations  ==!
@@ -159,8 +159,8 @@ CONTAINS
       DO WHILE( istp <= nitend .AND. nstop == 0 )
 !GCJ
          IF( Agrif_Root() .AND. lk_oasis ) THEN
-            IF (Agrif_Root()) THEN ; WRITE(numout,*) '============================ PARENT SEND============================'
-            ELSE                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' SEND ========================='
+            IF (Agrif_Root() .AND. lwp) THEN ; WRITE(numout,*) '============================ PARENT SEND============================'
+            ELSE IF (lwp)                  ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' SEND ========================='
             END IF
             CALL sbc_cpl_snd( istp, Nbb, Naa ) 
          ENDIF
@@ -333,14 +333,16 @@ CONTAINS
       lwp = (narea == 1) .OR. sn_cfctl%l_oceout    ! control of all listing output print
       !
       IF(lwp) THEN                      ! open listing units
-!GCJ
-         IF (Agrif_Root()) THEN ; WRITE(numout,*) '============================ PARENT NEMO INIT============================'
-         ELSE                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' NEMO INIT ========================='
-         END IF
-!/GCJ
+
          !
          IF( .NOT. lwm )   &            ! alreay opened for narea == 1
             &            CALL ctl_opn( numout, 'ocean.output', 'REPLACE', 'FORMATTED', 'SEQUENTIAL', -1, -1, .FALSE., narea )
+         !
+!GCJ
+         IF (Agrif_Root() .AND. lwp) THEN ; WRITE(numout,*) '============================ PARENT NEMO INIT============================'
+         ELSE IF (lwp)                   ; WRITE(numout,*) '========================= CHILD GRID ',TRIM(Agrif_CFixed()) ,' NEMO INIT ========================='
+         END IF
+!/GCJ
          !
          WRITE(numout,*)
          WRITE(numout,*) '   CNRS - NERC - Met OFFICE - MERCATOR-ocean - CMCC'
