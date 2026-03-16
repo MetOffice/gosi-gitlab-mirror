@@ -1,8 +1,12 @@
+
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == 'web'
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_COMMIT_TITLE =~ /(?i).*\[ci\].*/
     - if: $CI_PIPELINE_SOURCE == 'schedule'
+    - if: $CI_PIPELINE_SOURCE == 'trigger'
+    - if: $CI_MERGE_REQUEST_EVENT_TYPE == 'merge_train'
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TITLE =~ /^(\[Draft\]|\(Draft\)|Draft:)/
+      when: never
 
 stages:          # List of stages for jobs, and their order of execution
   - test
