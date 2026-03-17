@@ -146,7 +146,7 @@ CONTAINS
       !==================
       DO_2D( 1, 1, 1, 1 )
          misfkt_par   (ji,jj) = 1
-         misfkb_par   (ji,jj) = 1         
+         misfkb_par   (ji,jj) = 1
          rhisf_tbl_par(ji,jj) = 1e-20
          rfrac_tbl_par(ji,jj) = 0.0_wp
       END_2D
@@ -163,8 +163,12 @@ CONTAINS
          ! if param used under an ice shelf overwrite ztblmin by the ice shelf draft
          IF( risfdep(ji,jj) > 0._wp .AND. ztblmin(ji,jj) > 0._wp )   ztblmin(ji,jj) = risfdep(ji,jj)
          !
+         ! enforce zmin to be above the bottom (gdepw_0 of the bottom wet cell)
+         IF (ztblmin(ji,jj) > gdepw_0(ji,jj,mbkt(ji,jj))) ztblmin(ji,jj) = gdepw_0(ji,jj,mbkt(ji,jj)) 
+         !
          ! ensure ztblmax <= bathy
-         ztblmax(ji,jj) = MIN( ztblmax(ji,jj), bathy(ji,jj) )
+         ! use ggdepw_0(ji,jj,mbkt(ji,jj)) + ee3t_0(ji,jj,mbkt(ji,jj) as bathy not the effective bathy in vco_1d3d
+         ztblmax(ji,jj) = MIN( ztblmax(ji,jj), gdepw_0(ji,jj,mbkt(ji,jj)) + e3t_0(ji,jj,mbkt(ji,jj)))
       END_2D
       !
       ! compute ktop and update ztblmin to gdepw_0 at misfkt_par
@@ -179,7 +183,7 @@ CONTAINS
       ! define iceshelf parametrisation mask
       mskisf_par = 0
       WHERE ( rhisf0_tbl_par(A2D(0)) > 0._wp )
-         mskisf_par(:,:) = 1._wp
+         mskisf_par(:,:) = 1
       END WHERE
       !
 #if ! defined key_RK3
