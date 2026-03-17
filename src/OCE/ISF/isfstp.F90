@@ -63,16 +63,12 @@ CONTAINS
       INTEGER, INTENT(in) ::   Kmm   ! ocean time level index
       !
       INTEGER ::   ji, jj, jk, ikt                     ! loop index
-      REAL(wp), DIMENSION(A2D(1))     ::   zhtmp  ! temporary array for thickness
       REAL(wp), DIMENSION(A2D(1),jpk) ::   ze3t   ! 3D workspace for key_qco
       !!---------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('isf')
       !
       ! temporary arrays for key_qco
-      DO_2D( 1, 1, 1, 1 )
-         zhtmp(ji,jj) = ht(ji,jj,Kmm)
-      END_2D
       DO_3D( 1, 1, 1, 1, 1, jpk )
          ze3t(ji,jj,jk) = e3t(ji,jj,jk,Kmm)
       END_3D
@@ -89,7 +85,7 @@ CONTAINS
          DO_2D( 1, 1, 1, 1 )
             ! limit the tbl to water depth and to the top level thickness
             ikt = misfkt_cav(ji,jj)  ! tbl top indices
-            rhisf_tbl_cav(ji,jj) = MAX( MIN( rn_htbl * mskisf_cav(ji,jj), zhtmp(ji,jj) ), ze3t(ji,jj,ikt) )
+            rhisf_tbl_cav(ji,jj) = MAX( MIN( rn_htbl * mskisf_cav(ji,jj), SUM(ze3t(ji,jj,ikt:mbkt(ji,jj))*tmask(ji,jj,ikt:mbkt(ji,jj)) ) ), ze3t(ji,jj,ikt) )
          END_2D
 
          CALL isf_tbl_lvl( ze3t, misfkt_cav, rhisf_tbl_cav, &  ! <<== in
@@ -113,7 +109,7 @@ CONTAINS
          !      limit the tbl to water depth and to the top level thickness
          DO_2D( 1, 1, 1, 1 )
             ikt = misfkt_par(ji,jj)  ! tbl top indices
-            rhisf_tbl_par(ji,jj) = MAX( MIN( rhisf0_tbl_par(ji,jj), zhtmp(ji,jj) ), ze3t(ji,jj,ikt) )
+            rhisf_tbl_par(ji,jj) = MAX( MIN( rhisf0_tbl_par(ji,jj), SUM(ze3t(ji,jj,ikt:mbkt(ji,jj))*tmask(ji,jj,ikt:mbkt(ji,jj)) ) ), ze3t(ji,jj,ikt) )
          END_2D
 
          CALL isf_tbl_lvl( ze3t, misfkt_par, rhisf_tbl_par, &  ! <<== in
@@ -221,7 +217,7 @@ CONTAINS
          !
          IF ( ln_isf ) THEN
 #if defined key_qco && ! defined key_isf 
-            CALL ctl_stop( 'STOP', 'isf_ctl: ice shelf requires both ln_isf=T AND key_isf activated' ) 
+            IF (ln_isfcav ) CALL ctl_stop( 'STOP', 'isf_ctl: ice shelf requires both ln_isf=T AND key_isf activated' ) 
 #endif 
             WRITE(numout,*) '      Add debug print in isf module           ln_isfdebug     = ', ln_isfdebug
             WRITE(numout,*)
