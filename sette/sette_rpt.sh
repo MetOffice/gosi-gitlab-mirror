@@ -7,7 +7,7 @@
 #
 #########################################################################################
 ######################### Start of function definitions #################################
-#set -x
+set +x
 
 # report format
 format_field1="%-35s"
@@ -1024,8 +1024,23 @@ rev=""; sha=""
 # append DEBUG if "-b" option is active
 [ -n "${DEBUG}" ] && mach=${mach//_DEBUG}_DEBUG
 
-# https://stackoverflow.com/questions/6059336/how-to-find-the-current-git-branch-in-detached-head-state
-branchname=${CI_COMMIT_BRANCH:-$(git log -1 --pretty=%D HEAD | sed 's|.*origin/||g;s|, .*||g;s|.*-> ||g' )}
+# git current branch name
+if [ -n "$CI_COMMIT_BRANCH" ]; then
+  # branch pipeline
+  branchname=$CI_COMMIT_BRANCH
+elif [ -n "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" ]; then
+  # MR pipeline
+  branchname=$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME
+elif [ $(git rev-parse --abbrev-ref HEAD) != "HEAD" ]; then
+  # current HEAD
+  branchname=$(git rev-parse --abbrev-ref HEAD 2> /dev/null)
+elif [ $(git rev-parse --abbrev-ref HEAD) == "HEAD" ]; then
+  # detached HEAD
+  branchname=$(git show -s --pretty=%D HEAD 2> /dev/null | sed "s/HEAD, //")
+else
+  echo "ERROR: NEMO/GIT branch not found !" && exit 1
+fi
+
 if [ ! -z $SETTE_SUB_VAL ] ; then
    NEMO_VALIDATION_DIR=$NEMO_VALIDATION_DIR/$SETTE_SUB_VAL
    if [ -d $NEMO_VALIDATION_REF/$SETTE_SUB_VAL ] && [ -z $SETTE_SUB_VAL2 ] && [ ${USER_INPUT} == "yes" ] ; then
@@ -1092,7 +1107,7 @@ elif [ -n "${sha}" ]; then
   lastchange=${rev_date}_${nemo_revision}
 # current git repo SHA
 else
-  nemo_revision=$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)
+  nemo_revision=${CI_COMMIT_SHORT_SHA:-$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)}
   rev_date=$(date --date=@$(git show --no-patch --format=%ct ${nemo_revision}) +"%y%j")
   lastchange=${rev_date}_${nemo_revision}
   localchanges=`git status --short -uno | wc -l`
