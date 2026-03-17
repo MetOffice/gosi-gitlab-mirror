@@ -167,26 +167,11 @@ CONTAINS
       INTEGER,  DIMENSION(jpi,jpj)    , INTENT(in   ) :: ktop   ! top level of the top boundary layer
       REAL(wp), DIMENSION(jpi,jpj)    , INTENT(in   ) :: phw    ! water column thickness
       REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(in   ) :: pe3    ! vertical scale factor
-      !!-------------------------- INOUT ------------------------------------
-      REAL(wp), DIMENSION(jpi,jpj)    , INTENT(inout) :: phtbl  ! top boundary layer thickness
+      REAL(wp), DIMENSION(jpi,jpj)    , INTENT(in   ) :: phtbl  ! top boundary layer thickness
       !!---------------------------------------------------------------------
       INTEGER :: ji,jj,jk
       INTEGER :: ikt, ikb
       !!---------------------------------------------------------------------
-      !
-      ! get htbl
-      DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
-         !
-         ! tbl top/bottom indices initialisation
-         ikt = ktop(ji,jj)
-         !
-         ! limit the tbl to water thickness.
-         phtbl(ji,jj) = MIN( phtbl(ji,jj), phw(ji,jj) )
-         !
-         ! thickness of boundary layer must be at least the top level thickness
-         phtbl(ji,jj) = MAX( phtbl(ji,jj), pe3(ji,jj,ikt) )
-         !
-      END_2D
       !
       ! get ktbl
       CALL isf_tbl_kbot(ktop, phtbl, pe3, kbot)
@@ -261,7 +246,7 @@ CONTAINS
       ! test: this routine run with pdep = 0 should return 1
       !
       DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
-         ! comput ktop
+         ! compute ktop
          ikt = 2
          DO WHILE ( gdepw_0(ji,jj,ikt) <= pdep(ji,jj ) ) ;  ikt = ikt + 1 ;  END DO
          ktop(ji,jj) = ikt - 1
