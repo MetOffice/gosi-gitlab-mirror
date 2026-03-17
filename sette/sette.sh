@@ -38,9 +38,26 @@ export USER_INPUT='yes'        # Default: yes => request user input on decisions
                                #                 1. regarding mismatched options
                                #                 2. regardin incompatible options
                                #                 3. regarding creation of directories
-export SETTE_THIS_BRANCH=${CI_COMMIT_BRANCH:-$(git log -1 --pretty=%D HEAD | sed 's|.*origin/||g;s|, .*||g;s|.*-> ||g' )}
-export SETTE_SUB_VAL=${SETTE_THIS_BRANCH}
+
+# git current revision/short SHA 
 export NEMO_REV=${CI_COMMIT_SHORT_SHA:-$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)}
+# git current branch name
+if [ -n "$CI_COMMIT_BRANCH" ]; then
+  # branch pipeline
+  export SETTE_THIS_BRANCH=$CI_COMMIT_BRANCH
+elif [ -n "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" ]; then
+  # MR pipeline
+  export SETTE_THIS_BRANCH=$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME
+elif [ $(git rev-parse --abbrev-ref HEAD) != "HEAD" ]; then
+  # current HEAD
+  export SETTE_THIS_BRANCH=$(git rev-parse --abbrev-ref HEAD 2> /dev/null)
+elif [ $(git rev-parse --abbrev-ref HEAD) == "HEAD" ]; then
+  # detached HEAD
+  export SETTE_THIS_BRANCH=$(git show -s --pretty=%D HEAD 2> /dev/null | sed "s/HEAD, //")
+else
+  echo "ERROR: NEMO/GIT branch not found !" && exit 1
+fi
+export SETTE_SUB_VAL=${SETTE_THIS_BRANCH}
 
 # Parse command-line arguments
 if [ $# -gt 0 ]; then
