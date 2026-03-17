@@ -220,7 +220,7 @@ CONTAINS
       ! test: this routine run with pdep = 0 should return 1
       !
       DO_2D( 1, 1, 1, 1 )
-         ! comput ktop
+         ! compute ktop
          ikt = 2
          DO WHILE ( gdepw_0(ji,jj,ikt) <= pdep(ji,jj) ) ;  ikt = ikt + 1 ;  END DO
          ktop(ji,jj) = ikt - 1
