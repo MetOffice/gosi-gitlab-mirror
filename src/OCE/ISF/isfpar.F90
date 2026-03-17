@@ -113,7 +113,7 @@ CONTAINS
       !! ** Purpose : initialisation of the variable needed for the parametrisation of ice shelf melt
       !!
       !!----------------------------------------------------------------------
-      INTEGER               :: ierr
+      INTEGER               :: ierr, ji, jj
       REAL(wp), DIMENSION(jpi,jpj) :: ztblmax, ztblmin
       !!----------------------------------------------------------------------
       !
@@ -137,10 +137,16 @@ CONTAINS
          ztblmin(:,:) = risfdep(:,:)
       END WHERE
       !
-      ! ensure ztblmax <= bathy
-      WHERE ( ztblmax(:,:) > bathy(:,:) )
-         ztblmax(:,:) = bathy(:,:)
-      END WHERE
+      ! enforce zmin to be above the bottom (gdepw_0 of the bottom wet cell)
+      DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
+         IF (ztblmin(ji,jj) > gdepw_0(ji,jj,mbkt(ji,jj))) THEN
+            ztblmin(ji,jj) = gdepw_0(ji,jj,mbkt(ji,jj))
+         END IF
+
+         ! ensure ztblmax <= bathy
+         ztblmax(ji,jj) = MIN( ztblmax(ji,jj), gdepw_0(ji,jj,mbkt(ji,jj)) + e3t_0(ji,jj,mbkt(ji,jj)))
+
+      END_2D
       !
       ! compute ktop and update ztblmin to gdepw_0(misfkt_par) 
       CALL isf_tbl_ktop(ztblmin, misfkt_par) !   out: misfkt_par
@@ -152,7 +158,7 @@ CONTAINS
       ! define iceshelf parametrisation mask
       mskisf_par = 0
       WHERE ( rhisf0_tbl_par(:,:) > 0._wp )
-         mskisf_par(:,:) = 1._wp
+         mskisf_par(:,:) = 1
       END WHERE
       !
       ! read par variable from restart
@@ -188,7 +194,7 @@ CONTAINS
          IF(lwp) WRITE(numout,*) '      ==>>>    isf melt provided by OASIS (cn_isfmlt_par = oasis)'
          !
       CASE DEFAULT
-         CALL ctl_stop( 'sbc_isf_init: wrong value of nn_isf' )
+         CALL ctl_stop( 'isf_par_init: wrong value of cn_isfpar_mlt' )
       END SELECT
       !
    END SUBROUTINE isf_par_init

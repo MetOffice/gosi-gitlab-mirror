@@ -35,6 +35,7 @@ MODULE isfstp
    PUBLIC   isf_stp, isf_init, isf_nam  ! routine called in sbcmod and divhor
 
    !! * Substitutions
+#  include "do_loop_substitute.h90"
 #  include "single_precision_substitute.h90"
 #  include "domzgr_substitute.h90"
    !!----------------------------------------------------------------------
@@ -61,10 +62,8 @@ CONTAINS
       INTEGER, INTENT(in) ::   kt    ! ocean time step
       INTEGER, INTENT(in) ::   Kmm   ! ocean time level index
       !
-      INTEGER :: jk                              ! loop index
-#if defined key_qco
+      INTEGER :: jk, ji, jj, ikt                              ! loop index
       REAL(wp), DIMENSION(jpi,jpj,jpk) :: ze3t   ! 3D workspace
-#endif
       !!---------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('isf')
@@ -72,6 +71,10 @@ CONTAINS
       !=======================================================================
       ! 1.: compute melt and associated heat fluxes in the ice shelf cavities
       !=======================================================================
+      !
+      DO jk = 1, jpk
+         ze3t(:,:,jk) = e3t(:,:,jk,Kmm)
+      END DO
       !
       IF ( ln_isfcav_mlt ) THEN
          !
@@ -82,11 +85,14 @@ CONTAINS
          END IF
          !
          ! 1.2: compute misfkb, rhisf_tbl, rfrac (deepest level, thickness, fraction of deepest cell affected by tbl)
-         rhisf_tbl_cav(:,:) = rn_htbl * mskisf_cav(:,:)
+         ! --- deepest level (misfkb), thickness (rhisf) & fraction of deepest cell affected by tbl (rfrac) --- !
+         DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
+            ! limit the tbl to water depth and to the top level thickness
+            ikt = misfkt_cav(ji,jj)  ! tbl top indices
+            rhisf_tbl_cav(ji,jj) = MAX( MIN( rn_htbl * mskisf_cav(ji,jj), SUM(ze3t(ji,jj,ikt:mbkt(ji,jj))*tmask(ji,jj,ikt:mbkt(ji,jj)) ) ), ze3t(ji,jj,ikt) )
+         END_2D
+
 #if defined key_qco
-         DO jk = 1, jpk
-            ze3t(:,:,jk) = e3t(:,:,jk,Kmm)
-         END DO 
          CALL isf_tbl_lvl( CASTSP(ht(:,:)), ze3t           , misfkt_cav, misfkb_cav, rhisf_tbl_cav, rfrac_tbl_cav )
 #else
          CALL isf_tbl_lvl( ht(:,:),  e3t(:,:,:,Kmm), misfkt_cav, misfkb_cav, rhisf_tbl_cav, rfrac_tbl_cav )
@@ -94,6 +100,14 @@ CONTAINS
          !
          ! 1.3: compute ice shelf melt
          CALL isf_cav( kt, Kmm, risf_cav_tsc, fwfisf_cav )
+         !
+         IF ( kt == nit000 ) THEN 
+            ! only in case when mlf used AND not a restart step
+            IF( .NOT. (ln_rstart .AND. .NOT.l_1st_euler) ) THEN
+               risf_cav_tsc_b (:,:,:) = risf_cav_tsc (:,:,:)
+               fwfisf_cav_b(:,:)      = fwfisf_cav(:,:)
+            END IF
+         END IF
          !
       END IF
       ! 
@@ -111,11 +125,11 @@ CONTAINS
          !
          ! 2.2: compute misfkb, rhisf_tbl, rfrac (deepest level, thickness, fraction of deepest cell affected by tbl)
          ! by simplicity, we assume the top level where param applied do not change with time (done in init part)
-         rhisf_tbl_par(:,:) = rhisf0_tbl_par(:,:)
+         DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
+            ikt = misfkt_par(ji,jj)  ! tbl top indices
+            rhisf_tbl_par(ji,jj) = MAX( MIN( rhisf0_tbl_par(ji,jj), SUM(ze3t(ji,jj,ikt:mbkt(ji,jj))*tmask(ji,jj,ikt:mbkt(ji,jj)) ) ), ze3t(ji,jj,ikt) )
+         END_2D
 #if defined key_qco
-         DO jk = 1, jpk
-            ze3t(:,:,jk) = e3t(:,:,jk,Kmm)
-         END DO
          CALL isf_tbl_lvl( CASTSP(ht(:,:)), ze3t           , misfkt_par, misfkb_par, rhisf_tbl_par, rfrac_tbl_par )
 #else
          CALL isf_tbl_lvl( ht(:,:),  e3t(:,:,:,Kmm), misfkt_par, misfkb_par, rhisf_tbl_par, rfrac_tbl_par )
@@ -123,6 +137,13 @@ CONTAINS
          !
          ! 2.3: compute ice shelf melt
          CALL isf_par( kt, Kmm, risf_par_tsc, fwfisf_par )
+         !
+         IF ( kt == nit000 ) THEN 
+            IF( .NOT. (ln_rstart .AND. .NOT.l_1st_euler) ) THEN
+               risf_par_tsc_b(:,:,:) = risf_par_tsc(:,:,:)
+               fwfisf_par_b  (:,:)   = fwfisf_par  (:,:)
+            END IF
+         END IF
          !
       END IF
       !
@@ -197,7 +218,7 @@ CONTAINS
          IF ( ln_isf ) THEN
 #if key_qco 
 # if ! defined key_isf 
-            CALL ctl_stop( 'STOP', 'isf_ctl: ice shelf requires both ln_isf=T AND key_isf activated' ) 
+            IF (ln_isfcav ) CALL ctl_stop( 'STOP', 'isf_ctl: ice shelf requires both ln_isf=T AND key_isf activated' ) 
 # endif 
 #endif
             WRITE(numout,*) '      Add debug print in isf module           ln_isfdebug     = ', ln_isfdebug
