@@ -2083,7 +2083,11 @@ CONTAINS
             &    tile_data_ni=tile_data_ni, tile_data_nj=tile_data_nj,                                                     &
 #endif
             &    lonvalue_1D=lonvalue, latvalue_1D=latvalue, mask_1D=mask, nvertex=nvertex, bounds_lon_1D=bounds_lon,      &
+#if defined key_xios3
+            &    bounds_lat_1D=bounds_lat, area_2d=area, TYPE='curvilinear', name = cdname )
+#else
             &    bounds_lat_1D=bounds_lat, area=area, TYPE='curvilinear', name = cdname )
+#endif
       ENDIF
       IF( xios_is_valid_domaingroup(cdid) ) THEN
          CALL xios_set_domaingroup_attr( cdid, ni_glo=ni_glo, nj_glo=nj_glo, ibegin=ibegin, jbegin=jbegin, ni=ni, nj=nj,   &
@@ -2094,7 +2098,11 @@ CONTAINS
             &    tile_data_ni=tile_data_ni, tile_data_nj=tile_data_nj,                                                     &
 #endif
             &    lonvalue_1D=lonvalue, latvalue_1D=latvalue, mask_1D=mask, nvertex=nvertex, bounds_lon_1D=bounds_lon,      &
+#if defined key_xios3
+            &    bounds_lat_1D=bounds_lat, area_2d=area, type='curvilinear', name = cdname )
+#else
             &    bounds_lat_1D=bounds_lat, area=area, type='curvilinear', name = cdname )
+#endif
       ENDIF
       !
    END SUBROUTINE iom_set_domain_attr
