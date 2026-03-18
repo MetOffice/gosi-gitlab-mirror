@@ -833,7 +833,7 @@ CONTAINS
                psv_i(ji,jj,:) = MAX(psv_i(ji,jj,:), 0._wp)
             ENDIF
          END_2D
-      ENDIF 
+      ENDIF
       !
    END SUBROUTINE ice_var_roundoff
 
@@ -889,9 +889,10 @@ CONTAINS
       !!
       !! ** Method  :   Formula (Bitz and Lipscomb, 1999)
       !!-------------------------------------------------------------------
-      INTEGER, INTENT(in) ::   jl_cat
-      INTEGER  ::   ji, jj, jk   ! dummy loop indices
-      REAL(wp) ::   ztmelts  ! local scalar
+      INTEGER, INTENT(in)  ::  jl_cat
+      INTEGER              ::  ji, jj, jk          ! dummy loop indices
+      REAL(wp)             ::  ztmelts             ! local scalar
+      REAL(wp), PARAMETER  ::  zepsi  = -epsi20    ! tolerance parameter
       !!-------------------------------------------------------------------
       !
       DO jk = 1, nlay_i             ! Sea ice energy of melting
@@ -901,7 +902,7 @@ CONTAINS
                t_i(ji,jj,jk,jl_cat) = MIN( t_i(ji,jj,jk,jl_cat), ztmelts + rt0 ) ! Force t_i to be lower than melting point => likely conservation issue
                !                                                                 !   (sometimes zdf scheme produces abnormally high temperatures)
                e_i(ji,jj,jk,jl_cat) = rhoi * ( rcpi  * ( ztmelts - ( t_i(ji,jj,jk,jl_cat) - rt0 ) )   &
-                  &                  + rLfus * ( 1._wp - ztmelts / ( t_i(ji,jj,jk,jl_cat) - rt0 ) )   &
+                  &                  + rLfus * ( 1._wp - ztmelts / MIN( t_i(ji,jj,jk,jl_cat) - rt0, zepsi ) )   &
                   &                  - rcp   * ztmelts )
           ENDIF
          END_2D
