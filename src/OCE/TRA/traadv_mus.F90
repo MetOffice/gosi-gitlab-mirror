@@ -197,7 +197,7 @@ CONTAINS
          zwx(:,:, 1 ) = 0._wp                   ! surface & bottom boundary conditions
          zwx(:,:,jpk) = 0._wp
          DO_3D( 0, 0, 0, 0, 2, jpkm1 )                ! interior values
-            zwx(ji,jj,jk) = tmask(ji,jj,jk) * ( pt(ji,jj,jk-1,jn,Kbb) - pt(ji,jj,jk,jn,Kbb) )
+            zwx(ji,jj,jk) = wmask(ji,jj,jk) * ( pt(ji,jj,jk-1,jn,Kbb) - pt(ji,jj,jk,jn,Kbb) )
          END_3D
          !                                !-- Slopes of tracer
          zslpx(:,:,1) = 0._wp                   ! surface values
@@ -216,7 +216,7 @@ CONTAINS
             zw  = z0w - 0.5 * pW(ji,jj,jk+1) * p2dt * r1_e1e2t(ji,jj) / e3w(ji,jj,jk+1,Kmm)
             zzwx = pt(ji,jj,jk+1,jn,Kbb) + xind(ji,jj,jk) * zw * zslpx(ji,jj,jk+1)
             zzwy = pt(ji,jj,jk  ,jn,Kbb) + xind(ji,jj,jk) * zw * zslpx(ji,jj,jk  )
-            zwx(ji,jj,jk+1) = pW(ji,jj,jk+1) * ( zalpha * zzwx + (1.-zalpha) * zzwy ) * wmask(ji,jj,jk)
+            zwx(ji,jj,jk+1) = pW(ji,jj,jk+1) * ( zalpha * zzwx + (1.-zalpha) * zzwy ) * wmask(ji,jj,jk+1)
          END_3D
          IF( ln_linssh ) THEN                   ! top values, linear free surface only
             IF( ln_isfcav ) THEN                      ! ice-shelf cavities (top of the ocean)
