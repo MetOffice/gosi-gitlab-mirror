@@ -243,7 +243,7 @@ CONTAINS
                DO_2D( 0, 0, 0, 0 )
                   !                          !-- Slopes of tracer
                   !                                   ! masked vertical gradient at jk+2
-                  zdzt_kp2 = ( pt(ji,jj,jk+1,jn,Kbb) - pt(ji,jj,jk+2,jn,Kbb) ) * tmask(ji,jj,jk+2) !!st wmask(ji,jj,jk+2)
+                  zdzt_kp2 = ( pt(ji,jj,jk+1,jn,Kbb) - pt(ji,jj,jk+2,jn,Kbb) ) * wmask(ji,jj,jk+2)
                   !                                   ! vertical slope at jk+1
                   zslpz_kp1 =                           ( zdzt_kp1(ji,jj) + zdzt_kp2 )  &
                   &         * (  0.25_wp + SIGN( 0.25_wp, zdzt_kp1(ji,jj) * zdzt_kp2 )  )
@@ -259,7 +259,7 @@ CONTAINS
                   zw  = z0w - 0.5_wp * pW(ji,jj,jk+1) * pdt * r1_e1e2t(ji,jj) / e3w(ji,jj,jk+1,Kmm)
                   zzwx = pt(ji,jj,jk+1,jn,Kbb) + xind(ji,jj,jk) * zw * zslpz_kp1
                   zzwy = pt(ji,jj,jk  ,jn,Kbb) + xind(ji,jj,jk) * zw * zslpz(ji,jj)
-                  zfW_kp1 = pW(ji,jj,jk+1) * ( zalpha * zzwx + (1.-zalpha) * zzwy ) * wmask(ji,jj,jk)!!st * wmask(ji,jj,jk+1)
+                  zfW_kp1 = pW(ji,jj,jk+1) * ( zalpha * zzwx + (1.-zalpha) * zzwy ) * wmask(ji,jj,jk+1)
                   !                         !-- vertical advective trend at jk
                   pt(ji,jj,jk,jn,Krhs) =  pt(ji,jj,jk,jn,Krhs) - ( zfW(ji,jj) - zfW_kp1 )   &
                      &                                      * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
