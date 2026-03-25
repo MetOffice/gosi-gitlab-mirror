@@ -7,8 +7,9 @@
 #SBATCH -N 1
 #SBATCH --time=0-00:30:00
 #SBATCH --account=frtomerc
-#SBATCH --partition=par
-#SBATCH --qos=np
+#SBATCH --partition=gpil
+#SBATCH --qos=nf
+#SBATCH --mem=64GB
 #SBATCH --ntasks=TOTAL_NPROCS
 
 set +x
