@@ -93,6 +93,7 @@ CONTAINS
          !
          ! --- ice shelf melt (fwfisf) and temperature trend (risf) --- !
          CALL isf_cav( kt, Kmm, risf_cav_tsc, fwfisf_cav(A2D(0)) )    ! <<==>> inout
+         CALL lbc_lnk( 'isf_stp', fwfisf_cav  , 'T', 1.0_wp)
          !
       END IF
       ! 
@@ -117,6 +118,7 @@ CONTAINS
          !
          ! --- ice shelf melt (fwfisf) and temperature trend (risf) --- !
          CALL isf_par( kt, Kmm, risf_par_tsc, fwfisf_par(A2D(0)) )    ! <<==>> inout
+         CALL lbc_lnk( 'isf_stp', fwfisf_par  , 'T', 1.0_wp )
          !
       END IF
       !
@@ -126,9 +128,6 @@ CONTAINS
          CALL lbc_lnk( 'isf_stp', fwfisf_par  , 'T', 1.0_wp, fwfisf_cav  , 'T', 1.0_wp, &
             &                     risfcpl_ssh, 'T', 1.0_wp, risfcpl_cons_ssh, 'T', 1.0_wp ) ! needed in dynspg_ts, stp2d
          CALL lbc_lnk( 'isf_stp', risfcpl_vol, 'T', 1.0_wp, risfcpl_cons_vol, 'T', 1.0_wp ) ! needed in dynspg_ts, stp2d, sshwzv
-      ELSE
-         CALL lbc_lnk( 'isf_stp', fwfisf_par  , 'T', 1.0_wp, fwfisf_cav  , 'T', 1.0_wp  &
-            &        )     
       ENDIF
       !
       !==================

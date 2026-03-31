@@ -115,13 +115,10 @@ CONTAINS
          !
          ! update phtbl
          phtbl(ji,jj) = SUM( ze3t(ji,jj,ikt:ikb-1) * tmask(ji,jj,ikt:ikb-1) ) + pfrac(ji,jj) * ze3t(ji,jj,ikb) * tmask(ji,jj,ikb)
+         phtbl(ji,jj) = MAX( phtbl(ji,jj) , ze3t(ji,jj,ikt) )
          !
          ! compute integrated divergence correction
-         IF( phtbl(ji,jj) /= 0._wp ) THEN
-            zhdiv = pfwf(ji,jj) * r1_rho0 / phtbl(ji,jj)
-         ELSE
-            zhdiv = 0._wp
-         ENDIF
+         zhdiv = pfwf(ji,jj) * r1_rho0 / phtbl(ji,jj)
          !
          ! level fully include in the ice shelf boundary layer
          DO jk = ikt, ikb - 1

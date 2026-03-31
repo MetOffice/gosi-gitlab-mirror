@@ -114,11 +114,7 @@ CONTAINS
       ! update pts(:,:,:,:,Krhs)
       DO_2D( 0, 0, 0, 0 )
          !
-         IF( phtbl(ji,jj) /= 0._wp ) THEN
-            ztc = ptsc(ji,jj,jp_tem) / phtbl(ji,jj)
-         ELSE
-            ztc = 0._wp
-         ENDIF
+         ztc = ptsc(ji,jj,jp_tem) / phtbl(ji,jj)
          ! level fully include in the ice shelf boundary layer
          ikt = ktop(ji,jj)
          ikb = kbot(ji,jj)
