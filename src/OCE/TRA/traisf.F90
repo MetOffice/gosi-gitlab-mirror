@@ -126,15 +126,12 @@ CONTAINS
       ! update pts(:,:,:,:,Krhs)
       DO_2D( 0, 0, 0, 0 )
          !
-         IF( phtbl(ji,jj) /= 0._wp ) THEN
 #if defined key_RK3
-            ztc = ptsc(ji,jj,jp_tem) / phtbl(ji,jj)
+         ztc = ptsc(ji,jj,jp_tem) / phtbl(ji,jj)
 #else
-            ztc = 0.5_wp * ( ptsc(ji,jj,jp_tem) + ptsc_b(ji,jj,jp_tem) ) / phtbl(ji,jj)
+         ztc = 0.5_wp * ( ptsc(ji,jj,jp_tem) + ptsc_b(ji,jj,jp_tem) ) / phtbl(ji,jj)
 #endif
-         ELSE
-            ztc = 0._wp
-         ENDIF
+         !
          ! level fully include in the ice shelf boundary layer
          ikt = ktop(ji,jj)
          ikb = kbot(ji,jj)
