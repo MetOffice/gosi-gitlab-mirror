@@ -118,7 +118,9 @@ CONTAINS
       REAL(wp), DIMENSION(:,:,:)     , INTENT(in ) ::   pvarin       ! tbl property to average between ktop, kbot over phtbl
       REAL(wp), DIMENSION(A2D(0))    , INTENT(out) ::   pvarout      ! tbl property averaged over phtbl between level ktop and kbot
       !!--------------------------------------------------------------------
+
       CALL isf_tbl_avg_t( ktop, kbot, phtbl, pfrac, pe3, pvarin, lbnd_ij(pvarin), pvarout )
+
    END SUBROUTINE isf_tbl_avg
 
    SUBROUTINE isf_tbl_avg_t( ktop, kbot, phtbl, pfrac, pe3, pvarin, ktvarin, pvarout )
