@@ -313,12 +313,12 @@ CONTAINS
          !
       ENDIF 
       !
-      IF( ln_use_test )   CALL icb_ini_gen( Kmm )
-      !
       IF( ln_rstart ) THEN
          CALL icb_rst_read()
          l_restarted_bergs = .TRUE.
       END IF
+      !
+      IF( ln_use_test )   CALL icb_ini_gen( Kmm )
       !
       IF( nsample_rate > 0 ) CALL icb_trj_init( nitend )
       !
@@ -342,12 +342,18 @@ CONTAINS
       !
       INTEGER, INTENT(in) :: Kmm      ! ocean time level indices
       !
-      INTEGER                         ::   ji, jj, ibergs
+      INTEGER                         ::   ji, jj, ibergs, ibergs_rst
       TYPE(iceberg)                   ::   localberg ! NOT a pointer but an actual local variable
       TYPE(point)                     ::   localpt
       INTEGER                         ::   iyr, imon, iday, ihr, imin, isec
       INTEGER                         ::   iberg
       !!----------------------------------------------------------------------
+      ! (JP) first, counting bergs from rstart file (if any), before generating test icebergs, enabling to count only the generated test bergs 
+      ibergs_rst = 0
+      IF ( l_restarted_bergs ) THEN
+         ibergs_rst = icb_utl_count()
+         CALL mpp_sum('icbini', ibergs_rst)
+      ENDIF 
 
       ! For convenience
       iberg = nn_test_icebergs
@@ -396,8 +402,10 @@ CONTAINS
       !
       ibergs = icb_utl_count()
       CALL mpp_sum('icbini', ibergs)
+      ! (JP) : editing ibergs' value to count only test bergs
+      ibergs = ibergs - ibergs_rst
       IF( nn_verbose_level > 0) THEN
-         WRITE(numicb,'(a,i6,a)') 'diamonds, icb_ini_gen: ',ibergs,' were generated'
+         IF (lwp) WRITE(numout,'(a,i6,a)') 'diamonds, icb_ini_gen: ',ibergs,' were generated'
       ENDIF
       !
    END SUBROUTINE icb_ini_gen

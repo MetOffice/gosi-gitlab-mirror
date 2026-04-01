@@ -38,9 +38,10 @@ MODULE icbrst
    INTEGER ::   nyearid, ndayid
    INTEGER ::   nscaling_id, nmass_of_bits_id, nheat_density_id, numberid
    INTEGER ::   nsiceid, nsheatid, ncalvid, ncalvhid, nkountid
-   INTEGER ::   nret, ncid, nc_dim
+   INTEGER ::   nret, ncid, nc_dim, nrst_test
    
    INTEGER,  DIMENSION(3)                  :: nstrt3, nlngth3
+   INTEGER,  DIMENSION(4)                  :: n_rst_dims
 
    !!----------------------------------------------------------------------
    !! NEMO/OCE 5.0, NEMO Consortium (2024)
@@ -68,7 +69,7 @@ CONTAINS
       TYPE(point)                  ::   localpt   ! NOT a pointer but an actual local variable
       !!----------------------------------------------------------------------
       ! Find a restart file. Assume iceberg restarts in same directory as ocean restarts
-      ! and are called TRIM(cn_ocerst)//'_icebergs'
+      ! and are called TRIM(cn_icbrst_in)//
       cl_path = TRIM(cn_icbrst_indir)
       IF( cl_path(LEN_TRIM(cl_path):) /= '/' ) cl_path = TRIM(cl_path) // '/'
       cl_filename = TRIM(cn_icbrst_in)
@@ -133,15 +134,16 @@ CONTAINS
       CALL iom_get( ncid, jpdom_unknown, 'kount' , zdata(:) )
       num_bergs(:) = INT(zdata(:))
       !
-
       ! Sanity checks
       jn = icb_utl_count()
       IF ( lwp .AND. nn_verbose_level >= 0 )   &
          WRITE(numout,'(2(a,i5))') 'icebergs, read_restart_bergs: # bergs =',jn,' on PE',narea-1
       IF( lk_mpp ) THEN
-         ! Only mpp_sum ibergs_in_file if we are reading from multiple restart files. 
-         IF( INDEX(iom_file(ncid)%name,'icebergs.nc' ) .EQ. 0 ) CALL mpp_sum('icbrst', ibergs_in_file)
-         CALL mpp_sum('icbrst', jn)
+      !  (JP) storing dimensions of rstart in n_rst_dims (reading from 'calving' 2D field)
+         nrst_test = iom_varid(ncid,'calving',n_rst_dims)
+         !  (JP) if dimensions of rstart file opened by proc 0 are smaller the than whole domain (Ni0glo,Nj0glo), then there must be  multiple rstart files, hence the 'mpp_sum('icbrst', ibergs_in_file)'  
+         IF( n_rst_dims(1)*n_rst_dims(2) < Ni0glo * Nj0glo   )  CALL mpp_sum('icbrst', ibergs_in_file) 
+         CALL mpp_sum('icbrst', jn) 
       ENDIF
       IF( lwp )   WRITE(numout,'(a,i5,a,i5,a)') 'icebergs, icb_rst_read: there were',ibergs_in_file,   &
          &                                    ' bergs in the restart file and', jn,' bergs have been read'
