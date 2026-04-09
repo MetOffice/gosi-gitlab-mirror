@@ -253,8 +253,16 @@ CONTAINS
 
       ! This is just a hack for global cyclic models for the time being
       Ni0glo_ext = jpiglo
-      Nj0glo_ext = Nj0glo +1 ! We can't use jpjglo here because for some reason at 4.2 this is bigger
-                             ! than at 4.0.... e.g. for ORCA1 it is 333 when it should only be 332!
+!GCJ
+#if defined key_agrif
+      IF( Agrif_Root() ) THEN 
+         Nj0glo_ext = Nj0glo +1 ! We can't use jpjglo here because for some reason at 4.2 this is bigger
+                                ! than at 4.0.... e.g. for ORCA1 it is 333 when it should only be 332!
+      ELSE
+         Nj0glo_ext = jpjglo    ! All Child grid weight files are created using version 4.2 or later!
+      ENDIf
+#endif  
+!/GCJ    
 
       ! RSRH extended shapes for old style dimensioning. Allows backwards compatibility with existing weights files, 
       ! which the new code DOES NOT, causing headaches not only for users but also for management of weights files. 
