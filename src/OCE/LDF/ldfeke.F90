@@ -160,7 +160,7 @@ CONTAINS
             zfw = MAX( ABS( ff_t(ji,jj) ) , 1.e-10_wp )
             zross(ji,jj) = 0.5_wp * zn(ji,jj) / zfw
             !
-            zaeiw(ji,jj) = rn_geom * eke_geom(ji,jj) / MAX( 1.e-10_wp , zn_slp(ji,jj) ) * tmask(ji,jj,1)   ! zn_slp has SF multiplied to it
+            zaeiw(ji,jj) = rn_geom * eke_geom(ji,jj) / MAX( 1.e-10_wp , zn_slp(ji,jj) ) * ssmask(ji,jj)   ! zn_slp has SF multiplied to it
             zaeiw(ji,jj) = MIN(  rn_aeiv_max, zaeiw(ji,jj)  )                                      ! bound aeiv from above
             zaeiw(ji,jj) = zaeiw(ji,jj)      &
                ! tanh taper to deal with some some large values near coast
@@ -315,7 +315,7 @@ CONTAINS
       !
       ! temporary depth-averaged eke variable for use in advection and diffusion
       DO_2D( 1, 1, 1, 1 )
-         zeke_ht(ji,jj) = eke_geom(ji,jj) / MAX( ht(ji,jj,Kbb), 1._wp ) * tmask(ji,jj,1)
+         zeke_ht(ji,jj) = eke_geom(ji,jj) / MAX( ht(ji,jj,Kbb), 1._wp ) * ssmask(ji,jj)
       END_2D
       !
       !                         !*  upstream advection with initial mass fluxes & intermediate update
@@ -388,8 +388,8 @@ CONTAINS
          !
          DO_2D( 1, 0, 1, 0 )
             ! average onto grid
-            zc_rosu    = 0.5_wp * ( zc_rosi(ji,jj) + zc_rosi(ji+1,jj  ) ) * umask(ji,jj,1)
-            zc_rosv    = 0.5_wp * ( zc_rosj(ji,jj) + zc_rosj(ji  ,jj+1) ) * vmask(ji,jj,1)
+            zc_rosu    = 0.5_wp * ( zc_rosi(ji,jj) + zc_rosi(ji+1,jj  ) ) * ssumask(ji,jj)
+            zc_rosv    = 0.5_wp * ( zc_rosj(ji,jj) + zc_rosj(ji  ,jj+1) ) * ssvmask(ji,jj)
             ! upstream advection
             zfp_ui     = zc_rosu + ABS( zc_rosu )
             zfm_ui     = zc_rosu - ABS( zc_rosu )
@@ -419,8 +419,8 @@ CONTAINS
       !
       IF( rn_eke_lap >= 0._wp ) THEN
          DO_2D( 1, 0, 1, 0 )
-            zwx(ji,jj) = rn_eke_lap * e2_e1u(ji,jj) * hu(ji,jj,Kbb) * ( zeke_ht(ji+1,jj  ) -  zeke_ht(ji,jj) ) * umask(ji,jj,1)   ! rn_eke_lap is constant (for now) and NOT masked
-            zwy(ji,jj) = rn_eke_lap * e1_e2v(ji,jj) * hv(ji,jj,Kbb) * ( zeke_ht(ji  ,jj+1) -  zeke_ht(ji,jj) ) * vmask(ji,jj,1)   !      before it is pahu and pahv which IS masked
+            zwx(ji,jj) = rn_eke_lap * e2_e1u(ji,jj) * hu(ji,jj,Kbb) * ( zeke_ht(ji+1,jj  ) -  zeke_ht(ji,jj) ) * ssumask(ji,jj)   ! rn_eke_lap is constant (for now) and NOT masked
+            zwy(ji,jj) = rn_eke_lap * e1_e2v(ji,jj) * hv(ji,jj,Kbb) * ( zeke_ht(ji  ,jj+1) -  zeke_ht(ji,jj) ) * ssvmask(ji,jj)   !      before it is pahu and pahv which IS masked
          END_2D
          DO_2D( 0, 0, 0, 0 )
             zlap(ji,jj) = (  ( zwx(ji,jj) - zwx(ji-1,jj  ) )   &
@@ -431,7 +431,7 @@ CONTAINS
       ENDIF
                                 !* form the trend for linear dissipation
       DO_2D( 0, 0, 0, 0 )
-         zdis(ji,jj) = - r1_ekedis(ji,jj) * (eke_geom(ji,jj) - rn_eke_min) * tmask(ji,jj,1)
+         zdis(ji,jj) = - r1_ekedis(ji,jj) * (eke_geom(ji,jj) - rn_eke_min) * ssmask(ji,jj)
       END_2D
       !
       !                    !==  time stepping of EKE Eq.  ==!

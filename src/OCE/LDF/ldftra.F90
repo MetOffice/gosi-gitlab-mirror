@@ -413,10 +413,16 @@ CONTAINS
          !                                             !   max value aht0 (aei0 if nn_aei_ijk_t=21)
          !                                             !   increase to aht0 within 20N-20S
          IF( ln_ldfeiv .AND. nn_aei_ijk_t == 21 ) THEN   ! use the already computed aei.
-            ahtu(:,:,1) = aeiu(:,:,1)
-            ahtv(:,:,1) = aeiv(:,:,1)
+            DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
+               ahtu(ji,jj,1) = aeiu(ji,jj,miku(ji,jj))
+               ahtv(ji,jj,1) = aeiv(ji,jj,mikv(ji,jj))
+            END_2D
          ELSE                                            ! compute aht.
             CALL ldf_eiv( kt, aht0, ahtu, ahtv, Kmm )
+            DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
+               ahtu(ji,jj,1) = ahtu(ji,jj,miku(ji,jj))
+               ahtv(ji,jj,1) = ahtv(ji,jj,mikv(ji,jj))
+            END_2D
          ENDIF
          !
          z1_f20   = 1._wp / (  2._wp * omega * SIN( rad * 20._wp )  )   ! 1 / ff(20 degrees)
@@ -430,7 +436,10 @@ CONTAINS
             ahtu(ji,jj,1) = (  MAX( zaht_min, ahtu(ji,jj,1) ) + zaht  )     ! min value zaht_min
             ahtv(ji,jj,1) = (  MAX( zaht_min, ahtv(ji,jj,1) ) + zahf  )     ! increase within 20S-20N
          END_2D
-         DO jk = 1, jpkm1                             ! deeper value = surface value + mask for all levels
+         !
+         ! deeper value = surface value * mask for all levels
+         ! first we mask the interior and then the surface value (because of ice shelf cavities)
+         DO jk = jpkm1, 1, -1
             ahtu(:,:,jk) = ahtu(:,:,1) * umask(:,:,jk)
             ahtv(:,:,jk) = ahtv(:,:,1) * vmask(:,:,jk)
          END DO
@@ -645,7 +654,7 @@ CONTAINS
       !
       INTEGER  ::   ji, jj, jk    ! dummy loop indices
       REAL(wp) ::   zfw, ze3w, zn2, z1_f20, zzaei    ! local scalars
-      REAL(wp), DIMENSION(jpi,jpj) ::   zn, zah, zhw, zRo, zaeiw   ! 2D workspace
+      REAL(wp), DIMENSION(jpi,jpj) ::   zn, zah, zhw, zRo, zaeiw, zaeiu, zaeiv   ! 2D workspace
       !!----------------------------------------------------------------------
       !
       zn (:,:) = 0._wp        ! Local initialization
@@ -689,7 +698,7 @@ CONTAINS
          ! Rossby radius at w-point taken betwenn 2 km and  40km
          zRo(ji,jj) = MAX(  2.e3 , MIN( .4 * zn(ji,jj) / zfw, 40.e3 )  )
          ! Compute aeiw by multiplying Ro^2 and T^-1
-         zaeiw(ji,jj) = zRo(ji,jj) * zRo(ji,jj) * SQRT( zah(ji,jj) / zhw(ji,jj) ) * tmask(ji,jj,1)
+         zaeiw(ji,jj) = zRo(ji,jj) * zRo(ji,jj) * SQRT( zah(ji,jj) / zhw(ji,jj) ) * ssmask(ji,jj)
       END_2D
 
       !                                         !==  Bound on eiv coeff.  ==!
@@ -700,14 +709,14 @@ CONTAINS
       END_2D
       !
       DO_2D( 0, 0, 0, 0 )
-         paeiu(ji,jj,1) = 0.5_wp * ( zaeiw(ji,jj) + zaeiw(ji+1,jj  ) ) * umask(ji,jj,1)
-         paeiv(ji,jj,1) = 0.5_wp * ( zaeiw(ji,jj) + zaeiw(ji  ,jj+1) ) * vmask(ji,jj,1)
+         zaeiu(ji,jj) = 0.5_wp * ( zaeiw(ji,jj) + zaeiw(ji+1,jj  ) ) * ssumask(ji,jj)
+         zaeiv(ji,jj) = 0.5_wp * ( zaeiw(ji,jj) + zaeiw(ji  ,jj+1) ) * ssvmask(ji,jj)
       END_2D
-      CALL lbc_lnk( 'ldftra', paeiu(:,:,1), 'U', 1.0_wp , paeiv(:,:,1), 'V', 1.0_wp )      ! lateral boundary condition
+      CALL lbc_lnk( 'ldftra', zaeiu(:,:), 'U', 1.0_wp , zaeiv(:,:), 'V', 1.0_wp )      ! lateral boundary condition
 
-      DO jk = 2, jpkm1                          !==  deeper values equal the surface one  ==!
-         paeiu(:,:,jk) = paeiu(:,:,1) * umask(:,:,jk)
-         paeiv(:,:,jk) = paeiv(:,:,1) * vmask(:,:,jk)
+      DO jk = 1, jpkm1                          !==  deeper values equal the surface one  ==!
+         paeiu(:,:,jk) = zaeiu(:,:) * umask(:,:,jk)
+         paeiv(:,:,jk) = zaeiv(:,:) * vmask(:,:,jk)
       END DO
       !
    END SUBROUTINE ldf_eiv
