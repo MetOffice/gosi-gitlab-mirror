@@ -251,15 +251,16 @@ CONTAINS
       ! so we don't have to generate and manage multiple sets of weights purely because of 
       ! the changes to nemo 4.2+ code!
 
-      ! This is just a hack for global cyclic models for the time being
-      Ni0glo_ext = jpiglo
 !GCJ
 #if defined key_agrif
       IF( Agrif_Root() ) THEN 
+         ! This is just a hack for global cyclic models for the time being
+         Ni0glo_ext = jpiglo
          Nj0glo_ext = Nj0glo +1 ! We can't use jpjglo here because for some reason at 4.2 this is bigger
                                 ! than at 4.0.... e.g. for ORCA1 it is 333 when it should only be 332!
       ELSE
-         Nj0glo_ext = jpjglo    ! All Child grid weight files are created using version 4.2 or later!
+         Ni0glo_ext = Ni0glo - 2
+         Nj0glo_ext = Nj0glo - 1    ! All Child grid weight files are created using version 4.2 or later!
       ENDIf
 #endif  
 !/GCJ    
