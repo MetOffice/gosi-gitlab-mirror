@@ -42,7 +42,8 @@ MODULE dynspg_ts
    USE bdyvol          ! open boundary volume conservation
    USE bdytides        ! open boundary condition data
    USE bdydyn2d        ! open boundary conditions on barotropic variables
-   USE tide_mod        !
+   USE tsltde          ! Tidal forcing
+   USE tslsal          ! SAL-potential parameterisations
    USE sbcwave         ! surface wave
    USE daymod, ONLY : ndt05   ! half-length of time step
 #if defined key_agrif
@@ -95,7 +96,7 @@ MODULE dynspg_ts
 #  include "do_loop_substitute.h90"
 #  include "domzgr_substitute.h90"
    !!----------------------------------------------------------------------
-   !! NEMO/OCE 5.0, NEMO Consortium (2024)
+   !! NEMO/OCE 5.1.a, NEMO Consortium (2026)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
@@ -176,7 +177,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj)          :: zuwdav2, zvwdav2    ! averages over the sub-steps of zuwdmask and zvwdmask
 #endif
       REAL(wp), ALLOCATABLE, DIMENSION(:,:) :: z2d          ! 2D workspace
-      REAL(wp) ::   zt0substep !   Time of day at the beginning of the time substep
+      REAL(wp) ::   ztdelta   !   Time offset from the time-step start for tidal-potential update
       !!----------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('dyn_spg_ts')
@@ -315,11 +316,15 @@ CONTAINS
          !
          !                    !==  Update the forcing ==! (BDY and tides)
          !
-         IF( ln_bdy      .AND. ln_tide )   CALL bdy_dta_tides( kt, kit=jn, pt_offset= 1._wp )
-         ! Update tide potential at the beginning of current time substep
-         IF( ln_tide_pot .AND. ln_tide ) THEN
-            zt0substep = REAL(nsec_day-ndt05, wp) + (jn - 0.5_wp) * rDt_e 
-            CALL upd_tide(zt0substep, Kmm)
+         IF( ln_bdy        .AND. ln_tsltde ) CALL bdy_dta_tides( kt, kit=jn, pt_offset= 1.0_wp )
+         ! Update the tide potential at the centre of the current time substep
+         IF( ln_tsltde .AND. ( ln_tsltde_pot .OR. ln_tslsal_osc ) ) THEN
+            ztdelta = ( REAL( jn, KIND=wp ) - 0.5_wp ) * rDt_e
+            IF( ln_tslsal_scalar ) THEN
+               CALL tsl_tde_pot_upd( kt, ztdelta, Kmm, rn_tslsal_scalar )
+            ELSE
+               CALL tsl_tde_pot_upd( kt, ztdelta, Kmm )
+            END IF
          END IF
          !
          !                    !==  extrapolation at mid-step  ==!   (jn+1/2)
@@ -472,7 +477,11 @@ CONTAINS
          END_2D
          !
          !                             ! Surface pressure gradient
-         zldg = ( 1._wp - rn_scal_load ) * grav    ! local factor
+         IF( .NOT. ln_tslsal_scalar ) THEN
+            zldg = grav
+         ELSE
+            zldg = ( 1._wp - rn_tslsal_scalar ) * grav   ! Include scalar SAL-potential parameterisation
+         END IF
          DO_2D( 0, 0, 0, 0 )
             zu_spg(ji,jj) = - zldg * ( zsshp2_e(ji+1,jj) - zsshp2_e(ji,jj) ) * r1_e1u(ji,jj)
             zv_spg(ji,jj) = - zldg * ( zsshp2_e(ji,jj+1) - zsshp2_e(ji,jj) ) * r1_e2v(ji,jj)
@@ -485,10 +494,10 @@ CONTAINS
          CALL dyn_cor_2D( ua_e, va_e, zu_trd, zv_trd )
          !
          ! Add tidal astronomical forcing if defined
-         IF ( ln_tide .AND. ln_tide_pot ) THEN
+         IF( ln_tsltde .AND. ( ln_tsltde_pot .OR. ln_tslsal_osc ) ) THEN
             DO_2D( 0, 0, 0, 0 )
-               zu_trd(ji,jj) = zu_trd(ji,jj) + grav * ( pot_astro(ji+1,jj) - pot_astro(ji,jj) ) * r1_e1u(ji,jj)
-               zv_trd(ji,jj) = zv_trd(ji,jj) + grav * ( pot_astro(ji,jj+1) - pot_astro(ji,jj) ) * r1_e2v(ji,jj)
+               zu_trd(ji,jj) = zu_trd(ji,jj) + grav * ( tsltde_pot(ji+1,jj) - tsltde_pot(ji,jj) ) * r1_e1u(ji,jj)
+               zv_trd(ji,jj) = zv_trd(ji,jj) + grav * ( tsltde_pot(ji,jj+1) - tsltde_pot(ji,jj) ) * r1_e2v(ji,jj)
             END_2D
          ENDIF
          !

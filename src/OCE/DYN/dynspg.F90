@@ -15,6 +15,7 @@ MODULE dynspg
    !!----------------------------------------------------------------------
    USE oce            ! ocean dynamics and tracers variables
    USE dom_oce        ! ocean space and time domain variables
+   USE daymod,   ONLY : ndt05   ! Time-step half-length
    USE c1d            ! 1D vertical configuration
    USE phycst         ! physical constants
    USE sbc_oce        ! surface boundary condition: ocean
@@ -23,7 +24,8 @@ MODULE dynspg
    USE sbcwave,  ONLY : bhd_wave
    USE dynspg_exp     ! surface pressure gradient     (dyn_spg_exp routine)
    USE dynspg_ts      ! surface pressure gradient     (dyn_spg_ts  routine)
-   USE tide_mod       !
+   USE tsltde         ! Tidal forcing
+   USE tslsal         ! SAL-potential parameterisations
    USE trd_oce        ! trends: ocean variables
    USE trddyn         ! trend manager: dynamics
    !
@@ -45,13 +47,13 @@ MODULE dynspg
    INTEGER, PARAMETER ::   np_EXP = 0   !       explicit time stepping
    INTEGER, PARAMETER ::   np_NO  =-1   ! no surface pressure gradient, no scheme
    !
-   REAL(wp) ::   zt0step !   Time of day at the beginning of the time step
+   REAL(wp) ::   ztdelta !   Time offset from the time-step start for tidal-potential update
 
    !! * Substitutions
 #  include "do_loop_substitute.h90"
 #  include "read_nml_substitute.h90"
    !!----------------------------------------------------------------------
-   !! NEMO/OCE 5.0, NEMO Consortium (2024)
+   !! NEMO/OCE 5.1.a, NEMO Consortium (2026)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
@@ -98,46 +100,45 @@ CONTAINS
          ztrdv(:,:,:) = pvv(T2D(0),:,Krhs)
       ENDIF
       !
-      IF(      ln_apr_dyn                                                &   ! atmos. pressure
-         .OR.  ( .NOT.ln_dynspg_ts .AND. (ln_tide_pot .AND. ln_tide) )   &   ! tide potential (no time slitting)
-         .OR.  ln_ice_embd                                               &   ! embedded sea-ice
-         .OR.  ln_bern_srfc ) THEN                                           ! depth-independent Bernoulli head
+      IF(      ( .NOT. ln_dynspg_ts .AND. ln_apr_dyn )    &   ! Atmos. pressure (w/o time splitting)
+          .OR. ( .NOT. ln_dynspg_ts .AND. ln_tsltde .AND. &   ! Tidal or oscillatory SAL potential (w/o time splitting)
+                  ( ln_tsltde_pot .OR. ln_tslsal_osc ) )  &   !
+          .OR. ln_ice_embd                                &   ! Embedded sea-ice
+          .OR. ln_bern_srfc ) THEN                            ! Depth-independent Bernoulli head
          !
          DO_2D( 0, 0, 0, 0 )
             zpgu(ji,jj) = 0._wp
             zpgv(ji,jj) = 0._wp
          END_2D
          !
-         IF( ln_apr_dyn .AND. .NOT.ln_dynspg_ts ) THEN   !==  Atmospheric pressure gradient (added later in time-split case) ==!
-            zg_2 = grav * 0.5
-            DO_2D( 0, 0, 0, 0 )                       ! gradient of Patm using inverse barometer ssh
-               zpgu(ji,jj) = zpgu(ji,jj) + zg_2 * (  ( ssh_ib (ji+1,jj) - ssh_ib (ji,jj) )    &   ! add () for NP repro
-                  &                                + ( ssh_ibb(ji+1,jj) - ssh_ibb(ji,jj) )  ) * r1_e1u(ji,jj)
-               zpgv(ji,jj) = zpgv(ji,jj) + zg_2 * (  ( ssh_ib (ji,jj+1) - ssh_ib (ji,jj) )    &   ! add () for NP repro
-                  &                                + ( ssh_ibb(ji,jj+1) - ssh_ibb(ji,jj) )  ) * r1_e2v(ji,jj)
-            END_2D
-         ENDIF
-         !
-         !                                    !==  tide potential forcing term  ==!
-         IF( .NOT.ln_dynspg_ts .AND. ( ln_tide_pot .AND. ln_tide )  ) THEN   ! N.B. added directly at sub-time-step in ts-case
-            !
-            ! Update tide potential at the beginning of current time step
-            zt0step = REAL(nsec_day, wp) ! = nsec_day - ndt05 + ndt05
-            CALL upd_tide(zt0step, Kmm)
-            !
-            DO_2D( 0, 0, 0, 0 )                      ! add tide potential forcing
-               zpgu(ji,jj) = zpgu(ji,jj) + grav * ( pot_astro(ji+1,jj) - pot_astro(ji,jj) ) * r1_e1u(ji,jj)
-               zpgv(ji,jj) = zpgv(ji,jj) + grav * ( pot_astro(ji,jj+1) - pot_astro(ji,jj) ) * r1_e2v(ji,jj)
-            END_2D
-            !
-            IF (ln_scal_load) THEN
-               zld = rn_scal_load * grav
-               DO_2D( 0, 0, 0, 0 )                   ! add scalar approximation for load potential
-                  zpgu(ji,jj) = zpgu(ji,jj) + zld * ( pssh(ji+1,jj,Kmm) - pssh(ji,jj,Kmm) ) * r1_e1u(ji,jj)
-                  zpgv(ji,jj) = zpgv(ji,jj) + zld * ( pssh(ji,jj+1,Kmm) - pssh(ji,jj,Kmm) ) * r1_e2v(ji,jj)
+         ! Forcing terms (independently handled by the time-split version)
+         IF( .NOT. ln_dynspg_ts ) THEN
+            !                                    !==  Atmospheric pressure gradient (added later in time-split case) ==!
+            IF( ln_apr_dyn ) THEN
+               zg_2 = grav * 0.5
+               DO_2D( 0, 0, 0, 0 )                       ! gradient of Patm using inverse barometer ssh
+                  zpgu(ji,jj) = zpgu(ji,jj) + zg_2 * (  ( ssh_ib (ji+1,jj) - ssh_ib (ji,jj) )    &   ! add () for NP repro
+                     &                                + ( ssh_ibb(ji+1,jj) - ssh_ibb(ji,jj) )  ) * r1_e1u(ji,jj)
+                  zpgv(ji,jj) = zpgv(ji,jj) + zg_2 * (  ( ssh_ib (ji,jj+1) - ssh_ib (ji,jj) )    &   ! add () for NP repro
+                     &                                + ( ssh_ibb(ji,jj+1) - ssh_ibb(ji,jj) )  ) * r1_e2v(ji,jj)
                END_2D
             ENDIF
-         ENDIF
+            !                                    !==  tide potential forcing term  ==!
+            IF( ln_tsltde .AND. ( ln_tsltde_pot .OR. ln_tslsal_osc ) ) THEN
+               ! Update of the tide potential at the centre of the current time step
+               ztdelta = REAL( ndt05, KIND=wp )
+               IF( ln_tslsal_scalar ) THEN
+                  CALL tsl_tde_pot_upd( kt, ztdelta, Kmm, rn_tslsal_scalar )
+               ELSE
+                  CALL tsl_tde_pot_upd( kt, ztdelta, Kmm )
+               END IF
+               DO_2D( 0, 0, 0, 0 )
+                  zpgu(ji,jj) = zpgu(ji,jj) + grav * ( tsltde_pot(ji+1,jj) - tsltde_pot(ji,jj) ) * r1_e1u(ji,jj)
+                  zpgv(ji,jj) = zpgv(ji,jj) + grav * ( tsltde_pot(ji,jj+1) - tsltde_pot(ji,jj) ) * r1_e2v(ji,jj)
+               END_2D
+            END IF
+            !
+         END IF
          !
          IF( ln_ice_embd ) THEN              !== embedded sea ice: Pressure gradient due to snow-ice mass ==!
 #if ! defined key_PSYCLONE_2p5p0

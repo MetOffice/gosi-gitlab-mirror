@@ -17,7 +17,7 @@ MODULE bdytides
    USE dom_oce        ! ocean space and time domain
    USE phycst         ! physical constants
    USE bdy_oce        ! ocean open boundary conditions
-   USE tide_mod       ! 
+   USE tsltde         ! Tidal forcing
    USE daymod         ! calendar
    !
    USE in_out_manager ! I/O units
@@ -47,7 +47,7 @@ MODULE bdytides
 #  include "do_loop_substitute.h90"
 #  include "read_nml_substitute.h90"
    !!----------------------------------------------------------------------
-   !! NEMO/OCE 5.0, NEMO Consortium (2024)
+   !! NEMO/OCE 5.1.a, NEMO Consortium (2026)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
@@ -119,11 +119,11 @@ CONTAINS
             IF(lwp) WRITE(numout,*) '  '
             IF(lwp) WRITE(numout,*) '          Namelist nambdy_tide : tidal harmonic forcing at open boundaries'
             IF(lwp) WRITE(numout,*) '             read tidal data in 2d files: ', ln_bdytide_2ddta
-            IF(lwp) WRITE(numout,*) '             Number of tidal components to read: ', nb_harmo
+            IF(lwp) WRITE(numout,*) '             Number of tidal components to read: ', ntsltde_harmo
             IF(lwp) THEN 
                     WRITE(numout,*) '             Tidal components: ' 
-               DO itide = 1, nb_harmo
-                  WRITE(numout,*)  '                 ', tide_harmonics(itide)%cname_tide 
+               DO itide = 1, ntsltde_harmo
+                  WRITE(numout,*)  '                 ', stsltde_harmonics(itide)%cname_tide
                END DO
             ENDIF 
             IF(lwp) WRITE(numout,*) ' '
@@ -134,17 +134,17 @@ CONTAINS
             ! -----------------------------------------------------------------------
             IF( ASSOCIATED(dta%ssh) ) THEN   ! we use bdy ssh on this mpi subdomain
                isz = SIZE(dta%ssh)
-               ALLOCATE( td%ssh0( isz, nb_harmo, 2 ), td%ssh( isz, nb_harmo, 2 ), dta_bdy_s(ib_bdy)%ssh( isz ) )
+               ALLOCATE( td%ssh0( isz, ntsltde_harmo, 2 ), td%ssh( isz, ntsltde_harmo, 2 ), dta_bdy_s(ib_bdy)%ssh( isz ) )
                dta_bdy_s(ib_bdy)%ssh(:) = 0._wp   ! needed?
             ENDIF
             IF( ASSOCIATED(dta%u2d) ) THEN   ! we use bdy u2d on this mpi subdomain
                isz = SIZE(dta%u2d)
-               ALLOCATE( td%u0  ( isz, nb_harmo, 2 ), td%u  ( isz, nb_harmo, 2 ), dta_bdy_s(ib_bdy)%u2d( isz ) )
+               ALLOCATE( td%u0  ( isz, ntsltde_harmo, 2 ), td%u  ( isz, ntsltde_harmo, 2 ), dta_bdy_s(ib_bdy)%u2d( isz ) )
                dta_bdy_s(ib_bdy)%u2d(:) = 0._wp   ! needed?
             ENDIF
             IF( ASSOCIATED(dta%v2d) ) THEN   ! we use bdy v2d on this mpi subdomain
                isz = SIZE(dta%v2d)
-               ALLOCATE( td%v0  ( isz, nb_harmo, 2 ), td%v  ( isz, nb_harmo, 2 ), dta_bdy_s(ib_bdy)%v2d( isz ) )
+               ALLOCATE( td%v0  ( isz, ntsltde_harmo, 2 ), td%v  ( isz, ntsltde_harmo, 2 ), dta_bdy_s(ib_bdy)%v2d( isz ) )
                dta_bdy_s(ib_bdy)%v2d(:) = 0._wp   ! needed?
             ENDIF
 
@@ -161,9 +161,9 @@ CONTAINS
                clfile = TRIM(filtide)//'_grid_T.nc'
                CALL iom_open( clfile , inum ) 
                igrd = 1                       ! Everything is at T-points here
-               DO itide = 1, nb_harmo
-                  CALL iom_get( inum, jpdom_auto, TRIM(tide_harmonics(itide)%cname_tide)//'_z1', ztr(:,:) )
-                  CALL iom_get( inum, jpdom_auto, TRIM(tide_harmonics(itide)%cname_tide)//'_z2', zti(:,:) ) 
+               DO itide = 1, ntsltde_harmo
+                  CALL iom_get( inum, jpdom_auto, TRIM(stsltde_harmonics(itide)%cname_tide)//'_z1', ztr(:,:) )
+                  CALL iom_get( inum, jpdom_auto, TRIM(stsltde_harmonics(itide)%cname_tide)//'_z2', zti(:,:) )
                   IF( ASSOCIATED(dta%ssh) ) THEN   ! we use bdy ssh on this mpi subdomain
                      DO ib = 1, SIZE(dta%ssh)
                         ii = idx_bdy(ib_bdy)%nbi(ib,igrd)
@@ -179,9 +179,9 @@ CONTAINS
                clfile = TRIM(filtide)//'_grid_U.nc'
                CALL iom_open( clfile , inum ) 
                igrd = 2                       ! Everything is at U-points here
-               DO itide = 1, nb_harmo
-                  CALL iom_get(inum, jpdom_auto, TRIM(tide_harmonics(itide)%cname_tide)//'_u1', ztr(:,:),cd_type='U',psgn=-1._wp)
-                  CALL iom_get(inum, jpdom_auto, TRIM(tide_harmonics(itide)%cname_tide)//'_u2', zti(:,:),cd_type='U',psgn=-1._wp)
+               DO itide = 1, ntsltde_harmo
+                  CALL iom_get(inum, jpdom_auto, TRIM(stsltde_harmonics(itide)%cname_tide)//'_u1', ztr(:,:),cd_type='U',psgn=-1._wp)
+                  CALL iom_get(inum, jpdom_auto, TRIM(stsltde_harmonics(itide)%cname_tide)//'_u2', zti(:,:),cd_type='U',psgn=-1._wp)
                   IF( ASSOCIATED(dta%u2d) ) THEN   ! we use bdy u2d on this mpi subdomain
                      DO ib = 1, SIZE(dta%u2d)
                         ii = idx_bdy(ib_bdy)%nbi(ib,igrd)
@@ -197,9 +197,9 @@ CONTAINS
                clfile = TRIM(filtide)//'_grid_V.nc'
                CALL iom_open( clfile , inum ) 
                igrd = 3                       ! Everything is at V-points here
-               DO itide = 1, nb_harmo
-                  CALL iom_get(inum, jpdom_auto, TRIM(tide_harmonics(itide)%cname_tide)//'_v1', ztr(:,:),cd_type='V',psgn=-1._wp)
-                  CALL iom_get(inum, jpdom_auto, TRIM(tide_harmonics(itide)%cname_tide)//'_v2', zti(:,:),cd_type='V',psgn=-1._wp)
+               DO itide = 1, ntsltde_harmo
+                  CALL iom_get(inum, jpdom_auto, TRIM(stsltde_harmonics(itide)%cname_tide)//'_v1', ztr(:,:),cd_type='V',psgn=-1._wp)
+                  CALL iom_get(inum, jpdom_auto, TRIM(stsltde_harmonics(itide)%cname_tide)//'_v2', zti(:,:),cd_type='V',psgn=-1._wp)
                   IF( ASSOCIATED(dta%v2d) ) THEN   ! we use bdy v2d on this mpi subdomain
                      DO ib = 1, SIZE(dta%v2d)
                         ii = idx_bdy(ib_bdy)%nbi(ib,igrd)
@@ -222,11 +222,11 @@ CONTAINS
                ! Open files and read in tidal forcing data
                ! -----------------------------------------
 
-               DO itide = 1, nb_harmo
+               DO itide = 1, ntsltde_harmo
                   !                                                              ! SSH fields
                   IF( ASSOCIATED(dta%ssh) ) THEN   ! we use bdy ssh on this mpi subdomain
                      isz = SIZE(dta%ssh)
-                     clfile = TRIM(filtide)//TRIM(tide_harmonics(itide)%cname_tide)//'_grid_T.nc'
+                     clfile = TRIM(filtide)//TRIM(stsltde_harmonics(itide)%cname_tide)//'_grid_T.nc'
                      CALL iom_open( clfile, inum )
                      CALL fld_map( inum, 'z1', dta_read(1:isz,1:1,1:1) , 1, idx_bdy(ib_bdy)%nbmap(:,1) )
                      td%ssh0(:,itide,1) = dta_read(1:isz,1,1)
@@ -237,7 +237,7 @@ CONTAINS
                   !                                                              ! U fields
                   IF( ASSOCIATED(dta%u2d) ) THEN   ! we use bdy u2d on this mpi subdomain
                      isz = SIZE(dta%u2d)
-                     clfile = TRIM(filtide)//TRIM(tide_harmonics(itide)%cname_tide)//'_grid_U.nc'
+                     clfile = TRIM(filtide)//TRIM(stsltde_harmonics(itide)%cname_tide)//'_grid_U.nc'
                      CALL iom_open( clfile, inum )
                      CALL fld_map( inum, 'u1', dta_read(1:isz,1:1,1:1) , 1, idx_bdy(ib_bdy)%nbmap(:,2) )
                      td%u0(:,itide,1) = dta_read(1:isz,1,1)
@@ -248,7 +248,7 @@ CONTAINS
                   !                                                              ! V fields
                   IF( ASSOCIATED(dta%v2d) ) THEN   ! we use bdy v2d on this mpi subdomain
                      isz = SIZE(dta%v2d)
-                     clfile = TRIM(filtide)//TRIM(tide_harmonics(itide)%cname_tide)//'_grid_V.nc'
+                     clfile = TRIM(filtide)//TRIM(stsltde_harmonics(itide)%cname_tide)//'_grid_V.nc'
                      CALL iom_open( clfile, inum )
                      CALL fld_map( inum, 'v1', dta_read(1:isz,1:1,1:1) , 1, idx_bdy(ib_bdy)%nbmap(:,3) )
                      td%v0(:,itide,1) = dta_read(1:isz,1,1)
@@ -294,14 +294,14 @@ CONTAINS
 
       ! Linear ramp on tidal component at open boundaries 
       zramp = 1._wp
-      IF (ln_tide_ramp) THEN 
+      IF( ln_tsltde_ramp ) THEN 
          ! Absolute time from model initialization:   
          IF( PRESENT(kit) ) THEN  
             z_arg = ( REAL(kt, wp) + ( REAL(kit, wp) + zt_offset - 1. ) / REAL(nn_e, wp) ) * rn_Dt
          ELSE                              
             z_arg = ( REAL(kt, wp) + zt_offset ) * rn_Dt
          ENDIF
-         zramp = MIN(MAX( (z_arg - REAL(nit000,wp)*rn_Dt)/(rn_tide_ramp_dt*rday),0.),1.)
+         zramp = MIN( MAX( ( z_arg - REAL( nit000, wp ) * rn_Dt ) / ( rn_tsltde_ramp_dt * rday ), 0.0_wp ), 1.0_wp )
       ENDIF
 
       DO ib_bdy = 1,nb_bdy
@@ -337,9 +337,9 @@ CONTAINS
             ENDIF
             !
             ! Update open boundary data arrays:
-            DO itide = 1, nb_harmo
+            DO itide = 1, ntsltde_harmo
                !
-               z_sarg = zoff  * tide_harmonics(itide)%omega
+               z_sarg = zoff  * stsltde_harmonics(itide)%omega
                z_cost = zramp * COS( z_sarg )
                z_sist = zramp * SIN( z_sarg )
                !
@@ -390,14 +390,14 @@ CONTAINS
          isz = SIZE( td%ssh0, dim = 1 )
          ALLOCATE( mod_tide(isz), phi_tide(isz) )
          !
-         DO itide = 1, nb_harmo
+         DO itide = 1, ntsltde_harmo
             DO ib = 1, isz
                mod_tide(ib)=SQRT( td%ssh0(ib,itide,1)*td%ssh0(ib,itide,1) + td%ssh0(ib,itide,2)*td%ssh0(ib,itide,2) )
                phi_tide(ib)=ATAN2(-td%ssh0(ib,itide,2),td%ssh0(ib,itide,1))
             END DO
             DO ib = 1, isz
-               mod_tide(ib)=mod_tide(ib)*tide_harmonics(itide)%f
-               phi_tide(ib)=phi_tide(ib)+tide_harmonics(itide)%v0+tide_harmonics(itide)%u
+               mod_tide(ib)=mod_tide(ib)*stsltde_harmonics(itide)%f
+               phi_tide(ib)=phi_tide(ib)+stsltde_harmonics(itide)%v0+stsltde_harmonics(itide)%u
             END DO
             DO ib = 1, isz
                td%ssh(ib,itide,1)= mod_tide(ib)*COS(phi_tide(ib))
@@ -428,14 +428,14 @@ CONTAINS
          isz = SIZE( td%u0, dim = 1 )
          ALLOCATE( mod_tide(isz), phi_tide(isz) )
          !
-         DO itide = 1, nb_harmo
+         DO itide = 1, ntsltde_harmo
             DO ib = 1, isz
                mod_tide(ib)=SQRT( td%u0(ib,itide,1)*td%u0(ib,itide,1) + td%u0(ib,itide,2)*td%u0(ib,itide,2) )
                phi_tide(ib)=ATAN2(-td%u0(ib,itide,2),td%u0(ib,itide,1))
             END DO
             DO ib = 1, isz
-               mod_tide(ib)=mod_tide(ib)*tide_harmonics(itide)%f
-               phi_tide(ib)=phi_tide(ib)+tide_harmonics(itide)%v0 + tide_harmonics(itide)%u
+               mod_tide(ib)=mod_tide(ib)*stsltde_harmonics(itide)%f
+               phi_tide(ib)=phi_tide(ib)+stsltde_harmonics(itide)%v0 + stsltde_harmonics(itide)%u
             END DO
             DO ib = 1, isz
                td%u(ib,itide,1)= mod_tide(ib)*COS(phi_tide(ib))
@@ -452,14 +452,14 @@ CONTAINS
          isz = SIZE( td%v0, dim = 1 )
          ALLOCATE( mod_tide(isz), phi_tide(isz) )
          !
-         DO itide = 1, nb_harmo
+         DO itide = 1, ntsltde_harmo
             DO ib = 1, isz
                mod_tide(ib)=SQRT( td%v0(ib,itide,1)*td%v0(ib,itide,1) + td%v0(ib,itide,2)*td%v0(ib,itide,2) )
                phi_tide(ib)=ATAN2(-td%v0(ib,itide,2),td%v0(ib,itide,1))
             END DO
             DO ib = 1, isz
-               mod_tide(ib)=mod_tide(ib)*tide_harmonics(itide)%f
-               phi_tide(ib)=phi_tide(ib)+tide_harmonics(itide)%v0 + tide_harmonics(itide)%u
+               mod_tide(ib)=mod_tide(ib)*stsltde_harmonics(itide)%f
+               phi_tide(ib)=phi_tide(ib)+stsltde_harmonics(itide)%v0 + stsltde_harmonics(itide)%u
             END DO
             DO ib = 1, isz
                td%v(ib,itide,1)= mod_tide(ib)*COS(phi_tide(ib))

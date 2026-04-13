@@ -141,7 +141,6 @@
 !!                                                                    !!
 !!   namlbc        lateral momentum boundary condition                  (default: NO selection)
 !!   namagrif      agrif nested grid ( read by child model only )       ("key_agrif")
-!!   nam_tide      Tidal forcing                                        (default: OFF)
 !!   nambdy        Unstructured open boundaries                         (default: OFF)
 !!   nambdy_dta    Unstructured open boundaries - external data         (see  nambdy)
 !!   nambdy_tide   tidal forcing at open boundaries                     (default: OFF)
@@ -151,27 +150,6 @@
 &namlbc        !   lateral momentum boundary condition                  (default: NO selection
 !-----------------------------------------------------------------------
    rn_shlat    =     0     !  free slip
-/
-!-----------------------------------------------------------------------
-&nam_tide      !   tide parameters                                      (default: OFF)
-!-----------------------------------------------------------------------
-   ln_tide     = .true.        ! Activate tides
-      ln_tide_pot     = .true. !  use tidal potential forcing
-   sn_tide_cnames(1)  = 'Q1'   !  name of constituent
-   sn_tide_cnames(2)  = 'O1'
-   sn_tide_cnames(3)  = 'P1'
-   sn_tide_cnames(4)  = 'S1'
-   sn_tide_cnames(5)  = 'K1'
-   sn_tide_cnames(6)  = '2N2'
-   sn_tide_cnames(7)  = 'MU2'
-   sn_tide_cnames(8)  = 'N2'
-   sn_tide_cnames(9)  = 'NU2'
-   sn_tide_cnames(10) = 'M2'
-   sn_tide_cnames(11) = 'L2'
-   sn_tide_cnames(12) = 'T2'
-   sn_tide_cnames(13) = 'S2'
-   sn_tide_cnames(14) = 'K2'
-   sn_tide_cnames(15) = 'M4'
 /
 !-----------------------------------------------------------------------
 &nambdy        !  unstructured open boundaries                          (default: OFF)
@@ -233,6 +211,36 @@
    rn_ke0     =  0.0e0    !  background kinetic energy  [m2/s2] (non-linear cases)
    rn_z0      =  0.003    !  roughness [m]  (ln_loglayer=T)
 /
+
+!!======================================================================
+!!           ***  Tides, self-attraction, and loading  ***            !!
+!!                                                                    !!
+!!   namtsl_tde   Tidal parameters and forcing                          (default: OFF)
+!!   namtsl_sal   SAL-potential parameterisations                       (default: OFF)
+!!======================================================================
+!
+!-----------------------------------------------------------------------
+&namtsl_tde    !   tide parameters                                      (default: OFF)
+!-----------------------------------------------------------------------
+   ln_tsltde = .true.                       ! Flag to indicate the activation of tidal constituents
+      cn_tsltde_constituent(01) = 'Q1'         ! Name of constituent 1 (further constituents can be activated through enumeration)
+      cn_tsltde_constituent(02) = 'O1'         ! Name of constituent 2
+      cn_tsltde_constituent(03) = 'P1'         ! Name of constituent 3
+      cn_tsltde_constituent(04) = 'S1'         ! Name of constituent 4
+      cn_tsltde_constituent(05) = 'K1'         ! Name of constituent 5
+      cn_tsltde_constituent(06) = '2N2'        ! Name of constituent 6
+      cn_tsltde_constituent(07) = 'MU2'        ! Name of constituent 7
+      cn_tsltde_constituent(08) = 'N2'         ! Name of constituent 8
+      cn_tsltde_constituent(09) = 'NU2'        ! Name of constituent 9
+      cn_tsltde_constituent(10) = 'M2'         ! Name of constituent 10
+      cn_tsltde_constituent(11) = 'L2'         ! Name of constituent 11
+      cn_tsltde_constituent(12) = 'T2'         ! Name of constituent 12
+      cn_tsltde_constituent(13) = 'S2'         ! Name of constituent 13
+      cn_tsltde_constituent(14) = 'K2'         ! Name of constituent 14
+      cn_tsltde_constituent(15) = 'M4'         ! Name of constituent 15
+      ln_tsltde_pot = .true.                   ! Flag to indicate the application of a tide-generating potential
+/
+
 !!======================================================================
 !!                        Tracer (T & S) namelists                    !!
 !!                                                                    !!

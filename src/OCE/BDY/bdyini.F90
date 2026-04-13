@@ -22,7 +22,7 @@ MODULE bdyini
    USE bdy_oce        ! unstructured open boundary conditions
    USE bdydta         ! open boundary cond. setting   (bdy_dta_init routine)
    USE bdytides       ! open boundary cond. setting   (bdytide_init routine)
-   USE tide_mod, ONLY: ln_tide ! tidal forcing
+   USE tsltde,   ONLY : ln_tsltde   ! Tidal forcing
    USE phycst  , ONLY: rday
    USE netcdf
    !
@@ -49,7 +49,7 @@ MODULE bdyini
 #  include "do_loop_substitute.h90"
 #  include "read_nml_substitute.h90"
    !!----------------------------------------------------------------------
-   !! NEMO/OCE 5.0, NEMO Consortium (2024)
+   !! NEMO/OCE 5.1.a, NEMO Consortium (2026)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
@@ -119,7 +119,7 @@ CONTAINS
          CALL bdy_dta_init
          !
          ! Open boundaries initialisation of tidal harmonic forcing
-         IF( ln_tide ) CALL bdytide_init
+         IF( ln_tsltde ) CALL bdytide_init
          !
       ELSE
          IF(lwp) WRITE(numout,*)
@@ -219,8 +219,8 @@ CONTAINS
             CASE DEFAULT   ;   CALL ctl_stop( 'nn_dyn2d_dta must be between 0 and 3' )
             END SELECT
          ENDIF
-         IF ( dta_bdy(ib_bdy)%lneed_dyn2d .AND. nn_dyn2d_dta(ib_bdy) .GE. 2  .AND. .NOT.ln_tide ) THEN
-            CALL ctl_stop( 'You must activate with ln_tide to add tidal forcing at open boundaries' )
+         IF ( dta_bdy(ib_bdy)%lneed_dyn2d .AND. nn_dyn2d_dta(ib_bdy) .GE. 2 .AND. .NOT. ln_tsltde ) THEN
+            CALL ctl_stop( 'Tidal forcing at open boundaries requires the activation of tidal constituents (ln_tsltde=T)' )
          ENDIF
          IF(lwp) WRITE(numout,*)
 
@@ -360,7 +360,7 @@ CONTAINS
             WRITE(numout,*)
             !
             ! sanity check if used with tides        
-            IF( ln_tide ) THEN 
+            IF( ln_tsltde ) THEN
                WRITE(numout,*) ' The total volume correction is not working with tides. '
                WRITE(numout,*) ' Set ln_vol to .FALSE. '
                WRITE(numout,*) ' or '

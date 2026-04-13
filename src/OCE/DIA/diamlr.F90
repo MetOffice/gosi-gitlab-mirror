@@ -9,7 +9,7 @@ MODULE diamlr
    USE par_oce        , ONLY :   wp, jpi, jpj, ntsi, ntei, ntsj, ntej 
    USE phycst         , ONLY :   rpi
    USE dom_oce        , ONLY :   adatrj
-   USE tide_mod
+   USE tsltde   ! Tides
    !
    USE in_out_manager , ONLY :   lwp, numout, ln_timing
    USE iom            , ONLY :   iom_put, iom_use, iom_update_file_name
@@ -29,7 +29,7 @@ MODULE diamlr
    !! * Substitutions
 #  include "do_loop_substitute.h90"
    !!----------------------------------------------------------------------
-   !! NEMO/OCE 5.0, NEMO Consortium (2024)
+   !! NEMO/OCE 5.1.a, NEMO Consortium (2026)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
@@ -68,29 +68,33 @@ CONTAINS
       !!----------------------------------------------------------------------
 #if defined key_xios
 
-      TYPE(xios_fieldgroup)                       ::   slxhdl_fldgrp
-      TYPE(xios_filegroup)                        ::   slxhdl_filgrp
-      TYPE(xios_field), ALLOCATABLE, DIMENSION(:) ::   slxhdl_regs,    slxhdl_flds
-      TYPE(xios_field)                            ::   slxhdl_fld
-      TYPE(xios_file)                             ::   slxhdl_fil
-      LOGICAL                                     ::   llxatt_enabled, llxatt_comment
-      CHARACTER(LEN=256)                          ::   clxatt_expr,    clxatt_comment
-      CHARACTER(LEN=32)                           ::   clxatt_name1,   clxatt_name2
-      CHARACTER(LEN=32)                           ::   clxatt_gridref, clxatt_fieldref
-      INTEGER, PARAMETER                          ::   jpscanmax = 999
-      INTEGER                                     ::   ireg, ifld
-      CHARACTER(LEN=3)                            ::   cl3i
-      CHARACTER(LEN=6)                            ::   cl6a
-      CHARACTER(LEN=7)                            ::   cl7a
-      CHARACTER(LEN=1)                            ::   clgt
-      CHARACTER(LEN=2)                            ::   clgd
-      CHARACTER(LEN=25)                           ::   clfloat
-      CHARACTER(LEN=32)                           ::   clrepl
-      INTEGER                                     ::   jl, jm, jn
-      INTEGER                                     ::   itide                       ! Number of available tidal components
-      REAL(wp)                                    ::   ztide_phase                 ! Tidal-constituent phase at adatrj=0
-      CHARACTER (LEN=4), DIMENSION(jpmax_harmo)   ::   ctide_selected = 'n/a '
-      TYPE(tide_harmonic), DIMENSION(:), POINTER  ::   stideconst
+      TYPE(xios_fieldgroup)                            ::   slxhdl_fldgrp
+      TYPE(xios_filegroup)                             ::   slxhdl_filgrp
+      TYPE(xios_field), ALLOCATABLE, DIMENSION(:)      ::   slxhdl_regs,    slxhdl_flds
+      TYPE(xios_field)                                 ::   slxhdl_fld
+      TYPE(xios_file)                                  ::   slxhdl_fil
+      LOGICAL                                          ::   llxatt_enabled, llxatt_comment
+      CHARACTER(LEN=256)                               ::   clxatt_expr,    clxatt_comment
+      CHARACTER(LEN=32)                                ::   clxatt_name1,   clxatt_name2
+      CHARACTER(LEN=32)                                ::   clxatt_gridref, clxatt_fieldref
+      INTEGER, PARAMETER                               ::   jpscanmax = 999
+      INTEGER                                          ::   ireg, ifld
+      CHARACTER(LEN=3)                                 ::   cl3i
+      CHARACTER(LEN=6)                                 ::   cl6a
+      CHARACTER(LEN=7)                                 ::   cl7a
+      CHARACTER(LEN=1)                                 ::   clgt
+      CHARACTER(LEN=2)                                 ::   clgd
+      CHARACTER(LEN=25)                                ::   clfloat
+      CHARACTER(LEN=32)                                ::   clrepl
+      INTEGER                                          ::   jl, jm, jn
+      INTEGER                                          ::   itide         ! Number of available tidal components
+      REAL(wp)                                         ::   ztide_phase   ! Tidal-constituent phase at adatrj=0
+      CHARACTER(LEN=4), DIMENSION(jptsltde_max)        ::   ctide_selected = 'n/a '
+#if ! defined key_agrif
+      TYPE(tsltde_harmonic), ALLOCATABLE, DIMENSION(:) ::   stideconst
+#else
+      TYPE(tsltde_harmonic), POINTER,     DIMENSION(:) ::   stideconst
+#endif
 
       IF(lwp) THEN
          WRITE(numout, *)
@@ -148,7 +152,7 @@ CONTAINS
          ireg = 0
          ifld = 0
          !
-         IF ( ln_tide ) THEN
+         IF ( ln_tsltde ) THEN
             ! Retrieve information (frequency, phase, nodal correction) about all
             ! available tidal constituents for placeholder substitution below
             ! Warning: we must use the same character length in an array constructor (at least for gcc compiler)
@@ -159,7 +163,7 @@ CONTAINS
                &                      'T2  ', 'eps2', 'lam2', 'R2  ', 'M3  ',         &
                &                      'MKS2', 'MN4 ', 'MS4 ', 'M4  ', 'N4  ',         &
                &                      'S4  ', 'M6  ', 'M8  ' /)
-            CALL tide_init_harmonics(ctide_selected, stideconst)
+            CALL tsl_tde_init_osc( ctide_selected, stideconst )
             itide = size(stideconst)
          ELSE
             itide = 0

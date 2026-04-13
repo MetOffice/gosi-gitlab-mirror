@@ -27,7 +27,7 @@ that are available in the tidal-forcing implementation (see
     <!-- Time -->
     <field id="diamlr_time" grid_ref="diamlr_grid_T_2D_inner" prec="8" />
 
-    <!-- Regressors for tidal harmonic analysis (nn_tide_var=1, default) -->
+    <!-- Regressors for tidal harmonic analysis (nn_tsltde_var=1, default) -->
       <!-- long-period constituents -->
       <field id="diamlr_r001"  field_ref="diamlr_time" expr="sin( __TDE_Mf_omega__   * diamlr_time )" enabled=".TRUE."  comment="harmonic:sin:Mf"   />
       <field id="diamlr_r002"  field_ref="diamlr_time" expr="cos( __TDE_Mf_omega__   * diamlr_time )" enabled=".TRUE."  comment="harmonic:cos:Mf"   />
@@ -102,7 +102,7 @@ that are available in the tidal-forcing implementation (see
       <field id="diamlr_r066"  field_ref="diamlr_time" expr="cos( __TDE_M6_omega__   * diamlr_time )" enabled=".TRUE."  comment="harmonic:cos:M6"   />
       <field id="diamlr_r067"  field_ref="diamlr_time" expr="sin( __TDE_M8_omega__   * diamlr_time )" enabled=".TRUE."  comment="harmonic:sin:M8"   />
       <field id="diamlr_r068"  field_ref="diamlr_time" expr="cos( __TDE_M8_omega__   * diamlr_time )" enabled=".TRUE."  comment="harmonic:cos:M8"   />
-    <!-- legacy option (nn_tide_var=0)
+    <!-- legacy option (nn_tsltde_var=0)
       <field id="diamlr_r001"  field_ref="diamlr_time" expr="sin( __TDE_M2_omega__   * diamlr_time )" enabled=".TRUE."  comment="harmonic:sin:M2"   />
       <field id="diamlr_r002"  field_ref="diamlr_time" expr="cos( __TDE_M2_omega__   * diamlr_time )" enabled=".TRUE."  comment="harmonic:cos:M2"   />
       <field id="diamlr_r003"  field_ref="diamlr_time" expr="sin( __TDE_N2_omega__   * diamlr_time )" enabled=".TRUE."  comment="harmonic:sin:N2"   />

@@ -1,5 +1,5 @@
    !!=====================================================================
-   !!                  ***  Include file tide.h90  ***
+   !!           ***  Include file tsltde_constituents.h90  ***
    !!======================================================================
    !! History :  3.2  !  2007  (O. Le Galloudec)  Original code
    !!                 !  2019  (S. Mueller, N. Bruneau)  Alternative parameter set
@@ -36,10 +36,10 @@
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
-   !! NEMO/OCE 5.0, NEMO Consortium (2024)
+   !! NEMO/OCE 5.1.a, NEMO Consortium (2026)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
-#ifndef TIDE_VAR_0
+#ifndef TSLTDE_VAR_0
    !                         +--------+--------------+----+----+----+----+-----+-------+-----+------+------+------+----+------------+----------------+-----------------------+--------+
    !                         | Name   | Equilibrium  | nt | ns | nh | np | np1 | Phase | nxi | nnu0 | nnu1 | nnu2 |  R | Nodal      | Equilibrium    | Parameters source     | Extra  |
    !                         |        | tide         |    |    |    |    |     | shift |     |      |      |      |    | correction | tide           |                       | notes  |
@@ -149,7 +149,7 @@
    !   Note 1: the equilibrium-tide value is the amplitude of a spherical harmonic (SH) and has been interpolated from values for
    !           three epochs published by CE73 or by CT71 to a value for reference epoch 1900.0 according to equation 22 of CT71 and
    !           subsequently multiplied with the appropriate coefficient from Table 2 of CT71 after excluding the latitude-dependent
-   !           factor (the spatial dependence is applied at runtime by subroutine 'tide_init_potential' of module 'tide_mod'); in
+   !           factor (the spatial dependence is applied at runtime by subroutine 'tide_init_potential' of module 'tsltde'); in
    !           particular, for the a given constitutent type, the degree and order of the SH used, the constant normalisation factor,
    !           as well as the longitudinal (lambda) and latitudinal (phi) dependence is listed in the table below (the time-varying
    !           phase for constituent n, p_n(t), is measured relative to Greenwich).

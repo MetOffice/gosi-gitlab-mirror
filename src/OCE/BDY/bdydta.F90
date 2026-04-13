@@ -22,7 +22,7 @@ MODULE bdydta
    USE dom_oce        ! ocean space and time domain
    USE phycst         ! physical constants
    USE sbcapr         ! atmospheric pressure forcing
-   USE tide_mod, ONLY : ln_tide ! tidal forcing
+   USE tsltde,   ONLY : ln_tsltde   ! Tidal forcing
    USE bdy_oce        ! ocean open boundary conditions  
    USE bdytides       ! tidal forcing at boundaries
 #if defined key_si3
@@ -78,7 +78,7 @@ MODULE bdydta
 #  include "read_nml_substitute.h90"
 #  include "domzgr_substitute.h90"
    !!----------------------------------------------------------------------
-   !! NEMO/OCE 5.0, NEMO Consortium (2024)
+   !! NEMO/OCE 5.1.a, NEMO Consortium (2026)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
@@ -211,17 +211,17 @@ CONTAINS
          DO jbdy = 1, nb_bdy
             dta_alias => dta_bdy(jbdy)
             bf_alias  => bf(:,jbdy)
-            IF( ASSOCIATED( dta_alias%ssh ) .AND. ( ln_tide .OR. ln_apr_obc ) .AND.   &
+            IF( ASSOCIATED( dta_alias%ssh ) .AND. ( ln_tsltde .OR. ln_apr_obc ) .AND.   &
                &                                  ( .NOT. bf_alias(jp_bdyssh)%ln_tint .OR. nn_dyn2d_dta(jbdy) == 0 ) ) THEN
                ALLOCATE( dta_alias%ssh( SIZE( bf_alias(jp_bdyssh)%fnow(:,1,1) ) ), STAT=istat(1) )
                l_bdydta_reset(jp_bdyssh,jbdy) = .TRUE.
             END IF
-            IF( ASSOCIATED( dta_alias%u2d ) .AND. ( ln_tide .OR. cn_tra(jbdy) == 'runoff' ) .AND.   &
+            IF( ASSOCIATED( dta_alias%u2d ) .AND. ( ln_tsltde .OR. cn_tra(jbdy) == 'runoff' ) .AND.   &
                &                                  ( .NOT. bf_alias(jp_bdyu2d)%ln_tint .OR. nn_dyn2d_dta(jbdy) == 0 ) ) THEN
                ALLOCATE( dta_alias%u2d( SIZE( bf_alias(jp_bdyu2d)%fnow(:,1,1) ) ), STAT=istat(2) )
                l_bdydta_reset(jp_bdyu2d,jbdy) = .TRUE.
             END IF
-            IF( ASSOCIATED( dta_alias%v2d ) .AND. ( ln_tide .OR. cn_tra(jbdy) == 'runoff' ) .AND.   &
+            IF( ASSOCIATED( dta_alias%v2d ) .AND. ( ln_tsltde .OR. cn_tra(jbdy) == 'runoff' ) .AND.   &
                &                                  ( .NOT. bf_alias(jp_bdyv2d)%ln_tint .OR. nn_dyn2d_dta(jbdy) == 0 ) ) THEN
                ALLOCATE( dta_alias%v2d( SIZE( bf_alias(jp_bdyv2d)%fnow(:,1,1) ) ), STAT=istat(3) )
                l_bdydta_reset(jp_bdyv2d,jbdy) = .TRUE.
@@ -393,7 +393,7 @@ CONTAINS
 #endif
       END DO  ! jbdy
 
-      IF ( ln_tide ) THEN
+      IF ( ln_tsltde ) THEN
          IF( ln_dynspg_ts ) THEN   ! Fill temporary arrays with slow-varying, non-tidal bdy data; these will be combined with the
                                    ! tidal component in the time-split loop
             DO jbdy = 1, nb_bdy

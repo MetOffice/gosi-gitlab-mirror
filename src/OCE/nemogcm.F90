@@ -46,7 +46,8 @@ MODULE nemogcm
    USE domain         ! domain initialization   (dom_init & dom_cfg routines)
    USE wet_dry        ! Wetting and drying setting   (wad_init routine)
    USE usrdef_nam     ! user defined configuration namelist
-   USE tide_mod, ONLY : tide_init   ! tidal components initialization   (tide_init routine)
+   USE tsltde,   ONLY : tsl_tde_init   ! Initialization of tidal constituents
+   USE tslsal,   ONLY : tsl_sal_init   ! Initialisation of SAL-potential parameterisations
    USE bdyini  , ONLY : bdy_init    ! open boundary cond. setting       (bdy_init routine)
    USE istate         ! initial state setting          (istate_init routine)
    USE trdini         ! dyn/tra trends initialization     (trd_init routine)
@@ -81,7 +82,7 @@ MODULE nemogcm
    !! * Substitutions
 #  include "read_nml_substitute.h90"
    !!----------------------------------------------------------------------
-   !! NEMO/OCE 5.0, NEMO Consortium (2024)
+   !! NEMO/OCE 5.1.a, NEMO Consortium (2026)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
@@ -417,8 +418,10 @@ CONTAINS
                            CALL  istate_init( Nbb, Nnn, Naa )    ! ocean initial state (Dynamics and tracers)
 
       !                                      ! external forcing
-                           CALL    tide_init                     ! tidal harmonics
+                           CALL tsl_tde_init                     ! Initialisation of tidal constituents
                            CALL    sbc_init( Nbb, Nnn, Naa )     ! surface boundary conditions (including sea-ice)
+      !                                      ! SAL forcing
+                           CALL    tsl_sal_init                  ! Initialisation of SAL-potential parameterisations
                            CALL    bdy_init                      ! Open boundaries initialisation
       IF( lk_oasis     )   CALL    cpl_enddef                    ! terminate coupling initialization
 
