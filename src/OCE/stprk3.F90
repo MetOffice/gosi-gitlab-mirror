@@ -33,7 +33,7 @@ MODULE stprk3
 #  include "do_loop_substitute.h90"
 #  include "domzgr_substitute.h90"
    !!----------------------------------------------------------------------
-   !! NEMO/OCE 5.0, NEMO Consortium (2024)
+   !! NEMO/OCE 5.1.a, NEMO Consortium (2026)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
@@ -130,7 +130,7 @@ CONTAINS
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       ! Update external forcing (tides, open boundaries, ice shelf interaction and surface boundary condition (including sea-ice)
       !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-      IF( ln_tide    )   CALL tide_update( kstp )                          ! update tide potential
+      IF( ln_tsltde  )   CALL tsl_tde_stp( kstp )                          ! Update of tidal constituents
       IF( ln_apr_dyn )   CALL sbc_apr    ( kstp )                          ! atmospheric pressure (NB: call before bdy_dta which needs ssh_ib)
       IF( ln_bdy     )   CALL bdy_dta    ( kstp, Nbb )                     ! update dynamic & tracer data at open boundaries
       IF( ln_isf     )   CALL isf_stp    ( kstp, Nbb )                     ! update iceshelf geometry

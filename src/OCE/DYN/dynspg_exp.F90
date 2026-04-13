@@ -22,6 +22,7 @@ MODULE dynspg_exp
    USE lbclnk          ! ocean lateral boundary conditions (or mpp link)
    USE prtctl          ! Print control
    USE iom             ! I/O library
+   USE tslsal          ! SAL-potential parameterisations
 
    IMPLICIT NONE
    PRIVATE
@@ -31,7 +32,7 @@ MODULE dynspg_exp
    !! * Substitutions
 #  include "do_loop_substitute.h90"
    !!----------------------------------------------------------------------
-   !! NEMO/OCE 5.0, NEMO Consortium (2024)
+   !! NEMO/OCE 5.1.a, NEMO Consortium (2025)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
@@ -57,7 +58,8 @@ CONTAINS
       INTEGER                             , INTENT(in   ) ::  Kmm, Krhs ! ocean time level indices
       REAL(wp), DIMENSION(jpi,jpj,jpk,jpt), INTENT(inout) ::  puu, pvv  ! ocean velocities and RHS of momentum equation
       !!
-      INTEGER ::   ji, jj, jk   ! dummy loop indices
+      INTEGER  ::   ji, jj, jk   ! dummy loop indices
+      REAL(wp) ::   zg           ! acceleration with or without adjustment for scalar SAL-potential parameterisation
       REAL(wp), DIMENSION(A2D(0)) ::   zpgu, zpgv   ! 2D workspace
       !!----------------------------------------------------------------------
       !
@@ -71,9 +73,14 @@ CONTAINS
          IF( .NOT.lk_linssh .AND. lwp ) WRITE(numout,*) '      non linear free surface: spg is included in dynhpg'
       ENDIF
       !
+      IF( .NOT. ln_tslsal_scalar ) THEN
+         zg = grav
+      ELSE
+         zg = ( 1.0_wp - rn_tslsal_scalar ) * grav   ! Include scalar SAL-potential parameterisation
+      END IF
       DO_2D( 0, 0, 0, 0 )
-         zpgu(ji,jj) = - grav * ( ssh(ji+1,jj,Kmm) - ssh(ji,jj,Kmm) ) * r1_e1u(ji,jj)
-         zpgv(ji,jj) = - grav * ( ssh(ji,jj+1,Kmm) - ssh(ji,jj,Kmm) ) * r1_e2v(ji,jj)
+         zpgu(ji,jj) = - zg * ( ssh(ji+1,jj,Kmm) - ssh(ji,jj,Kmm) ) * r1_e1u(ji,jj)
+         zpgv(ji,jj) = - zg * ( ssh(ji,jj+1,Kmm) - ssh(ji,jj,Kmm) ) * r1_e2v(ji,jj)
       END_2D
       !
       DO_3D( 0, 0, 0, 0, 1, jpkm1 )

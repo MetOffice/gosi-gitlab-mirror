@@ -137,7 +137,6 @@
 !!                                                                    !!
 !!   namlbc        lateral momentum boundary condition                  (default: NO selection)
 !!   namagrif      agrif nested grid ( read by child model only )       ("key_agrif")
-!!   nam_tide      Tidal forcing                                        (default: OFF)
 !!   nambdy        Unstructured open boundaries                         (default: OFF)
 !!   nambdy_dta    Unstructured open boundaries - external data         (see  nambdy)
 !!   nambdy_tide   tidal forcing at open boundaries                     (default: OFF)

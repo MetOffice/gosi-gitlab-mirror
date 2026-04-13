@@ -10,7 +10,7 @@ MODULE diadetide
    USE iom            
    USE dom_oce        
    USE phycst        
-   USE tide_mod
+   USE tsltde   ! Tides
 #if defined key_xios
    USE xios
 #endif
@@ -27,7 +27,7 @@ MODULE diadetide
    !! * Substitutions
 #  include "do_loop_substitute.h90"
    !!----------------------------------------------------------------------
-   !! NEMO/OCE 5.0, NEMO Consortium (2024)
+   !! NEMO/OCE 5.1.a, NEMO Consortium (2026)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
@@ -41,16 +41,20 @@ CONTAINS
       !!
       !!----------------------------------------------------------------------
 
-      REAL(wp)                                   ::   zdt
-      INTEGER                                    ::   jn
-      CHARACTER (LEN=4), DIMENSION(jpmax_harmo)  ::   ctide_selected = ' n/a '
-      TYPE(tide_harmonic), DIMENSION(:), POINTER ::   stideconst
+      REAL(wp)                                         ::   zdt
+      INTEGER                                          ::   jn
+      CHARACTER(LEN=4), DIMENSION(jptsltde_max)        ::   ctide_selected = ' n/a '
+#if ! defined key_agrif
+      TYPE(tsltde_harmonic), ALLOCATABLE, DIMENSION(:) ::   stideconst
+#else
+      TYPE(tsltde_harmonic), POINTER,     DIMENSION(:) ::   stideconst
+#endif
 
       l_diadetide = .FALSE.
 #if defined key_xios
       ! Enquire detiding activation state (test for presence of detiding-related
       ! weights field and output file group)
-      IF ( xios_is_valid_field( "diadetide_weight" ).AND.xios_is_valid_filegroup( "diadetide_files" ).AND.ln_tide ) THEN
+      IF ( xios_is_valid_field( "diadetide_weight" ) .AND. xios_is_valid_filegroup( "diadetide_files" ) .AND. ln_tsltde ) THEN
          l_diadetide = .TRUE.
       END IF
 #endif
@@ -65,7 +69,7 @@ CONTAINS
       IF (l_diadetide) THEN
          ! Retrieve information about M2 tidal constituent
          ctide_selected(1) = 'M2'
-         CALL tide_init_harmonics(ctide_selected, stideconst) 
+         CALL tsl_tde_init_osc( ctide_selected, stideconst )
 
          ! For M2, twice the tidal period spans slightly more than one full
          ! day. Compute the maximum number of equal intervals that span exactly

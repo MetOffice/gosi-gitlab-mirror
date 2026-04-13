@@ -18,7 +18,7 @@ MODULE stp_oce
    USE sbccpl          ! surface boundary condition: coupled formulation (call send at end of step)
    USE sbcapr          ! surface boundary condition: atmospheric pressure
    USE sbcwave         ! Wave intialisation
-   USE tide_mod        ! tides
+   USE tsltde          ! Tides
 
    USE bdy_oce  , ONLY : ln_bdy
    USE bdydta          ! open boundary condition data     (bdy_dta routine)
@@ -101,7 +101,7 @@ MODULE stp_oce
    USE trcstp_rk3, ONLY : trc_stp    ! passive tracer time-stepping      (trc_stp routine)
 #endif
    !!----------------------------------------------------------------------
-   !! NEMO/OCE 5.0, NEMO Consortium (2024)
+   !! NEMO/OCE 5.1.a, NEMO Consortium (2026)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!======================================================================
 END MODULE stp_oce
