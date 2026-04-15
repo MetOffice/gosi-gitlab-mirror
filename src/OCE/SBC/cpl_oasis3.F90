@@ -234,7 +234,7 @@ CONTAINS
       paral(5) = Ni0glo                                 ! global extent in x, excluding halos
 
       IF( sn_cfctl%l_oasout ) THEN
-         WRITE(numout,*) ' multiexchg: paral (1:5)', paral
+         WRITE(numout,*) ' multiexchg: paral (1:5)', paral, Ni0glo, Nj0glo
          WRITE(numout,*) ' multiexchg: Ni_0, Nj_0 =', Ni_0, Nj_0
          WRITE(numout,*) ' multiexchg: Nis0, Nie0, nimpp =', Nis0, Nie0, nimpp
          WRITE(numout,*) ' multiexchg: Njs0, Nje0, njmpp =', Njs0, Nje0, njmpp
