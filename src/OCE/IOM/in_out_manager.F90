@@ -121,6 +121,7 @@ MODULE in_out_manager
    END TYPE
    TYPE(sn_ctl), SAVE :: sn_cfctl     !: run control structure for selective output, must have SAVE for default init. of sn_ctl
    LOGICAL ::   ln_timing        !: run control for timing
+   INTEGER ::   nn_npfchk        !: North Pole Folding duplicated line control
    LOGICAL ::   ln_diacfl        !: flag whether to create CFL diagnostics
    INTEGER ::   nn_ictls         !: Start i indice for the SUM control
    INTEGER ::   nn_ictle         !: End   i indice for the SUM control
