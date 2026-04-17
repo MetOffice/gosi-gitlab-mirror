@@ -332,8 +332,8 @@
       ! ------------------------------- !
       !
       IF( l_IdoNFold ) THEN
-         IF( jpni == 1 )  THEN   ;   CALL lbc_nfd( ptab, cd_nat, psgn                  , kfld         )   ! self NFold
-         ELSE                    ;   CALL mpp_nfd( ptab, cd_nat, psgn, ifill_nfd, zland, kfld, ldfull )   ! mpi  NFold
+         IF( jpni == 1 )  THEN   ;   CALL lbc_nfd(         ptab, cd_nat, psgn                  , kfld         )   ! self NFold
+         ELSE                    ;   CALL mpp_nfd( cdname, ptab, cd_nat, psgn, ifill_nfd, zland, kfld, ldfull )   ! mpi  NFold
          ENDIF
       ENDIF
       !
