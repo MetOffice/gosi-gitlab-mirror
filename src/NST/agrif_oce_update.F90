@@ -1805,11 +1805,13 @@ CONTAINS
                         zh0(ji,jj) = zh0(ji,jj) + ptab(ji,jj,jk)   
                      END DO  
                      IF (ABS(zh0(ji,jj)-ht_0(ji,jj)).GE.1.e-6) THEN 
+                        IF(lwp) WRITE(numout,*) 'error in e3t0 witj total depths', mig0(ji), mjg0(jj), jk, mbkt(ji,jj), ptab(ji,jj,jk), zh0(ji,jj,jk), ht_0(ji,jj), zh0(ji,jj)-ht_0(ji,jj)
                         kindic_agr = kindic_agr + 1 
                      ENDIF
                   ELSE                 ! Check individual cells volumes:
                      DO jk=k1,k2-1
                         IF  (ABS((ptab(ji,jj,jk)-e3t_0(ji,jj,jk))*tmask(ji,jj,jk)).GE.1.e-6)  THEN 
+                           IF(lwp) WRITE(numout,*) 'error in e3t0 with indiv cell vols', mig0(ji), mjg0(jj), jk, mbkt(ji,jj), ptab(ji,jj,jk), e3t_0(ji,jj,jk)
                            kindic_agr = kindic_agr + 1 
                         ENDIF
                      END DO
@@ -1853,7 +1855,7 @@ CONTAINS
                      DO jk=k1,k2-1
                         IF  (ABS((ptab(ji,jj,jk)-e3u_0(ji,jj,jk))*umask(ji,jj,jk)).GE.1.e-6)  THEN 
                            kindic_agr = kindic_agr + 1 
-                           print *, 'erro u-pt', mig0(ji), mjg0(jj), jk, mbku(ji,jj), ikbot, ptab(ji,jj,jk), e3u_0(ji,jj,jk)
+                           IF(lwp) WRITE(numout,*) 'error u3u0', mig0(ji), mjg0(jj), jk, mbku(ji,jj), ikbot, ptab(ji,jj,jk), e3u_0(ji,jj,jk)
                         ENDIF
                      END DO
                   ENDIF
@@ -1893,7 +1895,7 @@ CONTAINS
                      DO jk=k1,k2-1
                         IF  (ABS((ptab(ji,jj,jk)-e3v_0(ji,jj,jk))*vmask(ji,jj,jk)).GE.1.e-6)  THEN 
                            kindic_agr = kindic_agr + 1 
-                           print *, 'erro v-pt', mig0(ji), mjg0(jj), mbkv(ji,jj), ptab(ji,jj,jk), e3v_0(ji,jj,jk)
+                           IF(lwp) WRITE(numout,*) 'error e3v0', mig0(ji), mjg0(jj), mbkv(ji,jj), ptab(ji,jj,jk), e3v_0(ji,jj,jk)
                         ENDIF
                      END DO
                   ENDIF
