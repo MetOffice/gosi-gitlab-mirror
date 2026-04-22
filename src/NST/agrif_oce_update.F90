@@ -1805,15 +1805,13 @@ CONTAINS
                         zh0(ji,jj) = zh0(ji,jj) + ptab(ji,jj,jk)   
                      END DO  
                      IF (ABS(zh0(ji,jj)-ht_0(ji,jj)).GE.1.e-6) THEN 
-                        !IF(lwp) WRITE(numout,*) 'error in e3t0 witj total depths', mig0(ji), mjg0(jj), jk, mbkt(ji,jj), ptab(ji,jj,jk), zh0(ji,jj)-ht_0(ji,jj)
-                        IF(lwp) WRITE(numout,*) 'error in e3t0 witj total depths'
+                        IF(lwp) WRITE(numout,*) 'error in e3t0 witj total depths', mig0(ji), mjg0(jj), jk, ptab(ji,jj,jk), zh0(ji,jj)-ht_0(ji,jj)
                         kindic_agr = kindic_agr + 1 
                      ENDIF
                   ELSE                 ! Check individual cells volumes:
                      DO jk=k1,k2-1
                         IF  (ABS((ptab(ji,jj,jk)-e3t_0(ji,jj,jk))*tmask(ji,jj,jk)).GE.1.e-6)  THEN 
-                           !IF(lwp) WRITE(numout,*) 'error in e3t0 with indiv cell vols', mig0(ji), mjg0(jj), jk, mbkt(ji,jj), ptab(ji,jj,jk), e3t_0(ji,jj,jk)
-                           IF(lwp) WRITE(numout,*) 'error in e3t0 with indiv cell vols'
+                           IF(lwp) WRITE(numout,*) 'error in e3t0 with indiv cell vols', mig0(ji), mjg0(jj), jk, ptab(ji,jj,jk), e3t_0(ji,jj,jk)
                            kindic_agr = kindic_agr + 1 
                         ENDIF
                      END DO
