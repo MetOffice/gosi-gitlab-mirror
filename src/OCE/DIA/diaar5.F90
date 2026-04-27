@@ -84,9 +84,9 @@ CONTAINS
       REAL(wp) ::   zaw, zbw, zrw, ztf
       REAL(wp)       ::                   zarho,           ztemp,           zsal
 #if defined key_agrif  /* COMPLEX is not yet coded with agrif... use real -> no reproducible sum... */
-      REAL(dp), SAVE :: ysvolssh, yssst, ysarho, ysarho2, ystemp, ystemp2, yssal, yssshice
+      REAL(wp), SAVE :: ysvolssh, yssst, ysarho, ysarho2, ystemp, ystemp2, yssal, yssshice
 #else
-      COMPLEX(dp), SAVE :: ysvolssh, yssst, ysarho, ysarho2, ystemp, ystemp2, yssal, yssshice    ! SAVE needed for the tiles
+      COMPLEX(wp), SAVE :: ysvolssh, yssst, ysarho, ysarho2, ystemp, ystemp2, yssal, yssshice    ! SAVE needed for the tiles
 #endif
       !
       REAL(wp), DIMENSION(8) ::   zdiag
@@ -101,23 +101,23 @@ CONTAINS
       !
       IF( .NOT. l_istiled .OR. ntile == 1 )  THEN  ! Do only for the first tile
 #if defined key_agrif  /* COMPLEX is not yet coded with agrif... use real -> no reproducible sum... */
-         ysvolssh = REAL(0._wp, kind = dp )
-         ystemp   = REAL(0._wp, kind = dp )
-         yssal    = REAL(0._wp, kind = dp )
-         ystemp2  = REAL(0._wp, kind = dp )
-         yssst    = REAL(0._wp, kind = dp )
-         ysarho   = REAL(0._wp, kind = dp )
-         ysarho2  = REAL(0._wp, kind = dp )
-         yssshice = REAL(0._wp, kind = dp )
+         ysvolssh = REAL(0._wp, kind = wp )
+         ystemp   = REAL(0._wp, kind = wp )
+         yssal    = REAL(0._wp, kind = wp )
+         ystemp2  = REAL(0._wp, kind = wp )
+         yssst    = REAL(0._wp, kind = wp )
+         ysarho   = REAL(0._wp, kind = wp )
+         ysarho2  = REAL(0._wp, kind = wp )
+         yssshice = REAL(0._wp, kind = wp )
 #else
-         ysvolssh = CMPLX(0._wp, kind = dp )
-         ystemp   = CMPLX(0._wp, kind = dp )
-         yssal    = CMPLX(0._wp, kind = dp )
-         ystemp2  = CMPLX(0._wp, kind = dp )
-         yssst    = CMPLX(0._wp, kind = dp )
-         ysarho   = CMPLX(0._wp, kind = dp )
-         ysarho2  = CMPLX(0._wp, kind = dp )
-         yssshice = CMPLX(0._wp, kind = dp )
+         ysvolssh = CMPLX(0._wp, kind = wp )
+         ystemp   = CMPLX(0._wp, kind = wp )
+         yssal    = CMPLX(0._wp, kind = wp )
+         ystemp2  = CMPLX(0._wp, kind = wp )
+         yssst    = CMPLX(0._wp, kind = wp )
+         ysarho   = CMPLX(0._wp, kind = wp )
+         ysarho2  = CMPLX(0._wp, kind = wp )
+         yssshice = CMPLX(0._wp, kind = wp )
 #endif
       ENDIF
       !

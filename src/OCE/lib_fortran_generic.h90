@@ -51,7 +51,9 @@
 #if defined LOCAL_ONLY || defined LOCAL_GLOBAL
 /**/
 /**/
-#   if defined OPERSUM && ( defined REALSP_TYPE || defined REALDP_TYPE )
+#   if defined OPERSUM && defined REALSP_TYPE
+#      define TYPEOUT   COMPLEX(sp)
+#   elif defined OPERSUM && defined REALDP_TYPE
 #      define TYPEOUT   COMPLEX(dp)
 #   else
 #      define TYPEOUT   TYPEIN
@@ -60,7 +62,9 @@
 #   if   defined OPERSUM
 #      if   defined INTEGER_TYPE
 #         define DEFAULT   0
-#      elif defined REALSP_TYPE || defined REALDP_TYPE
+#      elif defined REALSP_TYPE
+#         define DEFAULT   CMPLX(0._sp, kind = sp)
+#      elif defined REALDP_TYPE
 #         define DEFAULT   CMPLX(0._dp, kind = dp)
 #      endif
 #   elif defined OPERMIN
@@ -141,7 +145,14 @@
       !
 #   endif            
       DO jl = 1, ipl
-#   if defined OPERSUM && ( defined REALSP_TYPE || defined REALDP_TYPE )
+#   if defined OPERSUM && defined REALSP_TYPE
+         DO jk = 1, ipk
+            DO_2D( 0, 0, 0, 0 )
+               zztmp = ptab(DIMIN(ji+iisht,jj+ijsht,jk,jl)) * MASKNAME(ji,jj,jk)
+               CALL DDPDD( CMPLX( zztmp, kind = sp ), pout/**/ADDDIMOUT(jk,jl) )
+            END_2D
+         END DO
+#   elif defined OPERSUM && defined REALDP_TYPE
          DO jk = 1, ipk
             DO_2D( 0, 0, 0, 0 )
                zztmp = ptab(DIMIN(ji+iisht,jj+ijsht,jk,jl)) * MASKNAME(ji,jj,jk)
@@ -174,10 +185,16 @@
       !!----------------------------------------------------------------------
       CHARACTER(len=*), INTENT(in) ::   cdname  ! name of the calling subroutine
       TYPEIN/**/, DIMENSION(DIMIN(:,:,:,:)), INTENT(in) :: ptab     ! array on which operation is applied
-      CHARACTER(len=*),OPTIONAL, INTENT(in) ::   cdelay  ! tag of teh delayed comm
+      CHARACTER(len=*),OPTIONAL, INTENT(in) ::   cdelay  ! tag of the delayed comm
       !
       TYPEIN/**/DEFDIMOUT ::  pout 
-#   if defined OPERSUM && ( defined REALSP_TYPE || defined REALDP_TYPE )
+#   if defined OPERSUM && defined REALSP_TYPE
+      COMPLEX(sp)/**/DEFDIMOUT ::   ctmp
+      !!-----------------------------------------------------------------------
+      ctmp = local_/**/XDOPER/**/D/**/OPER( ptab )
+      CALL mpp_/**/OPER( cdname, ctmp, cdelay = cdelay )
+      pout = REAL( ctmp, KIND )
+#   elif defined OPERSUM && defined REALDP_TYPE
       COMPLEX(dp)/**/DEFDIMOUT ::   ctmp
       !!-----------------------------------------------------------------------
       ctmp = local_/**/XDOPER/**/D/**/OPER( ptab )

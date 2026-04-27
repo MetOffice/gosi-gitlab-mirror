@@ -27,7 +27,7 @@
 #         define TMP_TYPE      REAL(sp), DIMENSION(1) ::   work
 #      else 
 #         if defined OPERATION_SUM
-#            define TMP_TYPE      COMPLEX(dp), DIMENSION(:), ALLOCATABLE ::   work   /* real sum uses complex with ddpdd*/
+#            define TMP_TYPE      COMPLEX(sp), DIMENSION(:), ALLOCATABLE ::   work   /* real sum uses complex with ddpdd*/
 #         else 
 #            define TMP_TYPE      REAL(sp), DIMENSION(:), ALLOCATABLE ::   work
 #         endif 
@@ -52,6 +52,17 @@
 #      define DELAYBUFF zdpbuff
 #      define TYPENAME real_dp
 #   endif 
+#   if defined COMPLEXSP_TYPE
+#      define ARRAY_TYPE(i)    COMPLEX(sp)              , INTENT(inout) ::   ARRAY_IN(i)
+#      if defined DIM_0d
+#         define TMP_TYPE      COMPLEX(sp), DIMENSION(1) ::   work
+#      else 
+#         define TMP_TYPE      COMPLEX(sp), DIMENSION(:), ALLOCATABLE ::   work
+#      endif
+#      define MPI_TYPE MPI_COMPLEX
+#      define DELAYBUFF yspbuff
+#      define TYPENAME cplx_sp
+#   endif
 #   if defined COMPLEXDP_TYPE
 #      define ARRAY_TYPE(i)    COMPLEX(dp)              , INTENT(inout) ::   ARRAY_IN(i)
 #      if defined DIM_0d
@@ -86,8 +97,10 @@
 #   if defined OPERATION_SUM
 #      if defined INTEGER_TYPE || defined INTEGERDP_TYPE
 #         define MPI_OPERATION MPI_SUM
-#      else
-#         define MPI_OPERATION mpi_sumdd
+#      elif defined REALSP_TYPE || defined COMPLEXSP_TYPE
+#         define MPI_OPERATION mpi_sumdd_sp
+#      elif defined REALDP_TYPE || defined COMPLEXDP_TYPE
+#         define MPI_OPERATION mpi_sumdd_dp
 #      endif
 #      define OPT sum
 #   endif
@@ -96,7 +109,7 @@
       CHARACTER(len=*)         , INTENT(in   ) ::   cdname  ! name of the calling subroutine
       ARRAY_TYPE(:)   ! array or pointer of arrays on which the boundary condition is applied
       INTEGER        , OPTIONAL, INTENT(in   ) ::   kcom    ! optional communicator
-      CHARACTER(len=*),OPTIONAL, INTENT(in   ) ::   cdelay  ! tag of teh delayed comm
+      CHARACTER(len=*),OPTIONAL, INTENT(in   ) ::   cdelay  ! tag of the delayed comm
 #if ! defined key_mpi_off
       !
       TMP_TYPE
@@ -111,7 +124,7 @@
       !!-----------------------------------------------------------------------
       ipi = I_SIZE(ptab)   ! 1st dimension
       ALLOCATE(work(ipi))
-      work(:) = CMPLX( ARRAY_IN(:), kind = dp )
+      work(:) = CMPLX( ARRAY_IN(:), kind = PREC )
       CALL mpp_/**/OPT( cdname, work, kcom, cdelay )   ! sum over the mpi tasks using complex -> will use mpi_sumdd and ddpdd
       ARRAY_IN(:) = REAL(work(:), PREC)   ! return to real
       DEALLOCATE(work)

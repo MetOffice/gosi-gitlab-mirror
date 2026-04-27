@@ -96,6 +96,7 @@ MODULE lib_mpp
       MODULE PROCEDURE mppsum0d_real_sp, mppsum1d_real_sp
       MODULE PROCEDURE mppsum0d_real_dp, mppsum1d_real_dp
       MODULE PROCEDURE mppsum0d_cplx_dp, mppsum1d_cplx_dp
+      MODULE PROCEDURE mppsum0d_cplx_sp, mppsum1d_cplx_sp
    END INTERFACE mpp_sum
    
    INTERFACE mpp_minloc
@@ -106,6 +107,11 @@ MODULE lib_mpp
       MODULE PROCEDURE mpp_maxloc2d_sp, mpp_maxloc3d_sp
       MODULE PROCEDURE mpp_maxloc2d_dp, mpp_maxloc3d_dp
    END INTERFACE
+
+   INTERFACE DDPDD
+      MODULE PROCEDURE ddpdd_sp, ddpdd_dp
+   END INTERFACE
+
 
    TYPE, PUBLIC ::   PTR_4D_sp   !: array of 4D pointers (used in lbclnk and lbcnfd)
       REAL(sp), DIMENSION (:,:,:,:), POINTER ::   pt4d
@@ -134,7 +140,7 @@ MODULE lib_mpp
    INTEGER, PUBLIC ::   mpprank        ! process number  [ 0 - size-1 ]
    INTEGER, PUBLIC ::   mpi_comm_oce   ! opa local communicator
 
-   INTEGER :: MPI_SUMDD
+   INTEGER :: mpi_sumdd_sp, mpi_sumdd_dp
 
    ! Neighbourgs informations
    INTEGER,    PARAMETER, PUBLIC ::   n_hlsmax = 2
@@ -196,6 +202,7 @@ MODULE lib_mpp
       INTEGER(8) , DIMENSION(:), ALLOCATABLE ::   idpbuffin, idpbuffout
       REAL(   sp), DIMENSION(:), ALLOCATABLE ::   zspbuffin, zspbuffout
       REAL(   dp), DIMENSION(:), ALLOCATABLE ::   zdpbuffin, zdpbuffout
+      COMPLEX(sp), DIMENSION(:), ALLOCATABLE ::   yspbuffin, yspbuffout
       COMPLEX(dp), DIMENSION(:), ALLOCATABLE ::   ydpbuffin, ydpbuffout
    END TYPE DELAYARR
    TYPE( DELAYARR ), DIMENSION(nbdelay), PUBLIC ::   todelay
@@ -274,7 +281,8 @@ CONTAINS
       CALL mpi_comm_rank( mpi_comm_oce, mpprank, ierr )
       CALL mpi_comm_size( mpi_comm_oce, mppsize, ierr )
       !
-      CALL MPI_OP_CREATE(DDPDD_MPI, .TRUE., MPI_SUMDD, ierr)
+      CALL MPI_OP_CREATE(ddpdd_mpi_sp, .TRUE., mpi_sumdd_sp, ierr)
+      CALL MPI_OP_CREATE(ddpdd_mpi_dp, .TRUE., mpi_sumdd_dp, ierr)
       !
 #else
       mpi_comm_oce = -1   ! default
@@ -683,7 +691,7 @@ CONTAINS
 #  undef DIM_1d
 #  undef REALDP_TYPE
    !
-   !   ----   COMPLEX_DP needed for DDPDD
+   !   ----   COMPLEX needed for DDPDD
 #  define COMPLEXDP_TYPE
 #  define DIM_0d
 #     include "mpp_allreduce_generic.h90"
@@ -692,6 +700,15 @@ CONTAINS
 #     include "mpp_allreduce_generic.h90"
 #  undef DIM_1d
 #  undef COMPLEXDP_TYPE
+
+#  define COMPLEXSP_TYPE
+#  define DIM_0d
+#     include "mpp_allreduce_generic.h90"
+#  undef  DIM_0d
+#  define DIM_1d
+#     include "mpp_allreduce_generic.h90"
+#  undef DIM_1d
+#  undef COMPLEXSP_TYPE
    !
 #  undef OPERATION_SUM
 
@@ -1025,8 +1042,37 @@ CONTAINS
 #endif
    END SUBROUTINE mpp_ini_northgather
 
+   SUBROUTINE ddpdd_mpi_sp( ydda, yddb, ilen, itype )
+      !!---------------------------------------------------------------------
+      !!   Routine DDPDD_MPI: used by reduction operator MPI_SUMDD
+      !!
+      !!   Modification of original codes written by David H. Bailey
+      !!   This subroutine computes yddb(i) = ydda(i)+yddb(i)
+      !!---------------------------------------------------------------------
+      INTEGER                     , INTENT(in)    ::   ilen, itype
+      COMPLEX(sp), DIMENSION(ilen), INTENT(in)    ::   ydda
+      COMPLEX(sp), DIMENSION(ilen), INTENT(inout) ::   yddb
+      !
+      REAL(sp) :: zerr, zt1, zt2    ! local work variables
+      INTEGER  :: ji, ztmp           ! local scalar
+      !!---------------------------------------------------------------------
+      !
+      ztmp = itype   ! avoid compilation warning
+      !
+      DO ji=1,ilen
+      ! Compute ydda + yddb using Knuth's trick.
+         zt1  = real(ydda(ji)) + real(yddb(ji))
+         zerr = zt1 - real(ydda(ji))
+         zt2  = ((real(yddb(ji)) - zerr) + (real(ydda(ji)) - (zt1 - zerr))) &
+                + aimag(ydda(ji)) + aimag(yddb(ji))
 
-   SUBROUTINE DDPDD_MPI( ydda, yddb, ilen, itype )
+         ! The result is zt1 + zt2, after normalization.
+         yddb(ji) = cmplx ( zt1 + zt2, zt2 - ((zt1 + zt2) - zt1), sp )
+      END DO
+      !
+   END SUBROUTINE ddpdd_mpi_sp
+
+   SUBROUTINE ddpdd_mpi_dp( ydda, yddb, ilen, itype )
       !!---------------------------------------------------------------------
       !!   Routine DDPDD_MPI: used by reduction operator MPI_SUMDD
       !!
@@ -1054,7 +1100,7 @@ CONTAINS
          yddb(ji) = cmplx ( zt1 + zt2, zt2 - ((zt1 + zt2) - zt1), dp )
       END DO
       !
-   END SUBROUTINE DDPDD_MPI
+   END SUBROUTINE ddpdd_mpi_dp
 
 
    SUBROUTINE mpp_report( cdname, kpk, kpl, kpf, ld_lbc, ld_glb, ld_dlg )
@@ -1242,7 +1288,42 @@ CONTAINS
    END SUBROUTINE mpi_waitall
 
 #endif
-   ELEMENTAL SUBROUTINE DDPDD( ydda, yddb )
+
+   ELEMENTAL SUBROUTINE ddpdd_sp( ydda, yddb )
+      !!----------------------------------------------------------------------
+      !!               ***  ROUTINE DDPDD ***
+      !!
+      !! ** Purpose : Add a scalar element to a sum
+      !!
+      !!
+      !! ** Method  : The code uses the compensated summation with doublet
+      !!              (sum,error) emulated useing complex numbers. ydda is the
+      !!               scalar to add to the summ yddb
+      !!
+      !! ** Action  : This does only work for MPI.
+      !!
+      !! References : Using Acurate Arithmetics to Improve Numerical
+      !!              Reproducibility and Sability in Parallel Applications
+      !!              Yun HE and Chris H. Q. DING, Journal of Supercomputing 18, 259-277, 2001
+      !!----------------------------------------------------------------------
+      COMPLEX(sp), INTENT(in   ) ::   ydda
+      COMPLEX(sp), INTENT(inout) ::   yddb
+      !
+      REAL(sp) :: zerr, zt1, zt2  ! local work variables
+      !!-----------------------------------------------------------------------
+      !
+      ! Compute ydda + yddb using Knuth's trick.
+      zt1  = REAL(ydda) + REAL(yddb)
+      zerr = zt1 - REAL(ydda)
+      zt2  = ( (REAL(yddb) - zerr) + (REAL(ydda) - (zt1 - zerr)) )   &
+         &   + AIMAG(ydda)         + AIMAG(yddb)
+      !
+      ! The result is t1 + t2, after normalization.
+      yddb = CMPLX( zt1 + zt2, zt2 - ((zt1 + zt2) - zt1), sp )
+      !
+   END SUBROUTINE ddpdd_sp
+
+   ELEMENTAL SUBROUTINE ddpdd_dp( ydda, yddb )
       !!----------------------------------------------------------------------
       !!               ***  ROUTINE DDPDD ***
       !!
@@ -1274,7 +1355,7 @@ CONTAINS
       ! The result is t1 + t2, after normalization.
       yddb = CMPLX( zt1 + zt2, zt2 - ((zt1 + zt2) - zt1), dp )
       !
-   END SUBROUTINE DDPDD
+   END SUBROUTINE ddpdd_dp
 
    !!----------------------------------------------------------------------
    !!   ctl_stop, ctl_warn, get_unit, ctl_opn, ctl_nam, load_nml   routines
