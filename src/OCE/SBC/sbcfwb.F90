@@ -97,7 +97,7 @@ CONTAINS
       REAL(wp), DIMENSION(A2D(0)) ::   ztmsk_tospread, zerp_cor    !   -      -
 #endif
       REAL(wp), DIMENSION(A2D(0)) ::   zemp
-      COMPLEX(dp) ::   y_fwfnow  
+      COMPLEX(wp) ::   y_fwfnow  
       !
       NAMELIST/namsbc_fwb/rn_fwb0, nn_fwb_voltype, ln_hvolg_var, rn_hvolg_amp, rn_hvolg_trd, nn_hvolg_mth
       !!----------------------------------------------------------------------

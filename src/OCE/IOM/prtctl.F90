@@ -23,9 +23,9 @@ MODULE prtctl
    REAL(wp), DIMENSION(  :), ALLOCATABLE ::   u_ctl , v_ctl            ! previous velocity trend values
    REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   tra_ctl                  ! previous top trend values
 #else
-   COMPLEX(dp), DIMENSION(  :), ALLOCATABLE ::   t_ctl , s_ctl            ! previous tracer trend values
-   COMPLEX(dp), DIMENSION(  :), ALLOCATABLE ::   u_ctl , v_ctl            ! previous velocity trend values
-   COMPLEX(dp), DIMENSION(:,:), ALLOCATABLE ::   tra_ctl                  ! previous top trend values
+   COMPLEX(wp), DIMENSION(  :), ALLOCATABLE ::   t_ctl , s_ctl            ! previous tracer trend values
+   COMPLEX(wp), DIMENSION(  :), ALLOCATABLE ::   u_ctl , v_ctl            ! previous velocity trend values
+   COMPLEX(wp), DIMENSION(:,:), ALLOCATABLE ::   tra_ctl                  ! previous top trend values
 #endif
    !
    PUBLIC prt_ctl         ! called by all subroutines
@@ -166,8 +166,8 @@ CONTAINS
       INTEGER ::  jn, jl, kdir
       INTEGER ::  iis, iie, jjs, jje
       INTEGER ::  itra, inum
-      COMPLEX(dp)       ::   ylsum1, ylsum2     ! Summation results
-      COMPLEX(dp)       ::   yltmp1, yltmp2     ! Temporary variables
+      COMPLEX(wp)       ::   ylsum1, ylsum2     ! Summation results
+      COMPLEX(wp)       ::   yltmp1, yltmp2     ! Temporary variables
       INTEGER           ::   jk                 ! Loop index
       INTEGER           ::   isig               ! Number of significant digits in sums output
       CHARACTER(LEN=41) ::   clsum1, clsum2     ! String representation of sums
@@ -272,8 +272,8 @@ CONTAINS
                      yltmp1 = tra_ctl(jn,jl)
                      tra_ctl(jn,jl) = ylsum1
                   END SELECT
-                  CALL DDPDD( -1._dp * yltmp1, ylsum1 )
-                  IF ( PRESENT(ptab2d_2) .OR. PRESENT(ptab3d_2) ) CALL DDPDD( -1._dp * yltmp2, ylsum2 )
+                  CALL DDPDD( -1._wp * yltmp1, ylsum1 )
+                  IF ( PRESENT(ptab2d_2) .OR. PRESENT(ptab3d_2) ) CALL DDPDD( -1._wp * yltmp2, ylsum2 )
                END IF
                clsum1 = prt_ctl_write_sum( ylsum1, isig )
                IF ( PRESENT(ptab2d_2) .OR. PRESENT(ptab3d_2) ) THEN
@@ -323,13 +323,13 @@ CONTAINS
       !!
       !!----------------------------------------------------------------------
       REAL(wp), DIMENSION(:,:), INTENT(in) ::   ptab
-      COMPLEX(dp)                          ::   ydsum    ! Sum
+      COMPLEX(wp)                          ::   ydsum    ! Sum
       INTEGER                              ::   ji, jj   ! Loop indices
       !
-      ydsum = CMPLX( 0._wp, kind = dp )
+      ydsum = CMPLX( 0._wp, kind = wp )
       DO jj = 1, SIZE( ptab, 2 )
          DO ji = 1, SIZE( ptab, 1 )
-            CALL DDPDD( CMPLX( ptab(ji,jj), kind = dp ), ydsum )
+            CALL DDPDD( CMPLX( ptab(ji,jj), kind = wp ), ydsum )
          END DO
       END DO
       !
@@ -346,14 +346,14 @@ CONTAINS
       !!
       !!----------------------------------------------------------------------
       REAL(wp), DIMENSION(:,:,:), INTENT(in) ::   ptab
-      COMPLEX(dp)                            ::   ydsum        ! Sum
+      COMPLEX(wp)                            ::   ydsum        ! Sum
       INTEGER                    ::   ji, jj, jk   ! Loop indices
       !
-      ydsum = CMPLX( 0._wp, kind = dp )
+      ydsum = CMPLX( 0._wp, kind = wp )
       DO jk = 1, SIZE( ptab, 3 )
          DO jj = 1, SIZE( ptab, 2 )
             DO ji = 1, SIZE( ptab, 1 )
-               CALL DDPDD( CMPLX( ptab(ji,jj,jk), kind = dp ), ydsum )
+               CALL DDPDD( CMPLX( ptab(ji,jj,jk), kind = wp ), ydsum )
             END DO
          END DO
       END DO
@@ -374,7 +374,7 @@ CONTAINS
       !!             significand
       !!
       !!----------------------------------------------------------------------
-      COMPLEX(dp), INTENT(IN   ) ::   ydsum           ! Summands (REAL(ydsum) and AIMAG(ydsum))
+      COMPLEX(wp), INTENT(IN   ) ::   ydsum           ! Summands (REAL(ydsum) and AIMAG(ydsum))
       INTEGER, INTENT(IN   )     ::   ksig            ! Requested number of significant digits
       CHARACTER(LEN=ksig+7)      ::   cdsum           ! Converted value (string of length ksig+7)
       !
