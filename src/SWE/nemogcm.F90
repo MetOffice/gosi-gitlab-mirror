@@ -309,6 +309,8 @@ CONTAINS
 
       !                                      ! Icebergs
                            ln_icebergs = .false.
+                           ln_berg_cpl = .false.
+                           ln_cpl_asynchrone = .false. 
       !                                      ! ice shelf
                            ln_isf = .false.
 

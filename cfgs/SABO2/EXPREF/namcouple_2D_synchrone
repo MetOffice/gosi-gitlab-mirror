@@ -1,0 +1,46 @@
+# This is a typical input file for OASIS3-MCT, using NetCDF 
+# format for restart input files. OASIS3-MCT reads in this file 
+# at run time. Don't hesitate to ask precisions or make 
+# suggestions (oasishelp@cerfacs.fr)
+#
+# Any line beginning with # is ignored. Blank lines are not allowed
+####################################################################
+$NFIELDS 
+4
+$END
+############################################
+$RUNTIME 
+11232000
+$END
+############################################
+$NLOGPRT 
+0 0 1
+$END
+############################################
+$STRINGS
+# -------------------------
+#1) 11 fields Sent by OCE (2D+3D bundles here) received by SAB
+#nl
+# -------------------------
+#
+# a) sea surface +r3t (+ sea_ice if key_si3 (case coded inside icbcpl.F90))
+# oce -ssState grid T,U,V --> sab
+O_ss_T:O_ss_U:O_ss_V B_ss_T:B_ss_U:B_ss_V 1 21600 0 rst_ss_2D_o2.nc EXPORTED
+180 148 180 148 torc tsab LAG=0
+P 0 P 0
+#
+# oce -- 3D uu, vv, ts  --> sab
+#O_Uu_3D:O_Vv_3D:O_Tt_3D B_Uu_3D:B_Vv_3D:B_Tt_3D 1 10800 0 rst_UuVvTs_o2.nc EXPORTED
+#180 148 180 148 torc tsab LAG=10800
+#P 0 P 0
+#
+# -------------------------
+# 2) 2 fields sent by SAB received by OCE
+# -------------------------
+#
+# sab -- freshWater+Heat_Flux --> oce
+Bberg_fx Oberg_fx 1 21600 0 rst_Bberg_f_o2.nc EXPORTED
+180 148 180 148 tsab torc LAG=0
+P 0 P 0
+#
+$END 

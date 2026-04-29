@@ -33,7 +33,8 @@ MODULE icbini
    PRIVATE
 
    PUBLIC   icb_init  ! routine called in nemogcm.F90 module
-
+   PUBLIC   icb_set_nlvlcpl ! routine called in icbcpl module (NEMO/SAB coupling)
+   PUBLIC   icb_nlvl700_cpl ! routine called in icbcpl module (NEMO/SAB coupling) 
    CHARACTER(len=100)                                 ::   cn_dir = './'   !: Root directory for location of icb files
    TYPE(FLD_N)                                        ::   sn_icb          !: information about the calving file to be read
    TYPE(FLD), PUBLIC, ALLOCATABLE     , DIMENSION(:)  ::   sf_icb          !: structure: file information, fields read
@@ -73,7 +74,7 @@ CONTAINS
       !
       CALL icb_nam               ! Read and print namelist parameters
       !
-      IF( .NOT. ln_icebergs )   RETURN
+      IF( ln_icebergs ) THEN
       !
       ALLOCATE( utau_icb(jpi,jpj), vtau_icb(jpi,jpj) )
       !
@@ -83,33 +84,36 @@ CONTAINS
       !                          ! open ascii output file or files for iceberg status information
       !                          ! note that we choose to do this on all processors since we cannot
       !                          ! predict where icebergs will be ahead of time
-      IF( nn_verbose_level > 0) THEN
-         CALL ctl_opn( numicb, 'icebergs.stat', 'REPLACE', 'FORMATTED', 'SEQUENTIAL', -1, numout, lwp, narea )
-      ENDIF
-
-      ! set parameters (mostly from namelist)
+         ! initializing ICB inside only if computing ICB inside NEMO or in coupled mode, if ICB is computed by SAB
+      IF ( ( .NOT. ln_berg_cpl) .OR. ( nn_components == jp_iam_icb ) ) THEN
       !
-      berg_dt         = pdt
-      first_width (:) = SQRT(  rn_initial_mass(:) / ( rn_LoW_ratio * rn_rho_bergs * rn_initial_thickness(:) )  )
-      first_length(:) = rn_LoW_ratio * first_width(:)
-      rho_berg_1_oce  = rn_rho_bergs / pp_rho_seawater  ! scale factor used for convertion thickness to draft
-      !
+         IF( nn_verbose_level > 0) THEN
+            CALL ctl_opn( numicb, 'icebergs.stat', 'REPLACE', 'FORMATTED', 'SEQUENTIAL', -1, numout, lwp, narea )
+         ENDIF
+      
+         ! set parameters (mostly from namelist)
+         !  
+         berg_dt         = pdt
+         first_width (:) = SQRT(  rn_initial_mass(:) / ( rn_LoW_ratio * rn_rho_bergs * rn_initial_thickness(:) )  )
+         first_length(:) = rn_LoW_ratio * first_width(:)
+         rho_berg_1_oce  = rn_rho_bergs / pp_rho_seawater  ! scale factor used for convertion thickness to draft
+      !  
       ! deepest level affected by icebergs
       ! can be tuned but the safest is this 
       ! (with z* and z~ the depth of each level change overtime, so the more robust micbkb is jpk)
-      micbkb = jpk
+         micbkb = jpk              
 
-      berg_grid%mbasid       (:,:)   = -99
-      berg_grid%calving      (:,:)   = 0._wp
-      berg_grid%calving_hflx (:,:)   = 0._wp
-      berg_grid%stored_heat  (:,:)   = 0._wp
-      berg_grid%floating_melt(:,:)   = 0._wp
-      berg_grid%maxclass     (:,:)   = nclasses
-      berg_grid%stored_ice   (:,:,:) = 0._wp
-      berg_grid%tmp          (:,:)   = 0._wp
-      src_calving            (:,:)   = 0._wp
-      src_calving_hflx       (:,:)   = 0._wp
-      src_basin              (:,:)   = 0._wp
+         berg_grid%mbasid       (:,:)   = -99
+         berg_grid%calving      (:,:)   = 0._wp
+         berg_grid%calving_hflx (:,:)   = 0._wp
+         berg_grid%stored_heat  (:,:)   = 0._wp
+         berg_grid%floating_melt(:,:)   = 0._wp
+         berg_grid%maxclass     (:,:)   = nclasses
+         berg_grid%stored_ice   (:,:,:) = 0._wp
+         berg_grid%tmp          (:,:)   = 0._wp
+         src_calving            (:,:)   = 0._wp
+         src_calving_hflx       (:,:)   = 0._wp
+         src_basin              (:,:)   = 0._wp
 
       !                          ! domain for icebergs
       ! for the north fold we work out which points communicate by asking
@@ -118,26 +122,26 @@ CONTAINS
       !
       ! pack i and j together using a scaling of a power of 10
       ! (PM) use 100000 because eORCA36 for example run on more than 10 000 processors
-      nicbpack = 100000
-      IF( (jpiglo >= nicbpack) .OR. (jpjglo*nicbpack+jpiglo > HUGE(src_calving)) )   CALL ctl_stop( 'icbini: processor index packing failure' )
-      nicbfldproc(:) = -1
-      ! src_calving and src_calving_hflx init : important for mpp exchanges and North fold
-      ! src_calving contains a unique index for each point of the grid (that "gather" its global ji and jj in one number)
-      DO_2D( 1, 1, 1, 1 )
-         src_calving_hflx(ji,jj) = narea
-         src_calving     (ji,jj) = nicbpack * mjg(jj,nn_hls) + mig(ji,nn_hls)
-      END_2D
+         nicbpack = 100000
+         IF( (jpiglo >= nicbpack) .OR. (jpjglo*nicbpack+jpiglo > HUGE(src_calving)) )   CALL ctl_stop( 'icbini: processor index packing failure' )
+         nicbfldproc(:) = -1
+         ! src_calving and src_calving_hflx init : important for mpp exchanges and North fold
+         ! src_calving contains a unique index for each point of the grid (that "gather" its global ji and jj in one number)
+         DO_2D( 1, 1, 1, 1 )
+            src_calving_hflx(ji,jj) = narea
+            src_calving     (ji,jj) = nicbpack * mjg(jj,nn_hls) + mig(ji,nn_hls)
+         END_2D
       
-      CALL lbc_lnk( 'icbini', src_calving_hflx, 'T', 1._wp)
-      CALL lbc_lnk( 'icbini', src_calving     , 'T', 1._wp)
+         CALL lbc_lnk( 'icbini', src_calving_hflx, 'T', 1._wp)
+         CALL lbc_lnk( 'icbini', src_calving     , 'T', 1._wp)
 
-      !ricb_left and right :  ji-local-destination index for east-west boundary exchange 
+         !ricb_left and right :  ji-local-destination index for east-west boundary exchange 
 
-      ricb_left = REAL( MOD( INT( src_calving( MAX(Nis0-1,-1) , jpj/2 ) ), nicbpack ) ,wp) - (nn_hls - 1)  
-      ricb_right = REAL( MOD( INT( src_calving( MIN(Nie0+1,jpi) , jpj/2 ) ), nicbpack ) ,wp) - (nn_hls - 1)
+         ricb_left = REAL( MOD( INT( src_calving( MAX(Nis0-1,-1) , jpj/2 ) ), nicbpack ) ,wp) - (nn_hls - 1)  
+         ricb_right = REAL( MOD( INT( src_calving( MIN(Nie0+1,jpi) , jpj/2 ) ), nicbpack ) ,wp) - (nn_hls - 1)
 
-      ! north fold
-      IF( l_IdoNFold ) THEN
+         ! north fold
+         IF( l_IdoNFold ) THEN
          
          !! ---------------------------------------------------
          !! INITIALIZING ARRAYS FOR bergs through NORTH Fold 
@@ -154,177 +158,182 @@ CONTAINS
 
          ! see nemo manual section E.1. North Pole Folding around a T-Point     
          
-         nicbfldborder(:) = -1
+            nicbfldborder(:) = -1
 
-         DO ji = 1, jpi
-           DO jj = 1, jpj
+            DO ji = 1, jpi
+              DO jj = 1, jpj
            
-           ! src_calving has been called by lbc_lnk. Before that we had everywhere
-           ! INT(src_calving) = mjg * nicbpack + mig  
+              ! src_calving has been called by lbc_lnk. Before that we had everywhere
+              ! INT(src_calving) = mjg * nicbpack + mig  
            
-           ! So, the following if-test is .false. for every point of the nfld halo
+              ! So, the following if-test is .false. for every point of the nfld halo
            
-             IF( (mjg(jj,nn_hls) * nicbpack + mig(ji,nn_hls))   == INT( src_calving(ji,jj) )  ) THEN
+                IF( (mjg(jj,nn_hls) * nicbpack + mig(ji,nn_hls))   == INT( src_calving(ji,jj) )  ) THEN
                 
-                !! for each ji, jj increases until the first halo point is found 
-                !! (either to the left or to the right of the Nfold pivot point ) 
+                   !! for each ji, jj increases until the first halo point is found 
+                   !! (either to the left or to the right of the Nfold pivot point ) 
 
-                nicbfldborder(ji) = mjg(jj,nn_hls) - (nn_hls - 1)
-                nicbfldpts(ji) = INT( src_calving(ji,jj+1) )
-                nicbflddest(ji) = INT( src_calving_hflx(ji,jj+1) )
+                   nicbfldborder(ji) = mjg(jj,nn_hls) - (nn_hls - 1)
+                   nicbfldpts(ji) = INT( src_calving(ji,jj+1) )
+                   nicbflddest(ji) = INT( src_calving_hflx(ji,jj+1) )
 
-              ENDIF
-            END DO ! Do jpj
-         END DO ! Do jpi
+                 ENDIF
+               END DO ! Do jpj
+            END DO ! Do jpi
         
 
-         ! work out list of unique processors to talk to
-         ! pack them into a fixed size array where empty slots are marked by a -1
-         DO ji = Nis0, Nie0
-            ii = nicbflddest(ji)
-            IF( ii .GT. 0 ) THEN     ! Needed because land suppression can mean
+            ! work out list of unique processors to talk to
+            ! pack them into a fixed size array where empty slots are marked by a -1
+            DO ji = Nis0, Nie0
+               ii = nicbflddest(ji)
+               IF( ii .GT. 0 ) THEN     ! Needed because land suppression can mean
                                      ! that unused points are not set in edge haloes
-               DO jn = 1, jpni
-                  ! work along array until we find an empty slot
-                  IF( nicbfldproc(jn) == -1 ) THEN
-                     nicbfldproc(jn) = ii
-                     EXIT                             !!gm EXIT should be avoided: use DO WHILE expression instead
-                  ENDIF
-                  ! before we find an empty slot, we may find processor number is already here so we exit
-                  IF( nicbfldproc(jn) == ii ) EXIT
-               END DO
-            ENDIF
-         END DO
-      ENDIF
-      !
-      IF( nn_verbose_level > 0) THEN
-         WRITE(numicb,*) 'processor ', narea
-         WRITE(numicb,*) 'jpi, jpj   ', jpi, jpj
-         WRITE(numicb,*) 'Nis0, Nie0 ', Nis0, Nie0
-         WRITE(numicb,*) 'Njs0, Nje0 ', Njs0, Nje0
-         WRITE(numicb,*) 'berg left       ', ricb_left
-         WRITE(numicb,*) 'berg right      ', ricb_right
-         jj = jpj/2
-         WRITE(numicb,*) "central j line:"
-         WRITE(numicb,*) "i processor"
-         WRITE(numicb,*) (INT(src_calving_hflx(ji,jj)), ji=1,jpi)
-         WRITE(numicb,*) "i point"
-         WRITE(numicb,*) (INT(src_calving(ji,jj)), ji=1,jpi)
-         ji = jpi/2
-         WRITE(numicb,*) "central i line:"
-         WRITE(numicb,*) "j processor"
-         WRITE(numicb,*) (INT(src_calving_hflx(ji,jj)), jj=1,jpj)
-         WRITE(numicb,*) "j point"
-         WRITE(numicb,*) (INT(src_calving(ji,jj)), jj=1,jpj)
-         IF( l_IdoNFold ) THEN
-            WRITE(numicb,*) 'north fold destination points '
-            WRITE(numicb,*) nicbfldpts
-            WRITE(numicb,*) 'north fold destination procs  '
-            WRITE(numicb,*) nicbflddest
-            WRITE(numicb,*) 'north fold destination proclist  '
-            WRITE(numicb,*) nicbfldproc
-            WRITE(numicb,*) 'north fold border j-index  '
-            WRITE(numicb,*) nicbfldborder
-
+                  DO jn = 1, jpni
+                     ! work along array until we find an empty slot
+                     IF( nicbfldproc(jn) == -1 ) THEN
+                        nicbfldproc(jn) = ii
+                        EXIT                             !!gm EXIT should be avoided: use DO WHILE expression instead
+                     ENDIF
+                     ! before we find an empty slot, we may find processor number is already here so we exit
+                     IF( nicbfldproc(jn) == ii ) EXIT
+                  END DO
+               ENDIF
+            END DO
          ENDIF
-         CALL flush(numicb)
-      ENDIF
+         !
+         IF( nn_verbose_level > 0) THEN
+            WRITE(numicb,*) 'processor ', narea
+            WRITE(numicb,*) 'jpi, jpj   ', jpi, jpj
+            WRITE(numicb,*) 'Nis0, Nie0 ', Nis0, Nie0
+            WRITE(numicb,*) 'Njs0, Nje0 ', Njs0, Nje0
+            WRITE(numicb,*) 'berg left       ', ricb_left
+            WRITE(numicb,*) 'berg right      ', ricb_right
+            jj = jpj/2
+            WRITE(numicb,*) "central j line:"
+            WRITE(numicb,*) "i processor"
+            WRITE(numicb,*) (INT(src_calving_hflx(ji,jj)), ji=1,jpi)
+            WRITE(numicb,*) "i point"
+            WRITE(numicb,*) (INT(src_calving(ji,jj)), ji=1,jpi)
+            ji = jpi/2
+            WRITE(numicb,*) "central i line:"
+            WRITE(numicb,*) "j processor"
+            WRITE(numicb,*) (INT(src_calving_hflx(ji,jj)), jj=1,jpj)
+            WRITE(numicb,*) "j point"
+            WRITE(numicb,*) (INT(src_calving(ji,jj)), jj=1,jpj)
+            IF( l_IdoNFold ) THEN
+               WRITE(numicb,*) 'north fold destination points '
+               WRITE(numicb,*) nicbfldpts
+               WRITE(numicb,*) 'north fold destination procs  '
+               WRITE(numicb,*) nicbflddest
+               WRITE(numicb,*) 'north fold destination proclist  '
+               WRITE(numicb,*) nicbfldproc
+               WRITE(numicb,*) 'north fold border j-index  '
+               WRITE(numicb,*) nicbfldborder
+
+            ENDIF
+            CALL flush(numicb)
+         ENDIF
       
-      src_calving     (:,:) = 0._wp
-      src_calving_hflx(:,:) = 0._wp
+         src_calving     (:,:) = 0._wp
+         src_calving_hflx(:,:) = 0._wp
 
-      ! assign each new iceberg with a unique number constructed from the processor number
-      ! and incremented by the total number of processors
-      num_bergs(:) = 0
-      num_bergs(1) = narea - jpnij
+         ! assign each new iceberg with a unique number constructed from the processor number
+         ! and incremented by the total number of processors
+         num_bergs(:) = 0
+         num_bergs(1) = narea - jpnij
 
-      ! Initialise icb basin
-      basicb_num(:) = -99 ! value for the 'test' basin (nn_icb_basins+1 if 'test' iceberg
-      IF ( ln_icb_bas ) THEN
-         CALL iom_open(cn_icbbasins_file, inum)
-         CALL iom_get  ( inum, jpdom_global , cn_icbbasins_var2d, src_basin)
-         CALL iom_get  ( inum, jpdom_unknown, cn_icbbasins_var1d, basicb_num(1:nn_icb_basins))
-         CALL iom_close( inum )
+         ! Initialise icb basin
+         basicb_num(:) = -99 ! value for the 'test' basin (nn_icb_basins+1 if 'test' iceberg
+         IF ( ln_icb_bas ) THEN
+            CALL iom_open(cn_icbbasins_file, inum)
+            CALL iom_get  ( inum, jpdom_global , cn_icbbasins_var2d, src_basin)
+            CALL iom_get  ( inum, jpdom_unknown, cn_icbbasins_var1d, basicb_num(1:nn_icb_basins))
+            CALL iom_close( inum )
 
-         ! define berg_grid%mbasid (if still -999 at calving point => error
-         berg_grid%mbasid(:,:) = -999
-         DO jb = 1,nicbbas
+            ! define berg_grid%mbasid (if still -999 at calving point => error
+            berg_grid%mbasid(:,:) = -999
+            DO jb = 1,nicbbas
+               DO_2D( 0, 0, 0, 0 )
+                  IF( INT( src_basin(ji,jj) ) == INT ( basicb_num(jb) ) ) berg_grid%mbasid(ji,jj) = jb
+               END_2D
+            END DO
+
+            nerr=0
             DO_2D( 0, 0, 0, 0 )
-               IF( INT( src_basin(ji,jj) ) == INT ( basicb_num(jb) ) ) berg_grid%mbasid(ji,jj) = jb
+               IF( (berg_grid%calving(ji,jj) /= 0.0_wp) .AND. (berg_grid%mbasid(ji,jj) == -999) ) nerr=nerr+1
             END_2D
-         END DO
-
-         nerr=0
-         DO_2D( 0, 0, 0, 0 )
-            IF( (berg_grid%calving(ji,jj) /= 0.0_wp) .AND. (berg_grid%mbasid(ji,jj) == -999) ) nerr=nerr+1
-         END_2D
-         IF (nerr > 0) CALL ctl_stop( 'failed to initialise basin number' )
-      END IF
+            IF (nerr > 0) CALL ctl_stop( 'failed to initialise basin number' )
+         END IF
 
 
-      ! stop NEMO if (nn_test_icebergs <= 0), while using the test_icebergs option
-      IF( ( ln_use_test ) .AND. ( nn_test_icebergs <= 0 ) ) CALL ctl_stop('icbini: You are using the test-icebergs option but the number of icebergs is 0 or negative')
+         ! stop NEMO if (nn_test_icebergs <= 0), while using the test_icebergs option
+         IF( ( ln_use_test ) .AND. ( nn_test_icebergs <= 0 ) ) CALL ctl_stop('icbini: You are using the test-icebergs option but the number of icebergs is 0 or negative')
 
-      IF( ( .NOT. ln_use_test )  .AND. (  .NOT. ln_use_calving ) )  THEN   ! this if-condition is the default case :
+         IF( ( .NOT. ln_use_test )  .AND. (  .NOT. ln_use_calving ) )  THEN   ! this if-condition is the default case :
                                                                  ! the user did not write any parameter in namelist_cfg
                                                                  ! so there is no iceberg source in the namelist
 
-         ! if no restart to be read at first time step (which could contain icebergs), send E R R O R and STOP Nemo 
-         IF (  ( kt == 1 )  .AND. ( .NOT. ln_rstart ) ) THEN
-            CALL ctl_stop('icbini: You are using the Iceberg module but there is no iceberg source at all, so STOP ! you are wasting your time !!')
+               ! if no restart to be read at first time step (which could contain icebergs), send E R R O R and STOP Nemo 
+            IF (  ( kt == 1 )  .AND. ( .NOT. ln_rstart ) ) THEN
+               CALL ctl_stop('icbini: You are using the Iceberg module but there is no iceberg source at all, so STOP ! you are wasting your time !!')
 
-         ! else (explicitely,  If kt > 1 or if there is a restart to be read), just leave a warning
-         ELSE
+            ! else (explicitely,  If kt > 1 or if there is a restart to be read), just leave a warning
+            ELSE
                  
-            WRITE(numout,*)
-            WRITE(numout,*) '    W A R N I N G !!!'
-            WRITE(numout,*)
-            WRITE(numout,*) '    ==>>> icbini: there is no iceberg source in the namelist (see namberg) !!'
+               WRITE(numout,*)
+               WRITE(numout,*) '    W A R N I N G !!!'
+               WRITE(numout,*)
+               WRITE(numout,*) '    ==>>> icbini: there is no iceberg source in the namelist (see namberg) !!'
          
+            ENDIF
          ENDIF
-      ENDIF
       
-      ! when not generating test icebergs we need to setup calving file
-      IF( ln_use_calving ) THEN
+         ! when not generating test icebergs we need to setup calving file
+         IF( ln_use_calving ) THEN
+            !
+            ! maximum distribution class array does not change in time so read it once
+            cl_sdist = TRIM( cn_dir )//TRIM( sn_icb%clname )
+            CALL iom_open ( cl_sdist, inum )                              ! open file
+            ivar = iom_varid( inum, 'maxclass', ldstop=.FALSE. )
+            IF( ivar > 0 ) THEN
+               CALL iom_get  ( inum, jpdom_global, 'maxclass', src_calving )   ! read the max distribution array
+               berg_grid%maxclass(:,:) = INT( src_calving )
+               src_calving(:,:) = 0._wp
+            ENDIF
+            CALL iom_close( inum )                                     ! close file
+            !
+            IF( nn_verbose_level > 0) THEN
+               WRITE(numicb,*)
+               WRITE(numicb,*) '          calving read in a file'
+            ENDIF
+            ALLOCATE( sf_icb(1), STAT=istat1 )         ! Create sf_icb structure (calving)
+            ALLOCATE( sf_icb(1)%fnow(jpi,jpj,1), STAT=istat2 )
+            ALLOCATE( sf_icb(1)%fdta(jpi,jpj,1,2), STAT=istat3 )
+            IF( istat1+istat2+istat3 > 0 ) THEN
+               CALL ctl_stop( 'sbc_icb: unable to allocate sf_icb structure' )   ;   RETURN
+            ENDIF
+            !                                          ! fill sf_icb with the namelist (sn_icb) and control print
+            CALL fld_fill( sf_icb, (/ sn_icb /), cn_dir, 'icb_init', 'read calving data', 'namicb' )
+            !
+         ENDIF 
          !
-         ! maximum distribution class array does not change in time so read it once
-         cl_sdist = TRIM( cn_dir )//TRIM( sn_icb%clname )
-         CALL iom_open ( cl_sdist, inum )                              ! open file
-         ivar = iom_varid( inum, 'maxclass', ldstop=.FALSE. )
-         IF( ivar > 0 ) THEN
-            CALL iom_get  ( inum, jpdom_global, 'maxclass', src_calving )   ! read the max distribution array
-            berg_grid%maxclass(:,:) = INT( src_calving )
-            src_calving(:,:) = 0._wp
-         ENDIF
-         CALL iom_close( inum )                                     ! close file
+         IF( ln_rstart ) THEN
+            CALL icb_rst_read()
+            l_restarted_bergs = .TRUE.
+         END IF
          !
-         IF( nn_verbose_level > 0) THEN
-            WRITE(numicb,*)
-            WRITE(numicb,*) '          calving read in a file'
-         ENDIF
-         ALLOCATE( sf_icb(1), STAT=istat1 )         ! Create sf_icb structure (calving)
-         ALLOCATE( sf_icb(1)%fnow(jpi,jpj,1), STAT=istat2 )
-         ALLOCATE( sf_icb(1)%fdta(jpi,jpj,1,2), STAT=istat3 )
-         IF( istat1+istat2+istat3 > 0 ) THEN
-            CALL ctl_stop( 'sbc_icb: unable to allocate sf_icb structure' )   ;   RETURN
-         ENDIF
-         !                                          ! fill sf_icb with the namelist (sn_icb) and control print
-         CALL fld_fill( sf_icb, (/ sn_icb /), cn_dir, 'icb_init', 'read calving data', 'namicb' )
+         IF( ln_use_test )   CALL icb_ini_gen( Kmm )
          !
-      ENDIF 
-      !
-      IF( ln_rstart ) THEN
-         CALL icb_rst_read()
-         l_restarted_bergs = .TRUE.
-      END IF
-      !
-      IF( ln_use_test )   CALL icb_ini_gen( Kmm )
-      !
-      IF( nsample_rate > 0 ) CALL icb_trj_init( nitend )
-      !
-      CALL icb_dia_init()
-      !
-      IF( nn_verbose_level >= 2 )   CALL icb_utl_print('icb_init, initial status', nit000-1)
+         IF( nsample_rate > 0 ) CALL icb_trj_init( nitend )
+         !
+         CALL icb_dia_init()
+         !
+         IF( nn_verbose_level >= 2 )   CALL icb_utl_print('icb_init, initial status', nit000-1)
+         !
+      ENDIF ! endif ( .NOT. ln_berg_cpl) .OR. ( nn_components == jp_iam_icb )
+      !  
+   ENDIF ! endif ln_icebergs
+
       !
    END SUBROUTINE icb_init
 
@@ -433,7 +442,8 @@ CONTAINS
          &              ln_use_calving , rn_speed_limit , cn_dir, sn_icb      , ln_M2016             ,   &
          &              cn_icbrst_indir, cn_icbrst_in   , cn_icbrst_outdir    , cn_icbrst_out        ,   &
          &              ln_icb_grd     , ln_use_test    , ln_icb_bas          , ln_rst_test_bas      ,   &
-         &              cn_icbbasins_file, cn_icbbasins_var2d  , cn_icbbasins_var1d   , nn_icb_basins
+         &              cn_icbbasins_file, cn_icbbasins_var2d  , cn_icbbasins_var1d   , nn_icb_basins,   &
+         &              ln_berg_cpl, ln_cpl_asynchrone, ln_cpl_nlvlcut, nn_lvlcut_cpl 
       !!----------------------------------------------------------------------
 
 #if defined key_agrif
@@ -466,84 +476,100 @@ CONTAINS
          RETURN
       ENDIF
       !
-      IF( nn_test_icebergs > nclasses ) THEN
-         IF(lwp) WRITE(numout,*)
-         IF(lwp) WRITE(numout,*) '   ==>>>   Resetting of nn_test_icebergs to ', nclasses
-         nn_test_icebergs = nclasses
-      ENDIF
-      !
-      IF(lwp) THEN                  ! control print
-         WRITE(numout,*)
-         WRITE(numout,*) 'icb_nam : iceberg initialization through namberg namelist read'
-         WRITE(numout,*) '~~~~~~~~ '
-         WRITE(numout,*) '   Calculate budgets                                            ln_bergdia       = ', ln_bergdia
-         WRITE(numout,*) '   Number of days (or every time step if = -1) between sampling of position for trajectory storage   rn_sample_rate = ', rn_sample_rate_days
-         WRITE(numout,*) '   Mass thresholds between iceberg classes (kg)                 rn_initial_mass     ='
-         DO jn = 1, nclasses
-            WRITE(numout,'(a,f15.2)') '                                                                ', rn_initial_mass(jn)
-         ENDDO
-         WRITE(numout,*) '   Fraction of calving to apply to this class (non-dim)         rn_distribution     ='
-         DO jn = 1, nclasses
-            WRITE(numout,'(a,f10.4)') '                                                                ', rn_distribution(jn)
-         END DO
-         WRITE(numout,*) '   Ratio between effective and real iceberg mass (non-dim)      rn_mass_scaling     = '
-         DO jn = 1, nclasses
-            WRITE(numout,'(a,f10.2)') '                                                                ', rn_mass_scaling(jn)
-         END DO
-         WRITE(numout,*) '   Total thickness of newly calved bergs (m)                    rn_initial_thickness = '
-         DO jn = 1, nclasses
-            WRITE(numout,'(a,f10.2)') '                                                                ', rn_initial_thickness(jn)
-         END DO
-         WRITE(numout,*) '   Number of days (or every time step if = -1) between verbose messages     rn_verbose_write    = ', rn_verbose_write_days
-         WRITE(numout,*) '   Iceberg melt by basin activated                              ln_icb_bas          = ',ln_icb_bas
-         IF ( ln_icb_bas ) THEN
-            WRITE(numout,*) '      basin file is ',TRIM(cn_icbbasins_file)
-            WRITE(numout,*) '         basin id source map variable is ',TRIM(cn_icbbasins_var2d)
-            WRITE(numout,*) '         basin id list variable is ',TRIM(cn_icbbasins_var1d)
-            WRITE(numout,*) '         total number of basins is nn_icb_basins = ',nn_icb_basins
-         END IF
-
-         WRITE(numout,*) '   Density of icebergs                           rn_rho_bergs  = ', rn_rho_bergs
-         WRITE(numout,*) '   Initial ratio L/W for newly calved icebergs   rn_LoW_ratio  = ', rn_LoW_ratio
-         WRITE(numout,*) '   Turn on more verbose output                          level  = ', nn_verbose_level
-         WRITE(numout,*) '   Use first order operator splitting for thermodynamics    ',   &
-            &                    'use_operator_splitting = ', ln_operator_splitting
-         WRITE(numout,*) '   Fraction of erosion melt flux to divert to bergy bits    ',   &
-            &                    'bits_erosion_fraction = ', rn_bits_erosion_fraction
-
-         WRITE(numout,*) '   Use icb module modification from Merino et al. (2016) : ln_M2016 = ', ln_M2016
-         WRITE(numout,*) '       ground icebergs if icb bottom lvl hit the oce bottom level : ln_icb_grd = ', ln_icb_grd
-         
-         WRITE(numout,*) '   Shift of sea-ice concentration in erosion flux modulation ',   &
-            &                    '(0<sicn_shift<1)    rn_sicn_shift  = ', rn_sicn_shift
-         WRITE(numout,*) '   Do not add freshwater flux from icebergs to ocean                ',   &
-            &                    '                  passive_mode            = ', ln_passive_mode
-         WRITE(numout,*) '   Time average the weight on the ocean   time_average_weight       = ', ln_time_average_weight
-         WRITE(numout,*) '   Use the iceberg test option                         ln_use_test  = ', ln_use_test
-         WRITE(numout,*) '   Create icebergs in absence of a restart file   nn_test_icebergs  = ', nn_test_icebergs
-         WRITE(numout,*) '                   in lon/lat box                                   = ', rn_test_box
-         WRITE(numout,*) '   Use calving data option                          ln_use_calving  = ', ln_use_calving
-         WRITE(numout,*) '   CFL speed limit for a berg            speed_limit                = ', rn_speed_limit
-         WRITE(numout,*) '   Writing Iceberg status information to icebergs.stat file        '
-      ENDIF
-      !
-      ! ensure that the sum of berg input distribution is equal to one
-      zfact = SUM( rn_distribution )
-      IF( zfact /= 1._wp .AND. 0_wp /= zfact ) THEN
-         rn_distribution(:) = rn_distribution(:) / zfact
+       IF ( ln_berg_cpl .AND. (nn_components /= jp_iam_icb) ) THEN
+         !
+         CALL icb_set_nlvlcpl()         ! setting value of nlvlsab_cpl 
+         !
          IF(lwp) THEN
-            WRITE(numout,*)
-            WRITE(numout,*) '      ==>>> CAUTION:    sum of berg input distribution = ', zfact
-            WRITE(numout,*) '            *******     redistribution has been rescaled'
-            WRITE(numout,*) '                        updated berg distribution is :'
-            DO jn = 1, nclasses
-               WRITE(numout,'(a,f10.4)') '                                   ',rn_distribution(jn)
-            END DO
+                 WRITE(numout,*) '   ==>>>   icebergs externalised in SAB component, below are coupling parameters, see sab.output for physical details '
+                 WRITE(numout,*) '   Type of coupling (synchrone or asynchrone)    ln_cpl_asynchrone  = ', ln_cpl_asynchrone
+                 WRITE(numout,*) '   3D fiels sent through OASIS have their Z - coordinate cut below 700m ? : ln_cpl_nlvlcut = ', ln_cpl_nlvlcut
+                 IF (ln_M2016) WRITE(numout,*) '   number of vertical levels of 3D fields sent through OASIS : nlvlsab_cpl = ', nlvlsab_cpl
+
+         ENDIF ! (if lwp)
+      ! 
+      ELSE ! in any other case than ln_berg_cpl x component is not sab    
+         !
+         IF( nn_test_icebergs > nclasses ) THEN
+            IF(lwp) WRITE(numout,*)
+            IF(lwp) WRITE(numout,*) '   ==>>>   Resetting of nn_test_icebergs to ', nclasses
+            nn_test_icebergs = nclasses
          ENDIF
-      ENDIF
-      IF( MINVAL( rn_distribution(:) ) < 0._wp ) THEN
-         CALL ctl_stop( 'icb_nam: a negative rn_distribution value encountered ==>> change your namelist namberg' )
-      ENDIF
+         !
+         IF(lwp) THEN                  ! control print
+            WRITE(numout,*)
+            WRITE(numout,*) 'icb_nam : iceberg initialization through namberg namelist read'
+            WRITE(numout,*) '~~~~~~~~ '
+            WRITE(numout,*) '   Calculate budgets                                            ln_bergdia       = ', ln_bergdia
+            WRITE(numout,*) '   Number of days (or every time step if = -1) between sampling of position for trajectory storage   rn_sample_rate = ', rn_sample_rate_days
+            WRITE(numout,*) '   Mass thresholds between iceberg classes (kg)                 rn_initial_mass     ='
+            DO jn = 1, nclasses
+               WRITE(numout,'(a,f15.2)') '                                                                ', rn_initial_mass(jn)
+            ENDDO
+            WRITE(numout,*) '   Fraction of calving to apply to this class (non-dim)         rn_distribution     ='
+            DO jn = 1, nclasses
+               WRITE(numout,'(a,f10.4)') '                                                                ', rn_distribution(jn)
+            END DO
+            WRITE(numout,*) '   Ratio between effective and real iceberg mass (non-dim)      rn_mass_scaling     = '
+            DO jn = 1, nclasses
+               WRITE(numout,'(a,f10.2)') '                                                                ', rn_mass_scaling(jn)
+            END DO
+            WRITE(numout,*) '   Total thickness of newly calved bergs (m)                    rn_initial_thickness = '
+            DO jn = 1, nclasses
+               WRITE(numout,'(a,f10.2)') '                                                                ', rn_initial_thickness(jn)
+            END DO
+            WRITE(numout,*) '   Number of days (or every time step if = -1) between verbose messages     rn_verbose_write    = ', rn_verbose_write_days
+            WRITE(numout,*) '   Iceberg melt by basin activated                              ln_icb_bas          = ',ln_icb_bas
+            IF ( ln_icb_bas ) THEN
+               WRITE(numout,*) '      basin file is ',TRIM(cn_icbbasins_file)
+               WRITE(numout,*) '         basin id source map variable is ',TRIM(cn_icbbasins_var2d)
+               WRITE(numout,*) '         basin id list variable is ',TRIM(cn_icbbasins_var1d)
+               WRITE(numout,*) '         total number of basins is nn_icb_basins = ',nn_icb_basins
+            END IF
+
+            WRITE(numout,*) '   Density of icebergs                           rn_rho_bergs  = ', rn_rho_bergs
+            WRITE(numout,*) '   Initial ratio L/W for newly calved icebergs   rn_LoW_ratio  = ', rn_LoW_ratio
+            WRITE(numout,*) '   Turn on more verbose output                          level  = ', nn_verbose_level
+            WRITE(numout,*) '   Use first order operator splitting for thermodynamics    ',   &
+               &                    'use_operator_splitting = ', ln_operator_splitting
+            WRITE(numout,*) '   Fraction of erosion melt flux to divert to bergy bits    ',   &
+               &                    'bits_erosion_fraction = ', rn_bits_erosion_fraction
+
+            WRITE(numout,*) '   Use icb module modification from Merino et al. (2016) : ln_M2016 = ', ln_M2016
+            WRITE(numout,*) '       ground icebergs if icb bottom lvl hit the oce bottom level : ln_icb_grd = ', ln_icb_grd
+         
+            WRITE(numout,*) '   Shift of sea-ice concentration in erosion flux modulation ',   &
+               &                    '(0<sicn_shift<1)    rn_sicn_shift  = ', rn_sicn_shift
+            WRITE(numout,*) '   Do not add freshwater flux from icebergs to ocean                ',   &
+               &                    '                  passive_mode            = ', ln_passive_mode
+            WRITE(numout,*) '   Time average the weight on the ocean   time_average_weight       = ', ln_time_average_weight
+            WRITE(numout,*) '   Use the iceberg test option                         ln_use_test  = ', ln_use_test
+            WRITE(numout,*) '   Create icebergs in absence of a restart file   nn_test_icebergs  = ', nn_test_icebergs
+            WRITE(numout,*) '                   in lon/lat box                                   = ', rn_test_box
+            WRITE(numout,*) '   Use calving data option                          ln_use_calving  = ', ln_use_calving
+            WRITE(numout,*) '   CFL speed limit for a berg            speed_limit                = ', rn_speed_limit
+            WRITE(numout,*) '   Writing Iceberg status information to icebergs.stat file        '
+         ENDIF
+         !
+         ! ensure that the sum of berg input distribution is equal to one
+         zfact = SUM( rn_distribution )
+         IF( zfact /= 1._wp .AND. 0_wp /= zfact ) THEN
+            rn_distribution(:) = rn_distribution(:) / zfact
+            IF(lwp) THEN
+               WRITE(numout,*)
+               WRITE(numout,*) '      ==>>> CAUTION:    sum of berg input distribution = ', zfact
+               WRITE(numout,*) '            *******     redistribution has been rescaled'
+               WRITE(numout,*) '                        updated berg distribution is :'
+               DO jn = 1, nclasses
+                  WRITE(numout,'(a,f10.4)') '                                   ',rn_distribution(jn)
+               END DO
+            ENDIF
+         ENDIF
+         IF( MINVAL( rn_distribution(:) ) < 0._wp ) THEN
+            CALL ctl_stop( 'icb_nam: a negative rn_distribution value encountered ==>> change your namelist namberg' )
+         ENDIF
+      !   
+      ENDIF ! end of if (ln_berg_cpl ...) to avoid printing all icb param if ln_berg_cpl
 
       ! rn_sample_rate and rn_verbose_write are now measured in days in the namelist
       ! we need their value in terms of time-step (cf icbstp)
@@ -596,6 +622,69 @@ CONTAINS
       nicbbas=MAX(1,nicbbas)                         ! default case is 1 basin
       !
    END SUBROUTINE icb_nam
-
+   !
+   SUBROUTINE icb_set_nlvlcpl()
+      !!----------------------------------------------------------------------
+      !!                     ***  ROUTINE icb_set_nlvlcpl  ***
+      !! ** Made only for NEMO-SAB coupling
+      !! ** Purpose :   computes the number of vertical levels that will be sent/received through oasis
+      !!                in function of the namelist parameters read in &namberg
+      !!----------------------------------------------------------------------
+      ! WARNING : this subroutine only deals with public parameters, logic and integer
+      ! it is done just not to repeat the exact same part of the code inside icb_cpl_init, in icbcpl.F90
+      IF ( ln_berg_cpl .AND. ln_M2016 ) THEN
+        ! setting the value of nlvlsab_cpl:
+         IF ( ln_cpl_nlvlcut ) THEN
+            IF ( nn_lvlcut_cpl < 0) THEN
+               !default case 
+               nlvlsab_cpl = icb_nlvl700_cpl()       ! computes number of first level corresponding to depth >= 700m) 
+            ELSE IF ( nn_lvlcut_cpl == 0) THEN
+               CALL ctl_stop('STOP','icb_cpl_init','number of vertical levels sent through OASIS must be > 0')
+            ELSE ! custom number of levels
+                 ! check that user is not sending too many levels
+               IF (nn_lvlcut_cpl > jpk ) THEN
+                  ! warning : tell the user that their choice have been modified:
+                  WRITE(numout,*)
+                  WRITE(numout,*) '    W A R N I N G !!!'
+                  WRITE(numout,*)
+                  WRITE(numout,*) '    ==>>> icb_set_nlvlcpl : NEMO-SAB cpl : number of &
+                                   &  vertical levels sent through OASIS is larger than jpk. &
+                                   &  Resetting it to default value to avoid error : nlvlsab_cpl = ',jpk
+                  nlvlsab_cpl = jpk
+                  !
+               ELSE
+                   nlvlsab_cpl  = nn_lvlcut_cpl
+               !
+               ENDIF
+               !
+            ENDIF ! endif nn_lvlcut_cpl < 0
+            !
+         ELSE ! (if .NOT. ln_cpl_nlvlcut )
+             nlvlsab_cpl = jpk ! default case of namelist_ref :
+             !
+         ENDIF ! ln_cpl_nlvlcut 
+         !
+      ELSE !(if .NOT. ln_berg_cpl)
+         ! cleaner to initialise this variable anyway
+         nlvlsab_cpl = jpk  
+      ENDIF ! if ln_berg_cpl
+   !   
+   END SUBROUTINE icb_set_nlvlcpl
+   !
+   INTEGER FUNCTION icb_nlvl700_cpl()
+      !!----------------------------------------------------------------------
+      !!             ***  icb_nlvl700_cpl :  ***
+      !!                returns the number of the smallest vertical level for which depth >= 700m) 
+      !!----------------------------------------------------------------------
+      INTEGER :: jk
+      jk = 1
+      DO WHILE ( gdept_1d(jk) < 700.0_wp )
+         jk = jk + 1
+      END DO
+      icb_nlvl700_cpl = jk
+      IF (lwp) WRITE(numout,*) " icb_nlvl700_cpl, NEMO-SAB cpl :  maximum depth of 3D fields sent/received through OASIS is : ", gdept_1d(jk) , &
+      & "meters, at vertical level number", jk
+      !
+    END FUNCTION
    !!======================================================================
 END MODULE icbini

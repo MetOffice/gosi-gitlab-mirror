@@ -196,7 +196,6 @@ CONTAINS
       !
       ALLOCATE( sshdyn_icb(jpi,jpj), hi_icb(jpi,jpj) , STAT=ill)
       icb_alloc = icb_alloc + ill
-
       !
       CALL mpp_sum ( 'icb_oce', icb_alloc )
       IF( icb_alloc > 0 )   CALL ctl_warn('icb_alloc: allocation of arrays failed')

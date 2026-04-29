@@ -64,7 +64,8 @@ MODULE sbcmod
    USE lib_mpp        ! MPP library
    USE timing         ! Timing
    USE wet_dry
-   USE diu_bulk, ONLY:   ln_diurnal_only   ! diurnal SST diagnostic
+   USE diu_bulk, ONLY:   ln_diurnal_only   ! diurnal SST diagnostic   
+   USE icbcpl         ! iceberg - ocean coupling module 
 
    IMPLICIT NONE
    PRIVATE
@@ -390,9 +391,14 @@ CONTAINS
       !
       IF( ln_blk .OR. ln_abl ) THEN
          IF( ll_sas  )         CALL sbc_cpl_rcv ( kt, nn_fsbc, nn_ice, Kbb, Kmm )   ! OCE-SAS coupling: SAS receiving fields from OCE
+         IF ( ln_berg_cpl ) THEN
+            IF ( lk_oasis .AND. ln_cpl_asynchrone ) CALL icb_cpl_rcv( kt )       ! receiving icebergs fresh water and heat flux from SAB, if asynchrone coupling. 
+         ENDIF
+         ! 
          IF( ln_wave ) THEN
             ! Seb: we should not use lk_oasis here -> to be rewritten with splitting sbccpl.F90
-            IF ( lk_oasis )    CALL sbc_cpl_rcv ( kt, nn_fsbc, nn_ice, Kbb, Kmm )   ! OCE-wave coupling
+            ! J.P. : lp_sbccpl enables not to call sbc_cpl_rcv, is sbccpl coupling is not used (cf cpl_oasis)
+            IF ( lk_oasis .AND. lp_sbccpl )    CALL sbc_cpl_rcv ( kt, nn_fsbc, nn_ice, Kbb, Kmm )   ! OCE-wave coupling
                                CALL sbc_wave ( kt, Kmm )
          ENDIF
       ENDIF
@@ -439,7 +445,7 @@ CONTAINS
       !clem : these calls are needed for sbccpl => it needs an IF statement but it's complicated
       IF( ln_rnf .AND. l_rnfcpl )     CALL lbc_lnk( 'sbcmod', rnf, 'T', 1.0_wp )
       !
-      IF( ln_icebergs ) THEN  ! save pure stresses (with no ice-ocean stress) for use by icebergs
+      IF( ln_icebergs ) THEN ! save pure stresses (with no ice-ocean stress) for use by icebergs
          !     Note the use of 0.5*(2-umask) in order to unmask the stress along coastlines
          !      and the use of MAX(tmask(i,j),tmask(i+1,j) is to mask tau over ice shelves
          ! (PM) cannot be move to icb because we need pure stresses. Why not extract directly wind from sbcblk i

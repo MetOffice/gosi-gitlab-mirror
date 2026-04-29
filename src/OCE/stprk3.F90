@@ -23,7 +23,8 @@ MODULE stprk3
    USE stprk3_stg     ! RK3 stages
    USE stp2d          ! external mode solver
    USE lib_mpp, ONLY : l_perpetual_ts          ! external mode solver
-
+   USE icbcpl         ! iceberg - ocean coupling module 
+  
    IMPLICIT NONE
    PRIVATE
 
@@ -137,7 +138,7 @@ CONTAINS
                          CALL sbc        ( kstp, Nbb, Nbb )                ! Sea Boundary Condition (including sea-ice)
 !!$      IF( ln_isf     )   CALL isf_stp    ( kstp, Nbb )                     ! update iceshelf geometry
                          !clem: problem with isf and cpl: sbcfwb needs isf but isf needs fwf from sbccpl
-
+         !
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       ! Update stochastic parameters and random T/S fluctuations
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -295,7 +296,9 @@ CONTAINS
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       ! Coupled mode
       !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-      IF( lk_oasis .AND. nstop == 0 )   CALL sbc_cpl_snd( kstp, Nbb, Nnn )     ! coupled mode : field exchanges
+      ! J.P. : lp_sbccpl enables not to call sbc_cpl_snd, is sbccpl coupling is not used (cf cpl_oasis)
+      IF( lk_oasis .AND. lp_sbccpl .AND. nstop == 0 )   CALL sbc_cpl_snd( kstp, Nbb, Nnn )     ! coupled mode : field exchanges
+      IF (lk_oasis .AND. ln_berg_cpl .AND. ln_cpl_asynchrone .AND. nstop == 0) CALL icb_cpl_snd( kstp )  ! if asynchrone SAB coupling, sends ocean surface state to SAB
 
       !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
       ! Recurrent first time step for benchmarking

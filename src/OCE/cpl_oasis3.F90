@@ -85,10 +85,12 @@ MODULE cpl_oasis3
 #else
    LOGICAL, PUBLIC            ::   lk_oasis = .TRUE.  !: OASIS used
 #endif
-
-   INTEGER, PUBLIC, PARAMETER ::   midmax=1    ! Maximum number of identified modules   
+   LOGICAL, PUBLIC            ::   lp_sbccpl   ! checks if sbccpl coupling is used. 
+                                               ! If not (icebergs or eophys or nanuq), sbc_cpl_snd/rcv are never called 
+   INTEGER, PUBLIC, PARAMETER ::   midmax=3    ! Maximum number of identified modules   
    INTEGER, PUBLIC, PARAMETER ::   midcpl=1    ! module ID #1 : surface boundary condition
-
+   INTEGER, PUBLIC, PARAMETER ::   midicb=2    ! module ID #2 : ocean iceberg exchanges (sends ocean surface state to icebergs,  receives water and heat fluxes from icebergs 
+   INTEGER, PUBLIC, PARAMETER ::   midsab=3    ! module ID #3 : standalone iceberg module (computes icebergs offline and sends   water + heat flux to nemo)
    TYPE, PUBLIC ::   FLD_CPL               !: Type for coupling field information
       LOGICAL               ::   laction   ! To be coupled or not
       CHARACTER(len = 8)    ::   clname    ! Name of the coupling field
@@ -217,7 +219,19 @@ CONTAINS
       !
       IF(lwp) THEN
          WRITE(numout,*)
-         IF( kmod == midcpl ) WRITE(numout,*) 'cpl_vardef : initialization in coupled ocean/atmosphere case'
+         IF( kmod == midcpl )THEN
+                 WRITE(numout,*) 'cpl_vardef : initialization in coupled ocean/atmosphere case'
+                 lp_sbccpl = .true.
+                 
+         ELSE IF( kmod == midicb ) THEN
+                 WRITE(numout,*) 'cpl_vardef : initialization in coupled ocean/icebergs case'
+                 lp_sbccpl = .false.
+         ELSE IF( kmod == midsab ) THEN
+                 WRITE(numout,*) 'cpl_vardef : initialization in coupled sab(icebergs)/ocean case'
+                 lp_sbccpl = .false.
+         ELSE 
+              lp_sbccpl = .false.
+         ENDIF
          WRITE(numout,*) '~~~~~~~'
       END IF
       !
@@ -256,11 +270,14 @@ CONTAINS
                         WRITE(numout,*) 'Failed to define transient ', ji, jc, jm, " "//TRIM(zclname)
                         CALL oasis_abort ( ssnd(kmod)%fld(ji)%nid(jc,jm), 'cpl_vardef', 'Failure in oasis_def_var' )
                      ENDIF
-                     IF( sn_cfctl%l_oasout .AND. ssnd(kmod)%fld(ji)%nid(jc,jm) /= -1 ) THEN
-                        WRITE(numout,*) "--> variable defined in the namcouple"
-                        isnd = isnd + 1
-                     ENDIF
-                     IF( sn_cfctl%l_oasout .AND. ssnd(kmod)%fld(ji)%nid(jc,jm) == -1 ) WRITE(numout,*) "--> variable NOT defined in the namcouple"
+
+                    IF ( ssnd(kmod)%fld(ji)%nid(jc,jm) /= -1 ) THEN
+                    ! J.P. : we must do "isnd += 1" regardless of value of sn_cfctl%l_oasout 
+                       IF( sn_cfctl%l_oasout ) WRITE(numout,*) "--> variable defined in the namcouple"
+                       isnd = isnd + 1
+                    ELSE
+                       IF( sn_cfctl%l_oasout ) WRITE(numout,*) "--> variable NOT defined in the namcouple"
+                    ENDIF
                      !
                  END DO
               END DO
@@ -304,12 +321,15 @@ CONTAINS
                         WRITE(numout,*) 'Failed to define transient ', ji, jc, jm, " "//TRIM(zclname)
                         CALL oasis_abort ( srcv(kmod)%fld(ji)%nid(jc,jm), 'cpl_vardef', 'Failure in oasis_def_var' )
                      ENDIF
-                     IF( sn_cfctl%l_oasout .AND. srcv(kmod)%fld(ji)%nid(jc,jm) /= -1 ) THEN
-                        WRITE(numout,*) "--> variable defined in the namcouple"
+ 
+                     IF( srcv(kmod)%fld(ji)%nid(jc,jm) /= -1 ) THEN
+                     ! J.P. : we must do "ircv += 1" regardless of value of sn_cfctl%l_oasout 
+                        IF( sn_cfctl%l_oasout )  WRITE(numout,*) "--> variable defined in the namcouple"
                         ircv = ircv + 1
-                     ENDIF
-                     IF( sn_cfctl%l_oasout .AND. srcv(kmod)%fld(ji)%nid(jc,jm) == -1 ) WRITE(numout,*) "--> variable NOT defined in the namcouple"
-                     !
+                      ELSE
+                        IF( sn_cfctl%l_oasout ) WRITE(numout,*) "--> variable NOT defined in the namcouple"
+                      ENDIF
+                         !
                   END DO
                END DO
 

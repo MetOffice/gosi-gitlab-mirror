@@ -477,6 +477,7 @@ CONTAINS
          !
          IF( ipkb /= ipk .OR. llzint ) THEN   ! boundary data not on model vertical grid : vertical interpolation
             !
+#if ! key_sab 
             IF( ipk == jpk .AND. iom_varid(knum,'gdep'//cltype(kgrd)) /= -1 .AND. iom_varid(knum,'e3'//cltype(kgrd)) /= -1 ) THEN
                
                ALLOCATE( zdta_read(ipi,ipj,ipkb), zdta_read_z(ipi,ipj,ipkb), zdta_read_dz(ipi,ipj,ipkb) )
@@ -499,6 +500,10 @@ CONTAINS
 
             ENDIF
             !
+#else 
+            ! if component sab, no vertical interpolation
+            CALL ctl_stop( 'fld_map : NO VERTICAL interpolation is done in SAB, please check your input files' )
+#endif            
          ELSE                            ! bdy data assumed to be the same levels as bdy variables
             !
             CALL fld_map_core( zz_read, kmap, pdta )
@@ -551,7 +556,8 @@ CONTAINS
       ENDIF
       
    END SUBROUTINE fld_map_core
-   
+ 
+#if ! defined key_sab   
    SUBROUTINE fld_bdy_interp(pdta_read, pdta_read_z, pdta_read_dz, pdta, kgrd, kbdy, pfv, ldtotvel, Kmm )
       !!---------------------------------------------------------------------
       !!                    ***  ROUTINE fld_bdy_interp  ***
@@ -579,7 +585,6 @@ CONTAINS
       REAL(wp)                 ::   ztrans, ztrans_new  ! transports
       REAL(wp), DIMENSION(jpk) ::   zdepth, zdhalf      ! level and half-level depth
       !!---------------------------------------------------------------------
-     
       ipi  = SIZE( pdta, 1 )
       ipkb = SIZE( pdta_read, 3 )
       
@@ -699,9 +704,9 @@ CONTAINS
             ENDDO
          ENDDO
       END SELECT
-      
+   !
    END SUBROUTINE fld_bdy_interp
-
+#endif
 
    SUBROUTINE fld_rot( kt, sd )
       !!---------------------------------------------------------------------
