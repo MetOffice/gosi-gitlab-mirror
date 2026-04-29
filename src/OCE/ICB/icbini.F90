@@ -476,9 +476,9 @@ CONTAINS
          RETURN
       ENDIF
       !
-       IF ( ln_berg_cpl .AND. (nn_components /= jp_iam_icb) ) THEN
-         !
-         CALL icb_set_nlvlcpl()         ! setting value of nlvlsab_cpl 
+      IF ( ln_berg_cpl .AND. ln_M2016 )  CALL icb_set_nlvlcpl()         ! setting value of nlvlsab_cpl 
+
+      IF ( ln_berg_cpl .AND. (nn_components /= jp_iam_icb) ) THEN
          !
          IF(lwp) THEN
                  WRITE(numout,*) '   ==>>>   icebergs externalised in SAB component, below are coupling parameters, see sab.output for physical details '
@@ -537,7 +537,10 @@ CONTAINS
 
             WRITE(numout,*) '   Use icb module modification from Merino et al. (2016) : ln_M2016 = ', ln_M2016
             WRITE(numout,*) '       ground icebergs if icb bottom lvl hit the oce bottom level : ln_icb_grd = ', ln_icb_grd
-         
+            IF (ln_berg_cpl .AND. ln_M2016) THEN 
+                WRITE(numout,*) '   3D fiels sent through OASIS have their Z - coordinate cut below 700m ? : ln_cpl_nlvlcut = ', ln_cpl_nlvlcut
+                IF ( ln_cpl_nlvlcut ) WRITE(numout,*) '   number of vertical levels of 3D fields sent through OASIS : nlvlsab_cpl = ', nlvlsab_cpl   
+            ENDIF 
             WRITE(numout,*) '   Shift of sea-ice concentration in erosion flux modulation ',   &
                &                    '(0<sicn_shift<1)    rn_sicn_shift  = ', rn_sicn_shift
             WRITE(numout,*) '   Do not add freshwater flux from icebergs to ocean                ',   &
