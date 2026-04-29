@@ -53,6 +53,7 @@ MODULE nemogcm
    USE trdini         ! dyn/tra trends initialization     (trd_init routine)
    USE icbini         ! handle bergs, initialisation
    USE icbstp  , ONLY : icb_end     ! handle bergs, close iceberg files
+   USE icbcpl , ONLY : icb_cpl_init
    USE cpl_oasis3     ! OASIS3 coupling
    USE step_diu       ! diurnal bulk SST timestepping (called from here if run offline)
    USE dia25h  , ONLY : dia_25h_init   ! 25h mean output (initialisation)
@@ -431,6 +432,8 @@ CONTAINS
       !                                      ! SAL forcing
                            CALL    tsl_sal_init                  ! Initialisation of SAL-potential parameterisations
                            CALL    bdy_init                      ! Open boundaries initialisation
+      IF( lk_oasis     )   CALL    icb_cpl_init                  ! NEMO-SAB coupling (only if ln_berg_cpl) 
+
       IF( lk_oasis     )   CALL    cpl_enddef                    ! terminate coupling initialization
 
       !                                      ! Ocean physics

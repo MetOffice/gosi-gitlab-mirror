@@ -1,0 +1,117 @@
+!!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!! SAB :   namelist_sab_cfg, configuration namelist : 
+!!         overwrite default values defined in namelist_sab_ref   !!
+!!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!! SAB  :  1 - Domain & run manager (namrun, namcfg, namdom)
+!! namelists    2 - ICEBERGS dynamics (namberg)
+!!              3 - lateral boundary (namlbc, nambdy)
+!!              4 - Tracer           (nameos)
+!!              5 - diagnostics      (namnc4)
+!!              6 - miscellaneous    (nammpp, namctl)
+!!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+!!======================================================================
+!!              ***  Domain & Run management namelists  ***           !!
+!!                                                                    !!
+!!   namrun       parameters of the run
+!!   namdom       space and time domain
+!!   namcfg       parameters of the configuration                       (default: user defined GYRE)
+!!======================================================================
+!
+!-----------------------------------------------------------------------
+&namrun        !   parameters of the run
+!-----------------------------------------------------------------------
+   cn_exp      =  "SAB_cplo2SAB"  !  experience name
+   nn_it000    =    1    !  first time step
+   nn_itend    =    520    !
+   nn_istate   =       0   !  output the initial state (1) or not (0)
+   ln_rstart      = .false.
+/
+!-----------------------------------------------------------------------
+&namdom        !   time and space domain
+!-----------------------------------------------------------------------
+   rn_Dt       = 21600.     !  time step for the dynamics and tracer
+/
+!-----------------------------------------------------------------------
+&namcfg        !   parameters of the configuration                      (default: use namusr_def in namelist_cfg)
+!-----------------------------------------------------------------------
+   ln_read_cfg = .true.    !  (=T) read the domain configuration file
+      cn_domcfg = "ORCA_R2_zps_domcfg.nc"    ! domain configuration filename
+      !
+      ln_closea    = .true.    !  F => suppress closed seas (defined by closea_mask field) 
+      !                         !       from the bathymetry at runtime.
+/
+!!======================================================================
+!!            ***  Iceberg parameters namelist  ***          !!
+!!                                                                    !!
+!!   namberg         iceberg floats                                     (ln_icebergs=T)
+!!======================================================================
+!
+!-----------------------------------------------------------------------
+&namberg       !   iceberg parameters                                   (default: OFF)
+!-----------------------------------------------------------------------
+   ln_icebergs = .true.    ! activate iceberg floats (force =F with "key_agrif")
+   ln_berg_cpl = .true. ! activate externalized iceberg computation (see SAB)
+   ln_use_calving = .false.   
+   ln_use_test             = .true.  ! Use test icebergs, their number is specified by nn_test_icebergs
+   nn_test_icebergs        = 10    ! Create test icebergs of this class ( must be > 0 while using test icebergs)
+   !                               ! Put a test iceberg at each gridpoint in box (lon1,lon2,lat1,lat2)
+   rn_test_box             = -180.0,  180.0, -90.0, 90.0  ! Put a test iceberg at each gridpoint in box (lon1,lon2,lat1,lat2)
+
+   ln_passive_mode         = .false. ! iceberg - ocean decoupling
+
+   ln_bergdia       = .true.        ! Calculate budgets
+   nn_verbose_level = 0
+
+   rn_verbose_write_days = 0.0
+   rn_sample_rate_days = 0.0
+
+   ln_M2016          = .false. ! use Merino et al. (2016) modification (use of 3d ocean data instead of only sea surface data)
+      ln_icb_grd     = .false. ! ground icb when icb bottom level hit oce bottom level (need ln_M2016 to be activated)
+   cn_dir = './'  !  root directory for the location of drag coefficient files
+/
+!!======================================================================
+!!               ***  Lateral boundary condition  ***                 !!
+!!                                                                    !!
+!!   namlbc        lateral momentum boundary condition                  (default: NO selection)
+!!   nambdy        Unstructured open boundaries                         (default: OFF)
+!!======================================================================
+!
+!-----------------------------------------------------------------------
+&namlbc        !   lateral momentum boundary condition                  (default: NO selection)
+!-----------------------------------------------------------------------
+   rn_shlat    =    2.     !  no slip
+/
+!!======================================================================
+!!                        Tracer (T-S) namelists                      !!
+!!                                                                    !!
+!!   nameos        equation of state                                    (default: NO selection)
+!!======================================================================
+!
+!-----------------------------------------------------------------------
+&nameos        !   ocean Equation Of Seawater                           (default: NO selection)
+!-----------------------------------------------------------------------
+   ln_eos80    = .true.          !  = Use EOS80
+/
+!!======================================================================
+!!                  ***  Miscellaneous namelists  ***                 !!
+!!                                                                    !!
+!!   nammpp            Massively Parallel Processing
+!!   namctl            Control prints                                   (default: OFF)
+!!======================================================================
+
+!-----------------------------------------------------------------------
+&nammpp        !   Massively Parallel Processing
+!-----------------------------------------------------------------------
+jpni = 2
+jpnj = 1
+/
+!-----------------------------------------------------------------------
+&namctl        !   Control prints                                       (default: OFF)
+!-----------------------------------------------------------------------
+   sn_cfctl%l_runstat = .true.    ! switches and which areas produce reports with the proc integer settings.
+   sn_cfctl%l_trcstat = .FALSE.   ! The default settings for the proc integers should ensure
+   sn_cfctl%l_oasout = .false.
+   ln_timing   = .true.          !  timing by routine write out in timing.output file
+
+/

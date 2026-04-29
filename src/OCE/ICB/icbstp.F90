@@ -31,6 +31,9 @@ MODULE icbstp
    USE icblbc         ! iceberg: lateral boundary routines (including mpp)
    USE icbtrj         ! iceberg: trajectory I/O routines
    USE icbdia         ! iceberg: budget
+#if ! defined key_sab
+   USE icbcpl        ! ocean to iceberg coupling interface (on NEMO' side) 
+#endif
    !
    USE in_out_manager ! nemo IO
    USE lib_mpp        ! massively parallel library 
@@ -43,6 +46,7 @@ MODULE icbstp
 
    PUBLIC   icb_stp        ! routine called in sbcmod.F90 module
    PUBLIC   icb_end        ! routine called in nemogcm.F90 module
+#  include "do_loop_substitute.h90"
    !!----------------------------------------------------------------------
    !! NEMO/OCE 5.0, NEMO Consortium (2024)
    !! Software governed by the CeCILL license (see ./LICENSE)
@@ -60,96 +64,131 @@ CONTAINS
       INTEGER, INTENT(in) ::   kt   ! time step index
       INTEGER, INTENT(in) ::   Kmm  ! ocean time level index
       !
+      INTEGER             ::   ji,jj ! dummy indexes for do loop into emp and qns
       LOGICAL ::   ll_sample_traj, ll_budget, ll_verbose, ll_basoutput   ! local logical
       !!----------------------------------------------------------------------
       !
       IF( ln_timing )   CALL timing_start('icb_stp')
+      !!
+         IF ( ln_berg_cpl .AND. ( nn_components == jp_iam_nemo) ) THEN
+#if ! defined key_sab
+                 ! FOLLOWING BLOCK is read only if component is NEMO !!
+                 IF (.NOT. ln_cpl_asynchrone ) THEN
+                         CALL icb_cpl_snd(kt) ! sends data to SAB
+                         ! NEMO waits for SAB to run before receiving 
+                         CALL icb_cpl_rcv(kt) ! receives berg fluxes FROM CURRENT TIME STEP (OASIS' LAGS must be 0 )
+                 ENDIF
+                 ! NOTE for case ln_cpl_asynchrone = .true. :
+                 ! - calls to icb_cpl_rcv and icb_cpl_snd routines are done in stprk3.F90 
+                 ! - OASIS's LAG from SAB to NEMO must be > 0 in namcouple file 
+                 
+                 ! whatever value of ln_cpl_asynchrone, at this point, icb_cpl_rcv has been called so
+                 ! icb_wflx and icb_hcflux have been filled 
 
-      !                       !==  start of timestep housekeeping  ==!
-      IF ( kt == nit000 ) THEN
-         ll_basoutput= (iom_use('berg_melt_basins') .OR. iom_use('berg_numb_basins') .OR. iom_use('berg_sumthic_basins') )
-         IF (         ll_basoutput   .AND. ( .NOT. ln_icb_bas ) ) CALL ctl_stop( 'ln_icb_bas need to be activated to output berg_melt_basins'   )
-         IF ( ( .NOT. ll_basoutput ) .AND.         ln_icb_bas   ) CALL ctl_stop( 'No need to activate ln_icb_bas as no related output required' )
-      END IF
+                 IF ( MOD(kt-1,nn_fsbc) == 0) THEN
+                     DO_2D(0,0,0,0) 
+                      ! adding the iceberg fluxes received from SAB to emp and qns
+                      ! if ln_passive_mode, icb_wflx and icb_hcflx are set to 0._wp                 
+                        emp(ji,jj) = emp(ji,jj) - icb_wflx(ji,jj) 
+                        qns(ji,jj) = qns(ji,jj) + icb_hcflx(ji,jj)
+                     END_2D
+                 ENDIF 
+#endif 
+                 !
+         ELSE IF ( .NOT. ln_berg_cpl .AND. ( nn_components == jp_iam_icb ) ) THEN
+                ! FOLLOWING BLOCK is read only if component is SAB
+                ! future STAND ALONE mode ... to be coded 
+                CALL ctl_stop( ' ln_berg_cpl = .false. x SAB in full stand alone mode does not exist yet !!!' )
+         !
+         ELSE ! either if component is SAB or Nemo, in all other cases, icbstp can be read. 
 
-      IF( MOD( kt-1, nn_fsbc ) == 0 ) THEN
-         !
-         nktberg = kt
-         !
-         IF( ln_use_calving ) THEN !* read calving data
+         !                       !==  start of timestep housekeeping  ==!
+            IF ( kt == nit000 ) THEN
+               ll_basoutput= (iom_use('berg_melt_basins') .OR. iom_use('berg_numb_basins') .OR. iom_use('berg_sumthic_basins') )
+               IF (         ll_basoutput   .AND. ( .NOT. ln_icb_bas ) ) CALL ctl_stop( 'ln_icb_bas need to be activated to output berg_melt_basins'   )
+               IF ( ( .NOT. ll_basoutput ) .AND.         ln_icb_bas   ) CALL ctl_stop( 'No need to activate ln_icb_bas as no related output required' )
+            END IF
+
+          IF( MOD( kt-1, nn_fsbc ) == 0 ) THEN
             !
-            CALL fld_read ( kt, 1, sf_icb )
-            src_calving     (:,:) = sf_icb(1)%fnow(:,:,1)    ! calving in kg/s
-            src_calving_hflx(:,:) = 0._wp                    ! NO heat flux for now
+            nktberg = kt
             !
-         ENDIF
-         !
-         berg_grid%floating_melt(:,:) = 0._wp
-         !
-         !                                   !* anything that needs to be reset to zero each timestep 
-         CALL icb_dia_step()                 !  for budgets is dealt with here
-         !
-         !                                   !* write out time
-         ll_verbose = .FALSE.
-         IF( nverbose_write > 0 .AND. MOD( kt-1 , nverbose_write ) == 0 )   ll_verbose = ( nn_verbose_level > 0 )
-         !
-         IF( ll_verbose )   WRITE(numicb,9100) nktberg, ndastp, nsec_day
-    9100 FORMAT('kt= ',i8, ' day= ',i8,' secs=',i8)
-         !
-         !                                   !* copy nemo forcing arrays into iceberg versions with extra halo
-         CALL icb_utl_copy()                 ! only necessary for variables not on T points
-         !
-         !
-         !                       !==  process icebergs  ==!
+            IF( ln_use_calving ) THEN !* read calving data
+            !
+               CALL fld_read ( kt, 1, sf_icb )
+               src_calving     (:,:) = sf_icb(1)%fnow(:,:,1)    ! calving in kg/s
+               src_calving_hflx(:,:) = 0._wp                    ! NO heat flux for now
+               !
+            ENDIF
+            !
+            berg_grid%floating_melt(:,:) = 0._wp
+            !
+            !                                   !* anything that needs to be reset to zero each timestep 
+            CALL icb_dia_step()                 !  for budgets is dealt with here
+            !
+            !                                   !* write out time
+            ll_verbose = .FALSE.
+            IF( nverbose_write > 0 .AND. MOD( kt-1 , nverbose_write ) == 0 )   ll_verbose = ( nn_verbose_level > 0 )
+            !
+            IF( ll_verbose )   WRITE(numicb,9100) nktberg, ndastp, nsec_day
+       9100 FORMAT('kt= ',i8, ' day= ',i8,' secs=',i8)
+            !
+            !                                   !* copy nemo forcing arrays into iceberg versions with extra halo
+            CALL icb_utl_copy()                 ! only necessary for variables not on T points
+            !
+            !
+            !            !==  process icebergs  ==!
+            !                              
+            CALL icb_clv_flx( kt )   ! Accumulate ice from calving
          !                              !
-                                        CALL icb_clv_flx( kt )   ! Accumulate ice from calving
-         !                              !
-                                        CALL icb_clv( kt )       ! Calve excess stored ice into icebergs
+            CALL icb_clv( kt )       ! Calve excess stored ice into icebergs
          !                              !
          !
          !                       !==  For each berg, evolve  ==!
          !
-         IF( ASSOCIATED(first_berg) )   CALL icb_dyn( kt, Kmm )       ! ice berg dynamics
+            IF( ASSOCIATED(first_berg) )   CALL icb_dyn( kt, Kmm )       ! ice berg dynamics
    
-         IF( lk_mpp ) THEN   ;          CALL icb_lbc_mpp()       ! Send bergs to other PEs
-         ELSE                ;          CALL icb_lbc()           ! Deal with any cyclic boundaries in non-mpp case
-         ENDIF
+            IF( lk_mpp ) THEN   ;          CALL icb_lbc_mpp()       ! Send bergs to other PEs
+            ELSE                ;          CALL icb_lbc()           ! Deal with any cyclic boundaries in non-mpp case
+            ENDIF
    
-         IF( ASSOCIATED(first_berg) )   CALL icb_thm( kt, Kmm )       ! Ice berg thermodynamics (melting) + rolling
+            IF( ASSOCIATED(first_berg) )   CALL icb_thm( kt, Kmm )       ! Ice berg thermodynamics (melting) + rolling
          !
          !
          !                       !==  diagnostics and output  ==!
          !
          !                                   !* For each berg, record trajectory (when needed)
-         ll_sample_traj = .FALSE.
-         IF( nsample_rate > 0 .AND. MOD(kt-1,nsample_rate) == 0 )   ll_sample_traj = .TRUE.
-         IF( ll_sample_traj .AND. ASSOCIATED(first_berg) )   CALL icb_trj_write( kt )
+            ll_sample_traj = .FALSE.
+            IF( nsample_rate > 0 .AND. MOD(kt-1,nsample_rate) == 0 )   ll_sample_traj = .TRUE.
+            IF( ll_sample_traj .AND. ASSOCIATED(first_berg) )   CALL icb_trj_write( kt )
    
          !                                   !* Gridded diagnostics
          !                                   !  To get these iom_put's and those preceding to actually do something
          !                                   !  use key_xios in cpp file and create content for XML file
          !
-         CALL iom_put( "calving"           , berg_grid%calving      (:,:)   )  ! 'calving mass input'
-         CALL iom_put( "berg_floating_melt", berg_grid%floating_melt(:,:)   )  ! 'Melt rate of icebergs + bits' , 'kg/m2/s'
-         CALL iom_put( "berg_stored_ice"   , berg_grid%stored_ice   (:,:,:) )  ! 'Accumulated ice mass by class', 'kg'
+            CALL iom_put( "calving"           , berg_grid%calving      (:,:)   )  ! 'calving mass input'
+            CALL iom_put( "berg_floating_melt", berg_grid%floating_melt(:,:)   )  ! 'Melt rate of icebergs + bits' , 'kg/m2/s'
+            CALL iom_put( "berg_stored_ice"   , berg_grid%stored_ice   (:,:,:) )  ! 'Accumulated ice mass by class', 'kg'
          !
-         CALL icb_dia_put()                  !* store mean budgets
+            CALL icb_dia_put()                  !* store mean budgets
          !
          !                                   !*  Dump icebergs to screen
-         IF( nn_verbose_level >= 2 )   CALL icb_utl_print( 'icb_stp, status', kt )
+            IF( nn_verbose_level >= 2 )   CALL icb_utl_print( 'icb_stp, status', kt )
          !
          !                                   !* Diagnose budgets
-         ll_budget = .FALSE.
-         IF( nverbose_write > 0 .AND. MOD(kt-1,nverbose_write) == 0 ) ll_budget = ln_bergdia
-         CALL icb_dia( ll_budget )
+            ll_budget = .FALSE.
+            IF( nverbose_write > 0 .AND. MOD(kt-1,nverbose_write) == 0 ) ll_budget = ln_bergdia
+            CALL icb_dia( ll_budget )
          !
-      END IF
-      !
-      IF( lrst_oce ) THEN    !* restart
-         CALL icb_rst_write( kt )
-         IF( nsample_rate > 0 )   CALL icb_trj_sync()
-      ENDIF
-      !
+         ENDIF ! end if "IF MOD(kt-1,nn_fsbc ) == 0" 
+         !
+         IF( lrst_oce ) THEN    !* restart
+            CALL icb_rst_write( kt )
+            IF( nsample_rate > 0 )   CALL icb_trj_sync()
+         ENDIF
+         !
+      ENDIF ! end if "IF ( ln_berg_cpl .AND. ( nn_components == jp_iam_nemo)"
+
       IF( ln_timing )   CALL timing_stop('icb_stp')
       !
    END SUBROUTINE icb_stp
@@ -166,15 +205,19 @@ CONTAINS
       !!----------------------------------------------------------------------
       !
       ! finish with trajectories if they were written
-      IF( nsample_rate > 0 )   CALL icb_trj_end()
+      ! only if there is no coupling (nemo standard mode) or if you are SAB (coupled or standalone)
+      IF ( .NOT. ln_berg_cpl .OR. ( nn_components == jp_iam_icb )  ) THEN
+      
+         IF( nsample_rate > 0 )   CALL icb_trj_end()
 
-      IF(lwp) WRITE(numout,'(a,i6)') 'icebergs: icb_end complete', narea
-      !
-      IF( nn_verbose_level > 0 ) THEN
-         CALL flush( numicb )
-         CLOSE( numicb )
-      ENDIF
-      !
+         IF(lwp) WRITE(numout,'(a,i6)') 'icebergs: icb_end complete', narea
+         !
+         IF( nn_verbose_level > 0 ) THEN
+            CALL flush( numicb )
+            CLOSE( numicb )
+         ENDIF
+         !
+      ENDIF ! end if (.not. ln_berg_cpl .or. nn_components == jp_iam_icb) 
    END SUBROUTINE icb_end
 
    !!======================================================================

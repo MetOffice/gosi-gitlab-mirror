@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+
+<!--
+============================================================================================================
+=                                           output files definition                                        =
+=                                            Define your own filesfor ocean dynamics context               =
+=                                         put the variables you want...                                    =
+============================================================================================================
+    -->
+   
+    <file_definition type="one_file" name="@expname@_@freq@_@startdate@_@enddate@" sync_freq="1mo" min_digits="4">
+    
+      <file_group id="5d" output_freq="5d"  output_level="10" enabled=".TRUE.">  <!-- 5d files -->   
+	      
+       <file id="file1" name_suffix="_grid_T" description="Iceberg T grid variables" >
+         <field field_ref="berg_melt"    name="berg_melt"   />
+	 <field field_ref="berg_melt_hcflx"    name="berg_melt_hcflx"   />
+   	 <field field_ref="berg_melt_qlat"     name="berg_melt_qlat"   />
+   	 <field field_ref="berg_buoy_melt"     name="buoy_melt"         />
+   	 <field field_ref="berg_eros_melt"     name="eros_melt"          />
+   	 <field field_ref="berg_conv_melt"     name="conv_melt"       />
+   	 <field field_ref="berg_virtual_area"  name="virtual_area"                    />
+   	 <field field_ref="bits_src"           name="bits_src"                       />
+   	 <field field_ref="bits_melt"          name="bits_mass"                         />
+   	 <field field_ref="berg_mass"          name="berg_mass"                           />
+   	 <field field_ref="berg_real_calving"  name="real_calving"                      />
+       </file>  
+   </file_group>
+
+   <!--   <file_group id="1m" output_freq="1mo" output_level="10" enabled=".TRUE.">
+
+         <file id="file2" name_suffix="_grid_T" description="Iceberg_melt" >
+          <field field_ref="berg_melt"    name="berg_melt" />
+         </file>
+
+      </file_group>
+
+      -->
+
+   </file_definition>

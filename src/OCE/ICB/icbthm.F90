@@ -297,11 +297,14 @@ CONTAINS
       !
       ! now use melt and associated heat flux in ocean (or not)
       !
-      IF(.NOT. ln_passive_mode ) THEN
-         DO_2D( 0, 0, 0, 0 )
-            emp(ji,jj) = emp(ji,jj) - berg_grid%floating_melt(ji,jj)
-            qns(ji,jj) = qns(ji,jj) + berg_grid%calving_hflx (ji,jj)
-         END_2D
+      IF(.NOT. ln_passive_mode .AND. ( .NOT. ln_berg_cpl  ) ) THEN
+         !  if ocean-icebergs coupling is active, this lines are not read
+         !  instead, sab_cpl_snd is called at the end of the time_step  
+            DO_2D( 0, 0, 0, 0 )
+               emp(ji,jj) = emp(ji,jj) - berg_grid%floating_melt(ji,jj)
+               qns(ji,jj) = qns(ji,jj) + berg_grid%calving_hflx (ji,jj)
+            END_2D
+      !
       ENDIF
       !
    END SUBROUTINE icb_thm

@@ -54,9 +54,9 @@ CONTAINS
       !
       ! Adapt calving flux and calving heat flux from coupler for use here
       ! Use interior mask: so no bergs in overlap areas
-      ! src_calving already in kg/s (no convertion needed)
-      berg_grid%calving(:,:) = src_calving(:,:) * tmask_i(:,:) * tmask(:,:,1)
-
+      ! src_calving already in kg/s (no convertion needed)      
+      berg_grid%calving(:,:) = src_calving(:,:)  * tmask_i(:,:) * tmask(:,:,1)
+     
       ! Heat in units of W/m2, and mask (just in case)
       berg_grid%calving_hflx(:,:) = src_calving_hflx(:,:) * tmask_i(:,:) * tmask(:,:,1)
 

@@ -1,0 +1,288 @@
+!!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!! SAB :   Reference namelist_sab_ref                                !!
+!!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+!! SAB  :  1 - Domain & run manager (namrun, namcfg, namdom)
+!! namelists    2 - ICEBERGS dynamics (namberg)
+!!              3 - lateral boundary (namlbc, nambdy)
+!!              4 - Tracer           (nameos)
+!!              5 - diagnostics      (namnc4)
+!!              6 - miscellaneous    (nammpp, namctl)
+!!>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+!!======================================================================
+!!              ***  Domain & Run management namelists  ***           !!
+!!                                                                    !!
+!!   namrun       parameters of the run
+!!   namdom       space and time domain
+!!   namcfg       parameters of the configuration                       (default: user defined GYRE)
+!!======================================================================
+!
+!-----------------------------------------------------------------------
+&namrun        !   parameters of the run
+!-----------------------------------------------------------------------
+   nn_no       =       0   !  Assimilation cycle index
+   cn_exp      =  "ORCA2"  !  experience name
+   nn_it000    =       1   !  first time step
+   nn_itend    =    5840   !  last  time step (std 5840)
+   nn_date0    =  010101   !  date at nit_0000 (format yyyymmdd) used if ln_rstart=F or (ln_rstart=T and nn_rstctl=0 or 1)
+   nn_time0    =       0   !  initial time of day in hhmm
+   nn_leapy    =       0   !  Leap year calendar (1) or not (0)
+   ln_rstart   = .false.   !  start from rest (F) or from a restart file (T)
+      nn_rstctl    =    0     !  restart control ==> activated only if ln_rstart=T
+      !                          !    = 0 nn_date0 read in namelist ; nn_it000 : read in namelist
+      !                          !    = 1 nn_date0 read in namelist ; nn_it000 : check consistancy between namelist and restart
+      !                          !    = 2 nn_date0 read in restart  ; nn_it000 : check consistancy between namelist and restart
+      cn_ocerst_in    = "sab_restart_in"   !  suffix of ocean restart name (input)
+      cn_ocerst_indir = "."         !  directory from which to read input ocean restarts
+      cn_ocerst_out   = "sab_restart_out"   !  suffix of ocean restart name (output)
+      cn_ocerst_outdir = "."        !  directory in which to write output ocean restarts
+   nn_istate   =       0   !  output the initial state (1) or not (0)
+   ln_rst_list = .false.   !  output restarts at list of times using nn_stocklist (T) or at set frequency with nn_stock (F)
+   nn_stock    =       0   !  used only if ln_rst_list = F: output restart freqeuncy (modulo referenced to 1)
+      !                          !    =  0 force to write restart files only at the end of the run
+      !                          !    = -1 do not do any restart
+   nn_stocklist = 0,0,0,0,0,0,0,0,0,0 ! List of timesteps when a restart file is to be written
+   nn_write    =       0   !  used only if key_xios is not defined: output frequency (modulo referenced to nn_it000)
+      !                          !    =  0 force to write output files only at the end of the run
+      !                          !    = -1 do not do any output file
+   ln_mskland  = .false.   !  mask land points in NetCDF outputs
+   ln_cfmeta   = .false.   !  output additional data to netCDF files required for compliance with the CF metadata standard
+   ln_clobber  = .true.    !  clobber (overwrite) an existing file
+   nn_chunksz  =       0   !  chunksize (bytes) for NetCDF file (works only with iom_nf90 routines)
+   ln_xios_read = .false.  !  use XIOS to read restart file (only for a single file restart)
+   nn_wxios = 0      !  use XIOS to write restart file 0 - no, 1 - single file output, 2 - multiple file output
+/
+!-----------------------------------------------------------------------
+&namdom        !   time and space domain
+!-----------------------------------------------------------------------
+   rn_Dt       = 5400.     !  time step for the dynamics and tracer
+   !
+   ln_c1d      = .false.   !  Single column domain (1x1pt)              (T => fill namc1d)
+   !
+   ln_meshmask = .true.    !  =T create a mesh file
+   !
+   ! ln_shuman   = .false.   !  =T  shuman averaging active  (RK3 only)
+/
+!-----------------------------------------------------------------------
+&namcfg        !   parameters of the configuration                      (default: use namusr_def in namelist_cfg)
+!-----------------------------------------------------------------------
+   ln_read_cfg = .false.     !  (=T) read the domain configuration file
+      !                      !  (=F) user defined configuration           (F => create/check namusr_def)
+      cn_domcfg = "domain_cfg"  ! domain configuration filename
+      !
+      ln_closea    = .false. !  (=T => fill namclo) 
+      !                      !  (=F) no control of net precip/evap over closed sea
+      !
+   ln_write_cfg = .false.    !  (=T) create the domain configuration file
+      cn_domcfg_out = "domain_cfg_out" ! newly created domain configuration filename
+       !  
+/
+!-----------------------------------------------------------------------
+&namtile        !   parameters of the tiling
+!-----------------------------------------------------------------------
+   ln_tile = .false.     !  Use tiling (T) or not (F)
+   nn_ltile_i = 99999    !  Length of tiles in i
+   nn_ltile_j = 10       !  Length of tiles in j
+/
+!!======================================================================
+!!            ***  Iceberg parameters namelist  ***          !!
+!!                                                                    !!
+!!   namberg         iceberg floats                                     (ln_icebergs=T)
+!!======================================================================
+!
+!-----------------------------------------------------------------------
+&namberg       !   iceberg parameters                                   (default: OFF)
+!-----------------------------------------------------------------------
+   ln_icebergs = .false.      ! activate iceberg floats (force =F with "key_agrif")
+         ln_berg_cpl = .false. ! activate externalized iceberg computation (see SAB)
+         ln_cpl_asynchrone = .false. ! In case of coupling with SAB, use synchrone reception of berg fluxes or not
+                                !: .true.  : for reproducibility check, comparisons with reference NEMO 5
+                                !: .false. : for performance runs, reception of berg fluxes is desynchronized.
+   !
+   !                          ! restart
+   cn_icbrst_in     = "restart_icb" !  suffix of iceberg restart name (input)
+   cn_icbrst_indir  = "./"          !  directory from which to read input ocean restarts
+   cn_icbrst_out    = "restart_icb" !  suffix of ocean restart name (output)
+   cn_icbrst_outdir = "./"          !  directory from which to read output ocean restarts          
+   !
+   !                          ! diagnostics:
+   ln_bergdia        = .true.        ! Calculate budgets
+   nn_verbose_level  = 0             ! Turn on more verbose output if level > 0
+   
+   !                          ! trajectories and verbose:
+   ! rn_verbose_write_days and rn_sample_rate_days can be decimals (ex 1.5) 
+   ! "0." is an allowed value, no trajectory and no verbose message will be written
+   ! except "-1", negative values are forbidden 
+   rn_verbose_write_days  = 2.0      ! Number of days between verbose messages (or every timestep if == -1)
+   rn_sample_rate_days    = 2.0      ! Number of days between sampling for trajectory storage (or every timestep if == -1)
+   !
+   !                          ! iceberg setting:
+   !                                 ! Initial mass required for an iceberg of each class
+   rn_initial_mass   = 8.8e7, 4.1e8, 3.3e9, 1.8e10, 3.8e10, 7.5e10, 1.2e11, 2.2e11, 3.9e11, 7.4e11
+   !                                 ! Proportion of calving mass to apportion to each class
+   rn_distribution   = 0.24, 0.12, 0.15, 0.18, 0.12, 0.07, 0.03, 0.03, 0.03, 0.02
+   !                                 ! Ratio between effective and real iceberg mass (non-dim)
+   !                                 ! i.e. number of icebergs represented at a point
+   rn_mass_scaling   = 2000., 200., 50., 20., 10., 5., 2., 1., 1., 1.
+                                     ! thickness of newly calved bergs (m)
+   rn_initial_thickness     = 40., 67., 133., 175., 250., 250., 250., 250., 250., 250.
+   !
+   rn_rho_bergs            = 850.    ! Density of icebergs
+   rn_LoW_ratio            = 1.5     ! Initial ratio L/W for newly calved icebergs
+   ln_operator_splitting   = .true.  ! Use first order operator splitting for thermodynamics
+   rn_bits_erosion_fraction = 0.     ! Fraction of erosion melt flux to divert to bergy bits
+   rn_sicn_shift           = 0.      ! Shift of sea-ice concn in erosion flux (0<sicn_shift<1)
+   ln_passive_mode         = .false. ! iceberg - ocean decoupling
+   ln_use_test             = .false.  ! Use test icebergs, their number is specified by nn_test_icebergs
+      nn_test_icebergs        =  0    ! Create test icebergs of this class ( must be > 0 while using test icebergs)
+      !                               ! Put a test iceberg at each gridpoint in box (lon1,lon2,lat1,lat2) 
+      rn_test_box             = 108.0,  116.0, -66.0, -58.0  ! Put a test iceberg at each gridpoint in box (lon1,lon2,lat1,lat2)
+ 
+   ln_use_calving          = .false. ! Use calving data even when nn_test_icebergs > 0
+   rn_speed_limit          = 0.      ! CFL speed limit for a berg (safe value is 0.4, see #2581)
+   !
+   ln_M2016                = .false. ! use Merino et al. (2016) modification (use of 3d ocean data instead of only sea surface data)
+      ln_icb_grd           = .false. ! ground icb when icb bottom level hit oce bottom level (need ln_M2016 to be activated)
+         ln_cpl_nlvlcut  = .false.
+         nn_lvlcut_cpl  = -1      
+   ln_icb_bas   = .false.  ! activate diagnostics by basin
+      cn_icbbasins_file       = 'icbbasinid.nc' ! file defining the basin location
+      cn_icbbasins_var2d      = 'basinid'       ! basin id map
+      cn_icbbasins_var1d      = 'basins'        ! variable to define the dimension variable in the output (correspondance between basin index and basin id)
+      nn_icb_basins           = 20              ! number of basin (in the netcdf file)
+      ln_rst_test_bas         = .false.         ! is there test iceberg in the restart (ie generated with nn_test_icebergs > -1)
+   !
+   cn_dir      = './'      !  root directory for the calving data location
+   !
+   ! ln_use_calving = .true. required an input file (sn_icb). The unit of the variable 'calvingmask' is kg/s.
+   !___________!_________________________!___________________!___________!_____________!________!___________!__________________!__________!_______________!
+   !           !  file name              ! frequency (hours) ! variable  ! time interp.!  clim  ! 'yearly'/ ! weights filename ! rotation ! land/sea mask !
+   !           !                         !  (if <0  months)  !   name    !   (logical) !  (T/F) ! 'monthly' !                  ! pairing  !    filename   !
+   sn_icb     =  'calving'              ,         -1.        ,'calvingmask',  .true.   , .true. , 'yearly'  , ''               , ''       , ''
+/
+!!======================================================================
+!!               ***  Lateral boundary condition  ***                 !!
+!!                                                                    !!
+!!   namlbc        lateral momentum boundary condition                  (default: NO selection)
+!!   nambdy        Unstructured open boundaries                         (default: OFF)
+!!======================================================================
+!
+!-----------------------------------------------------------------------
+&namlbc        !   lateral momentum boundary condition                  (default: NO selection)
+!-----------------------------------------------------------------------
+   !                       !  free slip  !   partial slip  !   no slip   ! strong slip
+   rn_shlat    =  -9999.   !  shlat = 0  !  0 < shlat < 2  !  shlat = 2  !  2 < shlat
+   ln_vorlat   = .false.   !  consistency of vorticity boundary condition with analytical Eqs.
+/
+!-----------------------------------------------------------------------
+&nambdy        !  unstructured open boundaries                          (default: OFF)
+!-----------------------------------------------------------------------
+   ln_bdy         = .false.   !  Use unstructured open boundaries
+   nb_bdy         = 0         !  number of open boundary sets
+   ln_coords_file = .true.    !  =T : read bdy coordinates from file
+      cn_coords_file = 'coordinates.bdy.nc'  !  bdy coordinates files
+   ln_mask_file   = .false.   !  =T : read mask from file
+      cn_mask_file = ''        !  name of mask file (if ln_mask_file=.TRUE.)
+   cn_dyn2d    = 'none'       !
+   nn_dyn2d_dta   =  0        !  = 0, bdy data are equal to the initial state
+      !                       !  = 1, bdy data are read in 'bdydata   .nc' files
+      !                       !  = 2, use tidal harmonic forcing data from files
+      !                       !  = 3, use external data AND tidal harmonic forcing
+   cn_dyn3d      =  'none'    !
+   nn_dyn3d_dta  =  0         !  = 0, bdy data are equal to the initial state
+   !                          !  = 1, bdy data are read in 'bdydata   .nc' files
+   cn_tra        =  'none'    !
+   nn_tra_dta    =  0         !  = 0, bdy data are equal to the initial state
+   !                          !  = 1, bdy data are read in 'bdydata   .nc' files
+   cn_ice        =  'none'    !
+   nn_ice_dta    =  0         !  = 0, bdy data are equal to the initial state
+   !                          !  = 1, bdy data are read in 'bdydata   .nc' files
+   !
+   ln_tra_dmp    =.false.     !  open boudaries conditions for tracers
+   ln_dyn3d_dmp  =.false.     !  open boundary condition for baroclinic velocities
+   rn_time_dmp   =  1.        !  Damping time scale in days
+   rn_time_dmp_out = 1.       !  Outflow damping time scale
+   nn_rimwidth   = 10         !  width of the relaxation zone
+   ln_vol        = .false.    !  total volume correction (see nn_volctl parameter)
+   nn_volctl     =  1         !  = 0, the total water flux across open boundaries is zero
+/
+!!======================================================================
+!!                        Tracer (T-S) namelists                      !!
+!!                                                                    !!
+!!   nameos        equation of state                                    (default: NO selection)
+!!======================================================================
+!
+!-----------------------------------------------------------------------
+&nameos        !   ocean Equation Of Seawater                           (default: NO selection)
+!-----------------------------------------------------------------------
+   ln_teos10   = .false.         !  = Use TEOS-10
+   ln_eos80    = .false.         !  = Use EOS80
+   ln_seos     = .false.         !  = Use S-EOS (simplified Eq.)
+                                 !
+   !                     ! S-EOS coefficients (ln_seos=T):
+   !                             !  rd(T,S,Z)*rho0 = -a0*(1+.5*lambda*dT+mu*Z+nu*dS)*dT+b0*dS
+   !                             !    dT = T-rn_T0 ; dS = S-rn_S0
+   rn_T0       = 10.             !  reference temperature
+   rn_S0       = 35.             !  reference salinity
+   rn_a0       =  1.6550e-1      !  thermal expension coefficient
+   rn_b0       =  7.6554e-1      !  saline  expension coefficient
+   rn_lambda1  =  5.9520e-2      !  cabbeling coeff in T^2  (=0 for linear eos)
+   rn_lambda2  =  7.4914e-4      !  cabbeling coeff in S^2  (=0 for linear eos)
+   rn_mu1      =  1.4970e-4      !  thermobaric coeff. in T (=0 for linear eos)
+   rn_mu2      =  1.1090e-5      !  thermobaric coeff. in S (=0 for linear eos)
+   rn_nu       =  2.4341e-3      !  cabbeling coeff in T*S  (=0 for linear eos)
+/
+!-----------------------------------------------------------------------
+&namnc4        !   netcdf4 chunking and compression settings
+!-----------------------------------------------------------------------
+   nn_nchunks_i =   4       !  number of chunks in i-dimension
+   nn_nchunks_j =   4       !  number of chunks in j-dimension
+   nn_nchunks_k =   31      !  number of chunks in k-dimension
+   !                       !  setting nn_nchunks_k = jpk will give a chunk size of 1 in the vertical which
+   !                       !  is optimal for postprocessing which works exclusively with horizontal slabs
+   ln_nc4zip   = .false.   !  (T) use netcdf4 chunking and compression
+   !                       !  (F) ignore chunking and compression information (netcdf3 compatible file)
+/
+!!======================================================================
+!!                  ***  Miscellaneous namelists  ***                 !!
+!!                                                                    !!
+!!   nammpp            Massively Parallel Processing
+!!   namctl            Control prints                                   (default: OFF)
+!!======================================================================
+!
+!-----------------------------------------------------------------------
+&nammpp        !   Massively Parallel Processing
+!-----------------------------------------------------------------------
+   ln_listonly =  .false.  !  do nothing else than listing the best domain decompositions (with land domains suppression)
+   !                       !  if T: the largest number of cores tested is defined by max(mppsize, jpni*jpnj)
+   ln_nnogather =  .true.  !  activate code to avoid mpi_allgather use at the northfold
+   ln_mppdelay  =  .true.  !  activate delayed global communications to go faster
+   jpni        =   0       !  number of processors following i (set automatically if < 1), see also ln_listonly = T
+   jpnj        =   0       !  number of processors following j (set automatically if < 1), see also ln_listonly = T
+   nn_hls      =   2       !  halo width (applies to both rows and columns)
+   nn_comm     =   1       !  comm choice
+/
+!-----------------------------------------------------------------------
+&namctl        !   Control prints                                       (default: OFF)
+!-----------------------------------------------------------------------
+   sn_cfctl%l_runstat = .FALSE.    ! switches and which areas produce reports with the proc integer settings.
+   sn_cfctl%l_trcstat = .FALSE.   ! The default settings for the proc integers should ensure
+   sn_cfctl%l_oceout  = .FALSE.   ! that  all areas report.
+   sn_cfctl%l_layout  = .FALSE.   !
+   sn_cfctl%l_prtctl  = .FALSE.   !
+   sn_cfctl%l_prttrc  = .FALSE.   !
+   sn_cfctl%l_oasout  = .FALSE.   !
+   sn_cfctl%l_obsstat = .FALSE.   !
+   sn_cfctl%procmin   = 0         ! Minimum area number for reporting [default:0]
+   sn_cfctl%procmax   = 1000000   ! Maximum area number for reporting [default:1000000]
+   sn_cfctl%procincr  = 1         ! Increment for optional subsetting of areas [default:1]
+   sn_cfctl%ptimincr  = 1         ! Timestep increment for writing time step progress info
+   nn_ictls    =    0             !  start i indice of control sum (use to compare mono versus
+   nn_ictle    =    0             !  end   i indice of control sum        multi processor runs
+   nn_jctls    =    0             !  start j indice of control               over a subdomain)
+   nn_jctle    =    0             !  end   j indice of control
+   nn_isplt    =    1             !  number of processors in i-direction
+   nn_jsplt    =    1             !  number of processors in j-direction
+   ln_timing   = .false.          !  timing by routine write out in timing.output file
+   ln_diacfl   = .false.          !  CFL diagnostics write out in cfl_diagnostics.ascii
+/
