@@ -21,6 +21,7 @@ MODULE trcrst
    USE par_trc        ! need jptra, number of passive tracers
    USE oce_trc
    USE trc
+   USE in_out_manager, ONLY: ln_rstdate
    USE iom
    USE daymod
    USE lib_mpp
@@ -82,8 +83,15 @@ CONTAINS
       ! except if we write tracer restart files every tracer time step or if a tracer restart file was writen at nitend - 1
       IF( kt == nitrst - 1 .OR. nn_stock == 1 .OR. ( kt == nitend - 1 .AND. .NOT. lrst_trc ) ) THEN
          ! beware of the format used to write kt (default is i8.8, that should be large enough)
-         IF( nitrst > 1.0e9 ) THEN   ;   WRITE(clkt,*       ) nitrst
-         ELSE                        ;   WRITE(clkt,'(i8.8)') nitrst
+         IF ( ln_rstdate ) THEN
+            zfjulday = fjulday + rdt / rday
+            IF( ABS(zfjulday - REAL(NINT(zfjulday),wp)) < 0.1 / rday )   zfjulday = REAL(NINT(zfjulday),wp)   ! avoid truncation error
+            CALL ju2ymds( zfjulday, iyear, imonth, iday, zsec )           
+            WRITE(clkt, '(i4.4,2i2.2)') iyear, imonth, iday
+         ELSE
+            IF( nitrst > 999999999 ) THEN   ;   WRITE(clkt, *       ) nitrst
+            ELSE                            ;   WRITE(clkt, '(i8.8)') nitrst
+            ENDIF
          ENDIF
          ! create the file
          IF(lwp) WRITE(numout,*)
