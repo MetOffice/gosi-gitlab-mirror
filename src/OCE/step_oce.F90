@@ -16,6 +16,7 @@ MODULE step_oce
    USE sbc_oce         ! surface boundary condition: ocean
    USE sbcmod          ! surface boundary condition       (sbc     routine)
    USE sbcrnf          ! surface boundary condition: runoff variables
+   USE sbcssr, only: qrp, erp
    USE sbccpl          ! surface boundary condition: coupled formulation (call send at end of step)
    USE sbcapr          ! surface boundary condition: atmospheric pressure
    USE sbcwave         ! Wave intialisation

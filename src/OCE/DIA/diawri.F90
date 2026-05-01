@@ -107,7 +107,7 @@ CONTAINS
    END FUNCTION dia_wri_alloc
 
    
-   SUBROUTINE dia_wri( kt, Kbb, Kmm, Kaa, pts )
+   SUBROUTINE dia_wri( kt, Kbb, Kmm, Kaa, pts, ptsa )
       !!---------------------------------------------------------------------
       !!                  ***  ROUTINE dia_wri  ***
       !!                   
@@ -118,7 +118,9 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER, INTENT( in ) ::   kt        ! ocean time-step index
       INTEGER, INTENT( in ) ::   Kbb, Kmm, Kaa  ! ocean time level indices
-      REAL(dp), DIMENSION(jpi,jpj,jpk,jpts,jpt), INTENT(in) :: pts            ! active tracers and RHS of tracer equation
+      REAL(dp), DIMENSION(jpi,jpj,jpk,jpts,jpt), INTENT(in) :: pts            ! T/S fields and RHS of tracer equation
+      REAL(dp), DIMENSION(jpi,jpj,jpk,jpts,jpt), INTENT(in), OPTIONAL :: ptsa ! if included then these are the active T/S fields
+      !!                                                                      ! and pts are the passive T/S fields.
       !!
       INTEGER ::   ji, jj, jk       ! dummy loop indices
       INTEGER ::   ikbot            ! local integer
@@ -157,7 +159,11 @@ CONTAINS
       ! 
       ! Output the initial state and forcings
       IF( ninist == 1 ) THEN                       
-         CALL dia_wri_state( Kmm, 'output.init', pts )
+         IF( PRESENT(ptsa) ) THEN
+             CALL dia_wri_state( Kmm, 'output.init', pts, ptsa )
+         ELSE
+             CALL dia_wri_state( Kmm, 'output.init', pts )
+         ENDIF
          ninist = 0
       ENDIF
 
@@ -1145,7 +1151,7 @@ CONTAINS
    END SUBROUTINE dia_wri
 #endif
 
-   SUBROUTINE dia_wri_state( Kmm, cdfile_name, pts )
+   SUBROUTINE dia_wri_state( Kmm, cdfile_name, pts, ptsa )
       !!---------------------------------------------------------------------
       !!                 ***  ROUTINE dia_wri_state  ***
       !!        
@@ -1160,7 +1166,9 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER           , INTENT( in ) ::   Kmm              ! time level index
       CHARACTER (len=* ), INTENT( in ) ::   cdfile_name      ! name of the file created
-      REAL(dp), DIMENSION(jpi,jpj,jpk,jpts,jpt), INTENT(in) :: pts  ! active tracers and RHS of tracer equation
+      REAL(dp), DIMENSION(jpi,jpj,jpk,jpts,jpt), INTENT(in) :: pts  ! T/S fields and RHS of tracer equation
+      REAL(dp), DIMENSION(jpi,jpj,jpk,jpts,jpt), INTENT(in), OPTIONAL :: ptsa  ! if included then this is active T/S fields
+      !!                                                                       ! pts is passive T/S fields.
       !!
       INTEGER ::   ji, jj, jk       ! dummy loop indices
       INTEGER ::   inum
@@ -1179,6 +1187,10 @@ CONTAINS
       !
       CALL iom_rstput( 0, 0, inum, 'votemper', pts(:,:,:,jp_tem,Kmm) )    ! now temperature
       CALL iom_rstput( 0, 0, inum, 'vosaline', pts(:,:,:,jp_sal,Kmm) )    ! now salinity
+      IF( PRESENT(ptsa) ) THEN 
+         CALL iom_rstput( 0, 0, inum, 'votemact', ptsa(:,:,:,jp_tem,Kmm) )    ! now temperature
+         CALL iom_rstput( 0, 0, inum, 'vosalact', ptsa(:,:,:,jp_sal,Kmm) )    ! now salinity
+      ENDIF
       CALL iom_rstput( 0, 0, inum, 'sossheig', ssh(:,:,Kmm)         )    ! sea surface height
       CALL iom_rstput( 0, 0, inum, 'vozocrtx', uu(:,:,:,Kmm)        )    ! now i-velocity
       CALL iom_rstput( 0, 0, inum, 'vomecrty', vv(:,:,:,Kmm)        )    ! now j-velocity

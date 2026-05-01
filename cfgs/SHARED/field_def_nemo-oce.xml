@@ -152,6 +152,12 @@ that are available in the tidal-forcing implementation (see
     <field id="ahmt_2d"      long_name=" surface t-eddy viscosity coefficient"   unit="m2/s or m4/s"                      />
     <field id="ahmt_3d"      long_name=" 3D      t-eddy viscosity coefficient"   unit="m2/s or m4/s"  grid_ref="grid_T_3D"/>
 
+    <!-- isopycnal slopes (i and j) and other LDF diagnostics -->
+    <field id="wslpi"      long_name="isopycnal slope i-direction"   unit="1"  grid_ref="grid_T_3D"/>
+    <field id="wslpj"      long_name="isopycnal slope j-direction"   unit="1"  grid_ref="grid_T_3D"/>
+    <field id="ah_wslp2"   long_name="intermediate slope"   unit="1"  grid_ref="grid_T_3D"/>
+    <field id="ldftrd_tem"  long_name="LDF tem trend"   unit="1"  grid_ref="grid_T_3D"/>
+
     
        <!-- EOS80 -->
         <field id="sst_pot"          long_name="sea surface potential temperature"                            standard_name="sea_surface_temperature"             unit="degC"     />
@@ -512,8 +518,10 @@ that are available in the tidal-forcing implementation (see
       <field id="qsr"          long_name="Shortwave Radiation"                   standard_name="net_downward_shortwave_flux_at_sea_water_surface"                     unit="W/m2"                           />
       <field id="qsr3d"        long_name="Shortwave Radiation 3D distribution"   standard_name="downwelling_shortwave_flux_in_sea_water"                              unit="W/m2"      grid_ref="grid_T_3D_inner" />
       <field id="qrp"          long_name="Surface Heat Flux: Damping"            standard_name="heat_flux_into_sea_water_due_to_newtonian_relaxation"                 unit="W/m2"                           />
+      <field id="qrpp"         long_name="Surface Heat Flux: Damping"            standard_name="heat_flux_into_sea_water_due_to_newtonian_relaxation"                 unit="W/m2"                           />
       <field id="qclosea"      long_name="closed sea heat content flux"          standard_name="closea_heat_content_downward_flux"                                    unit="W/m2"     />
       <field id="erp"          long_name="Surface Water Flux: Damping"           standard_name="water_flux_out_of_sea_water_due_to_newtonian_relaxation"              unit="kg/m2/s"                        />
+      <field id="erpp"         long_name="Surface Water Flux: Damping"           standard_name="water_flux_out_of_sea_water_due_to_newtonian_relaxation"              unit="kg/m2/s"                        />
       <field id="taum"         long_name="wind stress module"                    standard_name="magnitude_of_surface_downward_stress"                                 unit="N/m2"                           />
       <field id="wspd"         long_name="wind speed module"                     standard_name="wind_speed"                                                           unit="m/s"                            />
 
@@ -611,6 +619,7 @@ that are available in the tidal-forcing implementation (see
       <field id="sss_m_pra"    unit="psu"  />
       <!-- TEOS-10 -->
       <field id="sss_m_abs"    unit="g/kg"  />
+      <field id="sss_mp_abs"   unit="g/kg"  />
       <!-- SEOS -->
       <field id="sss_m_seos"   unit="psu"  />
 

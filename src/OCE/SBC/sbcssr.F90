@@ -57,7 +57,7 @@ MODULE sbcssr
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE sbc_ssr( kt )
+   SUBROUTINE sbc_ssr( kt, no_read )
       !!---------------------------------------------------------------------
       !!                     ***  ROUTINE sbc_ssr  ***
       !!
@@ -71,7 +71,8 @@ CONTAINS
       !!                   add a damping term on sfx        (nn_sssr = 1)
       !!                   add a damping term on emp        (nn_sssr = 2)
       !!---------------------------------------------------------------------
-      INTEGER, INTENT(in   ) ::   kt   ! ocean time step
+      INTEGER, INTENT(in   )           ::   kt        ! ocean time step
+      LOGICAL, INTENT(in   ), OPTIONAL ::   no_read   ! suppress calls to fld_read
       !!
       INTEGER  ::   ji, jj   ! dummy loop indices
       REAL(wp) ::   zerp     ! local scalar for evaporation damping
@@ -79,15 +80,20 @@ CONTAINS
       REAL(wp) ::   zsrp     ! local scalar for unit conversion of rn_deds factor
       REAL(wp) ::   zerp_bnd ! local scalar for unit conversion of rn_epr_max factor
       INTEGER  ::   ierror   ! return error code
+      LOGICAL  ::   l_no_read ! suppress calls to fld_read
       !!
       CHARACTER(len=100) ::  cn_dir          ! Root directory for location of ssr files
       TYPE(FLD_N) ::   sn_sst, sn_sss        ! informations about the fields to be read
       !!----------------------------------------------------------------------
       !
+      l_no_read = .false.
+      IF( PRESENT(no_read) ) l_no_read = no_read
       IF( nn_sstr + nn_sssr /= 0 ) THEN
          !
-         IF( nn_sstr == 1)   CALL fld_read( kt, nn_fsbc, sf_sst )   ! Read SST data and provides it at kt
-         IF( nn_sssr >= 1)   CALL fld_read( kt, nn_fsbc, sf_sss )   ! Read SSS data and provides it at kt
+         IF( .not. l_no_read ) THEN
+            IF( nn_sstr == 1)   CALL fld_read( kt, nn_fsbc, sf_sst )   ! Read SST data and provides it at kt
+            IF( nn_sssr >= 1)   CALL fld_read( kt, nn_fsbc, sf_sss )   ! Read SSS data and provides it at kt
+         ENDIF
          !
          !                                         ! ========================= !
          IF( MOD( kt-1, nn_fsbc ) == 0 ) THEN      !    Add restoring term     !

@@ -215,7 +215,9 @@ CONTAINS
       !
 #endif
       !
+      WRITE(numout,*) "l_trdtra : ",l_trdtra
       IF( l_trdtra )   THEN                      ! save the horizontal diffusive trends for further diagnostics
+         WRITE(numout,*) "Writing tra_sbc trends on timestep ",kt
          ztrdt(:,:,:) = pts(:,:,:,jp_tem,Krhs) - ztrdt(:,:,:)
          ztrds(:,:,:) = pts(:,:,:,jp_sal,Krhs) - ztrds(:,:,:)
          CALL trd_tra( kt, Kmm, Krhs, 'TRA', jp_tem, jptra_nsr, ztrdt )

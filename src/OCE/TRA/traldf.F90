@@ -15,6 +15,7 @@ MODULE traldf
    !!   tra_ldf_init  : initialization, namelist read, and parameters control
    !!----------------------------------------------------------------------
    USE oce            ! ocean dynamics and tracers
+   USE iom
    USE dom_oce        ! ocean space and time domain
    USE phycst         ! physical constants
    USE ldftra         ! lateral diffusion: eddy diffusivity & EIV coeff.
@@ -79,6 +80,7 @@ CONTAINS
       IF( l_trdtra )   THEN                    !* save the horizontal diffusive trends for further diagnostics
          ztrdt(:,:,:) = pts(:,:,:,jp_tem,Krhs) - ztrdt(:,:,:)
          ztrds(:,:,:) = pts(:,:,:,jp_sal,Krhs) - ztrds(:,:,:)
+         CALL iom_put( "ldftrd_tem", ztrdt)
          CALL trd_tra( kt, Kmm, Krhs, 'TRA', jp_tem, jptra_ldf, ztrdt )
          CALL trd_tra( kt, Kmm, Krhs, 'TRA', jp_sal, jptra_ldf, ztrds )
          DEALLOCATE( ztrdt, ztrds )

@@ -40,7 +40,7 @@ MODULE sbcssm
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE sbc_ssm( kt, Kbb, Kmm )
+   SUBROUTINE sbc_ssm( kt, Kbb, Kmm, pts )
       !!---------------------------------------------------------------------
       !!                     ***  ROUTINE sbc_oce  ***
       !!
@@ -55,6 +55,7 @@ CONTAINS
       !!---------------------------------------------------------------------
       INTEGER, INTENT(in) ::   kt   ! ocean time step
       INTEGER, INTENT(in) ::   Kbb, Kmm   ! ocean time level indices
+      REAL(dp), DIMENSION(jpi,jpj,jpk,jpts,jpt), INTENT(inout) :: pts            ! active tracers and RHS of tracer equation
       !
       INTEGER  ::   ji, jj               ! loop index
       REAL(wp) ::   zcoef, zf_sbc       ! local scalar
@@ -72,8 +73,8 @@ CONTAINS
       ENDIF 
       !
       !                                        !* surface T-, U-, V- ocean level variables (T, S, depth, velocity)
-      zts(:,:,jp_tem) = ts(:,:,1,jp_tem,Kmm)
-      zts(:,:,jp_sal) = ts(:,:,1,jp_sal,Kmm)
+      zts(:,:,jp_tem) = pts(:,:,1,jp_tem,Kmm)
+      zts(:,:,jp_sal) = pts(:,:,1,jp_sal,Kmm)
       !
       !                                       !===>>> CAUTION: lbc_lnk is required on fraqsr_lev since sea ice computes on the full domain
       !                                       !                otherwise restartability and reproducibility are broken 
@@ -225,8 +226,12 @@ CONTAINS
             CALL iom_get( numror            , 'nn_fsbc', zf_sbc )     ! sbc frequency of previous run
             CALL iom_get( numror, jpdom_auto, 'ssu_m'  , ssu_m, cd_type = 'U', psgn = -1._wp )    ! sea surface mean velocity    (U-point)
             CALL iom_get( numror, jpdom_auto, 'ssv_m'  , ssv_m, cd_type = 'V', psgn = -1._wp )    !   "         "    velocity    (V-point)
-            CALL iom_get( numror, jpdom_auto, 'sst_m'  , sst_m )    !   "         "    temperature (T-point)
-            CALL iom_get( numror, jpdom_auto, 'sss_m'  , sss_m )    !   "         "    salinity    (T-point)
+            CALL iom_get( numror, jpdom_auto, 'sst_m'  , sst_ma )    !   "         "    temperature (T-point)
+            CALL iom_get( numror, jpdom_auto, 'sss_m'  , sss_ma )    !   "         "    salinity    (T-point)
+            IF( ln_passive_TS ) THEN
+               CALL iom_get( numropr, jpdom_auto, 'sst_m'  , sst_mp )    !   "         "    temperature (T-point) passive version
+               CALL iom_get( numropr, jpdom_auto, 'sss_m'  , sss_mp )    !   "         "    salinity    (T-point) passive version
+            ENDIF
             CALL iom_get( numror, jpdom_auto, 'ssh_m'  , ssh_m )    !   "         "    height      (T-point)
             CALL iom_get( numror, jpdom_auto, 'e3t_m'  , e3t_m )    ! 1st level thickness          (T-point)
             ! fraction of solar net radiation absorbed in 1st T level
@@ -241,8 +246,12 @@ CONTAINS
                zcoef = REAL( nn_fsbc - 1, wp ) / ( zf_sbc - 1._wp )   ! zf_sbc /= 1 as it was written in the restart
                ssu_m(:,:) = zcoef * ssu_m(:,:)
                ssv_m(:,:) = zcoef * ssv_m(:,:)
-               sst_m(:,:) = zcoef * sst_m(:,:)
-               sss_m(:,:) = zcoef * sss_m(:,:)
+               sst_ma(:,:) = zcoef * sst_ma(:,:)
+               sss_ma(:,:) = zcoef * sss_ma(:,:)
+               IF( ln_passive_TS ) THEN
+                  sst_mp(:,:) = zcoef * sst_mp(:,:)
+                  sss_mp(:,:) = zcoef * sss_mp(:,:)
+               ENDIF
                ssh_m(:,:) = zcoef * ssh_m(:,:)
                e3t_m(:,:) = zcoef * e3t_m(:,:)
                frq_m(:,:) = zcoef * frq_m(:,:)
@@ -257,10 +266,10 @@ CONTAINS
          IF(lwp) WRITE(numout,*) '   default initialisation of ss._m arrays'
          ssu_m(:,:) = uu(:,:,1,Kbb)
          ssv_m(:,:) = vv(:,:,1,Kbb)
-         IF( l_useCT )  THEN    ;   sst_m(:,:) =eos_pt_from_ct( CASTSP(ts(:,:,1,jp_tem,Kmm)), CASTSP(ts(:,:,1,jp_sal,Kmm)) )
-         ELSE                   ;   sst_m(:,:) = ts(:,:,1,jp_tem,Kmm)
+         IF( l_useCT )  THEN    ;   sst_ma(:,:) =eos_pt_from_ct( CASTSP(ts(:,:,1,jp_tem,Kmm)), CASTSP(ts(:,:,1,jp_sal,Kmm)) )
+         ELSE                   ;   sst_ma(:,:) = ts(:,:,1,jp_tem,Kmm)
          ENDIF
-         sss_m(:,:) = ts  (:,:,1,jp_sal,Kmm)
+         sss_ma(:,:) = ts  (:,:,1,jp_sal,Kmm)
          ssh_m(:,:) = ssh(:,:,Kmm)
          e3t_m(:,:) = e3t(:,:,1,Kmm)
          frq_m(:,:) = 1._wp

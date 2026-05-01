@@ -199,6 +199,7 @@ CONTAINS
             ah_wslp2(ji,jj,jk) = zahu_w * wslpi(ji,jj,jk) * wslpi(ji,jj,jk)   &
                &               + zahv_w * wslpj(ji,jj,jk) * wslpj(ji,jj,jk)
          END_3D
+         CALL iom_put( "ah_wslp2", ah_wslp2 )
          !
          IF( ln_traldf_msc ) THEN                ! stabilizing vertical diffusivity coefficient
             DO_3D_OVR( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1, 2, jpkm1 )

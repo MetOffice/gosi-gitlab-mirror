@@ -20,6 +20,7 @@ MODULE ldfslp
    !!   ldf_slp_init  : initialization of the slopes computation
    !!----------------------------------------------------------------------
    USE oce            ! ocean dynamics and tracers
+   USE iom
    USE isf_oce        ! ice shelf
    USE dom_oce        ! ocean space and time domain
 !   USE ldfdyn         ! lateral diffusion: eddy viscosity coef.
@@ -315,6 +316,9 @@ CONTAINS
             wslpj(ji,jj,jk) = wslpj(ji,jj,jk) * zck
          END_2D
       END DO
+
+      CALL iom_put("wslpi", wslpi)
+      CALL iom_put("wslpj", wslpj)
 
       ! IV. Lateral boundary conditions
       ! ===============================

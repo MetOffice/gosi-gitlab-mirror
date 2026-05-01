@@ -148,8 +148,12 @@ MODULE sbc_oce
    INTEGER , PUBLIC                     ::   nn_fsbc   !: frequency of sbc computation (as well as sea-ice model)
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   ssu_m     !: mean (nn_fsbc time-step) surface sea i-current (U-point) [m/s]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   ssv_m     !: mean (nn_fsbc time-step) surface sea j-current (V-point) [m/s]
-   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   sst_m     !: mean (nn_fsbc time-step) surface sea temperature     [Celsius]
-   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   sss_m     !: mean (nn_fsbc time-step) surface sea salinity            [psu]
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, TARGET, DIMENSION(:,:) ::   sst_ma    !: mean (nn_fsbc time-step) surface sea temperature (active)  [Celsius]
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, TARGET, DIMENSION(:,:) ::   sss_ma    !: mean (nn_fsbc time-step) surface sea salinity (active)     [psu]
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, TARGET, DIMENSION(:,:) ::   sst_mp    !: mean (nn_fsbc time-step) surface sea temperature (passive) [Celsius]
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, TARGET, DIMENSION(:,:) ::   sss_mp    !: mean (nn_fsbc time-step) surface sea salinity (passive)    [psu]
+   REAL(wp), PUBLIC, POINTER, SAVE, DIMENSION(:,:)     ::   sst_m     !: mean (nn_fsbc time-step) surface sea temperature     [Celsius]
+   REAL(wp), PUBLIC, POINTER, SAVE, DIMENSION(:,:)     ::   sss_m     !: mean (nn_fsbc time-step) surface sea salinity            [psu]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   ssh_m     !: mean (nn_fsbc time-step) sea surface height                [m]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   tsk_m     !: mean (nn_fsbc time-step) SKIN surface sea temp.      [Celsius]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   e3t_m     !: mean (nn_fsbc time-step) sea surface layer thickness       [m]
@@ -220,8 +224,9 @@ CONTAINS
       !
       ALLOCATE( tprecip(jpi,jpj) , sprecip(jpi,jpj) , fr_i(jpi,jpj) ,     &
          &      atm_co2(jpi,jpj) , tsk_m(jpi,jpj) , cloud_fra(jpi,jpj),   &
-         &      ssu_m  (jpi,jpj) , sst_m(jpi,jpj) , frq_m(jpi,jpj) ,      &
-         &      ssv_m  (jpi,jpj) , sss_m(jpi,jpj) , ssh_m(jpi,jpj) , STAT=ierr(4) )
+         &      ssu_m  (jpi,jpj) , sst_ma(jpi,jpj) , frq_m(jpi,jpj) ,      &
+         &      ssv_m  (jpi,jpj) , sss_ma(jpi,jpj) , ssh_m(jpi,jpj) , STAT=ierr(4) )
+      IF( ln_passive_TS ) ALLOCATE( sst_mp(jpi,jpj), sss_mp(jpi,jpj) )
 
       ALLOCATE( greenland_icesheet_mask(jpi,jpj) , antarctica_icesheet_mask(jpi,jpj) ) 
 

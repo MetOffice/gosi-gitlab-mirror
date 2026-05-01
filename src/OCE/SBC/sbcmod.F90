@@ -71,7 +71,9 @@ MODULE sbcmod
 
    PUBLIC   sbc        ! routine called by step.F90
    PUBLIC   sbc_init   ! routine called by opa.F90
-
+   PUBLIC   sbc_ssm    ! \ called from stp for the
+   PUBLIC   sbc_ssr    ! / passive T&S
+   
    INTEGER ::   nsbc   ! type of surface boundary condition (deduced from namsbc informations)
    !! * Substitutions
 #  include "do_loop_substitute.h90"
@@ -316,6 +318,8 @@ CONTAINS
       !                       !**  associated modules : initialization
       !
                           CALL sbc_ssm_init ( Kbb, Kmm ) ! Sea-surface mean fields initialization
+                          ! need to set pointers here for ice initialisation
+                          sst_m => sst_ma ; sss_m => sss_ma
       !
       IF( l_sbc_clo   )   CALL sbc_clo_init              ! closed sea surface initialisation
       !
@@ -418,7 +422,16 @@ CONTAINS
       ll_sas = nn_components == jp_iam_sas               ! component flags
       ll_opa = nn_components == jp_iam_oce
       !
-      IF( .NOT.ll_sas )   CALL sbc_ssm ( kt, Kbb, Kmm )  ! mean ocean sea surface variables (sst_m, sss_m, ssu_m, ssv_m)
+      IF( .NOT.ll_sas ) THEN
+         CALL sbc_ssm ( kt, Kbb, Kmm, ts )  ! mean ocean sea surface variables (sst_m, sss_m, ssu_m, ssv_m)
+         IF( ln_passive_TS ) THEN
+            sst_m => sst_mp ; sss_m => sss_mp
+            CALL sbc_ssm ( kt, Kbb, Kmm, tsp )    ! call for passive versions of sst_m, sss_m
+                                                  ! could be optimised to not replicate calculations for ssu_m, ssv_m
+            CALL iom_put( 'sss_mp_abs', sss_m ) 
+            sst_m => sst_ma ; sss_m => sss_ma
+         ENDIF
+      ENDIF
       !
       !                                            !==  sbc formulation  ==!
       !

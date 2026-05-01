@@ -312,13 +312,20 @@ CONTAINS
       CHARACTER(len=*), INTENT(in) ::   cdrw       ! "READ"/"WRITE" flag
       !
       REAL(dp) ::   zkt, zndastp, zdayfrac, ksecs, ktime
-      INTEGER  ::   ihour, iminute, isecond
+      INTEGER  ::   ihour, iminute, isecond, inumror
       !!----------------------------------------------------------------------
 
+      IF( ln_passive_TS ) THEN
+         ! in this case read date/time info from passive TS restart. 
+         inumror = numropr
+      ELSE
+         inumror = numror
+      ENDIF
+
       IF( TRIM(cdrw) == 'READ' ) THEN
-         IF( iom_varid( numror, 'kt', ldstop = .FALSE. ) > 0 ) THEN
+         IF( iom_varid( inumror, 'kt', ldstop = .FALSE. ) > 0 ) THEN
             ! Get Calendar informations
-            CALL iom_get( numror, 'kt', zkt )   ! last time-step of previous run
+            CALL iom_get( inumror, 'kt', zkt )   ! last time-step of previous run
             IF(lwp) THEN
                WRITE(numout,*) ' *** Info read in restart : '
                WRITE(numout,*) '   previous time-step                               : ', NINT( zkt )
@@ -337,10 +344,10 @@ CONTAINS
             ! define ndastp and adatrj
             IF ( nrstdt == 2 ) THEN
                ! read the parameters corresponding to nit000 - 1 (last time step of previous run)
-               CALL iom_get( numror, 'ndastp', zndastp )
+               CALL iom_get( inumror, 'ndastp', zndastp )
                ndastp = NINT( zndastp )
-               CALL iom_get( numror, 'adatrj', adatrj  )
-	       CALL iom_get( numror, 'ntime' , ktime   )
+               CALL iom_get( inumror, 'adatrj', adatrj  )
+	       CALL iom_get( inumror, 'ntime' , ktime   )
                nn_time0 = NINT(ktime)
                ! calculate start time in hours and minutes
                zdayfrac = adatrj - REAL(INT(adatrj), wp)

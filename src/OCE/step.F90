@@ -158,6 +158,7 @@ CONTAINS
       IF( ln_apr_dyn )   CALL sbc_apr ( kstp )                        ! atmospheric pressure (NB: call before bdy_dta which needs ssh_ib)
       IF( ln_bdy     )   CALL bdy_dta ( kstp, Nnn )                   ! update dynamic & tracer data at open boundaries
       IF( ln_isf     )   CALL isf_stp ( kstp, Nnn )
+                         sst_m => sst_ma(:,:) ; sss_m => sss_ma(:,:)
                          CALL sbc     ( kstp, Nbb, Nnn )              ! Sea Boundary Condition (including sea-ice)
 
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -302,8 +303,9 @@ CONTAINS
                          CALL dia_ptr   ( kstp,      Nnn )      ! Poleward adv/ldf TRansports diagnostics
                          CALL dia_prod  ( kstp,      Nnn )      ! ocean model: products
       IF( ln_passive_TS ) THEN
-                         ! In this case output the passive T/S fields
-                         CALL dia_wri   ( kstp,      Nbb, Nnn, Naa, tsp(:,:,:,:,:) )      ! ocean model: outputs
+                         ! In this case output the passive T/S fields as the main diagnostic T/S fields
+                         ! but pass the active T/S fields for call to dia_wri_state
+                         CALL dia_wri   ( kstp,      Nbb, Nnn, Naa, tsp(:,:,:,:,:), ts(:,:,:,:,:) )      ! ocean model: outputs
       ELSE
                          CALL dia_wri   ( kstp,      Nbb, Nnn, Naa, ts(:,:,:,:,:) )      ! ocean model: outputs
       ENDIF
@@ -325,20 +327,32 @@ CONTAINS
 
                          pts => ts(:,:,:,:,:)
                          ipts=1
-                         l_trdtra_keep = l_trdtra
+                         !!l_trdtra_keep = l_trdtra
+                         l_trdtra = .true.
                          l_passive_TS = .false.           ! default value
                          IF( ln_passive_TS ) THEN
                             tsp(:,:,:,:,Nrhs) = 0._wp     ! set tracer trends to zero
                             ipts=2
-                            l_trdtra=.false. 
+      !                      l_trdtra=.false. 
                          ENDIF
                             
       DO its = 1, ipts
-         IF(lwp) WRITE(numout,*) "TRA loop : ",its
+         IF(lwp) WRITE(numout,*) "kstp, TRA loop : ",kstp,its
          IF( its .eq. 2 ) THEN
             pts => tsp(:,:,:,:,:)
-            l_trdtra = l_trdtra_keep
+            !!l_trdtra = l_trdtra_keep
+            l_trdtra = .false.
             l_passive_TS = .true.
+            ! subtract off the original retroaction terms from the heat and freshwater fluxes
+            ! and then recalculate them using the passive SST and SSS.
+            IF( ln_ssr         ) THEN
+               qns(:,:) = qns(:,:) - qrp(:,:)
+               emp(:,:) = emp(:,:) - erp(:,:)
+               sst_m => sst_mp(:,:) ; sss_m => sss_mp(:,:)
+               CALL sbc_ssr( kstp, no_read=.true.    ) ! add SST/SSS damping term
+               CALL iom_put( "qrpp"    , qrp         ) ! heat flux damping passive version
+               CALL iom_put( "erpp"    , erp         ) ! freshwater flux damping passive version
+            ENDIF ! ln_ssr
          ENDIF
          IF(lwp) WRITE(numout,*) "l_trdtra : ",l_trdtra
             
