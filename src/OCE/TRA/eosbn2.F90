@@ -359,8 +359,8 @@ CONTAINS
          z1_S0 = 1._wp / 35.16504_wp
          DO_3D( kbnd, kbnd, kbnd, kbnd, 1, jpkm1 )
             zs= SQRT( ABS( pts(ji,jj,jk,jp_sal,Knn) ) * z1_S0 )           ! square root salinity
-            ptf(ji,jj,jk) = ((((1.46873e-03_wp*zs-9.64972e-03_wp)*zs+2.28348e-02_wp)*zs                &
-                 &                               -3.12775e-02_wp)*zs+2.07679e-02_wp)*zs-5.87701e-02_wp &
+            ptf(ji,jj,jk) = (((((1.46873e-03_wp*zs-9.64972e-03_wp)*zs+2.28348e-02_wp)*zs                 &
+                 &                                -3.12775e-02_wp)*zs+2.07679e-02_wp)*zs-5.87701e-02_wp) &
                  &        * pts(ji,jj,jk,jp_sal,Knn) - 7.53e-4 * gdept(ji,jj,jk,Knn)
          END_3D
          !
