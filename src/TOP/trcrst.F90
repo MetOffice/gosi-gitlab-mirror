@@ -50,6 +50,8 @@ CONTAINS
       !!----------------------------------------------------------------------
       INTEGER, INTENT(in) ::   kt       ! number of iteration
       !
+      INTEGER             ::   iyear, imonth, iday
+      REAL (wp)           ::   zsec, zfjulday
       CHARACTER(LEN=20)   ::   clkt     ! ocean time-step define as a character
       CHARACTER(LEN=50)   ::   clname   ! trc output restart file name
       CHARACTER(LEN=256)  ::   clpath   ! full path to ocean output restart file
