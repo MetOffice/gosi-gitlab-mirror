@@ -228,10 +228,10 @@
                                       !    3 = Cox and Weeks (1988)          => CW1988
                                       ! ** parameters for each scheme **
       rn_alpha_RJW  = 0.03            !    1: Intensity of the Brine flow  ==> minmax tested [0.03 ; 0.037]?
-      rn_Rc_RJW     = 9.0             !    1: Critical Rayleigh number     ==>               [2.9  ; 9]?
-      rn_alpha_GN   = 5.1e-4          !    2: Intensity of the Brine flow  ==>               [0.510e-3 ; 0.681e-3] from Griewank and Notz 2015
-      rn_Rc_GN      = 10.0            !    2: Critical Rayleigh number     ==>               [7.10 ; 3.23]         from Griewank and Notz 2015
-      rn_alpha_CW   = 4.8e-7          !    3: Intensity of the Brine flow  ==>               [4e-7 ; 7e-7]?
+      rn_Rc_RJW     = 8.0             !    1: Critical Rayleigh number     ==>               [2.9  ; 9]?
+      rn_alpha_GN   = 4.6e-4          !    2: Intensity of the Brine flow  ==>               [0.510e-3 ; 0.681e-3] from Griewank and Notz 2015
+      rn_Rc_GN      = 8.1             !    2: Critical Rayleigh number     ==>               [7.10 ; 3.23]         from Griewank and Notz 2015
+      rn_alpha_CW   = 5.0e-7          !    3: Intensity of the Brine flow  ==>               [4e-7 ; 7e-7]?
       !
    ln_sal_chk       = .FALSE.         !  sanity checks for drainage and flushing
 /
