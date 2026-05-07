@@ -217,23 +217,17 @@ CONTAINS
       CHARACTER(LEN=2) :: cli2
       !!--------------------------------------------------------------------
       !
+      IF ( kmod == midcpl ) THEN ; lp_sbccpl = .TRUE. ; ELSE ; lp_sbccpl = .FALSE. ; ENDIF
+      !
       IF(lwp) THEN
          WRITE(numout,*)
-         IF( kmod == midcpl )THEN
-                 WRITE(numout,*) 'cpl_vardef : initialization in coupled ocean/atmosphere case'
-                 lp_sbccpl = .true.
-                 
-         ELSE IF( kmod == midicb ) THEN
-                 WRITE(numout,*) 'cpl_vardef : initialization in coupled ocean/icebergs case'
-                 lp_sbccpl = .false.
-         ELSE IF( kmod == midsab ) THEN
-                 WRITE(numout,*) 'cpl_vardef : initialization in coupled sab(icebergs)/ocean case'
-                 lp_sbccpl = .false.
-         ELSE 
-              lp_sbccpl = .false.
-         ENDIF
-         WRITE(numout,*) '~~~~~~~'
-      END IF
+         SELECT CASE( kmod )
+         CASE( midcpl ) ; WRITE(numout,*) 'cpl_vardef : initialization in coupled ocean/atmosphere case' 
+         CASE( midicb ) ; WRITE(numout,*) 'cpl_vardef : initialization in coupled ocean/icebergs case'
+         CASE( midsab ) ; WRITE(numout,*) 'cpl_vardef : initialization in coupled sab(icebergs)/ocean case'
+         END SELECT
+         WRITE(numout,*)
+      ENDIF
       !
       ! ... Announce send variables.
       !
