@@ -61,12 +61,12 @@ CONTAINS
       TYPE(iceberg), POINTER ::   this, next
       TYPE(point)  , POINTER ::   pt
       !
-      COMPLEX(dp), DIMENSION(jpi,jpj) :: cicb_melt, cicb_hflx
+      COMPLEX(wp), DIMENSION(jpi,jpj) :: cicb_melt, cicb_hflx
       !!----------------------------------------------------------------------
       !
       !! initialiaze cicb_melt and cicb_heat
-      cicb_melt = CMPLX( 0.e0, 0.e0, dp ) 
-      cicb_hflx = CMPLX( 0.e0, 0.e0, dp ) 
+      cicb_melt = CMPLX( 0.e0, 0.e0, wp ) 
+      cicb_hflx = CMPLX( 0.e0, 0.e0, wp ) 
       !
       z1_rday = 1._wp / rday
       z1_12   = 1._wp / 12._wp
@@ -232,7 +232,7 @@ CONTAINS
             ! iceberg melt
             !! the use of DDPDD function for the cumulative sum is needed for reproducibility
             zmelt    = ( zdM - ( zdMbitsE - zdMbitsM ) ) * z1_dt   ! kg/s
-            CALL DDPDD( CMPLX( zmelt * z1_e1e2, 0.e0, dp ), cicb_melt(ii,ij) )
+            CALL DDPDD( CMPLX( zmelt * z1_e1e2, 0.e0, wp ), cicb_melt(ii,ij) )
             !
             ! iceberg heat flux
             !! the use of DDPDD function for the cumulative sum is needed for reproducibility
@@ -241,7 +241,7 @@ CONTAINS
             !!     melting is always zero. Leaving the term in the code until such a time as this is fixed. DS.
             zheat_hcflux = zmelt * pt%heat_density       ! heat content flux : kg/s x J/kg = J/s
             zheat_latent = - zmelt * rLfus               ! latent heat flux:  kg/s x J/kg = J/s
-            CALL DDPDD( CMPLX( ( zheat_hcflux + zheat_latent ) * z1_e1e2, 0.e0, dp ), cicb_hflx(ii,ij) )
+            CALL DDPDD( CMPLX( ( zheat_hcflux + zheat_latent ) * z1_e1e2, 0.e0, wp ), cicb_hflx(ii,ij) )
             !
             ! diagnostics
             CALL icb_dia_melt( ii, ij, pt%mbasid, zMnew, zheat_hcflux, zheat_latent, this%mass_scaling,       &
@@ -292,8 +292,8 @@ CONTAINS
          !
       END DO
       !
-      berg_grid%floating_melt = REAL(cicb_melt,dp)    ! kg/m2/s
-      berg_grid%calving_hflx  = REAL(cicb_hflx,dp)
+      berg_grid%floating_melt = REAL(cicb_melt,wp)    ! kg/m2/s
+      berg_grid%calving_hflx  = REAL(cicb_hflx,wp)
       !
       ! now use melt and associated heat flux in ocean (or not)
       !

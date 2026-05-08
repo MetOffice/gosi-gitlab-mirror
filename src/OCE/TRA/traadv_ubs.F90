@@ -337,7 +337,7 @@ CONTAINS
       REAL(wp), DIMENSION(T2D(0),jpk) ::   zbetup, zbetdo ! 3D workspace
       !!----------------------------------------------------------------------
       !
-      zbig  = 1.e+20_wp   ! works ok with simple/double precison
+      zbig  = 1.e+15_wp   ! works ok with simple/double precison
       zrtrn = 1.e-15_wp
       zbetup(:,:,:) = 0._wp   ;   zbetdo(:,:,:) = 0._wp
       !

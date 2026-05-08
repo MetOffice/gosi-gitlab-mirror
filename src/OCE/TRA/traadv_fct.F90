@@ -762,8 +762,8 @@ CONTAINS
       REAL(wp) ::   zpos, zneg, zbig, zsmall, zup, zdo, zbt, zland, z1_Dt   ! local scalars
       REAL(wp) ::   zau, zbu, zcu, zav, zbv, zcv, za, zb, zc, zcoef         !   -      -
       !
-      REAL(dp), DIMENSION(T2D(2),3) ::   zbup, zbdo
-      REAL(dp), DIMENSION(T2D(1),3) ::   zbetup, zbetdo
+      REAL(wp), DIMENSION(T2D(2),3) ::   zbup, zbdo
+      REAL(wp), DIMENSION(T2D(1),3) ::   zbetup, zbetdo
       !!----------------------------------------------------------------------
       !
       zbig   = HUGE(1._wp)

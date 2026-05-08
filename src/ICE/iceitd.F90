@@ -175,8 +175,8 @@ CONTAINS
 # else
                IF( h_i_b(ji,jj,1) < ( hi_max(0) + epsi10 ) )   iptidx(ji,jj) = .false.
                IF( h_i_b(ji,jj,1) > ( hi_max(1) - epsi10 ) )   iptidx(ji,jj) = .false.
-            ENDIF
 # endif
+            ENDIF
          END_2D
          !
       ENDIF

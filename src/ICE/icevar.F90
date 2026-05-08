@@ -393,6 +393,7 @@ CONTAINS
                   zbbb             = ( rcp - rcpi ) * ztmelts + ze_i * r1_rhoi - rLfus
                   zccc             = SQRT( MAX( zbbb * zbbb - 4._wp * rcpi * rLfus * ztmelts , 0._wp) )
                   t_i(ji,jj,jk,jl) = MAX( -100._wp , MIN( -( zbbb + zccc ) * 0.5_wp * r1_rcpi , ztmelts ) ) + rt0   ! [K] with bounds: -100 < t_i < ztmelts
+
                   !
                ELSE                                   !--- no ice
                   t_i(ji,jj,jk,jl) = rt0
@@ -991,7 +992,7 @@ CONTAINS
 
       ! new enthalpies/salinities
       DO jk1 = 1, nlay_i
-         pts_i(jk1) = MAX( 0._wp, zts_cum1(jk1) - zts_cum1(jk1-1) ) / MAX( zhnew, epsi20 ) ! max for roundoff error
+         pts_i(jk1) = MAX( 0._wp, zts_cum1(jk1) - zts_cum1(jk1-1) ) / MAX( zhnew, epsi10 ) ! max for roundoff error
       END DO
       
    END SUBROUTINE ice_var_vremap
