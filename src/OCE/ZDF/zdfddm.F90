@@ -22,6 +22,7 @@ MODULE zdfddm
    USE lbclnk         ! ocean lateral boundary conditions (or mpp link)
    USE prtctl         ! Print control
    USE lib_mpp        ! MPP library
+   USE lib_fortran
 
    IMPLICIT NONE
    PRIVATE
@@ -77,11 +78,11 @@ CONTAINS
       REAL(wp) ::   zaw, zbw, zrw   ! local scalars
       REAL(wp) ::   zdt, zds
       REAL(wp) ::   zinr            !   -      -
-      REAL(dp) ::         zrr       !   -      -
+      REAL(wp) ::         zrr       !   -      -
       REAL(wp) ::   zavft           !   -      -
-      REAL(dp) ::          zavfs    !   -      -
+      REAL(wp) ::          zavfs    !   -      -
       REAL(wp) ::   zavdt, zavds    !   -      -
-      REAL(wp) ::   zrau, zmsks, zmskf, zmskd1, zmskd2, zmskd3
+      REAL(wp) ::   zrau, zmsks, zmskf, zmskr, zmskd1, zmskd2, zmskd3
       !!----------------------------------------------------------------------
       !
       !                                                ! ===============
@@ -107,6 +108,7 @@ CONTAINS
             !
             zdt = zaw * ( ts(ji,jj,jk-1,jp_tem,Kmm) - ts(ji,jj,jk,jp_tem,Kmm) )
             zds = zbw * ( ts(ji,jj,jk-1,jp_sal,Kmm) - ts(ji,jj,jk,jp_sal,Kmm) ) 
+
             IF( ABS( zds) <= 1.e-20_wp )   zds = 1.e-20_wp
             zrau = MAX(  1.e-20, zdt / zds  )    ! only retains positive value of zrau
 
@@ -120,6 +122,11 @@ CONTAINS
             IF( zrau <= 1.                    ) THEN   ;   zmskf = 0._wp
             ELSE                                       ;   zmskf = 1._wp
             ENDIF
+            
+            IF( ABS(zrau) >= 1000.            ) THEN   ;   zmskr = 0._wp
+            ELSE                                       ;   zmskr = 1._wp
+            ENDIF
+
             ! diffusive layering indicators: 
             !     ! mskdl1=1 if 0< R <1; 0 elsewhere
             IF( zrau >= 1.                    ) THEN   ;   zmskd1 = 0._wp
@@ -138,11 +145,14 @@ CONTAINS
          
             ! Constant eddy coefficient: reset to the background value
             zinr = 1._wp / zrau
+
             ! salt fingering
-            zrr = zrau / rn_hsbfr
+            zrr = zrau / rn_hsbfr * zmskr
             zrr = zrr * zrr
-            zavfs = rn_avts / ( 1. + zrr*zrr*zrr ) * zmsks * zmskf
+            zavfs = rn_avts / ( 1. + zrr*zrr*zrr ) * zmsks * zmskf * zmskr
+
             zavft = 0.7 * zavfs * zinr
+            
             ! diffusive layering
             zavdt = 1.3635e-6 * EXP(  4.6 * EXP( -0.54*(zinr-1.) )  ) * zmsks * zmskd1
             zavds = zavdt * zmsks * (  ( 1.85 * zrau - 0.85 ) * zmskd3   &

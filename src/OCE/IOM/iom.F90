@@ -311,6 +311,7 @@ CONTAINS
 #if defined key_xios
       LOGICAL :: llrstw
 
+
       llrstw = .FALSE.
       IF(PRESENT(cdname)) THEN
          llrstw = (cdname == cw_ocerst_cxt)
@@ -538,7 +539,7 @@ CONTAINS
       ELSEIF(PRESENT(rs3)) THEN
          CALL xios_set_attr (field_hdl, enabled = .TRUE., name = sdfield,   &
                              domain_ref = "grid_N"//TRIM(clgsuf),           &
-                             axis_ref = iom_axis(size(rd3, 3)),             &
+                             axis_ref = iom_axis(size(rs3, 3)),             &
                              prec = sp, operation = "instant"               )
       ELSEIF(PRESENT(rd2)) THEN
          CALL xios_set_attr (field_hdl, enabled = .TRUE., name = sdfield,   &
@@ -554,7 +555,7 @@ CONTAINS
                              prec = dp, operation = "instant"               )
       ELSEIF(PRESENT(rs1)) THEN
          CALL xios_set_attr (field_hdl, enabled = .TRUE., name = sdfield,   &
-                             axis_ref = iom_axis(size(rd1, 1)),             &
+                             axis_ref = iom_axis(size(rs1, 1)),             &
                              prec = sp, operation = "instant"               )
       ELSEIF(PRESENT(rd0)) THEN
          CALL xios_set_attr (field_hdl, enabled = .TRUE., name = sdfield,   &
