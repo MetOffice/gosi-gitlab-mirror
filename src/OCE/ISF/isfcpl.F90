@@ -226,7 +226,7 @@ CONTAINS
       ! linear ssh : fix in time coord.
 #else
       DO jk = 1, jpk
-         e3t(:,:,jk,Kmm) = e3t_0(:,:,jk) * ( 1._wp + (ht_0(:,:) + ssh(:,:,Kmm)) * r1_ht_0(:,:) )
+         e3t(:,:,jk,Kmm) = e3t_0(:,:,jk) * ( 1._wp + ssh(:,:,Kmm) * r1_ht_0(:,:) * tmask(:,:,jk) )
       END DO
       e3t(:,:,:,Kbb) = e3t(:,:,:,Kmm)
       CALL dom_vvl_zgr(Kbb, Kmm, Kaa)
