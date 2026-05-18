@@ -153,8 +153,8 @@ CONTAINS
             IF( rnf(ji,jj) /= 0._wp ) THEN
                zdep = 1._wp / h_rnf(ji,jj)
                DO jk = 1, nk_rnf(ji,jj)
-                                     pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs)  + rnf_tsc(ji,jj,jp_tem) * zdep
-                  IF( ln_rnf_sal )   pts(ji,jj,jk,jp_sal,Krhs) = pts(ji,jj,jk,jp_sal,Krhs)  + rnf_tsc(ji,jj,jp_sal) * zdep
+                  pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs)  + rnf_tsc(ji,jj,jp_tem) * zdep
+                  pts(ji,jj,jk,jp_sal,Krhs) = pts(ji,jj,jk,jp_sal,Krhs)  + rnf_tsc(ji,jj,jp_sal) * zdep
                END DO
             ENDIF
          END_2D

@@ -111,10 +111,6 @@ CONTAINS
       IF( ln_rnf     ) THEN
          DO_2D( 0, 0, 0, 0 )
             ztmp(ji,jj,4) = rnf_tsc(ji,jj,jp_tem) * surf(ji,jj)    ! runoff temp
-         END_2D
-      END IF
-      IF( ln_rnf_sal ) THEN
-         DO_2D( 0, 0, 0, 0 )
             ztmp(ji,jj,5) = rnf_tsc(ji,jj,jp_sal) * surf(ji,jj)    ! runoff salt
          END_2D
       END IF
@@ -205,7 +201,7 @@ CONTAINS
          z_frc_trd_t = zbg(2)  ! heat fluxes
          z_frc_trd_s = zbg(3)  ! salt fluxes
          IF( ln_rnf    )   z_frc_trd_t = z_frc_trd_t + zbg(4) ! runoff heat
-         IF( ln_rnf_sal)   z_frc_trd_s = z_frc_trd_s + zbg(5) ! runoff salt
+         IF( ln_rnf    )   z_frc_trd_s = z_frc_trd_s + zbg(5) ! runoff salt
          IF( ln_isf    )   z_frc_trd_t = z_frc_trd_t + zbg(6) ! isf heat
          IF( ln_traqsr )   z_frc_trd_t = z_frc_trd_t + zbg(7) ! penetrative solar flux
          IF( ln_trabbc )   z_frc_trd_t = z_frc_trd_t + zbg(8) ! geothermal heat

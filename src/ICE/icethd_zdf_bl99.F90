@@ -75,10 +75,11 @@ CONTAINS
       INTEGER, INTENT(in) ::   k_cnd     ! conduction flux (off, on, emulated)
       INTEGER, INTENT(in) ::   jl_cat
       !
-      INTEGER ::   ji, jj, jk     ! spatial loop index
-      INTEGER ::   jm             ! current reference number of equation
-      INTEGER ::   iconv          ! number of iterations in iterative procedure
-      INTEGER ::   iconv_max = 50 ! max number of iterations in iterative procedure
+      INTEGER ::   ji, jj, jk      ! spatial loop index
+      INTEGER ::   jm              ! current reference number of equation
+      INTEGER ::   iconv           ! number of iterations in iterative procedure
+      INTEGER ::   iconv_max = 200 ! max number of iterations in iterative procedure
+      !                            ! clem: this number is increased from 50 to 200 to (maybe) solve rare convergence pb while atmo coupling
       !
       LOGICAL, DIMENSION(A2D(0)) ::   l_T_converged   ! true when T converges (per grid point)
       !

@@ -353,7 +353,7 @@ CONTAINS
 !!clem test                  s_i(ji,jj,jl) = MAX( rn_simin , MIN( rn_sinew * sss_m(ji,jj), sv_i(ji,jj,jl) / v_i(ji,jj,jl) ) )
                   s_i(ji,jj,jl) = sv_i(ji,jj,jl) / v_i(ji,jj,jl)
                ELSE
-                  s_i(ji,jj,jl) = rn_simin
+                  s_i(ji,jj,jl) = MIN( rn_simin, rn_sinew * sss_m(ji,jj) )
                ENDIF
             END_2D
          ENDDO
@@ -370,7 +370,7 @@ CONTAINS
 !!clem test                  sz_i(ji,jj,jk,jl) = MAX( rn_simin , MIN( rn_sinew * sss_m(ji,jj), zs_i ) )
                   sz_i(ji,jj,jk,jl) = zs_i
                ELSE                                   !--- no ice
-                  sz_i(ji,jj,jk,jl) = rn_simin
+                  sz_i(ji,jj,jk,jl) = MIN( rn_simin, rn_sinew * sss_m(ji,jj) )
                ENDIF
                s_i(ji,jj,jl) = s_i(ji,jj,jl) + sz_i(ji,jj,jk,jl) * r1_nlay_i
             END_3D
@@ -497,9 +497,9 @@ CONTAINS
                   ELSE                                    ;    zalpha = ( zsi1 - s_i(ji,jj,jl) ) * z1_dS
                   ENDIF
                   !
-                  IF( s_i(ji,jj,jl) >= ( 0.5_wp * rn_sinew * sss_m(ji,jj) ) )   zalpha = 0._wp ! force constant profile when SSS too low (Baltic Sea)
-                  IF( s_i(ji,jj,jl) <= ( REAL( nlay_i , wp ) * rn_simin ) )     zalpha = 0._wp ! force constant profile when ice surface salinity too small
-                  !                                                                            !       it depends on nlay_i which is not ideal
+                  IF( s_i(ji,jj,jl) >=                             ( 0.5_wp * rn_sinew * sss_m(ji,jj) ) )   zalpha = 0._wp ! force constant profile when SSS too low (Baltic Sea)
+                  IF( s_i(ji,jj,jl) <= ( REAL( nlay_i , wp ) * MIN( rn_simin, rn_sinew * sss_m(ji,jj) ) ) ) zalpha = 0._wp ! force constant profile when ice surface salinity too small
+                  !                                                                                                        !       it depends on nlay_i which is not ideal
                   !
                   ! linear profile with 0 surface value
                   sz_i(ji,jj,jk,jl) =             zalpha   * s_i(ji,jj,jl) * 2._wp * ( REAL(jk,wp) - 0.5_wp ) * r1_nlay_i &
@@ -562,7 +562,7 @@ CONTAINS
                   ! update exchanges with ocean
                   sfx_res(ji,jj)  = sfx_res(ji,jj) + szv_i(ji,jj,jk,jl) * rhoi * r1_Dt_ice
                   szv_i(ji,jj,jk,jl) = 0._wp
-                  sz_i (ji,jj,jk,jl) = rn_simin
+                  sz_i (ji,jj,jk,jl) = MIN( rn_simin, rn_sinew * sss_m(ji,jj) )
                ENDIF
             END_3D
          ENDDO
@@ -893,7 +893,6 @@ CONTAINS
       INTEGER, INTENT(in)  ::  jl_cat
       INTEGER              ::  ji, jj, jk          ! dummy loop indices
       REAL(wp)             ::  ztmelts             ! local scalar
-      REAL(wp), PARAMETER  ::  zepsi  = -epsi20    ! tolerance parameter
       !!-------------------------------------------------------------------
       !
       DO jk = 1, nlay_i             ! Sea ice energy of melting
@@ -902,8 +901,8 @@ CONTAINS
                ztmelts       = - rTmlt  * sz_i(ji,jj,jk,jl_cat)
                t_i(ji,jj,jk,jl_cat) = MIN( t_i(ji,jj,jk,jl_cat), ztmelts + rt0 ) ! Force t_i to be lower than melting point => likely conservation issue
                !                                                                 !   (sometimes zdf scheme produces abnormally high temperatures)
-               e_i(ji,jj,jk,jl_cat) = rhoi * ( rcpi  * ( ztmelts - ( t_i(ji,jj,jk,jl_cat) - rt0 ) )   &
-                  &                  + rLfus * ( 1._wp - ztmelts / MIN( t_i(ji,jj,jk,jl_cat) - rt0, zepsi ) )   &
+               e_i(ji,jj,jk,jl_cat) = rhoi * ( rcpi  * ( ztmelts - ( t_i(ji,jj,jk,jl_cat) - rt0 ) )                       &
+                  &                  + rLfus * MAX( 0._wp, 1._wp - ztmelts / MIN( t_i(ji,jj,jk,jl_cat) - rt0, -epsi10 ) ) & ! clem: max to deal with different eq. freezing in ice and ocean (but useless for now)
                   &                  - rcp   * ztmelts )
           ENDIF
          END_2D
