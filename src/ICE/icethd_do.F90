@@ -169,9 +169,9 @@ CONTAINS
                ! --- Heat content of new ice --- !
                ! We assume that new ice is formed at the seawater freezing point
                ztmelts   = - rTmlt * zs_newice(ji,jj)                  ! Melting point (C)
-               ze_newice =   rhoi * (  rcpi  * ( ztmelts - ( t_bo(ji,jj) - rt0 ) )                     &
-                  &                  + rLfus * ( 1.0 - ztmelts / MIN( t_bo(ji,jj) - rt0, -epsi10 ) )   &
-                  &                  - rcp   *         ztmelts )
+               ze_newice =   rhoi * (  rcpi  * ( ztmelts - ( t_bo(ji,jj) - rt0 ) )                               &
+                  &                  + rLfus * MAX( 0._wp, 1._wp - ztmelts / MIN( t_bo(ji,jj) - rt0, -epsi10 ) ) & ! clem: max to deal with different eq. freezing in ice and ocean (but useless for now)
+                  &                  - rcp   * ztmelts )
             
                ! --- Age of new ice --- !
                zo_newice = 0._wp
@@ -180,12 +180,12 @@ CONTAINS
                zEi           = - ze_newice * r1_rhoi                  ! specific enthalpy of forming ice [J/kg]
 
                zEw           = rcp * ( t_bo(ji,jj) - rt0 )            ! specific enthalpy of seawater at t_bo [J/kg]
-                                                                   ! clem: we suppose we are already at the freezing point (condition qlead<0 is satisfyied) 
+                                                                      ! clem: we suppose we are already at the freezing point (condition qlead<0 is satisfyied) 
                                                                    
-               zdE           = zEi - zEw                              ! specific enthalpy difference [J/kg]
+               zdE           = zEi - zEw                              ! specific enthalpy difference [J/kg] (<0)
                                               
                zfmdt         = - qlead(ji,jj) / zdE                   ! Fm.dt [kg/m2] (<0) 
-                                                                   ! clem: we use qlead instead of zqld (icethd) because we suppose we are at the freezing point   
+                                                                      ! clem: we use qlead instead of zqld (icethd) because we suppose we are at the freezing point   
                zv_newice     = - zfmdt * r1_rhoi
 
                zQm           = zfmdt * zEw                            ! heat to the ocean >0 associated with mass flux  
