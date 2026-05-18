@@ -176,7 +176,7 @@ CONTAINS
       ! for gravity drainage and flushing
       INTEGER  ::   iter, jc
       REAL(wp) ::   z1_h_i, zhmelt, zc, zcfl, zperm, ztmp, zRae, zdt, zt1, zt2, zt3, &
-         &          zv_brmin, zs_brmax, z1_cp_br, z1_cnd_br, z1_visc, z1_c2
+         &          zv_brmin, zs_brmax, z1_cp_br, z1_cnd_br, z1_visc, z1_c2, zsal
       REAL(wp), DIMENSION(nlay_i)     ::   z_mid
       REAL(wp), DIMENSION(nlay_i+1)   ::   z_edge 
       REAL(wp), DIMENSION(nlay_i)     ::   zds, zv_br, zRa, zperm_eff, zw_br, zmsk 
@@ -232,12 +232,12 @@ CONTAINS
                !
                ! --- salinity must stay inbounds --- !
                IF( ln_drainage .OR. ln_flushing ) THEN
-                  zds(1) =          MAX( 0._wp, rn_simin            - s_i_1d(ji) ) ! > 0 if s_i < simin
-                  zds(1) = zds(1) + MIN( 0._wp, rn_sinew*sss_1d(ji) - s_i_1d(ji) ) ! < 0 if s_i > simax
+                  zsal = s_i_1d(ji)
                   ! update salinity
-                  s_i_1d(ji) = s_i_1d(ji) + zds(1)
+                  s_i_1d(ji) = MIN( MAX( rn_simin, s_i_1d(ji) ), rn_sinew*sss_1d(ji) )
                   ! salt flux
-                  sfx_res_1d(ji) = sfx_res_1d(ji) - rhoi * a_i_1d(ji) * h_i_1d(ji) * zds(1) * r1_Dt_ice
+                  sfx_res_1d(ji) = sfx_res_1d(ji) - rhoi * a_i_1d(ji) * h_i_1d(ji) * ( s_i_1d(ji) - zsal ) * r1_Dt_ice
+                  !
                ENDIF
                !
             ENDIF
@@ -309,7 +309,7 @@ CONTAINS
                   ! Compute CFL
                   ! ===========
                   DO jk = 1, nlay_i
-                     zv_br(jk) = zmsk(jk) * sz_i_1d(ji,jk) / zs_br(jk)
+                     zv_br(jk) = zmsk(jk) * sz_i_1d(ji,jk) / MAX( zs_br(jk), epsi10 )
                   ENDDO
                   
                   ! Effective permeability
@@ -322,11 +322,16 @@ CONTAINS
                   ELSEIF( np_perm_eff == 2 ) THEN ! Harmonic Mean                         
                      DO jk = 1, nlay_i
                         ztmp = 0._wp
+                        zperm_eff(jk) = 0._wp   ! default: impermeable
                         DO jk2 = jk, nlay_i
+                           IF( zv_br(jk2) < epsi06 ) THEN
+                              ztmp = 0._wp
+                              EXIT              ! one zero layer => whole column is impermeable
+                           ENDIF
                            zperm = 3.e-8_wp * zv_br(jk2)*zv_br(jk2)*zv_br(jk2)
                            ztmp = ztmp + 1._wp / zperm
                         END DO
-                        zperm_eff(jk) = REAL( nlay_i-jk+1, wp ) / ztmp
+                        IF( ztmp > 0._wp )   zperm_eff(jk) = REAL( nlay_i-jk+1, wp ) / ztmp
                      END DO
                   END IF
                   
@@ -475,7 +480,7 @@ CONTAINS
                         zs_min   = MIN( zs_min , sz_i_1d(ji,jk) + zds(jk) ) ! record what salinity would be without the trick below
                         !
                         !!clem trick
-                        zds(jk) = MAX( zds(jk), -sz_i_1d(ji,jk)+rn_simin )
+                        zds(jk) = MAX( zds(jk), -sz_i_1d(ji,jk) + MIN( rn_simin, rn_sinew*sss_1d(ji) ) )
                         !
                         ! new salinity
                         sz_i_1d(ji,jk) = sz_i_1d(ji,jk) + zds(jk)
@@ -581,7 +586,7 @@ CONTAINS
                            zs_min  = MIN( zs_min , sz_i_1d(ji,jk) + zds(jk) )   ! record what salinity would be without the trick below
                            !
                            !!clem trick
-                           zds(jk) = MAX( MIN( 0._wp, zds(jk) ), -sz_i_1d(ji,jk)+rn_simin )
+                           zds(jk) = MAX( MIN( 0._wp, zds(jk) ), -sz_i_1d(ji,jk) + MIN( rn_simin, rn_sinew*sss_1d(ji) ) )
                            !            ! min to block flushing when temperature profile is not ok
                            !
                            ! new salinity
@@ -612,12 +617,12 @@ CONTAINS
          IF( ln_drainage .OR. ln_flushing ) THEN
             DO ji = 1, npti
                DO jk = 1, nlay_i
-                  zds(jk) =           MAX( 0._wp, rn_simin            - sz_i_1d(ji,jk) ) ! > 0 if s_i < simin
-                  zds(jk) = zds(jk) + MIN( 0._wp, rn_sinew*sss_1d(ji) - sz_i_1d(ji,jk) ) ! < 0 if s_i > simax
+                  zsal = sz_i_1d(ji,jk)
                   ! update salinity
-                  sz_i_1d(ji,jk) = sz_i_1d(ji,jk) + zds(jk)
+                  sz_i_1d(ji,jk) = MIN( MAX( rn_simin, sz_i_1d(ji,jk) ), rn_sinew*sss_1d(ji) )
                   ! salt flux
-                  sfx_res_1d(ji) = sfx_res_1d(ji) - rhoi * a_i_1d(ji) * h_i_1d(ji) * r1_nlay_i * zds(jk) * r1_Dt_ice
+                  sfx_res_1d(ji) = sfx_res_1d(ji) - rhoi * a_i_1d(ji) * h_i_1d(ji) * r1_nlay_i * ( sz_i_1d(ji,jk) - zsal ) * r1_Dt_ice
+                  !
                END DO
             ENDDO
          ENDIF
