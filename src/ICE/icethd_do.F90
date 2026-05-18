@@ -192,9 +192,9 @@ CONTAINS
             ! --- Heat content of new ice --- !
             ! We assume that new ice is formed at the seawater freezing point
             ztmelts   = - rTmlt * zs_newice(ii)                  ! Melting point (C)
-            ze_newice =   rhoi * (  rcpi  * ( ztmelts - ( t_bo_1d(ii) - rt0 ) )                     &
-               &                  + rLfus * ( 1.0 - ztmelts / MIN( t_bo_1d(ii) - rt0, -epsi10 ) )   &
-               &                  - rcp   *         ztmelts )
+            ze_newice =   rhoi * (  rcpi  * ( ztmelts - ( t_bo_1d(ii) - rt0 ) )                               &
+               &                  + rLfus * MAX( 0._wp, 1._wp - ztmelts / MIN( t_bo_1d(ii) - rt0, -epsi10 ) ) & ! clem: max to deal with different eq. freezing in ice and ocean (but useless for now)
+               &                  - rcp   *   ztmelts )
             
             ! --- Age of new ice --- !
             zo_newice = 0._wp
@@ -205,7 +205,7 @@ CONTAINS
             zEw           = rcp * ( t_bo_1d(ii) - rt0 )            ! specific enthalpy of seawater at t_bo_1d [J/kg]
                                                                    ! clem: we suppose we are already at the freezing point (condition qlead<0 is satisfyied) 
                                                                    
-            zdE           = zEi - zEw                              ! specific enthalpy difference [J/kg]
+            zdE           = zEi - zEw                              ! specific enthalpy difference [J/kg] (<0)
                                               
             zfmdt         = - qlead_1d(ii) / zdE                   ! Fm.dt [kg/m2] (<0) 
                                                                    ! clem: we use qlead instead of zqld (icethd) because we suppose we are at the freezing point   

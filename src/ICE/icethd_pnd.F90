@@ -1348,7 +1348,7 @@ CONTAINS
 !!$         ELSEIF( nn_liquidus == 2 ) THEN ; Sbrine(jk) = -18.7_wp * zt1 - 0.519_wp * zt2 - 0.00535_wp * zt3 ! --- 3rd order liquidus, VC19
 !!$         ELSEIF( nn_liquidus == 3 ) THEN ; Sbrine(jk) = -17.6_wp * zt1 - 0.389_wp * zt2 - 0.00362_wp * zt3 ! --- Weast 71 liquidus in RJW14
 !!$         ENDIF
-          IF( (zti(jk)-rt0) <  - epsi06 ) THEN   ;   zv_br(jk) = zsi(jk) / zs_br
+          IF( (zti(jk)-rt0) <  - epsi06 ) THEN   ;   zv_br(jk) = zsi(jk) / MAX( zs_br, epsi10 )
           ELSE                                   ;   zv_br(jk) = 0._wp
           ENDIF
        ENDDO
@@ -1360,11 +1360,16 @@ CONTAINS
           ice_perm_eff = 3.e-8_wp * ztmp * ztmp * ztmp
        ELSEIF( np_perm_eff == 2 ) THEN ! Harmonic Mean                         
           ztmp = 0._wp
+          ice_perm_eff = 0._wp    ! default: impermeable
           DO jk = 1, nlay_i
+             IF( zv_br(jk) < epsi06 ) THEN
+                ztmp = 0._wp
+                EXIT              ! one zero layer => whole column is impermeable
+             ENDIF
              zperm = 3.e-8_wp * zv_br(jk)*zv_br(jk)*zv_br(jk)
              ztmp = ztmp + 1._wp / zperm
           END DO
-          ice_perm_eff = REAL( nlay_i, wp ) / ztmp
+          IF( ztmp > 0._wp )   ice_perm_eff = REAL( nlay_i, wp ) / ztmp
        END IF
 
    END FUNCTION ice_perm_eff
