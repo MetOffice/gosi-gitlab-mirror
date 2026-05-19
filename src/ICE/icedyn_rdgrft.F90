@@ -43,8 +43,8 @@ MODULE icedyn_rdgrft
 
    ! Variables shared among ridging subroutines
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   closing_net     ! net rate at which area is removed    (1/s)
-      !                                                               ! (ridging ice area - area of new ridges) / dt
-   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   opning          ! rate of opening due to divergence/shear
+      !                                                                 ! (ridging ice area - area of new ridges) / dt
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   opening         ! rate of opening due to divergence/shear
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   closing_gross   ! rate at which area removed, not counting area of new ridges
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::   apartf          ! participation function; fraction of ridging/closing associated w/ category n
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::   hrmin           ! minimum ridge thickness
@@ -56,16 +56,21 @@ MODULE icedyn_rdgrft
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:,:)   ::   araft           ! participating ice rafting
    !
    ! For ridging diagnostics
-   LOGICAL                                       ::   ll_diag_rdg     ! activate ridging diagnostics or not
+   LOGICAL                                         ::   ll_diag_rdg     ! activate ridging diagnostics or not
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   airdg1          ! ridging ice area loss
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   airft1          ! rafting ice area loss
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   airdg2          ! new ridged ice area gain
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   airft2          ! new rafted ice area gain
-   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)   ::   opning_2d       ! lead opening rate diagnostic
-   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)   ::   dairdg1dt       ! ridging ice area loss rate diagnostic
-   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)   ::   dairft1dt       ! rafting ice area loss rate diagnostic
-   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)   ::   dairdg2dt       ! new ridged ice area gain rate diagnostic
-   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)   ::   dairft2dt       ! new rafted ice area gain rate diagnostic
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   virdg           ! new ridged ice volume gain
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   virft           ! new rafted ice volume gain
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   diag_airdg1     ! ridging ice area loss rate diagnostic
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   diag_airft1     ! rafting ice area loss rate diagnostic
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   diag_airdg2     ! new ridged ice area gain rate diagnostic
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   diag_airft2     ! new rafted ice area gain rate diagnostic
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   diag_virdg      ! new ridged ice volume gain rate diagnostic
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   diag_virft      ! new rafted ice volume gain rate diagnostic
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   diag_closing    ! closing rate diagnostic
+   REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:)     ::   diag_opening    ! opening rate diagnostic
    !
    REAL(wp), PARAMETER ::   hrdg_hi_min = 1.1_wp    ! min ridge thickness multiplier: min(hrdg/hi)
    REAL(wp), PARAMETER ::   hi_hrft     = 0.5_wp    ! rafting multiplier: (hi/hraft)
@@ -104,10 +109,11 @@ CONTAINS
       !!-------------------------------------------------------------------
       !!                ***  ROUTINE ice_dyn_rdgrft_alloc ***
       !!-------------------------------------------------------------------
-      ALLOCATE( closing_net(A2D(0)) , opning(A2D(0))    , closing_gross(A2D(0)),                   &
+      ALLOCATE( closing_net(A2D(0)) , opening(A2D(0))   , closing_gross(A2D(0)),                     &
          &      apartf(A2D(0),0:jpl), hrmin (A2D(0),jpl), hraft(A2D(0),jpl)    , aridge(A2D(0),jpl), &
          &      hrmax (A2D(0),jpl)  , hrexp (A2D(0),jpl), hi_hrdg(A2D(0),jpl)  , araft(A2D(0),jpl) , &
          &      airdg1(A2D(0))      , airft1(A2D(0))    , airdg2(A2D(0))       , airft2(A2D(0))    , &
+         &      virdg (A2D(0))      , virft (A2D(0))    ,                                            &
          &      STAT=ice_dyn_rdgrft_alloc )
       !
       CALL mpp_sum ( 'icedyn_rdgrft', ice_dyn_rdgrft_alloc )
@@ -151,15 +157,12 @@ CONTAINS
       !!-------------------------------------------------------------------
       INTEGER, INTENT(in) ::   kt     ! number of iteration
       !!
-      INTEGER  ::   ji, jj, jk, jl         ! dummy loop index
+      INTEGER  ::   ji, jj, jk, jl             ! dummy loop index
       INTEGER  ::   iter, iterate_ridging      ! local integer
-      LOGICAL, DIMENSION(A2D(0)) ::   ll_ridge ! To determine whether ridging is required or not within local domain
       REAL(wp) ::   zfac                       ! local scalar
-      REAL(wp), DIMENSION(A2D(0)) ::   zdivu, zdelt  ! 1D divu_i & delta_i
-      REAL(wp), DIMENSION(A2D(0)) ::   zconv         ! 1D rdg_conv (if EAP rheology)
+      LOGICAL,  DIMENSION(A2D(0)) ::   ll_ridge       ! To determine whether ridging is required or not within local domain
+      REAL(wp), DIMENSION(A2D(0)) ::   zdivu          ! divergence
       !!
-      REAL(wp), DIMENSION(A2D(0)) ::   zmsk       ! Temporary array for ice presence mask
-      !
       INTEGER, PARAMETER ::   jp_itermax = 20
       !!-------------------------------------------------------------------
       ! controls
@@ -172,11 +175,13 @@ CONTAINS
          IF(lwp) WRITE(numout,*)'ice_dyn_rdgrft: ice ridging and rafting'
          IF(lwp) WRITE(numout,*)'~~~~~~~~~~~~~~'
          ! diagnostics
-         IF( iom_use('lead_open') .OR. iom_use('rdg_loss') .OR. iom_use('rft_loss') .OR. &
-            &                          iom_use('rdg_gain') .OR. iom_use('rft_gain') ) THEN
+         IF(  iom_use('lead_open') .OR. iom_use('lead_close') .OR. iom_use('ardg_loss') .OR. iom_use('arft_loss')  .OR. &
+            & iom_use('ardg_gain') .OR. iom_use('arft_gain' ) .OR. iom_use('vrdg_gain') .OR. iom_use('vrft_gain') ) THEN
+            !
             ll_diag_rdg = .TRUE.
             !
-            ALLOCATE( opning_2d(A2D(0)), dairdg1dt(A2D(0)), dairft1dt(A2D(0)), dairdg2dt(A2D(0)), dairft2dt(A2D(0)) )
+            ALLOCATE( diag_airdg1(A2D(0)) , diag_airft1(A2D(0)) , diag_airdg2 (A2D(0)) , diag_airft2 (A2D(0)) , &
+               &      diag_virdg (A2D(0)) , diag_virft (A2D(0)) , diag_closing(A2D(0)) , diag_opening(A2D(0)) )
             !
          ELSE
             ll_diag_rdg = .FALSE.
@@ -186,55 +191,54 @@ CONTAINS
 
       ! Initialise ridging diagnostics if required
       IF( ll_diag_rdg ) THEN    
-         opning_2d(:,:) = 0.0_wp
-         dairdg1dt(:,:) = 0.0_wp ; dairft1dt(:,:) = 0.0_wp
-         dairdg2dt(:,:) = 0.0_wp ; dairft2dt(:,:) = 0.0_wp
+         diag_closing(:,:) = 0._wp ; diag_opening(:,:) = 0._wp
+         diag_airdg1 (:,:) = 0._wp ; diag_airft1 (:,:) = 0._wp
+         diag_airdg2 (:,:) = 0._wp ; diag_airft2 (:,:) = 0._wp
+         diag_virdg  (:,:) = 0._wp ; diag_virft  (:,:) = 0._wp
       ENDIF
 
       !--------------------------------
       ! 0) Identify grid cells with ice
       !--------------------------------
-      zmsk(:,:) = MERGE( 1._wp, 0._wp, at_i(A2D(0)) >= epsi10 ) ! 1 if ice, 0 if no ice
-      !
       at_i(A2D(0)) = SUM( a_i(A2D(0),:), dim=3 )
 
-      ! Initialise logical array for ice points
-      l_ice_present(A2D(0)) = .FALSE.
       ! Initialise logical array for ice points where ridging occurs
-      ll_ridge(:,:) = .false.
+      ll_ridge(:,:) = .FALSE.
 
+      ! Initialise logical array for ice points
       DO_2D( 0, 0, 0, 0 )
          IF ( at_i(ji,jj) > epsi10 ) THEN
             l_ice_present(ji,jj) = .TRUE.
+         ELSE
+            l_ice_present(ji,jj) = .FALSE.
          ENDIF
       END_2D
       !--------------------------------------------------------
       ! 1) Dynamical inputs (closing rate, divergence, opening)
       !--------------------------------------------------------
-      IF ( ANY( l_ice_present(A2D(0)) ) ) THEN
+      IF( ANY( l_ice_present(A2D(0)) ) ) THEN
 
          DO_2D( 0, 0, 0, 0 )
             IF( l_ice_present(ji,jj) ) THEN
-               zdivu(ji,jj) = divu_i(ji,jj)
                ! closing_net = rate at which open water area is removed + ice area removed by ridging
                !                                                        - ice area added in new ridges
-               IF( ln_rhg_EVP .OR. ln_rhg_VP )   closing_net(ji,jj) = rn_csrdg * 0.5_wp * ( delta_i(ji,jj) - ABS( zdivu(ji,jj) ) ) &
-                  &                                                                                   - MIN( zdivu(ji,jj), 0._wp )
+               IF( ln_rhg_EVP .OR. ln_rhg_VP )   closing_net(ji,jj) = rn_csrdg * 0.5_wp * ( delta_i(ji,jj) - ABS( divu_i(ji,jj) ) ) &
+                  &                                                                       - MIN( divu_i(ji,jj), 0._wp )
                IF( ln_rhg_EAP )                  closing_net(ji,jj) = rdg_conv(ji,jj)
                !
-               IF( zdivu(ji,jj) < 0._wp )        closing_net(ji,jj) = MAX( closing_net(ji,jj), -zdivu(ji,jj) )   ! make sure the closing rate is large enough
+               IF( divu_i(ji,jj) < 0._wp )       closing_net(ji,jj) = MAX( closing_net(ji,jj), -divu_i(ji,jj) )   ! make sure the closing rate is large enough
                !                                                                                ! to give asum = 1.0 after ridging
                ! Opening rate (non-negative) that will give asum = 1.0 after ridging.
-               opning(ji,jj) = closing_net(ji,jj) + zdivu(ji,jj)
+               opening(ji,jj) = closing_net(ji,jj) + divu_i(ji,jj)
             ENDIF
          END_2D
          !
          !------------------------------------
          ! 2) Identify grid cells with ridging
          !------------------------------------
-         CALL rdgrft_prep( a_i, v_i, ato_i, l_ice_present(A2D(0)),  &                                           ! <<== in
-            &              apartf, aridge, araft, hi_hrdg, hraft, hrmin, hrmax, hrexp, closing_gross, opning, & ! ==>> out
-            &              closing_net )                                                                        ! <<== in
+         CALL rdgrft_prep( a_i, v_i, ato_i, l_ice_present(A2D(0)),  &                                            ! <<== in
+            &              apartf, aridge, araft, hi_hrdg, hraft, hrmin, hrmax, hrexp, closing_gross, opening, & ! ==>> out
+            &              closing_net )                                                                         ! <<== in
 
          DO_2D( 0, 0, 0, 0 )
             IF( l_ice_present(ji,jj) )  THEN
@@ -254,19 +258,19 @@ CONTAINS
          iter            = 1
          iterate_ridging = 1
          !                                                        !----------------------!
-         DO WHILE( iterate_ridging > 0 .AND. iter < jp_itermax )  !  ridging iterations  !
+         DO WHILE( iterate_ridging > 0 .AND. iter <= jp_itermax ) !  ridging iterations  !
             !                                                     !----------------------!
             ! Calculate participation function (apartf)
             !       and transfer      function
             !       and closing_gross (+correction on opening)
 
-            CALL rdgrft_prep( a_i, v_i, ato_i, ll_ridge, &                                                         ! <<== in
-               &              apartf, aridge, araft, hi_hrdg, hraft, hrmin, hrmax, hrexp, closing_gross, opning, & ! ==>> out
-               &              closing_net )                                                                        ! <<== in
+            CALL rdgrft_prep( a_i, v_i, ato_i, ll_ridge, &                                                          ! <<== in
+               &              apartf, aridge, araft, hi_hrdg, hraft, hrmin, hrmax, hrexp, closing_gross, opening, & ! ==>> out
+               &              closing_net )                                                                         ! <<== in
 
             ! Redistribute area, volume, and energy between categories
-            CALL rdgrft_shift( apartf, aridge, araft, hi_hrdg, hraft, hrmin, hrmax, hrexp, closing_gross, opning, & ! <<== in
-               &               sst_m, sss_m, ll_ridge )                                                             ! <<== in
+            CALL rdgrft_shift( apartf, aridge, araft, hi_hrdg, hraft, hrmin, hrmax, hrexp, closing_gross, opening, & ! <<== in
+               &               sst_m, sss_m, ll_ridge )                                                              ! <<== in
 
 
             ! Do we keep on iterating?
@@ -276,41 +280,56 @@ CONTAINS
 
             iterate_ridging = 0
             DO_2D( 0, 0, 0, 0 )
-             IF (ll_ridge(ji,jj) ) THEN
-               zfac = 1._wp - ( ato_i(ji,jj) + SUM( a_i(ji,jj,:) ) )
-               IF( ABS( zfac ) < epsi10 ) THEN
-                  closing_net(ji,jj) = 0._wp
-                  opning     (ji,jj) = 0._wp
-                  ato_i      (ji,jj) = MAX( 0._wp, 1._wp - SUM( a_i(ji,jj,:) ) )
-               ELSE
-                  iterate_ridging  = iterate_ridging + 1
-                  zdivu      (ji,jj) = zfac * r1_Dt_ice
-                  closing_net(ji,jj) = MAX( 0._wp, -zdivu(ji,jj) )
-                  opning     (ji,jj) = MAX( 0._wp,  zdivu(ji,jj) )
+               !
+               IF( ll_ridge(ji,jj) ) THEN
+                  !
+                  ! --- Ridging diagnostics --- !
+                  IF( ll_diag_rdg ) THEN
+                     diag_opening(ji,jj) = diag_opening(ji,jj) + opening(ji,jj)
+                     diag_closing(ji,jj) = diag_closing(ji,jj) + closing_net(ji,jj)
+                     diag_airdg1 (ji,jj) = diag_airdg1 (ji,jj) + airdg1 (ji,jj) * r1_Dt_ice
+                     diag_airft1 (ji,jj) = diag_airft1 (ji,jj) + airft1 (ji,jj) * r1_Dt_ice
+                     diag_airdg2 (ji,jj) = diag_airdg2 (ji,jj) + airdg2 (ji,jj) * r1_Dt_ice
+                     diag_airft2 (ji,jj) = diag_airft2 (ji,jj) + airft2 (ji,jj) * r1_Dt_ice
+                     diag_virdg  (ji,jj) = diag_virdg  (ji,jj) + virdg  (ji,jj) * r1_Dt_ice
+                     diag_virft  (ji,jj) = diag_virft  (ji,jj) + virft  (ji,jj) * r1_Dt_ice
+                  ENDIF
+                  !
+                  ! --- Check convergence --- !
+                  zfac = 1._wp - ( ato_i(ji,jj) + SUM( a_i(ji,jj,:) ) )
+                  IF( ABS( zfac ) < epsi10 .OR. iter == jp_itermax ) THEN
+                     closing_net(ji,jj) = 0._wp
+                     opening    (ji,jj) = 0._wp
+                     ato_i      (ji,jj) = MAX( 0._wp, 1._wp - SUM( a_i(ji,jj,:) ) )
+                  ELSE
+                     iterate_ridging  = iterate_ridging + 1
+                     zdivu      (ji,jj) = zfac * r1_Dt_ice
+                     closing_net(ji,jj) = MAX( 0._wp, -zdivu(ji,jj) )
+                     opening    (ji,jj) = MAX( 0._wp,  zdivu(ji,jj) )
+                  ENDIF
+                  !
                ENDIF
-             ENDIF
+               !
             END_2D
             !
             iter = iter + 1
-            IF( iter  >  jp_itermax )    CALL ctl_stop( 'STOP',  'icedyn_rdgrft: non-converging ridging scheme'  )
             !
-
          END DO
+         !clem: check this stop. I think sometimes it does not converge. Do we want to stop the simulation?
+!!$         IF( iter  >  jp_itermax )    CALL ctl_stop( 'STOP',  'icedyn_rdgrft: non-converging ridging scheme'  )
+         !
       ENDIF  ! high-level ridging check
 
+      ! --- Ridging diagnostics --- !
       IF( ll_diag_rdg ) THEN
-        !         ! --- Ridging diagnostics --- !
-        ! Update diagnostic arrays
-        opning_2d(:,:) = opning(:,:)
-        dairdg1dt(:,:) = airdg1(:,:) * r1_Dt_ice
-        dairft1dt(:,:) = airft1(:,:) * r1_Dt_ice
-        dairdg2dt(:,:) = airdg2(:,:) * r1_Dt_ice
-        dairft2dt(:,:) = airft2(:,:) * r1_Dt_ice
-        CALL iom_put( 'lead_open', opning_2d(:,:) * zmsk(:,:) )  ! Lead area opening rate
-        CALL iom_put( 'rdg_loss',  dairdg1dt(:,:) * zmsk(:,:) )  ! Ridging ice area loss rate
-        CALL iom_put( 'rft_loss',  dairft1dt(:,:) * zmsk(:,:) )  ! Rafting ice area loss rate
-        CALL iom_put( 'rdg_gain',  dairdg2dt(:,:) * zmsk(:,:) )  ! New ridged ice area gain rate
-        CALL iom_put( 'rft_gain',  dairft2dt(:,:) * zmsk(:,:) )  ! New rafted ice area gain rate
+         CALL iom_put( 'lead_open' , diag_opening(:,:) )  ! Lead area opening rate
+         CALL iom_put( 'lead_close', diag_closing(:,:) )  ! Lead area closing rate
+         CALL iom_put( 'ardg_loss' , diag_airdg1 (:,:) )  ! Ridging ice area loss rate
+         CALL iom_put( 'arft_loss' , diag_airft1 (:,:) )  ! Rafting ice area loss rate
+         CALL iom_put( 'ardg_gain' , diag_airdg2 (:,:) )  ! New ridged ice area gain rate
+         CALL iom_put( 'arft_gain' , diag_airft2 (:,:) )  ! New rafted ice area gain rate
+         CALL iom_put( 'vrdg_gain' , diag_virdg  (:,:) )  ! New ridged ice volume gain rate
+         CALL iom_put( 'vrft_gain' , diag_virft  (:,:) )  ! New rafted ice volume gain rate
       ENDIF
 
       ! clem: those fields must be updated on the halos: ato_i, a_i, v_i, v_s, sv_i, oa_i, a_ip, v_ip, v_il, e_i, e_s, szv_i
@@ -328,9 +347,9 @@ CONTAINS
    END SUBROUTINE ice_dyn_rdgrft
 
 
-   SUBROUTINE rdgrft_prep( pa_i, pv_i, pato_i, lice_pres,  &                                                              ! <<== in
-      &                    papartf, paridge, paraft, phi_hrdg, phraft, phrmin, phrmax, phrexp, pclosing_gross, popning, & ! ==>> out
-      &                    pclosing_net )                                                                                 ! <<== in
+   SUBROUTINE rdgrft_prep( pa_i, pv_i, pato_i, lice_pres,  &                                                               ! <<== in
+      &                    papartf, paridge, paraft, phi_hrdg, phraft, phrmin, phrmax, phrexp, pclosing_gross, popening, & ! ==>> out
+      &                    pclosing_net )                                                                                  ! <<== in
       !!-------------------------------------------------------------------
       !!                ***  ROUTINE rdgrft_prep ***
       !!
@@ -344,7 +363,7 @@ CONTAINS
       LOGICAL , DIMENSION(A2D(0))      , INTENT(in   ) ::   lice_pres   ! ice presence
       REAL(wp), DIMENSION(A2D(0),0:jpl), INTENT(  out) ::   papartf
       REAL(wp), DIMENSION(A2D(0), jpl) , INTENT(  out) ::   paridge, paraft, phi_hrdg, phraft, phrmin, phrmax, phrexp
-      REAL(wp), DIMENSION(A2D(0))      , INTENT(inout), OPTIONAL ::   pclosing_gross, popning
+      REAL(wp), DIMENSION(A2D(0))      , INTENT(inout), OPTIONAL ::   pclosing_gross, popening
       REAL(wp), DIMENSION(A2D(0))      , INTENT(in   ), OPTIONAL ::   pclosing_net
       !!
       INTEGER  ::   ji, jj, jl                  ! dummy loop indices
@@ -627,11 +646,11 @@ CONTAINS
          ! Reduce the opening rate in proportion
          DO_2D( 0, 0, 0, 0 )
             IF( lice_pres(ji,jj) ) THEN
-               zfac = pato_i(ji,jj) + ( popning(ji,jj) - papartf(ji,jj,0) * pclosing_gross(ji,jj) ) * rDt_ice
+               zfac = pato_i(ji,jj) + ( popening(ji,jj) - papartf(ji,jj,0) * pclosing_gross(ji,jj) ) * rDt_ice
                IF( zfac < 0._wp ) THEN           ! would lead to negative ato_i
-                  popning(ji,jj) = papartf(ji,jj,0) * pclosing_gross(ji,jj) - pato_i(ji,jj) * r1_Dt_ice
+                  popening(ji,jj) = papartf(ji,jj,0) * pclosing_gross(ji,jj) - pato_i(ji,jj) * r1_Dt_ice
                ELSEIF( zfac > zasum(ji,jj) ) THEN   ! would lead to ato_i > asum
-                  popning(ji,jj) = papartf(ji,jj,0) * pclosing_gross(ji,jj) + ( zasum(ji,jj) - pato_i(ji,jj) ) * r1_Dt_ice
+                  popening(ji,jj) = papartf(ji,jj,0) * pclosing_gross(ji,jj) + ( zasum(ji,jj) - pato_i(ji,jj) ) * r1_Dt_ice
                ENDIF
             ENDIF
          END_2D
@@ -642,8 +661,8 @@ CONTAINS
    END SUBROUTINE rdgrft_prep
 
 
-   SUBROUTINE rdgrft_shift( papartf, paridge, paraft, phi_hrdg, phraft, phrmin, phrmax, phrexp, pclosing_gross, popning, & ! <<== in
-      &                     psst, psss, lice_pres )                                                                        ! <<== in
+   SUBROUTINE rdgrft_shift( papartf, paridge, paraft, phi_hrdg, phraft, phrmin, phrmax, phrexp, pclosing_gross, popening, & ! <<== in
+      &                     psst, psss, lice_pres )                                                                         ! <<== in
       !!-------------------------------------------------------------------
       !!                ***  ROUTINE rdgrft_shift ***
       !!
@@ -654,7 +673,7 @@ CONTAINS
       !!-------------------------------------------------------------------
       REAL(wp), DIMENSION(A2D(0),0:jpl)     , INTENT(in) ::   papartf
       REAL(wp), DIMENSION(A2D(0),jpl)       , INTENT(in) ::   paridge, paraft, phi_hrdg, phraft, phrmin, phrmax, phrexp
-      REAL(wp), DIMENSION(A2D(0))           , INTENT(in) ::   pclosing_gross, popning
+      REAL(wp), DIMENSION(A2D(0))           , INTENT(in) ::   pclosing_gross, popening
       REAL(wp), DIMENSION(jpi,jpj)          , INTENT(in) ::   psst, psss
       LOGICAL , DIMENSION(A2D(0))           , INTENT(in) ::   lice_pres  ! ice presence
      !
@@ -663,8 +682,8 @@ CONTAINS
       REAL(wp) ::   expL, expR                 ! exponentials involving hL, hR
       REAL(wp) ::   vsw                        ! vol of water trapped into ridges
       REAL(wp) ::   afrdg, afrft               ! fraction of category area ridged/rafted
-      REAL(wp), DIMENSION(A2D(0)) ::   oirdg, aprdg, virdg, vsrdg, vprdg, vlrdg  ! area etc of new ridges
-      REAL(wp), DIMENSION(A2D(0)) ::   oirft, aprft, virft, vsrft, vprft, vlrft  ! area etc of rafted ice
+      REAL(wp), DIMENSION(A2D(0)) ::   oirdg, aprdg, vsrdg, vprdg, vlrdg  ! area etc of new ridges
+      REAL(wp), DIMENSION(A2D(0)) ::   oirft, aprft, vsrft, vprft, vlrft  ! area etc of rafted ice
       REAL(wp), DIMENSION(A2D(0),nlay_i) ::   sirdg, sirft
       !
       REAL(wp) ::   ersw             ! enthalpy of water trapped into ridges
@@ -689,7 +708,7 @@ CONTAINS
       !--------------------------------------------------------
       DO_2D( 0, 0, 0, 0 )
          IF( lice_pres(ji,jj) ) THEN
-            ato_i(ji,jj) = MAX( 0._wp, ato_i(ji,jj) + ( popning(ji,jj) - papartf(ji,jj,0) * pclosing_gross(ji,jj) ) * rDt_ice )
+            ato_i(ji,jj) = MAX( 0._wp, ato_i(ji,jj) + ( popening(ji,jj) - papartf(ji,jj,0) * pclosing_gross(ji,jj) ) * rDt_ice )
          ENDIF
       END_2D
 
