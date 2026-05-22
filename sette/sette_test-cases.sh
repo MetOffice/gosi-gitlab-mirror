@@ -965,7 +965,11 @@ if [ ${config} == "CPL_OASIS" ] ;  then
         EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
         cd ${EXE_DIR}
         # copy namcouple to EXP00 (not done by makenemo)
-        cp -av ${CONFIG_DIR0}/${config}/EXPREF/namcouple .
+        if [ -f ${OASIS_DIR}/lib/libyaxt.a ]; then
+           cp -av ${CONFIG_DIR0}/${config}/EXPREF/namcouple_oasis6 namcouple
+        else
+           cp -av ${CONFIG_DIR0}/${config}/EXPREF/namcouple .
+        fi
         set_namelist namelist_cfg cn_exp \"CPLOASIS\"
         set_namelist namelist_cfg nn_it000 1
         set_namelist namelist_cfg nn_itend ${ITEND}
