@@ -85,6 +85,14 @@ ls -l
 date
 pwd
 ##
+## Performance
+##
+echo
+echo For evaluation of coupled model load imbalance, check timeline_oceanx.nc and timeline_toyatm.nc
+echo Documentation available in - Interactive visualisation of OASIS coupled models load imbalance
+echo                            - https://cerfacs.fr/wp-content/uploads/2020/12/GLOBC-TR-Piacentini-20-177.pdf
+echo 
+##
 ## simple report generator for the test case
 ##
 ./gen_report.sh | tee CPL_OASIS_results

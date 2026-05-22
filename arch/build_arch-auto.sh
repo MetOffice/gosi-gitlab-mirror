@@ -545,8 +545,24 @@ then
         OASIS_INC=""
         OASIS_LIB=""
     else
-        OASIS_INC="-I%OASIS_PREFIX/build/lib/mct -I%OASIS_PREFIX/build/lib/psmile.MPI1"
+        if [ -d ${OASIS_prefix}/include ]
+        then
+          # OASIS >= 5.0
+          OASIS_INC="-I%OASIS_PREFIX/include"
+        else
+          # OASIS 4.0
+          if find ${OASIS_prefix}/*/lib/ -type d -name psmile.MPI1 | grep -q .
+          then
+            #OASIS_INC="-I%OASIS_PREFIX/build/lib/mct -I%OASIS_PREFIX/build/lib/psmile.MPI1"
+            OASIS_INC="-I$(find ${OASIS_prefix}/*/lib/ -type d -name mct) -I$(find ${OASIS_prefix}/*/lib/ -type d -name psmile.MPI1)"
+          fi
+        fi
         OASIS_LIB="-L%OASIS_PREFIX/lib -lpsmile.MPI1 -lmct -lmpeu -lscrip"
+        # OASIS 6.0
+        if [ -f ${OASIS_prefix}/lib/libyaxt.a ]
+        then
+           OASIS_LIB=${OASIS_LIB}" -lyac_utils -lyac_core -lyaxt_c -lyac_clapack"
+        fi
     fi
 fi
 #
@@ -652,7 +668,7 @@ cat > $(realpath $(dirname ${0}))/${archname:-"arch-auto.fcm"} << EOF
 %DEBUG_FCFLAGS       ${FCFLAGSnemo:-${DEBUG_FCFLAGS}}
 %FFLAGS              %FCFLAGS
 %LD                  %FC
-%LDFLAGS             -Wl,-rpath,%HDF5_PREFIX/lib -Wl,-rpath,%NCDF_F_PREFIX/lib -Wl,-rpath,%XIOS_PREFIX/lib
+%LDFLAGS             -Wl,-rpath,%HDF5_PREFIX/lib -Wl,-rpath,%NCDF_F_PREFIX/lib -Wl,-rpath,%XIOS_PREFIX/lib -Wl,-rpath,%OASIS_PREFIX/lib
 %FPPFLAGS            -P -traditional
 %AR                  $ARnemo
 %ARFLAGS             rs
