@@ -5,12 +5,12 @@
 # 2013   : A.C. Coward added options for testing with XIOS in dettached mode
 #
 # sette.sh   : principal script of SET TEsts for NEMO (SETTE)
-# ----------------------------------------------------------------------
-# NEMO/SETTE , NEMO Consortium (2010)
-# Software governed by the CeCILL licence     (NEMOGCM/NEMO_CeCILL.txt)
-# ----------------------------------------------------------------------
-#
 #############################################################
+#
+# ----------------------------------------------------------------------
+# NEMO/SETTE 5.1.a, NEMO Consortium (2026)
+# Software governed by the CeCILL license (./LICENSE.txt)
+# ----------------------------------------------------------------------
 #set -vx
 set -o posix
 #set -u
@@ -54,7 +54,7 @@ set -o posix
 #
 #  VALIDATION tree is:
 #
-#   NEMO_VALIDATION_DIR/WCONFIG_NAME/WCOMPILER_NAME/TEST_NAME/REVISION_NUMBER(or DATE)
+#   NEMO_VALIDATION_DIR/WCONFIG_NAME/WCOMPILER_NAME/TEST_NAME/REVISION
 #
 #  prepare_exe_dir.sh : defines and creates directory where the test is executed
 #                       execution directory takes name of TEST_NAME defined for every test 
@@ -110,16 +110,8 @@ fi
 # Directory to run the tests
 CONFIG_DIR0=${MAIN_DIR}/cfgs
 TOOLS_DIR=${MAIN_DIR}/tools
-if [ -n "${CUSTOM_DIR}" ]; then
-  CMP_NAM_L=$(echo ${CMP_NAM} | tr '[:upper:]' '[:lower:]')
-  if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]; then
-    export CMP_DIR=${CUSTOM_DIR}/${SETTE_SUB_VAL}_${NEMO_REV}_DEBUG
-  else
-    export CMP_DIR=${CUSTOM_DIR}/${SETTE_SUB_VAL}_${NEMO_REV}
-  fi
-fi
+
 CMP_NAM=${1:-$COMPILER}
-CMP_NAM_L=$(echo ${CMP_NAM} | tr '[:upper:]' '[:lower:]')
 # Architecture names that start in 'auto-' trigger the automatic generation of architecture configuration files
 [[ "${CMP_NAM}" != "${CMP_NAM#auto-}" ]] && CMP_NAM_A='auto' || CMP_NAM_A=${CMP_NAM}
 
@@ -197,119 +189,97 @@ for config in ${TEST_CONFIGS[@]} ; do
     [[ ${config} == "ORCA2_ICE_OBS" ]] && config_var="${config}_SAO"     && COMPONENTS_VAR="${COMPONENTS} SAO"
     [[ ${config} == "AGRIF_DEMO"    ]] && config_var="${config}_NOAGRIF" && DEL_KEYS_VAR_LOC="${DEL_KEYS_LOC} key_agrif key_agrif_psisters"
 
-    for (( l_t=-1 ; l_t < ${#SCTRANSFORMS[@]} ; l_t++ )); do
+    # PSyclone-based source-code processing (if required)
+    TRANSFORM_OPT=""
+    [[ -n "${TRANSFORM}" ]] && TRANSFORM_OPT="-p ${TRANSFORM}"
 
-        CONFIG_SUFFIX=${SETTE_STG}
-        DO_RESTART_1=${DO_RESTART}
-        DO_RESTART_2=${DO_RESTART}
-        DO_REPRO_1=${DO_REPRO}
-        DO_REPRO_2=${DO_REPRO}
-        DO_VARIANTS_0=${DO_VARIANTS}
-        TRANSFORM_OPT=""
-        # Name of the reference run for the VARIANTS test type
-        VARIANTS_REF="ORCA2"
-        # One of the REPRO test runs can be utilised as a reference run for the VARIANTS test of configuration ORCA2_ICE_OBS
-        #[[ ${config} == "ORCA2_ICE_OBS" ]] && [[ ${DO_VARIANTS} == "1" ]] && VARIANTS_REF="" && DO_REPRO_2="1"   # This
-        #   adjustment has been disabled as a workaround for integration testing, in order to avoid the running of the same test
-        #   run twice in parallel by the current integration-testing implementation when both the REPRO and VARIANTS test types
-        #   have been selected
-        if [[ ${DO_TRANSFORM} == "1" ]] ; then
-            # Ensure reference run for TRANSFORM test
-            [[ "${config}" != "ORCA2_ICE_OBS" ]] && DO_RESTART_1="1"
-            [[ "${config}" == "ORCA2_ICE_OBS" ]] && DO_REPRO_1="1"
-            if [ ${l_t} -ge 0 ]; then
-                TRANSFORM_OPT="-p passthrough"
-                CONFIG_SUFFIX="+PT"${SETTE_STG}
-                if [ ! "${SCTRANSFORMS[${l_t}]}" == "passthrough" ]; then
-                    TRANSFORM_OPT="-p ${SCTRANSFORMS[${l_t}]}"
-                    CONFIG_SUFFIX=`printf "+T%02i" ${l_t}`${SETTE_STG}
-                fi
-                # Only perform runs required for TRANSFORM test
-                DO_RESTART_2="0"
-                DO_REPRO_2="0"
-                [ "${config}" != "ORCA2_ICE_OBS" ] && DO_REPRO_1="0"
-                [ "${config}" == "ORCA2_ICE_OBS" ] && DO_RESTART_1="0"
-                DO_VARIANTS_0="0"
-            fi
-        fi
+    CONFIG_SUFFIX=${SETTE_STG}
+    DO_RESTART_1=${DO_RESTART}
+    DO_RESTART_2=${DO_RESTART}
+    DO_REPRO_1=${DO_REPRO}
+    DO_REPRO_2=${DO_REPRO}
+    DO_VARIANTS_0=${DO_VARIANTS}
+    # Name of the reference run for the VARIANTS test type
+    VARIANTS_REF="ORCA2"
+    # One of the REPRO test runs can be utilised as a reference run for the VARIANTS test of configuration ORCA2_ICE_OBS
+    #[[ ${config} == "ORCA2_ICE_OBS" ]] && [[ ${DO_VARIANTS} == "1" ]] && VARIANTS_REF="" && DO_REPRO_2="1"   # This
+    #   adjustment has been disabled as a workaround for integration testing, in order to avoid the running of the same test
+    #   run twice in parallel by the current integration-testing implementation when both the REPRO and VARIANTS test types
+    #   have been selected
 
-        # The actual names of the NEMO builds that are associated with the
-        # currently processed SETTE configuration
-        SETTE_CONFIG="${config}${CONFIG_SUFFIX}"
-        SETTE_CONFIG_VAR="${config_var}${CONFIG_SUFFIX}"
+    # The actual names of the NEMO builds that are associated with the
+    # currently processed SETTE configuration
+    SETTE_CONFIG="${config}${CONFIG_SUFFIX}"
+    SETTE_CONFIG_VAR="${config_var}${CONFIG_SUFFIX}"
 
-        # Compilation of the baseline configuration
-        if [ ${DO_COMPILE_BASELINE} -eq 1 ] ; then
+    # Compilation of the baseline configuration
+    if [ ${DO_COMPILE_BASELINE} -eq 1 ] ; then
 
-            cd ${MAIN_DIR}
+        cd ${MAIN_DIR}
 
-            # Configuration-specific pre-build actions
-            if [[ ${config} =~ "C1D" ]] ; then
-                # change EXPREF symlink
-                rm -fv ${CONFIG_DIR0}/${config/_*}/EXPREF
-                if [[ ${config} == "C1D" || ${config} == "C1D_PAPA" ]]; then
-                    ln -svr ${CONFIG_DIR0}/${config/_*}/EXP_PAPA ${CONFIG_DIR0}/${config/_*}/EXPREF
-                else
-                    ln -svr ${CONFIG_DIR0}/${config/_*}/EXP_${config#*_} ${CONFIG_DIR0}/${config/_*}/EXPREF
-                fi
-            fi
-
-            # Cleaning of pre-existing target configurations
-            clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-            # Synchronisation of pre-existing target configurations
-            sync_config ${CONFIG_DIR0}/${ref_config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-            # Start the build process
-            ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r ${ref_config} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 \
-                       ${NEMO_DEBUG} -j ${CMPL_CORES} ${COMPONENTS:+-d "${COMPONENTS}"} ${TRANSFORM_OPT} \
-                       add_key "${ADD_KEYS_LOC}" del_key "${DEL_KEYS_LOC}" || exit 1
-
-            # Configuration-specific post-build actions
-            if [[ ${config} =~ "C1D" ]] ; then
-                # restore EXPREF symlink
-                rm -fv ${CONFIG_DIR0}/${config/_*}/EXPREF
+        # Configuration-specific pre-build actions
+        if [[ ${config} =~ "C1D" ]] ; then
+            # change EXPREF symlink
+            rm -fv ${CONFIG_DIR0}/${config/_*}/EXPREF
+            if [[ ${config} == "C1D" || ${config} == "C1D_PAPA" ]]; then
                 ln -svr ${CONFIG_DIR0}/${config/_*}/EXP_PAPA ${CONFIG_DIR0}/${config/_*}/EXPREF
+            else
+                ln -svr ${CONFIG_DIR0}/${config/_*}/EXP_${config#*_} ${CONFIG_DIR0}/${config/_*}/EXPREF
             fi
-
         fi
 
-        # Compilation of a configuration variant (if any)
-        if [ ${DO_COMPILE_VARIANTS} -eq 1 ] ; then
+        # Cleaning of pre-existing target configurations
+        clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
+        # Synchronisation of pre-existing target configurations
+        sync_config ${CONFIG_DIR0}/${ref_config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
+        # Start the build process
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r ${ref_config} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 \
+                   ${NEMO_DEBUG} -j ${CMPL_CORES} ${COMPONENTS:+-d "${COMPONENTS}"} ${TRANSFORM_OPT} \
+                   add_key "${ADD_KEYS_LOC}" del_key "${DEL_KEYS_LOC}" || exit 1
 
-            cd ${MAIN_DIR}
-
-            # Building of variants (if requested)
-            if [[ ${DO_VARIANTS} -eq 1 ]] && [[ "${config_var}" != "${config}" ]]; then
-                if [ ! ${config} == "AGRIF_DEMO" ] || [ ${DO_VARIANTS_0} -eq 1 ]; then
-                # Cleaning and synchronisation of the target directory
-                clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG_VAR}
-                sync_config ${CONFIG_DIR0}/${config_ref} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG_VAR}
-                # Build the NEMO executable for the configuration variant
-                ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG_VAR} -r ${ref_config} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 \
-                           ${NEMO_DEBUG} -j ${CMPL_CORES} ${COMPONENTS_VAR:+-d "${COMPONENTS_VAR}"} ${TRANSFORM_OPT} \
-                           add_key "${ADD_KEYS_LOC}" del_key "${DEL_KEYS_VAR_LOC}" || exit 1
-                fi
-            fi
-
+        # Configuration-specific post-build actions
+        if [[ ${config} =~ "C1D" ]] ; then
+            # restore EXPREF symlink
+            rm -fv ${CONFIG_DIR0}/${config/_*}/EXPREF
+            ln -svr ${CONFIG_DIR0}/${config/_*}/EXP_PAPA ${CONFIG_DIR0}/${config/_*}/EXPREF
         fi
 
-        # Continue to next configuration unless the RUN test phase has been requested
-        [[ ${DO_RUN} -eq 0 ]] && break
+    fi
+
+    # Compilation of a configuration variant (if any)
+    if [ ${DO_COMPILE_VARIANTS} -eq 1 ] ; then
+
+        cd ${MAIN_DIR}
+
+        # Building of variants (if requested)
+        if [[ ${DO_VARIANTS} -eq 1 ]] && [[ "${config_var}" != "${config}" ]]; then
+            if [ ! ${config} == "AGRIF_DEMO" ] || [ ${DO_VARIANTS_0} -eq 1 ]; then
+            # Cleaning and synchronisation of the target directory
+            clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG_VAR}
+            sync_config ${CONFIG_DIR0}/${config_ref} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG_VAR}
+            # Build the NEMO executable for the configuration variant
+            ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG_VAR} -r ${ref_config} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 \
+                       ${NEMO_DEBUG} -j ${CMPL_CORES} ${COMPONENTS_VAR:+-d "${COMPONENTS_VAR}"} ${TRANSFORM_OPT} \
+                       add_key "${ADD_KEYS_LOC}" del_key "${DEL_KEYS_VAR_LOC}" || exit 1
+            fi
+        fi
+
+    fi
+
+    # Continue to next configuration unless the RUN test phase has been requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
 # -----------
 # GYRE_PISCES
 # -----------
 if [ ${config} == "GYRE_PISCES" ] ; then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=12    # 1 day
-    else
-        ITEND=1080  # 90 days
-    fi
+    ITEND=1080   # 90 days
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=12   # 1 day
 
     # Configure and submit test runs for the GYRE_PISCES SETTE configuration
     # (if any)
-    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" ] ; then
 
         # Default test-run configuration for the GYRE_PISCES SETTE
         # configuration
@@ -409,15 +379,11 @@ fi # GYRE_PISCES
 # ----------------------------------------------------------------------------
 if [ ${config} == "GYRE_GO" ] ; then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=16     # 1.25 days
-    else
-        ITEND=1152   # 90 days
-    fi
+    ITEND=1152   # 90 days
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=16   # 1.25 days
 
     # Configure and submit runs for the GYRE_GO SETTE configuration (if any)
-    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" ] ; then
 
         # Default test-run configuration for the GYRE_GO SETTE
         # configuration
@@ -523,16 +489,12 @@ fi # GYRE_GO
 # ----------------
 if [ ${config} == "ORCA2_ICE_PISCES" ] ; then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=8   # 2 days
-    else
-        ITEND=1040 # 130 days
-    fi
+    ITEND=1040   # 130 days
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=8   # 2 days
 
     # Configure and submit test runs for the ORCA2_ICE_PISCES SETTE
     # configuration (if any)
-    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" ] ; then
 
         # Default test-run configuration for the ORCA2_ICE_PISCES SETTE
         # configuration
@@ -667,16 +629,12 @@ fi # ORCA2_ICE_PISCES
 # ----------------
 if [ ${config} == "ORCA2_OFF_PISCES" ]  ;  then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=16   # 4 days
-    else
-        ITEND=380  # 95 days
-    fi
+    ITEND=380   # 95 days
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=16   # 4 day
 
     # Configure and submit test runs for the ORCA2_OFF_PISCES SETTE
     # configuration (if any)
-    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" ] ; then
 
         # Default test-run configuration for the ORCA2_OFF_PISCES SETTE
         # configuration
@@ -778,15 +736,11 @@ fi # ORCA2_OFF_PISCES
 # -----
 if [ ${config} == "AMM12" ] ;  then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=12   # 4 h
-    else
-        ITEND=576  # 8 days
-    fi
+    ITEND=576   # 8 days
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=12   # 4 hours
 
     # Configure and submit test runs for the AMM12 SETTE configuration (if any)
-    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" ] ; then
 
         # Default test-run configuration for the AMM12 SETTE configuration
         EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
@@ -875,16 +829,12 @@ fi # AMM12
 # -------------
 if [ ${config} == "ORCA2_SAS_ICE" ] ;  then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=16   # 2 days
-    else
-        ITEND=256  # 32 days
-    fi
+    ITEND=256   # 32 days
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=16   # 2 days
 
     # Configure and submit test runs for the ORCA2_SAS_ICE SETTE configuration
     # (if any)
-    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" ] ; then
 
         # Default test-run configuration for the ORCA2_SAS_ICE SETTE
         # configuration
@@ -946,12 +896,10 @@ if [ ${config} == "ORCA2_SAS_ICE" ] ;  then
         for name in ${names}; do
             export TEST_NAME=${name}
             if [[ ${name} == "REPRO_4_8" ]]; then
-                if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-                then
-                    ITEND=16  # 1 day
-                else
-                    ITEND=80  # 5 days
-                fi
+
+                ITEND=80   # 5 days
+                [[ "${USING_DEBUG}" == "yes" ]] && ITEND=16   # 1 day
+
             fi
             cd ${SETTE_DIR}
             . ./prepare_exe_dir.sh
@@ -985,16 +933,12 @@ fi
 ## Restartability not tested (ASM code not restartable while increments are being applied)
 if [ ${config} == "ORCA2_ICE_OBS" ] ;  then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=16  # 2 days
-    else
-        ITEND=80  # 10 days
-    fi
+    ITEND=80   # 10 days
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=16   # 2 days
 
     # Configure and submit test runs for the ORCA2_ICE_OBS SETTE configuration
     # (if any)
-    if [ ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" -o ${DO_VARIANTS} == "1" ] ; then
+    if [ ${DO_REPRO} == "1" -o ${DO_VARIANTS} == "1" ] ; then
 
         # Default test-run configuration for the ORCA2_ICE_OBS SETTE
         # configuration
@@ -1168,18 +1112,14 @@ fi
 # ----------
 if [ ${config} == "AGRIF_DEMO" ] ;  then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=4   # 12 h
-    else
-        ITEND=16  # 2 days
-    fi
+    ITEND=16   # 2 days
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=4   # 12 hours
 
     # Continue to RUN test phase, if requested
     [[ ${DO_RUN} -eq 0 ]] && break
 
     # Configure and submit test runs for the AGRIF_DEMO configuration (if any)
-    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_VARIANTS} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_VARIANTS} == "1" ] ; then
 
         # Default test-run configuration for the AGRIF_DEMO SETTE configuration
         EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
@@ -1322,12 +1262,10 @@ if [ ${config} == "AGRIF_DEMO" ] ;  then
 
         ## test code corruption with AGRIF_DEMO (phase 1) ==> Compile with key_agrif but run with no zoom
         if [ ${DO_VARIANTS_0} == "1" ] ;  then
-            if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-            then
-                ITEND=16   # 2 days
-            else
-                ITEND=150  # 5d and 9h
-            fi
+
+            ITEND=150   # 5 days and 9 hours
+            [[ "${USING_DEBUG}" == "yes" ]] && ITEND=16   # 2 days
+
             export TEST_NAME="${VARIANTS_REF}"
             cd ${MAIN_DIR}
             cd ${SETTE_DIR}
@@ -1391,15 +1329,11 @@ fi
 # ------
 if [ ${config} == "WED025" ] ;  then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=12   # 8h
-    else
-        ITEND=720  # 20 days
-    fi
+    ITEND=720   # 20 days
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=12   # 8 hours
 
     # Configure and submit test runs for the WED025 configuration (if any)
-    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" ] ; then
 
         # Default test-run configuration for the WED025 configuration
         EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
@@ -1492,18 +1426,14 @@ fi
 # -----
 if [[ ${config} =~ "C1D" ]]  ; then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=240   # 1 day
-    else
-        ITEND=87600 # PAPA (365 days)
-        [[ ${config} =~ "ASICS" ]] && ITEND=17040
-        [[ ${config} =~ "BATS"  ]] && ITEND=26280
-        [[ ${config} =~ "SAS"   ]] && ITEND=8760
-    fi
+    ITEND=87600   # 365 days (PAPA)
+    [[ ${config} =~ "ASICS" ]] && ITEND=17040
+    [[ ${config} =~ "BATS"  ]] && ITEND=26280
+    [[ ${config} =~ "SAS"   ]] && ITEND=8760
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=240   # 1 day
 
     # Configure and submit test runs for the C1D configuration (if any)
-    if [ ${DO_RESTART} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" ] ; then
 
         # Default test-run configuration for the C1D configuration
         EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
@@ -1561,7 +1491,6 @@ if [[ ${config} =~ "C1D" ]]  ; then
 
 fi
 
-    done
 done
 #
 # Return to SETTE_DIR (last fcm_job.sh will have moved to EXE_DIR)

@@ -7,12 +7,12 @@
 #                       : this script : compiles, run and tests TEST_CASES
 #
 #                       : TO DO: test if nitend is equal to end of run.stat
-# ----------------------------------------------------------------------
-# NEMO/SETTE , NEMO Consortium (2018)
-# Software governed by the CeCILL licence     (NEMOGCM/NEMO_CeCILL.txt)
-# ----------------------------------------------------------------------
-#
 #############################################################
+#
+# ----------------------------------------------------------------------
+# NEMO/SETTE 5.1.a, NEMO Consortium (2026)
+# Software governed by the CeCILL license (see ./LICENSE.txt)
+# ----------------------------------------------------------------------
 #set -vx
 set -o posix
 #set -u
@@ -55,7 +55,7 @@ set -o posix
 #
 #  VALIDATION tree is:
 #
-#   NEMO_VALIDATION_DIR/WCONFIG_NAME/WCOMPILER_NAME/TEST_NAME/REVISION_NUMBER(or DATE)
+#   NEMO_VALIDATION_DIR/WCONFIG_NAME/WCOMPILER_NAME/TEST_NAME/REVISION
 #
 #  prepare_exe_dir.sh : defines and creates directory where the test is executed
 #                       execution directory takes name of TEST_NAME defined for every test 
@@ -111,16 +111,7 @@ fi
 CONFIG_DIR0=${MAIN_DIR}/tests
 TOOLS_DIR=${MAIN_DIR}/tools
 
-if [ -n "${CUSTOM_DIR}" ]; then
-  CMP_NAM_L=$(echo ${CMP_NAM} | tr '[:upper:]' '[:lower:]')
-  if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]; then
-    export CMP_DIR=${CUSTOM_DIR}/${SETTE_SUB_VAL}_${NEMO_REV}_DEBUG
-  else
-    export CMP_DIR=${CUSTOM_DIR}/${SETTE_SUB_VAL}_${NEMO_REV}
-  fi
-fi
 CMP_NAM=${1:-$COMPILER}
-CMP_NAM_L=$(echo ${CMP_NAM} | tr '[:upper:]' '[:lower:]')
 # Architecture names that start in 'auto-' trigger the automatic generation of architecture configuration files
 [[ "${CMP_NAM}" != "${CMP_NAM#auto-}" ]] && CMP_NAM_A='auto' || CMP_NAM_A=${CMP_NAM}
 
@@ -171,108 +162,86 @@ for config in ${TEST_CONFIGS[@]} ; do
     [[ ${config} == "ICE_AGRIF" ]] && ADD_KEYS_LOC="${ADD_KEYS/key_qco/}"
     [[ ${config} == "ISOMIP+"   ]] && ADD_KEYS_LOC="${ADD_KEYS/key_qco/}"
 
-    for (( l_t=-1 ; l_t < ${#SCTRANSFORMS[@]} ; l_t++ )); do
+    # PSyclone-based source-code processing (if required)
+    TRANSFORM_OPT=""
+    [[ -n "${TRANSFORM}" ]] && TRANSFORM_OPT="-p ${TRANSFORM}"
 
-        CONFIG_SUFFIX=${SETTE_STG}
-        DO_RESTART_1=${DO_RESTART}
-        DO_RESTART_2=${DO_RESTART}
-        DO_REPRO_1=${DO_REPRO}
-        DO_REPRO_2=${DO_REPRO}
-        DO_PHYOPTS_0=${DO_PHYOPTS}
-        DO_ROTSYM_0=${DO_ROTSYM}
-        DO_COUPLING_0=${DO_COUPLING}
-        TRANSFORM_OPT=""
-        if [[ ${DO_TRANSFORM} == "1" ]] ; then
-            # Ensure reference run for TRANSFORM test
-            DO_RESTART_1="1"
-            if [ ${l_t} -ge 0 ]; then
-                TRANSFORM_OPT="-p passthrough"
-                CONFIG_SUFFIX="+PT"${SETTE_STG}
-                if [ ! "${SCTRANSFORMS[${l_t}]}" == "passthrough" ]; then
-                    TRANSFORM_OPT="-p ${SCTRANSFORMS[${l_t}]}"
-                    CONFIG_SUFFIX=`printf "+T%02i" ${l_t}`${SETTE_STG}
-                fi
-                # Only perform runs required for TRANSFORM test
-                DO_RESTART_2="0"
-                DO_REPRO_1="0"
-                DO_REPRO_2="0"
-                DO_PHYOPTS_0="0"
-                DO_ROTSYM_0="0"
-                DO_COUPLING_0="0"
-            fi
+    CONFIG_SUFFIX=${SETTE_STG}
+    DO_RESTART_1=${DO_RESTART}
+    DO_RESTART_2=${DO_RESTART}
+    DO_REPRO_1=${DO_REPRO}
+    DO_REPRO_2=${DO_REPRO}
+    DO_PHYOPTS_0=${DO_PHYOPTS}
+    DO_ROTSYM_0=${DO_ROTSYM}
+    DO_COUPLING_0=${DO_COUPLING}
+
+    # The actual name of the NEMO build that is associated with the
+    # currently processed SETTE configuration
+    SETTE_CONFIG="${config}${CONFIG_SUFFIX}"
+
+    # Skip CPL_OASIS test case if an OASIS build is not specified
+    if [[ ${config} == "CPL_OASIS" ]] ; then
+        cd ${MAIN_DIR}
+
+        ARCH_FILE=$(find arch/ -name arch-${CMP_NAM}.fcm)
+        # Generate archfile if compiler is set to "auto"
+        if [[ -z "${ARCH_FILE}" && ${CMP_NAM_A} == "auto" ]]; then
+          ENV_FILE=$(find arch/ -name arch-${CMP_NAM_A}.env)
+          [ -n "${ENV_FILE}" ] && source ${ENV_FILE}
+          ./arch/build_arch-auto.sh
+          ARCH_FILE=$(find arch/ -name arch-${CMP_NAM_A}.fcm)
+        fi
+        # Test that OASIS path is defined in the arch file and that it exists
+        [[ ! -f ${ARCH_FILE} ]] && echo "WARNING: arch-${CMP_NAM_A}.fcm file not found -> cannot check for OASIS directory -> CPL_OASIS testcase skipped !" && break
+        OASIS_DIR=$(sed -rn "/^%OASIS_(PREFIX|HOME) /s/%OASIS_(PREFIX|HOME) +(.*)/\2/p" ${ARCH_FILE})
+        [[ -z ${OASIS_DIR} ]] && echo "WARNING: String matching \"%OASIS_(PREFIX|HOME)\" not found in arch-${CMP_NAM_A}.fcm file -> CPL_OASIS testcase skipped !" && break
+        OASIS_DIR=$(eval "echo ${OASIS_DIR}")       # Expand environment variables
+        [[ ! -d ${OASIS_DIR} ]] && echo "WARNING: OASIS directory \"${OASIS_DIR}\" in arch-${CMP_NAM_A}.fcm file does not exist -> CPL_OASIS testcase skipped !" && break
+    fi
+
+    # Compilation of the baseline configuration
+    if [ ${DO_COMPILE_BASELINE} -eq 1 ] ; then
+
+        cd ${MAIN_DIR}
+
+        # Cleaning of pre-existing target configurations
+        clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
+        # Synchronisation of pre-existing target configurations
+        sync_config ${CONFIG_DIR0}/${ref_config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
+        # Start the build process
+        ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r ${ref_config} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 \
+                   ${NEMO_DEBUG} -j ${CMPL_CORES} ${COMPONENTS:+-d "${COMPONENTS}"} ${TRANSFORM_OPT} \
+                   add_key "${ADD_KEYS_LOC}" del_key "${DEL_KEYS_LOC}" || exit 1
+
+
+    fi
+
+    # Compilation of a configuration variant (if any)
+    if [ ${DO_COMPILE_VARIANTS} -eq 1 ] ; then
+
+        cd ${MAIN_DIR}
+
+        # Configuration-specific build actions that can be carried out
+        # independent of the baseline-configuration compilation
+	if [[ ${config} == "CPL_OASIS" ]] ; then
+            ./tools/maketools -m ${CMP_NAM_A} -n TOYATM
         fi
 
-        # The actual name of the NEMO build that is associated with the
-        # currently processed SETTE configuration
-        SETTE_CONFIG="${config}${CONFIG_SUFFIX}"
+    fi
 
-        # Skip CPL_OASIS test case if an OASIS build is not specified
-        if [[ ${config} == "CPL_OASIS" ]] ; then
-            cd ${MAIN_DIR}
-
-            ARCH_FILE=$(find arch/ -name arch-${CMP_NAM}.fcm)
-            # Generate archfile if compiler is set to "auto"
-            if [[ -z "${ARCH_FILE}" && ${CMP_NAM_A} == "auto" ]]; then
-              ENV_FILE=$(find arch/ -name arch-${CMP_NAM_A}.env)
-              [ -n "${ENV_FILE}" ] && source ${ENV_FILE}
-              ./arch/build_arch-auto.sh
-              ARCH_FILE=$(find arch/ -name arch-${CMP_NAM_A}.fcm)
-            fi
-            # Test that OASIS path is defined in the arch file and that it exists
-            [[ ! -f ${ARCH_FILE} ]] && echo "WARNING: arch-${CMP_NAM_A}.fcm file not found -> cannot check for OASIS directory -> CPL_OASIS testcase skipped !" && break
-            OASIS_DIR=$(sed -rn "/^%OASIS_(PREFIX|HOME) /s/%OASIS_(PREFIX|HOME) +(.*)/\2/p" ${ARCH_FILE})
-            [[ -z ${OASIS_DIR} ]] && echo "WARNING: String matching \"%OASIS_(PREFIX|HOME)\" not found in arch-${CMP_NAM_A}.fcm file -> CPL_OASIS testcase skipped !" && break
-            OASIS_DIR=$(eval "echo ${OASIS_DIR}")       # Expand environment variables
-            [[ ! -d ${OASIS_DIR} ]] && echo "WARNING: OASIS directory \"${OASIS_DIR}\" in arch-${CMP_NAM_A}.fcm file does not exist -> CPL_OASIS testcase skipped !" && break
-        fi
-
-        # Compilation of the baseline configuration
-        if [ ${DO_COMPILE_BASELINE} -eq 1 ] ; then
-
-            cd ${MAIN_DIR}
-
-            # Cleaning of pre-existing target configurations
-            clean_config ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-            # Synchronisation of pre-existing target configurations
-            sync_config ${CONFIG_DIR0}/${ref_config} ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
-            # Start the build process
-            ./makenemo -m ${CMP_NAM_A} -n ${SETTE_CONFIG} -r ${ref_config} ${CUSTOM_DIR:+-t ${CMP_DIR}} -k 0 \
-                       ${NEMO_DEBUG} -j ${CMPL_CORES} ${COMPONENTS:+-d "${COMPONENTS}"} ${TRANSFORM_OPT} \
-                       add_key "${ADD_KEYS_LOC}" del_key "${DEL_KEYS_LOC}" || exit 1
-
-
-        fi
-
-        # Compilation of a configuration variant (if any)
-        if [ ${DO_COMPILE_VARIANTS} -eq 1 ] ; then
-
-            cd ${MAIN_DIR}
-
-	    # Configuration-specific build actions that can be carried out
-	    # independent of the baseline-configuration compilation
-	    if [[ ${config} == "CPL_OASIS" ]] ; then
-                ./tools/maketools -m ${CMP_NAM_A} -n TOYATM
-            fi
-
-        fi
-
-        # Continue to next configuration unless the RUN test phase has been requested
-        [[ ${DO_RUN} -eq 0 ]] && break
+    # Continue to next configuration unless the RUN test phase has been requested
+    [[ ${DO_RUN} -eq 0 ]] && break
 
 # ---------
 #  OVERFLOW
 # ---------
 if [ ${config} == "OVERFLOW" ];  then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=12
-    else
-        ITEND=120
-    fi
+    ITEND=120
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=12
 
     # Configure and submit test runs for the OVERFLOW SETTE configuration
-    if [ ${DO_RESTART} == "1" -o ${DO_PHYOPTS} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_PHYOPTS} == "1" ] ; then
 
         # Default test-run configuration for the OVERFLOW SETTE configuration
         EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
@@ -328,12 +297,10 @@ if [ ${config} == "OVERFLOW" ];  then
         ## Test for all advection, vert. coordinates, vector form, flux form: test runability and complete all time steps
         ## Needed namelist-xxxx for every type of run tested
         if [ ${DO_PHYOPTS_0} == "1" ] ;  then
-            if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-            then
-                ITEND=12
-            else
-                ITEND=6120
-            fi
+
+            ITEND=6120
+            [[ "${USING_DEBUG}" == "yes" ]] && ITEND=12
+
             cd ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
             for file in $(echo `ls namelist_*_cfg `) ; do
                 TEST_NAME=`echo $file | sed -e "s/namelist_//" | sed -e "s/_cfg//"`
@@ -366,16 +333,12 @@ fi
 # --------------
 if [ ${config} == "LOCK_EXCHANGE" ] ;  then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=12
-    else
-        ITEND=120
-    fi
+    ITEND=120
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=12
 
     # Configure and submit test runs for the LOCK_EXCHANGE SETTE configuration
     # (if any)
-    if [ ${DO_RESTART} == "1" -o ${DO_PHYOPTS} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_PHYOPTS} == "1" ] ; then
 
         # Default test-run configuration for the LOCK_EXCHANGE SETTE
         # configuration
@@ -432,12 +395,10 @@ if [ ${config} == "LOCK_EXCHANGE" ] ;  then
         ## Test for all advection, vector form, flux form: test runability and complete all time steps
         ## Needed namelist-xxxx for every type of run tested
         if [ ${DO_PHYOPTS_0} == "1" ] ;  then
-            if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-            then
-                ITEND=12
-            else
-                ITEND=61200
-            fi
+
+            ITEND=61200
+            [[ "${USING_DEBUG}" == "yes" ]] && ITEND=12
+
             cd ${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
             for file in $(echo `ls namelist_*_cfg `) ; do
                 echo ''
@@ -472,16 +433,12 @@ fi
 # ------
 if [ ${config} == "IWAVE" ] ;  then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=12
-    else
-        ITEND=120
-    fi
+    ITEND=120
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=12
 
     # Configure and submit test runs for the IWAVE SETTE configuration
     # (if any)
-    if [ ${DO_RESTART} == "1" -o ${DO_PHYOPTS} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_PHYOPTS} == "1" ] ; then
 
         # Default test-run configuration for the IWAVE SETTE
         # configuration
@@ -544,16 +501,12 @@ fi
 # ------
 if [ ${config} == "VORTEX" ] ;  then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=12
-    else
-        ITEND=240
-    fi
+    ITEND=240
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=12
 
     # Configure and submit test runs for the VORTEX SETTE configuration (if
     # any)
-    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" -o ${DO_ROTSYM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_ROTSYM} == "1" ] ; then
 
         # Default test-run configuration for the VORTEX SETTE configuration
         EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
@@ -694,16 +647,12 @@ fi
 # ---------
 if [ ${config} == "ICE_AGRIF" ] ;  then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=10
-    else
-        ITEND=200
-    fi
+    ITEND=200
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=10
 
     # Configure and submit test runs for the ICE_AGRIF SETTE configuration (if
     # any)
-    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" ] ; then
 
         # Default test-run configuration for the ICE_AGRIF SETTE configuration
         EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
@@ -808,16 +757,12 @@ fi
 # -------
 if [ ${config} == "ISOMIP+" ]; then 
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=12
-    else
-        ITEND=1200
-    fi
+    ITEND=1200
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=12
 
     # Configure and submit test runs for the ISOMIP+ SETTE configuration (if
     # any)
-    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" ] ; then
 
         # Default test-run configuration for the ISOMIP+ SETTE configuration
         EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
@@ -877,12 +822,10 @@ if [ ${config} == "ISOMIP+" ]; then
         for name in ${names}; do
             export TEST_NAME=${name}
             if [[ ${name} == "REPRO_9_3" ]]; then
-                if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-                then
-                    ITEND=12
-                else
-                    ITEND=600
-                fi
+
+                ITEND=600
+                [[ "${USING_DEBUG}" == "yes" ]] && ITEND=12
+
             fi
             cd ${SETTE_DIR}
             . ./prepare_exe_dir.sh
@@ -916,15 +859,11 @@ fi
 # ---
 if [ ${config} == "SWG" ] && [ ${USING_QCO} == "yes" ] ;  then
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=12
-    else
-        ITEND=1728
-    fi
+    ITEND=1728
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=12
 
     # Configure and submit test runs for the SWG SETTE configuration (if any)
-    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" -o ${DO_TRANSFORM} == "1" ] ; then
+    if [ ${DO_RESTART} == "1" -o ${DO_REPRO} == "1" ] ; then
 
         # Default test-run configuration for the SWG SETTE configuration
         EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
@@ -1018,12 +957,8 @@ if [ ${config} == "CPL_OASIS" ] ;  then
     # TOYATM PATH
     export TOYATM_DIR="${MAIN_DIR}/tools/TOYATM/BLD/bin"
 
-    if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]
-    then
-        ITEND=16
-    else
-        ITEND=160
-    fi
+    ITEND=160
+    [[ "${USING_DEBUG}" == "yes" ]] && ITEND=16
 
     # Default test-run configuration
     if [ ${DO_COUPLING_0} == "1" ] ;  then
@@ -1073,7 +1008,6 @@ if [ ${config} == "CPL_OASIS" ] ;  then
     fi
 fi
 
-    done
 done
 #
 # Return to SETTE_DIR (last fcm_job.sh will have moved to EXE_DIR)

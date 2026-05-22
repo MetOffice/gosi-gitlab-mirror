@@ -1,4 +1,13 @@
 #!/bin/bash
+# ======================================================================
+#                       ***  SCRIPT  sette.sh  ***
+#  SETTE: SETTE test-run setup
+# ======================================================================
+#
+# ----------------------------------------------------------------------
+# NEMO/SETTE 5.1.a, NEMO Consortium (2026)
+# Software governed by the CeCILL license (see ./LICENSE.txt)
+# ----------------------------------------------------------------------
 set +x
 
 # initialise user dependent variable
@@ -11,10 +20,18 @@ NEMO_DEBUG=""
 dry_run=0
 SETTE_REPORT=0
 WAIT_SETTE=0
-export SCTRANSFORMS=()
+
+# Controls that determine the SETTE build and run-time-configuration variant
 #
-# controls for some common namelist, run-time options:
-#
+# Controls for common compile-time keys:
+export USING_QCO='yes'         # Default: yes => add key_qco            ; use -q to delete key_qco
+export USING_SI3_1D='no'       # Default: no  => add key_si3_1D         ; hard-coded option
+export USING_XIOS='yes'        # Default: yes => add key_xios           ; use -X to delete key_xios
+                               #    Note: changing USING_XIOS may require a change in arch file
+# Control of compilation options and associated run-length adjustment:
+export USING_DEBUG='no'        # Default: no  => default compil. options; use -b to select debug compilation options
+                               # and shortened test runs
+# Controls for common run-time options:
 export USING_TIMING='yes'      # Default: yes => set ln_timing=.true.   ; use -T to disable
 export USING_ICEBERGS='yes'    # Default: yes => set ln_icebergs=.true. ; use -i to disable
 export USING_ABL='no'          # Default: no  => set ln_abl=.false.     ; use -a to set ln_abl=.true.
@@ -22,46 +39,23 @@ export USING_EXTRA_HALO='no'   # Default: no  => set nn_hls=2           ; use -e
 export USING_COLLECTIVES='yes' # Default: yes => set nn_comm=2          ; use -C to set nn_comm=1
 export USING_NOGATHER='yes'    # Default: yes => set ln_nnogather=.true.; use -N to set ln_nnogather=.false.
 export USING_TILING='yes'      # Default: yes => set ln_tile=.true.     ; use -t to disable
-#
-# controls for some common compile-time keys:
-#
-export USING_QCO='yes'         # Default: yes => add key_qco            ; use -q to delete key_qco
-export USING_SI3_1D='no'       # Default: no  => add key_si3_1D        
-export USING_XIOS='yes'        # Default: yes => add key_xios           ; use -X to delete key_xios
-                               #    Note: changing USING_XIOS may require a change in arch file
-#
-# controls for some common batch-script, run-time options:
-#
 export USING_MPMD='yes'        # Default: yes => run with detached XIOS servers ; use -A to run in attached (SPMD) mode
-                               #    Note: yes also ensures key_xios but -A will not remove it
+                               #    Note: 'yes' also ensures key_xios but -A will not remove it
+
+# Controls that affect SETTE behaviour
 export USER_INPUT='yes'        # Default: yes => request user input on decisions. For example:
                                #                 1. regarding mismatched options
                                #                 2. regardin incompatible options
                                #                 3. regarding creation of directories
 
-# git current revision/short SHA 
-export NEMO_REV=${CI_COMMIT_SHORT_SHA:-$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)}
-# git current branch name
-if [ -n "$CI_COMMIT_BRANCH" ]; then
-  # branch pipeline
-  export SETTE_THIS_BRANCH=$CI_COMMIT_BRANCH
-elif [ -n "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" ]; then
-  # MR pipeline
-  export SETTE_THIS_BRANCH=$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME
-elif [ $(git rev-parse --abbrev-ref HEAD) != "HEAD" ]; then
-  # current HEAD
-  export SETTE_THIS_BRANCH=$(git rev-parse --abbrev-ref HEAD 2> /dev/null)
-elif [ $(git rev-parse --abbrev-ref HEAD) == "HEAD" ]; then
-  # detached HEAD
-  export SETTE_THIS_BRANCH=$(git show -s --pretty=%D HEAD 2> /dev/null | sed "s/HEAD, //")
-else
-  echo "ERROR: NEMO/GIT branch not found !" && exit 1
-fi
-export SETTE_SUB_VAL=${SETTE_THIS_BRANCH}
+# Avaliable source-code transformation options: currently only 'passthrough'
+SCTRANSFORMS=(passthrough)
+# Default source-code transformation option: none
+TRANSFORM=""
 
 # Parse command-line arguments
 if [ $# -gt 0 ]; then
-  while getopts n:x:v:g:cybrshTqQteiACFNXuawm:p: option; do
+  while getopts n:x:g:cybrshTqQteiACFNXuawm:z:p: option; do
      case $option in
         p) export SETTE_TEST_PHASES=($OPTARG)
            echo "-p: SETTE phase(s) ${SETTE_TEST_PHASES[@]} selected"
@@ -74,9 +68,6 @@ if [ $# -gt 0 ]; then
            echo "-c: Configuration(s) ${SETTE_TEST_CONFIGS[@]} will be cleaned; this option enforces also synchronisation"
            echo "";;
         y) dry_run=1
-           echo "";;
-        b) NEMO_DEBUG="-b"
-           echo "-b: Nemo will be compiled with DEBUG options if available in ARCH file"
            echo "";;
         r) SETTE_REPORT=1
            echo "-r: Sette report will be printed once jobs are finished"
@@ -98,17 +89,31 @@ if [ $# -gt 0 ]; then
            esac
            export SETTE_STG=${SETTE_STG}${OPTARG}
            echo "";;
-        v) export SETTE_SUB_VAL=($OPTARG)
-           echo "-v: $SETTE_SUB_VAL validation sub-directory requested"
+        u) export USER_INPUT='no'
+           echo "-u: sette.sh will not expect any user interaction == no safety net!" 
+           echo "";;
+        m) export SETTE_COMPILER=($OPTARG)
+           echo "-m: $SETTE_COMPILER archfile and batch template will be used"
+           echo "";;
+        z) for sct in ${SCTRANSFORMS[@]}; do [[ "${OPTARG}" == "${sct}" ]] && TRANSFORM="${sct}"; done
+	   if [[ -n ${TRANSFORM} ]]; then
+             echo "-z: source-code transformation option ${TRANSFORM} selected"
+           else
+             echo "-z: source-code transformation unavailable"; exit 42
+	   fi
+	   echo "";;
+	# SETTE controls
+        q) export USING_QCO='no'
+           echo "-q: key_qco and key_linssh will NOT be activated"
+           echo "";;
+        X) export USING_XIOS='no'
+           echo "-X: key_xios will not be activated"
+           echo "";;
+        b) export USING_DEBUG='yes'
+           echo "-b: NEMO will be compiled with DEBUG options if available in ARCH file and test runs will be shortened"
            echo "";;
         T) export USING_TIMING='no'
            echo "-T: ln_timing will be set to false"
-           echo "";;
-        t) export USING_TILING='no'
-           echo "-t: ln_tile will be set to false"
-           echo "";;
-        e) export USING_EXTRA_HALO='yes'
-           echo "-e: nn_hls will be set to 3"
            echo "";;
         i) export USING_ICEBERGS='no'
            echo "-i: ln_icebergs will be set to false"
@@ -116,33 +121,27 @@ if [ $# -gt 0 ]; then
         a) export USING_ABL='yes'
            echo "-a: ln_abl will be set to true"
            echo "";;
+        e) export USING_EXTRA_HALO='yes'
+           echo "-e: nn_hls will be set to 3"
+           echo "";;
         C) export USING_COLLECTIVES='no'
            echo "-C: nn_comm will be set to 1"
            echo "";;
         N) export USING_NOGATHER='no'
            echo "-N: ln_nnogather will be set to false"
            echo "";;
-        q) export USING_QCO='no'
-           echo "-q: key_qco and key_linssh will NOT be activated"
-           echo "";;
-        X) export USING_XIOS='no'
-           echo "-X: key_xios will not be activated"
+        t) export USING_TILING='no'
+           echo "-t: ln_tile will be set to false"
            echo "";;
         A) export USING_MPMD='no'
            echo "-A: Tasks will be run in attached (SPMD) mode"
            echo "";;
-        u) export USER_INPUT='no'
-           echo "-u: sette.sh will not expect any user interaction == no safety net!" 
-           echo "";;
-        m) export SETTE_COMPILER=($OPTARG)
-           echo "-m: $SETTE_COMPILER archfile and batch template will be used"
-           echo "";;
+        # Usage message
         h | *) echo 'sette.sh with no arguments (in this case all configuration will be tested with default options)'
                echo '-p space-separated list of SETTE test phases (if omitted, all available phases,'
                echo '   COMPILE and RUN, are selected)'
                echo '-x space-separated list of SETTE test types (if omitted, all available types,'
-               echo '   RESTART, REPRO, PHYOPTS, ROTSYM, TRANSFORM, COUPLING, and VARIANTS, are'
-               echo '   selected)'
+               echo '   RESTART, REPRO, PHYOPTS, ROTSYM, COUPLING, and VARIANTS, are selected)'
                echo '-T to set ln_timing false for configurations (default: true)'
                echo '-t set ln_tile false in all tests that support it (default: true)'
                echo '-e set nn_hls=3 but it is not yet supported (default: nn_hls=2)'
@@ -154,24 +153,24 @@ if [ $# -gt 0 ]; then
                echo '-X to remove the key_xios key (default: added)'
                echo '-A to run tests in attached (SPMD) mode (default: MPMD with key_xios)'
                echo '-n "CFG1_to_test CFG2_to_test ..." to test some specific configurations'
-               echo '-v "subdir" optional validation record subdirectory to be created below NEMO_VALIDATION_DIR'
                echo '-g "group_suffix" single character suffix to be appended to the standard _ST suffix used'
                echo '                  for SETTE-built configurations (needed if sette.sh invocations may overlap)'
                echo '-r to execute without waiting to run sette_rpt.sh at the end (useful for chaining sette.sh invocations)'
                echo '-y to perform a dryrun to simply report what settings will be used'
-               echo '-b to compile Nemo with debug options (only if %DEBUG_FCFLAGS if defined in your arch file)'
+               echo '-b to compile NEMO with debug options (only if %DEBUG_FCFLAGS if defined in your arch file)'
                echo '-c to clean each configuration'
                echo '-s to synchronise the sette MY_SRC and EXP00 with the reference MY_SRC and EXPREF'
                echo '-w to wait for Sette jobs to finish'
                echo '-r to print Sette report after Sette jobs completion'
                echo '-u to run sette.sh without any user interaction. This means no checks on creating'
                echo '          directories etc. i.e. no safety net!'
-               echo '-m to select computing architecture file (arch_<machine_name>.fcm) and batch template to run SETTE' ; exit 42 ;;
+               echo '-m to select computing architecture file (arch_<machine_name>.fcm) and batch template to run SETTE'
+               echo '-z to select a source-code transformation option' ; exit 42 ;;
      esac
   done
   shift $((OPTIND - 1))
 fi
-#
+
 # Get SETTE parameters
 . ./param.default
 if [ -f ./param.cfg ]; then
@@ -179,7 +178,47 @@ if [ -f ./param.cfg ]; then
 else
    echo "warning: \"param.cfg\" file not found; SETTE will use default paramaters from \"param.default\" file"
 fi
+
+# Retrieval of the source-code revision: it will be used as the primary
+# identifier for accessing the SETTE validation database; a '+' suffix
+# indicates local changes with regard to the upstream source-code revision
+# indicated by the hash-function value
+VALID_REV=${CI_COMMIT_SHORT_SHA:-$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)}
+[ -z "${CI_COMMIT_SHORT_SHA}" ] && localchanges=`git -C ${MAIN_DIR} status --short -uno | wc -l` || localchanges=0
+if [[ $localchanges > 0 ]] ; then
+  VALID_REV="${VALID_REV}+"
+fi
+
+# Check the validity of the compilation-environment name, the
+# source-code-transformation name, and the source-code-revision identifier:
 #
+#   compilation-environment name
+[[ ! "${COMPILER}" =~ ^[[:alnum:].+_-]{1,64}$ ]] && echo "Error: incompatible compilation-environment name" && exit 1
+found=$( find ${MAIN_DIR}/arch/ -name "arch-${COMPILER}.fcm" | wc -l )
+[[ ! "${COMPILER}" == "auto"* ]] && [[ "${found}" == "0" ]] && echo "Error: compilation-environment is not available" && exit 1
+#   source-code-transformation identifier
+if [[ -n "${TRANSFORM}" ]] && [[ ! "${TRANSFORM}" =~ ^[[:alnum:]]{1,64}$ ]]; then
+  echo "Error: incompatible name of the source-code-transformation option"
+  exit 1
+fi
+#   source-code-revision identifier
+VALID_REV=$(echo ${VALID_REV} | tr '[:upper:]' '[:lower:]' | tr -d -c '[:xdigit:][+]')
+if [[ ${#VALID_REV} -lt 8 ]] || [[ ${#VALID_REV} -gt 40 ]]; then
+  echo "Error: incompatible source-code-revision identifier"
+  exit 1
+fi
+
+# If requested, select NEMO debug build options
+[[ "${USING_DEBUG}" == "yes" ]] && NEMO_DEBUG="-b"
+# Also select the SETTE debug-compilation option if the name of the architecture-configuration file suggests the use of debug
+# compilation options
+COMPILER_L=$(echo ${COMPILER} | tr '[:upper:]' '[:lower:]')
+if [[ ${COMPILER_L} =~ ("debug"|"dbg") ]]; then
+  echo "warning: the name of the architecture-configuration file suggests the use of"
+  echo "         debug compilation options, therefore SETTE test runs will be shortened"
+  export USING_DEBUG='yes'
+fi
+
 # Set the common compile keys to add or delete based on command-line arguments:
 #
 export ADD_KEYS="" ; export DEL_KEYS=""
@@ -216,10 +255,41 @@ if [ ! -d $NEMO_VALIDATION_DIR ] ; then
   echo "but this is a dry run so it will not be created"
  fi
 fi
-if [ ! -d $NEMO_VALIDATION_DIR/$SETTE_SUB_VAL ] && [ ${dry_run} -eq 0 ] ; then
-   mkdir $NEMO_VALIDATION_DIR/$SETTE_SUB_VAL
+export NEMO_VALIDATION_DIR=${NEMO_VALIDATION_DIR}
+if [ ${dry_run} -eq 0 ] && [ ! -d ${NEMO_VALIDATION_DIR}/${VALID_REV}/ ]; then
+  [ -a ${NEMO_VALIDATION_DIR}/${VALID_REV} ] && echo "Error: spurious file found in SETTE validation database" && exit 1
+  mkdir ${NEMO_VALIDATION_DIR}/${VALID_REV}
 fi
-export NEMO_VALIDATION_DIR=$NEMO_VALIDATION_DIR/$SETTE_SUB_VAL
+
+# Encode the control variables that determine the SETTE build and
+# run-time-configuration variant in a string; a hash-function value of this
+# string will be used as SETTE variant identifier (variable 'VALID_VAR') for
+# grouping SETTE-test output in the validation database at
+#   '${NEMO_VALIDATION_DIR}/${VALID_REV}/${VALID_VAR}/',
+# and the original string will be recoreded at
+#   '${NEMO_VALIDATION_DIR}/${VALID_REV}/${VALID_VAR}.lookup'
+# for lookup purposes.
+VAR=""
+VAR="\"COMPILER\",\"${COMPILER}\";\"TRANSFORM\",\"${TRANSFORM}\""
+VAR="${VAR};\"USING_QCO\",\"${USING_QCO}\""
+VAR="${VAR};\"USING_SI3_1D\",\"${USING_SI3_1D}\""
+VAR="${VAR};\"USING_XIOS\",\"${USING_XIOS}\""
+VAR="${VAR};\"USING_DEBUG\",\"${USING_DEBUG}\""
+VAR="${VAR};\"USING_TIMING\",\"${USING_TIMING}\""
+VAR="${VAR};\"USING_ICEBERGS\",\"${USING_ICEBERGS}\""
+VAR="${VAR};\"USING_ABL\",\"${USING_ABL}\""
+VAR="${VAR};\"USING_EXTRA_HALO\",\"${USING_EXTRA_HALO}\""
+VAR="${VAR};\"USING_COLLECTIVES\",\"${USING_COLLECTIVES}\""
+VAR="${VAR};\"USING_NOGATHER\",\"${USING_NOGATHER}\""
+VAR="${VAR};\"USING_TILING\",\"${USING_TILING}\""
+VAR="${VAR};\"USING_MPMD\",\"${USING_MPMD}\""
+VALID_VAR=$(echo ${VAR} | md5sum | cut -f 1 -d ' ' | tr '[:upper:]' '[:lower:]' | tr -d -c '[:xdigit:]')
+if [[ ${#VALID_VAR} == 32 ]]; then
+  echo ${VAR} > ${NEMO_VALIDATION_DIR}/${VALID_REV}/${VALID_VAR}.lookup
+else
+  echo "Error: SETTE-identifier computation failed"
+  exit
+fi
 
 if [ ${#SETTE_TEST_CONFIGS[@]} -eq 0 ]; then
    echo "=================================="
@@ -228,20 +298,11 @@ fi
 echo "Test phases                       : ${TEST_PHASES[@]}"
 echo "Test types                        : ${TEST_TYPES[@]}"
 echo "requested by the command          : "$cmd $cmdargs
-echo "on branch                         : "$SETTE_THIS_BRANCH
-echo "on revision                       : "$NEMO_REV
-printf "%-33s : %s\n" USING_TIMING $USING_TIMING
-printf "%-33s : %s\n" USING_ICEBERGS $USING_ICEBERGS
-printf "%-33s : %s\n" USING_ABL $USING_ABL
-printf "%-33s : %s\n" USING_EXTRA_HALO $USING_EXTRA_HALO
-printf "%-33s : %s\n" USING_TILING $USING_TILING
-printf "%-33s : %s\n" USING_COLLECTIVES $USING_COLLECTIVES
-printf "%-33s : %s\n" USING_NOGATHER $USING_NOGATHER
-printf "%-33s : %s\n" USING_QCO $USING_QCO
-printf "%-33s : %s\n" USING_XIOS $USING_XIOS
-printf "%-33s : %s\n" USING_MPMD $USING_MPMD
-printf "%-33s : %s\n" USING_SI3_1D $USING_SI3_1D
-printf "%-33s : %s\n" USER_INPUT $USER_INPUT
+echo "on revision                       : "${VALID_REV}
+VAR2="${VAR#\"}"
+VAR2="${VAR2%\"}"
+for v in ${VAR2//\";\"/ }; do printf "%-33s : %s\n" ${v/\",\"/ }; done
+printf "%-33s : %s\n" "USER_INPUT" "${USER_INPUT}"
 printf "%-33s : %s\n" "Common compile keys to be added" "$ADD_KEYS"
 printf "%-33s : %s\n" "Common compile keys to be deleted" "$DEL_KEYS"
 echo "Validation records to appear under: "$NEMO_VALIDATION_DIR
@@ -251,6 +312,16 @@ echo ""
 # Option compatibility tests
 #
 if [ ${USING_MPMD} == "yes" ] && [ ${USING_XIOS} == "no" ] ; then echo "Incompatible choices. MPMD mode requires the XIOS server" ; exit ; fi
+
+# Set the external SETTE build directory if an external SETTE build location
+# has been requested
+if [ -n "${CUSTOM_DIR}" ]; then
+  export CMP_DIR=${CUSTOM_DIR}/${VALID_REV}_${VALID_VAR}
+else
+  export CMP_DIR=''
+fi
+
+# End of dry run
 if [ ${dry_run} -eq 1 ] ; then echo "dryrun only: no tests performed" ; exit ; fi
 
 # run sette on reference configuration
@@ -276,7 +347,7 @@ if [[ $? != 0 ]]; then
 fi
 
 # wait for sette jobs to finish
-if [[ ${WAIT_SETTE} -eq 1 && "${TEST_TYPES[@]}" =~ (RESTART|REPRO|PHYOPTS|ROTSYM|TRANSFORM|COUPLING|VARIANTS) ]]; then
+if [[ ${WAIT_SETTE} -eq 1 && "${TEST_TYPES[@]}" =~ (RESTART|REPRO|PHYOPTS|ROTSYM|COUPLING|VARIANTS) ]]; then
    echo ""
    echo "-------------------------------------------------------------"
    echo "wait for sette jobs to finish..."

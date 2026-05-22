@@ -3,7 +3,7 @@
 # REFERENCE run.stat tracer.stat you want to compare with
 # (if no change to the default, no check on result change will be done)
 NEMO_VALIDATION_REF=/path/to/reference/sette/results
-NEMO_REV_REF=0000
+NEMO_REV_REF=00000000
 #
 # ------------------------------------------------------------------------------------------
 # IMPORTANT:
@@ -46,12 +46,6 @@ JOB_PREFIX_NOMPMD=${SETTE_JOB_PREFIX_NOMPMD:-batch}
 # ------------------------------------------------------------------------------------------
 #
 # MISCELLANEOUS
-# command for converting unix timestamp into 2-digit year + yearday
-date -r 1733905602 +"%y%j" >& /dev/null
-if [ $? == 0 ] ; then DATE_CONV='date -r' ;fi 
-date --date=@1733905602 +"%y%j" >& /dev/null
-if [ $? == 0 ] ; then DATE_CONV='date --date=@' ;fi 
-if [ -z "${DATE_CONV}" ]; then echo "\"date\" command not supported; please adapt sette scripts accordingly to your version"; exit 1; fi 
 # only for IBM
 #TMPDIR=${CONFIG_DIR}/${NEW_CONF}/EXP00
 # cleaning CFG_ST
@@ -77,11 +71,9 @@ fi
 export DO_RESTART=0  
 export DO_REPRO=0
 export DO_PHYOPTS=0
-export DO_TRANSFORM=0
 export DO_ROTSYM=0
 export DO_COUPLING=0
 export DO_VARIANTS=0
-export SCTRANSFORMS=()
 TEST_TYPES_AVAILABLE=(RESTART REPRO PHYOPTS ROTSYM COUPLING VARIANTS)
 TEST_TYPES=(${SETTE_TEST_TYPES[@]:-${TEST_TYPES_AVAILABLE[@]}})
 if [[ ${TEST_TYPES[*]} =~ .*RESTART.*    ]] ; then export DO_RESTART=1   ; fi
@@ -89,14 +81,10 @@ if [[ ${TEST_TYPES[*]} =~ .*REPRO.*      ]] ; then export DO_REPRO=1     ; fi
 if [[ ${TEST_TYPES[*]} =~ .*PHYOPTS.*    ]] ; then export DO_PHYOPTS=1   ; fi
 if [[ ${TEST_TYPES[*]} =~ .*ROTSYM.*     ]] ; then export DO_ROTSYM=1    ; fi
 if [[ ${TEST_TYPES[*]} =~ .*COUPLING.*   ]] ; then export DO_COUPLING=1  ; fi
-if [[ ${TEST_TYPES[*]} =~ .*TRANSFORM.*  ]] ; then export DO_TRANSFORM=1 ; fi
 if [[ ${TEST_TYPES[*]} =~ .*VARIANTS.*   ]] ; then export DO_VARIANTS=1  ; fi
 # Translate legacy test types
 if [[ ${TEST_TYPES[*]} =~ .*CORRUPT.*    ]] ; then export DO_VARIANTS=1 ; TEST_TYPES=${TEST_TYPES/CORRUPT/VARIANTS}    ; fi
 if [[ ${TEST_TYPES[*]} =~ .*STANDALONE.* ]] ; then export DO_VARIANTS=1 ; TEST_TYPES=${TEST_TYPES/STANDALONE/VARIANTS} ; fi
-# LIST OF SOURCE-CODE TRANSFORMATIONS USED FOR THE TRANSFORM TEST
-# (list of 'passthrough' and/or names of available transformations)
-[ ${DO_TRANSFORM} -eq 1 ] && export SCTRANSFORMS=(passthrough OpenACC)
 #
 # TEST PHASES
 # ###########

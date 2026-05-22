@@ -2,14 +2,15 @@
 # Author : Simona Flavoni for NEMO
 # Contact : sflod@locean-ipsl.upmc.fr
 #
-# ----------------------------------------------------------------------
-# NEMO/SETTE , NEMO Consortium (2010)
-# Software governed by the CeCILL licence     (NEMOGCM/NEMO_CeCILL.txt)
-# ----------------------------------------------------------------------
-#
 # Some scripts called by sette.sh
 # all_functions.sh   : all functions used by sette.sh  
 ######################################################
+#
+# ----------------------------------------------------------------------
+# NEMO/SETTE 5.1.a, NEMO Consortium (2026)
+# Software governed by the CeCILL license (see ./LICENSE.txt)
+# ----------------------------------------------------------------------
+#
 #set -x
 #set -o posix
 #set -u
@@ -47,17 +48,13 @@
 #   creates nemo_validation tree, and save output & debug files
 #   this function creates tree of validation in NEMO_VALIDATION_DIR as follows : 
 #
-# NEMO_VALIDATION_DIR/WCONFIG_NAME/WCOMPILER_NAME/REVISION_NUMBER(or DATE)/TEST_NAME
+#     NEMO_VALIDATION_DIR/REVISION/VARIANT/CONFIGURATION/TEST_NAME
 # 
-# NEMO_VALIDATION_DIR           : is choosen in param.cfg
-#
-# WCONFIG_NAME                  : set by makenemo at the moment of compilation
-#
-# WCOMPILER_NAME                : set by makenemo at the moment of compilation
-#
-# REVISION_NUMBER(or DATE)      : revision number by svn info, if problems with svn date is taken
-#
-# TEST_NAME                     : set in sette.sh for each configuration to be tested (directory TEST_NAME is created under ${config} directory )
+#     NEMO_VALIDATION_DIR  -  base database path as set in the SETTE configuration file (param.cfg)
+#     REVISION             -  source-code-revision identifier
+#     VARIANT              -  SETTE build and run-time-configuration variant
+#     CONFIGURATION        -  SETTE configuration
+#     TEST_NAME            -  SETTE test-run name
 #
 # EXAMPLES
 # ========
@@ -175,25 +172,7 @@ clean_config() {
 
 # define validation dir
 set_valid_dir () {
-    REVISION_NB=${CI_COMMIT_SHORT_SHA:-$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD)}
-    if [ -n "${CI_COMMIT_TIMESTAMP}" ]; then
-      REV_DATE=$(date --date=${CI_COMMIT_TIMESTAMP} +%y%j)
-    else
-      REV_DATE0="$(git -C ${MAIN_DIR} show --no-patch --format=%ct ${REVISION_NB})"
-      REV_DATE=`${DATE_CONV}"${REV_DATE0}" +"%y%j"`
-    fi
-    REVISION_NB=${REV_DATE}_${NEMO_REV}
-    echo "value of revision number of NEMOGCM: ${REVISION_NB}"
-    [ -z "${CI_COMMIT_SHORT_SHA}" ] && localchanges=`git -C ${MAIN_DIR} status --short -uno | wc -l` || localchanges=0
-    if [[ $localchanges > 0 ]] ; then
-     REVISION_NB=${REVISION_NB}+
-    fi
-    CMP_NAM_L=$(echo ${CMP_NAM} | tr '[:upper:]' '[:lower:]')
-    if [[ -n "${NEMO_DEBUG}" && ! ${CMP_NAM_L} =~ ("debug"|"dbg") ]]; then
-      export NEMO_VALID=${NEMO_VALIDATION_DIR}/${CMP_NAM}_DEBUG/${REVISION_NB}/${SETTE_CONFIG%${SETTE_STG}}/${TEST_NAME}
-    else
-      export NEMO_VALID=${NEMO_VALIDATION_DIR}/${CMP_NAM}/${REVISION_NB}/${SETTE_CONFIG%${SETTE_STG}}/${TEST_NAME}
-    fi
+    export NEMO_VALID=${NEMO_VALIDATION_DIR}/${VALID_REV}/${VALID_VAR}/${SETTE_CONFIG%${SETTE_STG}}/${TEST_NAME}
 }
 
 # clean valid dir (move old ocean_output/run.stat and tracer to avoid checking them in case something wrong happen.
@@ -602,10 +581,8 @@ set_xio_using_server () {
         if [ ${inarg} == "false" ]
         then
            sed -e "/using_server/s:true:false:" ${EXE_DIR}/$1 > ${EXE_DIR}/$1.tmp
-           export USING_MPMD=no
         else
            sed -e "/using_server/s:false:true:" ${EXE_DIR}/$1 > ${EXE_DIR}/$1.tmp
-           export USING_MPMD=yes
         fi
         mv ${EXE_DIR}/$1.tmp ${EXE_DIR}/$1
 
