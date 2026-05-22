@@ -3,14 +3,15 @@
 # Author : Simona Flavoni for NEMO
 # Contact : sflod@locean-ipsl.upmc.fr
 #
-# ----------------------------------------------------------------------
-# NEMO/SETTE , NEMO Consortium (2010)
-# Software governed by the CeCILL licence     (NEMOGCM/NEMO_CeCILL.txt)
-# ----------------------------------------------------------------------
-#
 # Some scripts called by sette.sh
 # prepare_exe_dir.sh : script prepares execution directory for test
 ##########################################################################
+#
+# ----------------------------------------------------------------------
+# NEMO/SETTE 5.1.a, NEMO Consortium (2026)
+# Software governed by the CeCILL license (./LICENSE.txt)
+# ----------------------------------------------------------------------
+#
 #set -x
 set -o posix
 #set -u
@@ -69,12 +70,7 @@ set -o posix
 #if [ -z "${CUSTOM_DIR}" ]; then
 #  EXE_DIR=${CONFIG_DIR}/${SETTE_CONFIG}
 #else
-#  CMP_NAM_L=$(echo ${CMP_NAM} | tr '[:upper:]' '[:lower:]')
-#  if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]; then
-#    export EXE_DIR=${CUSTOM_DIR}/${SETTE_SUB_VAL}_${NEMO_REV}_DEBUG/${SETTE_CONFIG}
-#  else
-#    EXE_DIR=${CUSTOM_DIR}/${SETTE_SUB_VAL}_${NEMO_REV}/${SETTE_CONFIG}
-#  fi
+#  EXE_DIR=${CUSTOM_DIR}/${VALID_REV}/${SETTE_CONFIG}
 #fi
 EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}
 mkdir -p ${EXE_DIR}/${TEST_NAME}
@@ -89,17 +85,11 @@ cd ${EXE_DIR}
 echo "Summary of sette environment"                                > ./sette_config
 echo "----------------------------"                               >> ./sette_config
 echo "requested by the command          : "$cmd $cmdargs          >> ./sette_config
-echo "on branch                         : "$SETTE_THIS_BRANCH     >> ./sette_config
-printf "%-33s : %s\n" USING_TIMING $USING_TIMING                  >> ./sette_config
-printf "%-33s : %s\n" USING_ICEBERGS $USING_ICEBERGS              >> ./sette_config
-printf "%-33s : %s\n" USING_ABL $USING_ABL                        >> ./sette_config
-printf "%-33s : %s\n" USING_EXTRA_HALO $USING_EXTRA_HALO          >> ./sette_config
-printf "%-33s : %s\n" USING_TILING $USING_TILING                  >> ./sette_config
-printf "%-33s : %s\n" USING_COLLECTIVES $USING_COLLECTIVES        >> ./sette_config
-printf "%-33s : %s\n" USING_QCO $USING_QCO                        >> ./sette_config
-printf "%-33s : %s\n" USING_XIOS $USING_XIOS                      >> ./sette_config
-printf "%-33s : %s\n" USING_MPMD $USING_MPMD                      >> ./sette_config
-printf "%-33s : %s\n" USER_INPUT $USER_INPUT                      >> ./sette_config
+echo "on revision                       : "${VALID_REV}           >> ./sette_config
+VAR2="${VAR#\"}"
+VAR2="${VAR2%\"}"
+for v in ${VAR2//\";\"/ }; do printf "%-33s : %s\n" ${v/\",\"/ }  >> ./sette_config; done
+printf "%-33s : %s\n" "USER_INPUT" "${USER_INPUT}"                >> ./sette_config
 printf "%-33s : %s\n" "Common compile keys added" "$ADD_KEYS"     >> ./sette_config
 printf "%-33s : %s\n" "Common compile keys deleted" "$DEL_KEYS"   >> ./sette_config
 printf "%-33s : %s\n" "Compile keys actually used" "${COMP_KEYS}" >> ./sette_config

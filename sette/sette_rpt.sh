@@ -1,32 +1,37 @@
 #!/bin/bash -f
-# simple SETTE report generator.
+# ======================================================================
+#                     ***  SCRIPT  sette_rpt.sh  ***
+#  SETTE: simple SETTE report generator
+# ======================================================================
 #
+# ----------------------------------------------------------------------
+# NEMO/SETTE 5.1.a, NEMO Consortium (2026)
+# Software governed by the CeCILL license (see ./LICENSE.txt)
+# ----------------------------------------------------------------------
+set +x
+
 # This version should be run in the SETTE directory.
 # The machine name will be picked up from the sette.sh script but the location of the
 # validation directory needs to be set here (currently assumed to reside in the ../cfgs directory)
 #
 #########################################################################################
 ######################### Start of function definitions #################################
-set +x
 
 # report format
 format_field1="%-35s"
 
 # Exit codes and warning flags
-declare -i {REPRO_EC,RESTA_EC,TRANSFORM_EC,REFCMP_EC,CPUCMP_EC,OCEOUT_EC,ROT_EC,PHYOPT_EC,VARIANTS_EC,MD_WARN}=0
+declare -i {REPRO_EC,RESTA_EC,REFCMP_EC,CPUCMP_EC,OCEOUT_EC,ROT_EC,PHYOPT_EC,VARIANTS_EC,MD_WARN}=0
 
 # List of status time-series files
 statfiles="run.stat tracer.stat obs.stat"
 
 function get_dorv() {
-  if [ $lastchange == 'old' ] ; then
-    dorv=`ls -1rt $vdir/$mach/ | tail -1l `
+  if [ ${VALID_REV} == 'old' ] ; then
+    dorv=`ls -1rt $vdir/ | tail -1l `
     dorv=`echo $dorv | sed -e 's:.*/::'`
-    dorv2=`ls -1rt $vdir/$mach/ 2>/dev/null | tail -1l `
-    dorv2=`echo $dorv2 | sed -e 's:.*/::'`
   else
-    dorv=$lastchange
-    dorv2=$lastchange
+    dorv=${VALID_REV}
   fi
 }
 
@@ -46,37 +51,38 @@ function rottest() {
   nam=$2
   pass=$3
 #
-# get $dorv
+# database path
   get_dorv
+  db_path="${vdir}/${dorv}/${VALID_VAR}/${nam}"
 #
 # check if directory is here
-  if [ ! -d $vdir/$mach/$dorv/$nam ]; then
+  if [ ! -d ${db_path} ]; then
     printf "${format_field1} %s %s\n" $nam  "directory                    MISSING :" $dorv
     ROT_EC=1
     MD_WARN=1
     return
   fi
 
-  if [ -d $vdir/$mach/$dorv/$nam ]; then
+  if [ -d ${db_path} ]; then
 
     # proceed only if output from rotational-symmetry testing test runs is available
-    [ ! -d $vdir/$mach/$dorv/$nam/ROT_000 ] && \
-    [ ! -d $vdir/$mach/$dorv/$nam/ROT_090 ] && \
-    [ ! -d $vdir/$mach/$dorv/$nam/ROT_180 ] && return
+    [ ! -d ${db_path}/ROT_000 ] && \
+    [ ! -d ${db_path}/ROT_090 ] && \
+    [ ! -d ${db_path}/ROT_180 ] && return
 
     # check ocean output
     runtest $vdir $nam $pass ROT
 
     # run rotational-symmetry test
-    f1o=$vdir/$mach/$dorv/$nam/ROT_000/ocean.output
-    f1s=$vdir/$mach/$dorv/$nam/ROT_000/run.stat
-    f1t=$vdir/$mach/$dorv/$nam/ROT_000/tracer.stat
-    f2o=$vdir/$mach/$dorv/$nam/ROT_180/ocean.output
-    f2s=$vdir/$mach/$dorv/$nam/ROT_180/run.stat
-    f2t=$vdir/$mach/$dorv/$nam/ROT_180/tracer.stat
-    f3o=$vdir/$mach/$dorv/$nam/ROT_090/ocean.output
-    f3s=$vdir/$mach/$dorv/$nam/ROT_090/run.stat
-    f3t=$vdir/$mach/$dorv/$nam/ROT_090/tracer.stat
+    f1o=${db_path}/ROT_000/ocean.output
+    f1s=${db_path}/ROT_000/run.stat
+    f1t=${db_path}/ROT_000/tracer.stat
+    f2o=${db_path}/ROT_180/ocean.output
+    f2s=${db_path}/ROT_180/run.stat
+    f2t=${db_path}/ROT_180/tracer.stat
+    f3o=${db_path}/ROT_090/ocean.output
+    f3s=${db_path}/ROT_090/run.stat
+    f3t=${db_path}/ROT_090/tracer.stat
 
     if  [ ! -f $f1s ] &&  [ ! -f $f1t ] ; then 
       printf "${format_field1} %s\n" $nam " incomplete test"
@@ -229,30 +235,31 @@ function resttest() {
   nam=$2
   pass=$3
 #
-# get $dorv
+# database path
   get_dorv
+  db_path="${vdir}/${dorv}/${VALID_VAR}/${nam}"
 #
 # check if directory is here
-  if [ ! -d $vdir/$mach/$dorv/$nam ]; then
+  if [ ! -d ${db_path} ]; then
     printf "${format_field1} %s %s\n" $nam  "directory                    MISSING :" $dorv
     RESTA_EC=1
     MD_WARN=1
     return
   fi
 
-  if [ -d $vdir/$mach/$dorv/$nam ]; then
+  if [ -d ${db_path} ]; then
     # check ocean output
     runtest $vdir $nam $pass RST
     #
     # run restartibility test
-    f1o=$vdir/$mach/$dorv/$nam/LONG/ocean.output
-    f1s=$vdir/$mach/$dorv/$nam/LONG/run.stat
-    f1t=$vdir/$mach/$dorv/$nam/LONG/tracer.stat
-    f1h=$vdir/$mach/$dorv/$nam/LONG/obs.stat
-    f2o=$vdir/$mach/$dorv/$nam/SHORT/ocean.output
-    f2s=$vdir/$mach/$dorv/$nam/SHORT/run.stat
-    f2t=$vdir/$mach/$dorv/$nam/SHORT/tracer.stat
-    f2h=$vdir/$mach/$dorv/$nam/SHORT/obs.stat
+    f1o=${db_path}/LONG/ocean.output
+    f1s=${db_path}/LONG/run.stat
+    f1t=${db_path}/LONG/tracer.stat
+    f1h=${db_path}/LONG/obs.stat
+    f2o=${db_path}/SHORT/ocean.output
+    f2s=${db_path}/SHORT/run.stat
+    f2t=${db_path}/SHORT/tracer.stat
+    f2h=${db_path}/SHORT/obs.stat
 
     if  [ ! -f $f1s ] &&  [ ! -f $f1t ] ; then
       printf "${format_field1} %s\n" $nam " incomplete test"
@@ -378,35 +385,36 @@ function reprotest(){
   nam=$2
   pass=$3
 #
-# get $dorv
+# database path
   get_dorv
+  db_path="${vdir}/${dorv}/${VALID_VAR}/${nam}"
 #
 # check if directory is here
-  if [ ! -d $vdir/$mach/$dorv/$nam ]; then
+  if [ ! -d ${db_path} ]; then
     printf "${format_field1} %s %s\n" $nam  "directory                    MISSING :" $dorv
     REPRO_EC=R1
     MD_WARN=1
     return
   fi
 #
-  if [ -d $vdir/$mach/$dorv/$nam ]; then
+  if [ -d ${db_path} ]; then
     # check ocean output
     runtest $vdir $nam $pass REPRO
     #
     # check reproducibility
-    rep1=`ls -1rt $vdir/$mach/$dorv/$nam/ | grep REPRO | tail -2l | head -1 `
-    rep2=`ls -1rt $vdir/$mach/$dorv/$nam/ | grep REPRO | tail -1l`
+    rep1=`ls -1rt ${db_path}/ | grep REPRO | tail -2l | head -1 `
+    rep2=`ls -1rt ${db_path}/ | grep REPRO | tail -1l`
     if [ $rep1 == $rep2 ]; then
        rep2=''
     fi
-    f1o=$vdir/$mach/$dorv/$nam/$rep1/ocean.output
-    f1s=$vdir/$mach/$dorv/$nam/$rep1/run.stat
-    f1t=$vdir/$mach/$dorv/$nam/$rep1/tracer.stat
-    f1h=$vdir/$mach/$dorv/$nam/$rep1/obs.stat
-    f2o=$vdir/$mach/$dorv/$nam/$rep2/ocean.output
-    f2s=$vdir/$mach/$dorv/$nam/$rep2/run.stat
-    f2t=$vdir/$mach/$dorv/$nam/$rep2/tracer.stat
-    f2h=$vdir/$mach/$dorv/$nam/$rep2/obs.stat
+    f1o=${db_path}/$rep1/ocean.output
+    f1s=${db_path}/$rep1/run.stat
+    f1t=${db_path}/$rep1/tracer.stat
+    f1h=${db_path}/$rep1/obs.stat
+    f2o=${db_path}/$rep2/ocean.output
+    f2s=${db_path}/$rep2/run.stat
+    f2t=${db_path}/$rep2/tracer.stat
+    f2h=${db_path}/$rep2/obs.stat
 
     if  [ ! -f $f1s ] && [ ! -f $f1t ] ; then
       printf "${format_field1} %s\n" $nam " incomplete test"
@@ -522,114 +530,10 @@ function getavgtime() {
     fi
 }
 
-function transformtest() {
-#
-# Transformability checks
-#
-# This check expects results from configurations <CONF>+PT or <CONF>+T?? as
-# well as a reference configuration <CONF>, and compares the *.stat files from
-# either the LONG or a REPRO_?_? run
-#
-# Function arguments (validation-directory path, test name, pass counter) and
-# revision number
-  vdir=$1
-  nam=$2
-  pass=$3
-  get_dorv
-#
-# Stop if the reference-output directory is missing
-  if [ ! -d ${vdir}/${mach}/${dorv}/${nam} ]; then
-    printf "${format_field1} %s %s\n" ${nam}  " directory                    MISSING :" ${dorv}
-    TRANSFORM_EC=1
-  else
-# List of available reference runs
-    RUNNAMES0=$(ls -1 ${vdir}/${mach}/${dorv}/${nam}/ | grep -e "^LONG\$" -e "^REPRO_[0-9]_[0-9]\$")
-    for RUNNAME in ${RUNNAMES0}; do
-      runtest ${vdir} ${nam} ${pass} ${RUNNAME}
-    done
-    RUNNAMES0=" ${RUNNAMES0} "
-# List of transformed configurations
-    DIRNAMES=$(ls -1 ${vdir}/${mach}/${dorv}/ | grep -e "^${nam}+PT\$" -e "^${nam}+T[0-9][0-9]\$")
-    found_var=0
-    for dirnam in ${DIRNAMES} ; do
-      if [ -d ${vdir}/${mach}/${dorv}/${dirnam} ]; then
-# One of the runs is selected,
-        RUNNAME=`ls -1 --color=never ${vdir}/${mach}/${dorv}/${dirnam}/ | grep -m 1 -e '^LONG$' -e '^REPRO_[0-9]_[0-9]$'`
-        if [ -n "${RUNNAME}" ]; then
-#   but only if a corresponding reference run is available
-          if [ ! "${RUNNAMES0/${RUNNAME}/}" == "${RUNNAMES0}" ]; then
-            runtest ${vdir} ${dirnam} ${pass} ${RUNNAME}
-            found_var=1
-            # Compare timing.output (if available)
-            f1t=${vdir}/${mach}/${dorv}/${nam}/${RUNNAME}/timing.output
-            f2t=${vdir}/${mach}/${dorv}/${dirnam}/${RUNNAME}/timing.output
-            ntime="-1"
-            if [ -f ${f1t} -a -f ${f2t} ]; then
-	      t0=$( getavgtime $f1t )
-	      t1=$( getavgtime $f2t )
-              if [[ -n "${t0}" ]] && [[ -n "${t1}" ]]; then
-                rt=`echo "100 * (${t1} - ${t0}) / ${t0}" | bc -l`
-                ntime=`echo "${t1} > ${t0}" | bc -l`
-              fi
-            fi
-            done_cmp=0
-            done_oce=0
-            # Compare run.stat and tracer.stat (if available)
-            for sfile in run.stat tracer.stat; do
-              f1=${vdir}/${mach}/${dorv}/${nam}/${RUNNAME}/${sfile}
-              f2=${vdir}/${mach}/${dorv}/${dirnam}/${RUNNAME}/${sfile}
-              if [ -f ${f1} -a -f ${f2} ]; then
-                done_cmp=1
-                cmp -s $f1 $f2
-                if [ $? == 0 ]; then
-                  if [ ${pass} == 0 ]; then
-                    if [ ${ntime} == "0" ]; then
-                      printf "${format_field1} %-11s %-25s %-17s - elapsed time: \\e[42;01;196m%10.3f s (%+6.2f %%)\\e[0m\n" ${dirnam} ${sfile} "transformability passed  :" ${dorv} ${t1} ${rt};
-                    elif [ ${ntime} == "1" ]; then
-                      printf "${format_field1} %-11s %-25s %-17s - elapsed time: \\e[41;33;196m%10.3f s (%+6.2f %%)\\e[0m\n" ${dirnam} ${sfile} "transformability passed  :" ${dorv} ${t1} ${rt};
-                    else
-                      printf "${format_field1} %-11s %-25s %s\n" ${dirnam} ${sfile} "transformability passed  :" ${dorv};
-                    fi
-                  fi
-                else
-                  get_ktdiff $f1 $f2
-                  printf "\e[38;5;196m${format_field1} %-11s %-25s %s %s %-5s %s\e[0m\n" ${dirnam} "${sfile}" "transformability FAILED  :" ${dorv} " (results are different after " ${ktdiff} " time steps)"
-                  TRANSFORM_EC=1
-                  if [ ${pass} == 1 ]; then
-                    echo "<return> to view ${sfile} differences"
-                    read y
-                    sdiff $f1 $f2
-                    if [ ${done_oce} == 0 ]; then
-                      echo "<return> to view ocean.output differences"
-                      read y
-                      sdiff ${vdir}/${mach}/${dorv}/${nam}/${RUNNAME}/ocean.output ${vdir}/${mach}/${dorv}/${dirnam}/${RUNNAME}/ocean.output
-                      done_oce=1
-                    fi
-                    echo "<return> to continue"
-                    return y
-                  fi
-                fi
-              fi
-            done
-# Test failure report if no output file has been compared
-            if [ ${done_cmp} -eq 0 ]; then
-              printf "${format_field1} %s\n" ${dirnam} "incomplete test"
-              TRANSFORM_EC=1
-              return
-            fi
-          fi
-        fi
-      fi
-    done
-    [ ${found_var} -eq 0 ] && printf "${format_field1} %s %s\n" ${nam}  "transformed variants         MISSING :" ${dorv}
-  fi
-}
-
 function runcmpres(){
 #
-# compare *.stat file with reference file from a previous sette test or previous version
-# store in NEMO_VALID_REF at revision NEMO_REV_REF
-# Compares end of stat files from each
+# Compare SETTE test-run output files with reference files from a previous
+# SETTE test run
 #
   vdir=$1
   nam=$2
@@ -637,34 +541,36 @@ function runcmpres(){
   dorvref=$4
   pass=$5
 #
-# get $dorv
+# database path
   get_dorv
+  db_path="${vdir}/${dorv}/${VALID_VAR}/${nam}"
+  db_path_ref="${vdirref}/${dorvref}/${VALID_VAR_REF}/${nam}"
 #
 # check if reference directory is present
-  if [ ! -d $vdirref/$mach/$dorvref/$nam ]; then
+  if [ ! -d ${db_path_ref} ]; then
     printf "${format_field1} %s\n" $nam "REFERENCE directory at $dorvref is MISSING"
-    echo " please check $vdirref/$mach/$dorvref/$nam"
+    echo " please check ${db_path_ref}"
     REFCMP_EC=1
     return
   fi
-  if [ ! -d $vdir/$mach/$dorv/$nam ]; then
+  if [ ! -d ${db_path} ]; then
     printf "${format_field1} %s\n" $nam "VALID     directory at $dorv is MISSING"
-    echo " please check $vdir/$mach/$dorv/$nam"
+    echo " please check ${db_path}"
     REFCMP_EC=1
     MD_WARN=1
     return
   fi
 
 #
-  if [ -d $vdir/$mach/$dorv/$nam ]; then
+  if [ -d ${db_path} ]; then
     # Selection of the test run used for the comparison (LONG or one of the reproducibility-test runs)
-    TESTD=$(ls -1 ${vdir}/${mach}/${dorv}/${nam}/ | grep -m 1 -e '^LONG$' -e '^REPRO_'); TESTD=${TESTD:-LONG}
-    f1s=$vdir/$mach/$dorv/${nam}/${TESTD}/run.stat
-    f1t=$vdir/$mach/$dorv/${nam}/${TESTD}/tracer.stat
-    f1h=$vdir/$mach/$dorv/${nam}/${TESTD}/obs.stat
-    f2s=$vdirref/$mach/$dorvref/${nam}/${TESTD}/run.stat
-    f2t=$vdirref/$mach/$dorvref/${nam}/${TESTD}/tracer.stat
-    f2h=$vdirref/$mach/$dorvref/${nam}/${TESTD}/obs.stat
+    TESTD=$(ls -1 ${db_path}/ | grep -m 1 -e '^LONG$' -e '^REPRO_'); TESTD=${TESTD:-LONG}
+    f1s=${db_path}/${TESTD}/run.stat
+    f1t=${db_path}/${TESTD}/tracer.stat
+    f1h=${db_path}/${TESTD}/obs.stat
+    f2s=${db_path_ref}/${TESTD}/run.stat
+    f2t=${db_path_ref}/${TESTD}/tracer.stat
+    f2h=${db_path_ref}/${TESTD}/obs.stat
     if  [ ! -f $f1s ] && [ ! -f $f1t ] ; then
       printf "${format_field1} %s\n" $nam "incomplete test"
       REFCMP_EC=1
@@ -758,25 +664,27 @@ function runcmptim(){
   dorvref=$4
   pass=$5
 #
-# get $dorv
+# database path
   get_dorv
+  db_path="${vdir}/${dorv}/${VALID_VAR}/${nam}"
+  db_path_ref="${vdirref}/${dorvref}/${VALID_VAR_REF}/${nam}"
 #
 # check if reference directory is present
-  if [ ! -d $vdirref/$mach/$dorvref/$nam ]; then
+  if [ ! -d ${db_path_ref} ]; then
     CPUCMP_EC=1
     return
   fi
-  if [ ! -d $vdir/$mach/$dorv/$nam ]; then
+  if [ ! -d ${db_path} ]; then
     CPUCMP_EC=1
     return
   fi
 
 #
-  if [ -d $vdir/$mach/$dorv/$nam ]; then
+  if [ -d ${db_path} ]; then
     # Selection of the test run used for the comparison (LONG or one of the reproducibility-test runs)
-    TESTD=$(ls -1 ${vdir}/${mach}/${dorv}/${nam}/ | grep -m 1 -e '^LONG$' -e '^REPRO_'); TESTD=${TESTD:-LONG}
-    f1a=$vdir/$mach/$dorv/${nam}/${TESTD}/timing.output
-    f2a=$vdirref/$mach/$dorvref/${nam}/${TESTD}/timing.output
+    TESTD=$(ls -1 ${db_path}/ | grep -m 1 -e '^LONG$' -e '^REPRO_'); TESTD=${TESTD:-LONG}
+    f1a=${db_path}/${TESTD}/timing.output
+    f2a=${db_path_ref}/${TESTD}/timing.output
 #
 # Report average CPU time differences (if available)
 #
@@ -817,17 +725,18 @@ function runtest(){
   [[ $ttype == 'EXP' ]] && ttype="^EXP-"      && phyopt=1   #    'EXP' (checks PHYOPTS test runs)
   [[ $ttype == 'CPL' ]] && ttype="^CPL"       && cpl=1      #    'CPL' (checks COUPLING test runs)
 #
-# get $dorv
+# database path
   get_dorv
+  db_path="${vdir}/${dorv}/${VALID_VAR}/${naml}"
 #
 # no print needed if the repository is not here (already catch before)
 #
-  if [ -d $vdir/$mach/$dorv/${naml}/ ]; then
+  if [ -d ${db_path}/ ]; then
     #
     # apply check for all ttype directory
-    rep1=$(ls -rt $vdir/$mach/$dorv/${naml}/ | grep -E $ttype)
+    rep1=$(ls -rt ${db_path}/ | grep -E $ttype)
     for tdir in $rep1 ; do
-       f1o=$vdir/$mach/$dorv/${naml}/$tdir/ocean.output
+       f1o=${db_path}/$tdir/ocean.output
        naml2=$naml
        [ $phyopt == 1 ] && naml2="${naml}/${tdir#EXP-}"
        if  [ ! -f $f1o ] ; then
@@ -874,15 +783,17 @@ function standalonetest(){
   rtest=$4   # Name of the run of the alternative configuration
   pass=$5    # First (0) or second (1) pass
 #
+# database path
   get_dorv
+  db_path="${vdir}/${dorv}/${VALID_VAR}/${nam}"
 #
   EC0=1   # Initial test error code
-  if [ ! -d ${vdir}/${mach}/${dorv}/${nam} ] || [ ! -d ${vdir}/${mach}/${dorv}/${nam}_${rtest} ]; then
+  if [ ! -d ${db_path} ] || [ ! -d ${db_path}_${rtest} ]; then
     printf "${format_field1} %-28s %s\n" "${nam}_${rtest} vs ${nam}" "directory" "MISSING"
   fi
   for testfile in ${statfiles}; do
-    f1=${vdir}/${mach}/${dorv}/${nam}/${rref}/${testfile}
-    f2=${vdir}/${mach}/${dorv}/${nam}_${rtest}/${rtest}/${testfile}
+    f1=${db_path}/${rref}/${testfile}
+    f2=${db_path}_${rtest}/${rtest}/${testfile}
     if [ -f ${f1} ] && [ -f ${f2} ]; then
       EC=1   # Initial test-file error code
       label=`printf "%-7s %s" "${rtest}" "vs ${nam}/${rref}"`
@@ -921,213 +832,267 @@ function standalonetest(){
 ##                                                                                     ##
 #########################################################################################
 #
+SETTE_DIR=$(cd $(dirname "$0"); pwd)
+MAIN_DIR=$(dirname $SETTE_DIR)
+# Result comparison is inactive by default
+DO_COMPARE=0
+#   unless this script is called as 'sette_eval.sh', in which case test types
+#   other than the result comparison have to be activated explicitly
+script_name=$(basename "${0}")
+[[ "${script_name}" == "sette_eval.sh" ]] && SETTE_TEST_TYPES=( "COMPARE" ) && DO_COMPARE=1
+# Default compilation-environment identifier
+COMPILER='auto'
 # LOAD param variable (COMPILER, NEMO_VALIDATION_DIR )
-  SETTE_DIR=$(cd $(dirname "$0"); pwd)
-  MAIN_DIR=$(dirname $SETTE_DIR)
-  . ./param.default
-  if [ -f ./param.cfg ]; then
-     . ./param.cfg
-  else
-     echo "warning: \"param.cfg\" file not found; SETTE will use default paramaters from \"param.default\" file"
-  fi
-  TEST_CONFIGS_AVAILABLE=${TEST_CONFIGS_AVAILABLE[@]:-${TEST_CONFIGS[@]}}     # Workaround for some dated param.cfgs files
-  if [ -z $USER_INPUT ] ; then USER_INPUT='yes' ; fi        # Default: yes => request user input on decisions.
-                                                            # (but may br inherited/imported from sette.sh)
-  mach=${COMPILER}
+. ./param.default
+if [ -f ./param.cfg ]; then
+  . ./param.cfg
+else
+  echo "warning: \"param.cfg\" file not found; SETTE will use default paramaters from \"param.default\" file"
+fi
+TEST_CONFIGS_AVAILABLE=${TEST_CONFIGS_AVAILABLE[@]:-${TEST_CONFIGS[@]}}     # Workaround for some dated param.cfgs files
+if [ -z $USER_INPUT ] ; then USER_INPUT='yes' ; fi        # Default: yes => request user input on decisions.
+                                                          # (but may br inherited/imported from sette.sh)
+# SETTE-control variables that are available in script sette/sette.sh and their
+# default values
+USING_QCO='"USING_QCO","yes"'
+USING_SI3_1D='"USING_SI3_1D","no"'
+USING_XIOS='"USING_XIOS","yes"'
+USING_DEBUG='"USING_DEBUG","no"'
+USING_TIMING='"USING_TIMING","yes"'
+USING_ICEBERGS='"USING_ICEBERGS","yes"'
+USING_ABL='"USING_ABL","no"'
+USING_EXTRA_HALO='"USING_EXTRA_HALO","no"'
+USING_COLLECTIVES='"USING_COLLECTIVES","yes"'
+USING_NOGATHER='"USING_NOGATHER","yes"'
+USING_TILING='"USING_TILING","yes"'
+USING_MPMD='"USING_MPMD","yes"'
+
+# Select automatic generation of the build and run-time-configuration
+# identifier based on the architecture-configuration and SETTE-control-option
+# settings by default; this can be overridden by secifying a variant with the
+# '-v' or '-V' command-line option
+VALID_VAR="AUTOMATIC"
+VALID_VAR_REF="AUTOMATIC"
+
+# Check of the conformity of the configured compilation-environment identifier
+[[ ! "${COMPILER}" =~ ^[[:alnum:].+_-]{1,64}$ ]] && echo "Incompatible compilation-environment name" && exit 1
+COMPILER_REF="${COMPILER}"
+
+# Avaliable source-code transformation options: currently only 'passthrough'
+SCTRANSFORMS=(passthrough)
+# Default source-code transformation option: none
+TRANSFORM=""
+TRANSFORM_REF=""
+
 # Processing of command-line arguments
-rev=""; sha=""
-  if [ $# -gt 0 ]; then
-    echo ""
-    while getopts n:r:s:R:S:x:v:V:ubhm: option; do
-       case $option in
-          r) rev=$OPTARG
-             echo "-r: will use ${rev} revision for current report"
-             echo "";;
-          s) sha=$OPTARG
-             [[ ! ${sha} =~ ^[[:alnum:]]{8}$ ]] && echo "-s: wrong SHA digits number (8 digits needed)" && exit 1
-             echo "-s: will use \"${sha}\" SHA (\"$(git show -s --format=%s ${sha})\") for current report"
-             echo "";;
-          R) refrev=$OPTARG
-             DO_COMPARE=1
-             ;;
-          S) refsha=$OPTARG
-             [[ ! ${refsha} =~ ^[[:alnum:]]{8}$ ]] && echo "-S: wrong SHA digits number (8 digits needed)" && exit 1
-             echo "-S: will compare current results with \"${refsha}\" SHA (\"$(git show -s --format=%s ${refsha})\")"
-             echo ""
-             DO_COMPARE=1
-             ;;
-          x) TEST_TYPES=($OPTARG)
-             TEST_TYPES=${TEST_TYPES/CORRUPT/VARIANTS}      # Translation of a legacy option
-             TEST_TYPES=${TEST_TYPES/STANDALONE/VARIANTS}   # Translation of a legacy option
-             [[ ${TEST_TYPES[*]} =~ .*RESTART.*   ]] && export DO_RESTART=1   || DO_RESTART=0
-             [[ ${TEST_TYPES[*]} =~ .*REPRO.*     ]] && export DO_REPRO=1     || DO_REPRO=0
-             [[ ${TEST_TYPES[*]} =~ .*PHYOPTS.*   ]] && export DO_PHYOPTS=1   || DO_PHYOPTS=0
-             [[ ${TEST_TYPES[*]} =~ .*ROTSYM.*    ]] && export DO_ROTSYM=1    || DO_ROTSYM=0
-             [[ ${TEST_TYPES[*]} =~ .*TRANSFORM.* ]] && export DO_TRANSFORM=1 || DO_TRANSFORM=0
-             [[ ${TEST_TYPES[*]} =~ .*COUPLING.*  ]] && export DO_COUPLING=1  || DO_COUPLING=0
-             [[ ${TEST_TYPES[*]} =~ .*COMPARE.*   ]] && export DO_COMPARE=1   || DO_COMPARE=0
-             [[ ${TEST_TYPES[*]} =~ .*VARIANTS.*  ]] && export DO_VARIANTS=1  || DO_VARIANTS=0
-             echo "-x: will check ${TEST_TYPES[*]} test(s) for current report"
-             echo "";;
-          v) SETTE_SUB_VAL=$OPTARG;;
-          V) SETTE_SUB_VAL2=$OPTARG
-             if [ -d ${NEMO_VALIDATION_DIR}/${SETTE_SUB_VAL2} ] ; then
-               NEMO_VALIDATION_REF=${NEMO_VALIDATION_DIR}/${SETTE_SUB_VAL2}
-             else
-               echo "Requested comparison subdirectory: ${NEMO_VALIDATION_DIR}/${SETTE_SUB_VAL2} does not exist"
-             fi
-             ;;
-          u) USER_INPUT='no';;
-          b) DEBUG="with DEBUG (-b) option"
-             echo "-b: will use DEBUG compilation directory"
-             echo "";;
-          n) OPTSTR="$OPTARG"
-             TEST_CONFIGS=(${OPTSTR})
-             echo "-n: Configuration(s) ${TEST_CONFIGS[@]} will be tested if they are available"
-             echo "";;
-          m) export mach=($OPTARG)
-             echo "-m: will use ${mach} computing-architecture directory"
-             echo "";;
-          h | *) echo ''
-                 echo 'sette_rpt.sh : '
-                 echo '     display result for the latest change'
-                 echo ' -r REVISION_number :'
-                 echo '     display sette results for the specified revision (set old for the latest revision available for each config)'
-                 echo ' -s commit short (8-digits) SHA :'
-                 echo '     display sette results for the specified SHA (set old for the latest revision available for each config)'
-                 echo ' -R REFERENCE REVISION_number :'
-                 echo '     compare sette results against the specified revision (use to over-ride value set in param.cfg)'
-                 echo ' -S REFERENCE commit short (8-digits) SHA :'
-                 echo '     compare sette results against the specified SHA (use to over-ride value set in param.cfg)'
-                 echo ' -x test :'
-                 echo '     select specific tests to be reported (RESTART, REPRO, PHYOPTS, TRANSFORM, COMPARE, COUPLING, VARIANTS)'
-                 echo ' -n test configuration :'
-                 echo '     select specific test configurations to be included in the test report'
-                 echo ' -v sub_dir :'
-                 echo '     validation sub-directory below NEMO_VALIDATION_DIR'
-                 echo ' -V sub_dir2 :'
-                 echo '     2nd validation sub-directory below NEMO_VALIDATION_DIR'
-                 echo '     if set the comparison is between two subdirectory trees beneath NEMO_VALIDATION_DIR'
-                 echo ' -u to run sette_rpt.sh without any user interaction'
-                 echo ' -b to check DEBUG directory of COMPILER_name'
-                 echo ' -m MACHINE_name :'
-                 echo '     display result for the specified computing architecture'
-                 echo ''
-                 exit 42;;
-       esac
-    done
-    shift $((OPTIND - 1))
-  fi
-# if $1 (remaining arguments)
-  if [[ ! -z $1 ]] ; then rev=$1 ; fi
-
-# append DEBUG if "-b" option is active
-[ -n "${DEBUG}" ] && mach=${mach//_DEBUG}_DEBUG
-
-# git current branch name
-if [ -n "$CI_COMMIT_BRANCH" ]; then
-  # branch pipeline
-  branchname=$CI_COMMIT_BRANCH
-elif [ -n "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME" ]; then
-  # MR pipeline
-  branchname=$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME
-elif [ $(git rev-parse --abbrev-ref HEAD) != "HEAD" ]; then
-  # current HEAD
-  branchname=$(git rev-parse --abbrev-ref HEAD 2> /dev/null)
-elif [ $(git rev-parse --abbrev-ref HEAD) == "HEAD" ]; then
-  # detached HEAD
-  branchname=$(git show -s --pretty=%D HEAD 2> /dev/null | sed "s/HEAD, //")
-else
-  echo "ERROR: NEMO/GIT branch not found !" && exit 1
-fi
-
-if [ ! -z $SETTE_SUB_VAL ] ; then
-   NEMO_VALIDATION_DIR=$NEMO_VALIDATION_DIR/$SETTE_SUB_VAL
-   if [ -d $NEMO_VALIDATION_REF/$SETTE_SUB_VAL ] && [ -z $SETTE_SUB_VAL2 ] && [ ${USER_INPUT} == "yes" ] ; then
-      while true; do
-      read -p "$NEMO_VALIDATION_REF/$SETTE_SUB_VAL exists. Do you wish to use it as a reference? " yn
-      case $yn in
-          [Yy]* ) NEMO_VALIDATION_REF=$NEMO_VALIDATION_REF/$SETTE_SUB_VAL; break;;
-          [Nn]* ) echo "Ok, continuing with ${NEMO_VALIDATION_REF}/${branchname} as the reference directory"
-                  NEMO_VALIDATION_REF=${NEMO_VALIDATION_REF}/${branchname}
-                  break
-                  ;;
-          * ) echo "Please answer yes or no.";;
-      esac
+rev=""; sha=""; refrev=""; refsha=""
+if [ $# -gt 0 ]; then
+  echo ""
+  while getopts r:s:R:S:x:un:v:V:m:M:z:Z:qXbTitaeCNtAh option; do
+     case $option in
+        r) rev=$OPTARG
+           echo "-r: will use ${rev} revision for current report"
+           echo "";;
+        s) sha=$OPTARG
+           [[ ! ${sha} =~ ^[[:alnum:]]{8}$ ]] && echo "-s: wrong SHA digits number (8 digits needed)" && exit 1
+           echo "-s: will use \"${sha}\" SHA (\"$(git show -s --format=%s ${sha})\") for current report"
+           echo "";;
+        R) refrev=$OPTARG
+           DO_COMPARE=1
+           ;;
+        S) refsha=$OPTARG
+           [[ ! ${refsha} =~ ^[[:alnum:]]{8}$ ]] && echo "-S: wrong SHA digits number (8 digits needed)" && exit 1
+           echo "-S: will compare current results with \"${refsha}\" SHA (\"$(git show -s --format=%s ${refsha})\")"
+           echo ""
+           DO_COMPARE=1
+           ;;
+        x) TEST_TYPES=($OPTARG)
+           TEST_TYPES=${TEST_TYPES/CORRUPT/VARIANTS}      # Translation of a legacy option
+           TEST_TYPES=${TEST_TYPES/STANDALONE/VARIANTS}   # Translation of a legacy option
+           [[ ${TEST_TYPES[*]} =~ .*RESTART.*   ]] && export DO_RESTART=1   || DO_RESTART=0
+           [[ ${TEST_TYPES[*]} =~ .*REPRO.*     ]] && export DO_REPRO=1     || DO_REPRO=0
+           [[ ${TEST_TYPES[*]} =~ .*PHYOPTS.*   ]] && export DO_PHYOPTS=1   || DO_PHYOPTS=0
+           [[ ${TEST_TYPES[*]} =~ .*ROTSYM.*    ]] && export DO_ROTSYM=1    || DO_ROTSYM=0
+           [[ ${TEST_TYPES[*]} =~ .*COUPLING.*  ]] && export DO_COUPLING=1  || DO_COUPLING=0
+           [[ ${TEST_TYPES[*]} =~ .*COMPARE.*   ]] && export DO_COMPARE=1   || DO_COMPARE=0
+           [[ ${TEST_TYPES[*]} =~ .*VARIANTS.*  ]] && export DO_VARIANTS=1  || DO_VARIANTS=0
+           echo "-x: will check ${TEST_TYPES[*]} test(s) for current report"
+           echo "";;
+        u) USER_INPUT='no';;
+        n) OPTSTR="$OPTARG"
+           TEST_CONFIGS=(${OPTSTR})
+           echo "-n: Configuration(s) ${TEST_CONFIGS[@]} will be tested if they are available"
+           echo "";;
+        # Selection of the build variant (either by selecting the variant
+        # identifier or by selecting the relevant options separately (in the
+        # case of the reference selection, only the compilation environment and
+        # the source-code transformation option can be selected separately):
+        #   - variant identifier,
+        [vV]) arg="${OPTARG}"
+           msg="build and run-time-configuration variant"
+           [[ ! "${arg}" =~ ^[[:xdigit:]]{32}$ ]] && echo "-${option}: incompatible identifier of the ${msg}" && exit 1
+           [[ "${option}" == "v" ]] && echo "-v: ${msg} ${arg} selected" && VALID_VAR="${arg}"
+           [[ "${option}" == "V" ]] && echo "-V: reference ${msg} ${arg} selected" && VALID_VAR_REF="${arg}" && DO_COMPARE=1
+           echo "";;
+        #   - compilation environment
+        [mM]) arg="${OPTARG}"
+           msg="compilation environment"
+           [[ ! "${arg}" =~ ^[[:alnum:].+_-]{1,64}$ ]] && echo "-${option}: incompatible name of the ${msg}" && exit 1
+           [[ "${option}" == "m" ]] && echo "-m: ${msg} '${arg}' selected" && COMPILER="${arg}"
+           [[ "${option}" == "M" ]] && echo "-M: reference ${msg} '${arg}' selected" && COMPILER_REF="${arg}" && DO_COMPARE=1
+           echo "";;
+        #   - source-code-transformation option
+        [zZ]) arg=""
+           msg="source-code transformation option"
+           for sct in ${SCTRANSFORMS[@]}; do [[ "${OPTARG}" == "${sct}" ]] && arg="${sct}"; done
+           [[ ! "${arg}" =~ ^[[:alnum:]]{1,64}$ ]] && echo "-${option}: incompatible name of the ${msg}" && exit 1
+           [[ -z "${arg}" ]] && echo "-${option}: the requested ${msg} is not available"; exit 1
+           [[ "${option}" == "z" ]] && echo "-z: ${msg} '${arg}' selected" && TRANSFORM="${arg}"
+           [[ "${option}" == "Z" ]] && echo "-Z: reference ${msg} '${arg}' selected" && TRANSFORM_REF="${arg}" && DO_COMPARE=1
+           echo "";;
+        #   - SETTE-control values (as mirrored from script sette/sette.sh)
+        q) USING_QCO=${USING_QCO/yes/no};;
+        X) USING_XIOS=${USING_XIOS/yes/no};;
+        b) USING_DEBUG=${USING_DEBUG/no/yes};;
+        T) USING_TIMING=${USING_TIMING/yes/no};;
+        i) USING_ICEBERGS=${USING_ICEBERGS/yes/no};;
+        a) USING_ABL=${USING_ABL/no/yes};;
+        e) USING_EXTRA_HALO=${USING_EXTRA_HALO/no/yes};;
+        C) USING_COLLECTIVES=${USING_COLLECTIVES/yes/no};;
+        N) USING_NOGATHER=${USING_NOGATHER/yes/no};;
+        t) USING_TILING=${USING_TILING/yes/no};;
+        A) USING_MPMD=${USING_MPMD/yes/no};;
+        # Usage message
+        h | *) echo 'Usage: sette_rpt.sh [options]'
+               echo
+               echo 'Selection of SETTE test-run output:'
+               echo ' -r REVISION_number :'
+               echo '     display sette results for the specified revision (set old for the latest revision available for each config)'
+               echo ' -s commit short (8-digits) SHA :'
+               echo '     display sette results for the specified SHA (set old for the latest revision available for each config)'
+               echo ' -v build and run-time-configuration variant (overrides indirect selection, see'
+               echo '    below)'
+               echo ' -n test configuration :'
+               echo '     select specific test configurations to be included in the test report'
+               echo ' -x test :'
+               echo '     select specific tests to be reported (RESTART, REPRO, PHYOPTS, COMPARE, COUPLING, VARIANTS)'
+               echo
+               echo 'Selection of reference SETTE test-run output:'
+               echo ' -R reference REVISION_number :'
+               echo '     compare sette results against the specified revision (use to over-ride value set in param.cfg)'
+               echo ' -S reference commit short (8-digits) SHA :'
+               echo '     compare sette results against the specified SHA (use to over-ride value set in param.cfg)'
+               echo ' -V reference build and run-time-configuration variant (overrides indirect'
+               echo '    selection, see below)'
+               echo
+               echo 'Further SETTE option:'
+               echo ' -u to run sette_rpt.sh without any user interaction'
+               echo
+               echo 'Indirect selection of the SETTE build and run-time-configuration variant (these'
+               echo 'settings reflect corresponding options of script sette/sette.sh; here, they are'
+               echo 'solely used to determine build and run-time-configuration variant identifiers;'
+               echo 'options -q, -X, -b, -T, -i, -a, -e, -C, -N, -t, and -A are used to determine'
+               echo 'both the variant and the reference variant identifier):'
+               echo ' -m compilation environment'
+               echo ' -M reference compilation environment'
+               echo ' -z source-code transformation option'
+               echo ' -Z reference source-code transformation option'
+               echo ' -q compilation without QCO option'
+               echo ' -X compilation without XIOS support'
+               echo ' -b debug compilation option selected'
+               echo ' -T timing option suppressed'
+               echo ' -a ABL option selected'
+               echo ' -e extended halo selected'
+               echo ' -C nn_comm=1 option selected'
+               echo ' -N ll_nnogather=false selected in global configurations'
+               echo ' -t tiling suppressed'
+               echo ' -A SPMD mode selected'
+               echo ''
+               exit 42;;
+     esac
   done
- # No user input: make a best guess as to intent
- elif [ -d $NEMO_VALIDATION_REF/$SETTE_SUB_VAL ] && [ -z $SETTE_SUB_VAL2 ] ; then
-    NEMO_VALIDATION_REF=$NEMO_VALIDATION_REF/$SETTE_SUB_VAL
- # No user input: default to branchname or MAIN
- elif [ -z $SETTE_SUB_VAL2 ] ; then
-    NEMO_VALIDATION_REF=$NEMO_VALIDATION_REF/${branchname}
- fi
-else
-   NEMO_VALIDATION_DIR=${NEMO_VALIDATION_DIR}/${branchname}
-   if [ -z $SETTE_SUB_VAL2 ] ; then
-      NEMO_VALIDATION_REF=$NEMO_VALIDATION_REF/${branchname}
-   fi
+  shift $((OPTIND - 1))
 fi
+# if $1 (remaining arguments)
+if [[ ! -z $1 ]] ; then rev=$1 ; fi
+
+# Identifier to select the build and run-time-configuration variant
+# (hash-function value)
+var="${USING_QCO};${USING_SI3_1D};${USING_XIOS};${USING_DEBUG}"
+var="${var};${USING_TIMING};${USING_ICEBERGS};${USING_ABL};${USING_EXTRA_HALO}"
+var="${var};${USING_COLLECTIVES};${USING_NOGATHER};${USING_TILING};${USING_MPMD}"
+if [[ "${VALID_VAR}" == "AUTOMATIC" ]]; then
+  VALID_VAR=$(echo "\"COMPILER\",\"${COMPILER}\";\"TRANSFORM\",\"${TRANSFORM}\";${var}" | md5sum | cut -f 1 -d ' ')
+fi
+#   and the corresponding comparison-reference identifier
+if [[ "${VALID_VAR_REF}" == "AUTOMATIC" ]]; then
+  VALID_VAR_REF=$(echo "\"COMPILER\",\"${COMPILER_REF}\";\"TRANSFORM\",\"${TRANSFORM_REF}\";${var}" | md5sum | cut -f 1 -d ' ')
+fi
+VALID_VAR=$(echo "${VALID_VAR}" | tr '[:upper:]' '[:lower:]' | tr -d -c '[:xdigit:]')
+VALID_VAR_REF=$(echo "${VALID_VAR_REF}" | tr '[:upper:]' '[:lower:]' | tr -d -c '[:xdigit:]')
+if [[ ${#VALID_VAR} != 32 ]] || [[ ${#VALID_VAR_REF} != 32 ]]; then
+  echo "Error: incompatible identifier of the build and run-time-configuration variant"; exit 1
+fi
+
+NEMO_VALIDATION_DIR=${NEMO_VALIDATION_DIR}
+NEMO_VALIDATION_REF=${NEMO_VALIDATION_REF}
 NEMO_VALID=${NEMO_VALIDATION_DIR}
 NEMO_VALID_REF=${NEMO_VALIDATION_REF}
-if [ -n "${refrev}" ] ; then
-   NEMO_REV_REF=${refrev}
-fi
-if [ -n "${refsha}" ] ; then
-   NEMO_REF_SHA=${refsha}
-   NEMO_REF_DATE=$(date --date=@$(git show --no-patch --format=%ct ${NEMO_REF_SHA}) +"%y%j")
-   NEMO_REV_REF=${NEMO_REF_DATE}_${NEMO_REF_SHA}
-   NEMO_REF_BRC=( $(git branch --contains ${NEMO_REF_SHA} | sed -e 's/* //;/HEAD/d' | tac ) )
-   [ -z "${NEMO_REF_BRC[*]}" ] && NEMO_REF_BRC=( $(git branch -r --contains ${NEMO_REF_SHA} | sed -e "s|.*origin/||") )
-   for b in ${NEMO_REF_BRC[@]}; do
-     [ -d $(dirname ${NEMO_VALIDATION_REF})/${b}/${mach}/${NEMO_REV_REF} ] && NEMO_REF_DIR=$(dirname ${NEMO_VALIDATION_REF})/${b} && break
-   done
-   [ -z "${NEMO_REF_DIR}" ] && NEMO_REV_REF=0000 && NEMO_REF_DIR="/path/to/reference/sette/results" && echo "${NEMO_REF_SHA} commit results not found in validation directory"
-   NEMO_VALID_REF=$NEMO_REF_DIR
-fi
+[ ! -d "${NEMO_VALID}" ] && echo "${NEMO_VALID} validation directory not found" && exit 1
+[ ! -d "${NEMO_VALID_REF}" ] && NEMO_VALID_REF=/path/to/reference/sette/results
 
-if [ ! -d $NEMO_VALID ]; then
-  echo "$NEMO_VALID validation directory not found"
-  exit
-fi
-#
-#
-# Show current revision tag and branch name
-#
-echo ""
+# The source-code-revision identifier
 localchanges=0
-# -r option
-if [ -n "${rev}" ]; then
-  nemo_revision=${rev}
-  lastchange=${rev}
-# -s option
-elif [ -n "${sha}" ]; then
-  nemo_revision=${sha}
-  rev_date=$(date --date=@$(git show --no-patch --format=%ct ${nemo_revision}) +"%y%j")
-  lastchange=${rev_date}_${nemo_revision}
-# current git repo SHA
-else
-  nemo_revision=${CI_COMMIT_SHORT_SHA:-$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)}
-  rev_date=$(date --date=@$(git show --no-patch --format=%ct ${nemo_revision}) +"%y%j")
-  lastchange=${rev_date}_${nemo_revision}
+if [ -n "${rev}" ]; then     # -r option
+  VALID_REV=${rev}
+elif [ -n "${sha}" ]; then   # -s option
+  VALID_REV=${sha}
+else                         # enquire local source-code repository
+  VALID_REV=${CI_COMMIT_SHORT_SHA:-$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)}
   localchanges=`git status --short -uno | wc -l`
-  if [[ $localchanges -gt 0 ]] ; then lastchange="${lastchange}+"; fi
 fi
-
+VALID_REV=$(echo ${VALID_REV} | tr '[:upper:]' '[:lower:]' | tr -d -c '[:xdigit:]+')
+if [[ ${#VALID_REV} -lt 8 ]] || [[ ${#VALID_REV} -gt 41 ]]; then
+  echo "Error: incompatible source-code-revision identifier" && exit 1
+fi
+if [ -n "${refrev}" ] ; then
+  VALID_REV_REF=${refrev}
+elif [ -n "${refsha}" ] ; then
+  VALID_REV_REF=${refsha}
+else
+  VALID_REV_REF=${NEMO_REV_REF}
+fi
+VALID_REV_REF=$(echo ${VALID_REV_REF} | tr '[:upper:]' '[:lower:]' | tr -d -c '[:xdigit:]+')
+if [[ ${#VALID_REV_REF} -lt 8 ]] || [[ ${#VALID_REV_REF} -gt 41 ]]; then
+  echo "Error: incompatible reference source-code-revision identifier" && exit 1
+fi
+if [ -n "${refsha}" ]; then
+  if [ -d "$(dirname ${NEMO_VALID_REF}/.)/${VALID_REV_REF}/${VALID_VAR_REF}" ]; then
+    NEMO_VALID_REF=$(dirname ${NEMO_VALID_REF}/.)
+  else
+    echo "${VALID_REV_REF} commit results not found in validation directory"
+    VALID_REV_REF=00000000 && NEMO_VALID_REF="/path/to/reference/sette/results"
+  fi
+fi
 echo ""
 echo "SETTE validation report generated for : "
 echo ""
-if [[ $localchanges > 0 ]] ; then
- echo "       $branchname @ $nemo_revision (with local changes)"
+if [[ $localchanges -gt 0 ]] ; then
+  echo "       source-code revision ${VALID_REV} (with local changes)"
+  VALID_REV="${VALID_REV}+"
 else
- echo "       $branchname @ $nemo_revision"
+  echo "       source-code revision ${VALID_REV}"
 fi
 echo ""
-echo "       on $COMPILER arch file $DEBUG"
+echo "       build and run-time-configuration variant ${VALID_VAR}:"
+echo ""
+echo "           COMPILER                 : ${COMPILER}"
+echo "           TRANSFORM                : ${TRANSFORM}"
+var2="${var#\"}"
+var2="${var2%\"}"
+for v in ${var2//\";\"/ }; do printf "           %-24s : %s\n" ${v/\",\"/ }; done
 echo ""
 
-#
-# The script also needs the date or revision tag. Currently this is taken from the latest sub-directory found in each directory
 #
 for pass in  $RPT_PASSES
 do
@@ -1175,16 +1140,6 @@ do
       if [[ ${repro_test} != *"OVERFLOW"* && ${repro_test} != *"LOCK_EXCHANGE"* && ${repro_test} != *"IWAVE"* ]]; then
          reprotest $NEMO_VALID $repro_test $pass
       fi
-    done
-  fi
-
-  # Transformability tests
-  if [ ${DO_TRANSFORM} -eq 1 ]; then
-    echo ""
-    echo "   !----transform----!   "
-    for transform_test in ${TEST_CONFIGS[@]}
-    do
-      transformtest ${NEMO_VALID} ${transform_test} ${pass}
     done
   fi
 
@@ -1237,22 +1192,22 @@ do
   if [ ${DO_COMPARE:-0} -eq 1 ]; then
     echo ""
     echo "   !----result comparison check----!   "
-    if [ $NEMO_VALID_REF != "/path/to/reference/sette/results" ] && [ $NEMO_REV_REF != "0000" ]; then
+    if [ $NEMO_VALID_REF != "/path/to/reference/sette/results" ] && [ $VALID_REV_REF != "00000000" ]; then
       echo ''
       echo 'check result differences between :'
-      echo "VALID directory : $NEMO_VALID at rev $lastchange"
+      echo "VALID directory : $NEMO_VALID at rev ${VALID_REV}"
       echo 'and'
-      echo "REFERENCE directory : $NEMO_VALID_REF at rev $NEMO_REV_REF"
+      echo "REFERENCE directory : $NEMO_VALID_REF at rev $VALID_REV_REF"
       echo ''
       for runcmp_test in ${TEST_CONFIGS[@]}
       do
-        runcmpres $NEMO_VALID $runcmp_test $NEMO_VALID_REF $NEMO_REV_REF $pass
+        runcmpres $NEMO_VALID $runcmp_test $NEMO_VALID_REF $VALID_REV_REF $pass
       done
       echo ''
       echo 'Report timing differences between REFERENCE and VALID (if available) :'
       for repro_test in ${TEST_CONFIGS[@]}
       do
-        runcmptim $NEMO_VALID $repro_test $NEMO_VALID_REF $NEMO_REV_REF $pass
+        runcmptim $NEMO_VALID $repro_test $NEMO_VALID_REF $VALID_REV_REF $pass
       done
     else
       echo ''
@@ -1265,14 +1220,17 @@ do
 done
 
 if [[ ${MD_WARN} -ge 1 ]]; then
+
+    # database path
     get_dorv
+
     echo
     echo "WARNING: Some test failures are due to missing validation directories"
     echo
     echo "  In case some SETTE test runs associated with this report have yet to complete"
     echo "  or are still scheduled to run, the associated validation output may become"
     echo "  eventually available at"
-    echo "  ${NEMO_VALID}/${mach}/${dorv}"
+    echo "  ${NEMO_VALID}/${dorv}/${VALID_VAR}"
     echo
     echo "  It is also possible to exclude specific SETTE tests or SETTE configurations"
     echo "  from the SETTE report using command-line options ('-x' and '-n',"
@@ -1282,7 +1240,7 @@ if [[ ${MD_WARN} -ge 1 ]]; then
     echo
 fi
 # error code
-SETTE_EC=$((REPRO_EC+RESTA_EC+TRANSFORM_EC+REFCMP_EC+CPUCMP_EC+OCEOUT_EC+AGRIF_EC+PHYOPT_EC+ROT_EC+VARIANTS_EC))
+SETTE_EC=$((REPRO_EC+RESTA_EC+REFCMP_EC+CPUCMP_EC+OCEOUT_EC+AGRIF_EC+PHYOPT_EC+ROT_EC+VARIANTS_EC))
 echo ""
 echo "SETTE Report Exit Code: ${SETTE_EC}"
 

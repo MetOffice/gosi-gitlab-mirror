@@ -10,46 +10,38 @@ USE_REF=0
 
 
 if [ $# -gt 0 ]; then
-  while getopts c:v:Rh option; do 
+  while getopts c:Rh option; do 
      case $option in
         c) COMPILER=$OPTARG;;
-        v) SETTE_SUB_VAL=$OPTARG;;
         R) USE_REF=1;;
         h | *) echo ''
                echo 'sette_list_avail_rev.sh : ' 
                echo '     list all sette directory and available revisions created with the compiler specified in param.cfg or in the startup file)'
                echo '-c COMPILER_name :'
                echo '     list all sette directory and available revisions created with the compiler specified'
-               echo ' -v sub_dir :'
-               echo '     validation sub-directory below NEMO_VALIDATION_DIR'
                echo ''
                exit 42;;
      esac
   done
   shift $((OPTIND - 1))
 fi
-if [ ! -z $SETTE_SUB_VAL ] ; then
- NEMO_VALIDATION_DIR=$NEMO_VALIDATION_DIR/$SETTE_SUB_VAL
- NEMO_VALIDATION_REF=$NEMO_VALIDATION_REF/$SETTE_SUB_VAL
-else
- NEMO_VALIDATION_DIR=$NEMO_VALIDATION_DIR/MAIN
- NEMO_VALIDATION_REF=$NEMO_VALIDATION_REF/MAIN
-fi
+NEMO_VALIDATION_DIR=${NEMO_VALIDATION_DIR}
+NEMO_VALIDATION_REF=${NEMO_VALIDATION_REF}
 
 #
 lst_rev () {
     # get the list of revision available for a configuration
     # base directory
     VALSUB=$1
-    # config name
-    CONFIG=$2
-    # list of all revision available
+    # <ARCH>/<CONF>
+    ARCH_CONF=$2
+    # list of all available <REV> identifiers
     ALLLST=${@:3}
     # display
     printf "\n %-28s : " $CONFIG
     for rev in $ALLLST
     do
-       if [ -d ${VALSUB}/$rev/${CONFIG} ]  ; then
+       if [ -d "${VALSUB}/$rev/${ARCH_CONF}" ]  ; then
           printf "%-14s  " $rev
        else
           printf "%-14s  " "------------ " 
@@ -64,7 +56,8 @@ lst_rev () {
   fi
  
  # list of all revision available
- DIRLIST=`find ${NEMO_VALID}/${COMPILER} -maxdepth 1 -mindepth 1 -type d | sort -u`
+ DIRLIST=`find "${NEMO_VALID}" -maxdepth 2 -mindepth 2 -type d -name "${COMPILER}" | sort -u`
+ DIRLIST=`dirname ${DIRLIST}`
  DIRLIST=`basename -a $DIRLIST`
 
  # display header
@@ -81,8 +74,7 @@ lst_rev () {
  echo -n " ------------------------------"
  for CONFIG in GYRE_PISCES ORCA2_ICE_PISCES ORCA2_OFF_PISCES AMM12 WED025 ORCA2_ICE_OBS ORCA2_SAS_ICE AGRIF_DEMO SWG ISOMIP+ OVERFLOW LOCK_EXCHANGE VORTEX ICE_AGRIF IWAVE  
  do
-    DIR=${NEMO_VALID}/${COMPILER}/
-    lst_rev $DIR $CONFIG $DIRLIST
+    lst_rev "${NEMO_VALID}" "${COMPILER}/${CONFIG}" "$DIRLIST"
  done
  printf "\n"
  printf "\n"
