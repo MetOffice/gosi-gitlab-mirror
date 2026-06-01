@@ -1042,15 +1042,16 @@ NEMO_VALID_REF=${NEMO_VALIDATION_REF}
 [ ! -d "${NEMO_VALID_REF}" ] && NEMO_VALID_REF=/path/to/reference/sette/results
 
 # The source-code-revision identifier
-localchanges=0
-if [ -n "${rev}" ]; then     # -r option
-  VALID_REV=${rev}
-elif [ -n "${sha}" ]; then   # -s option
-  VALID_REV=${sha}
-else                         # enquire local source-code repository
-  VALID_REV=${CI_COMMIT_SHORT_SHA:-$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)}
-  localchanges=`git status --short -uno | wc -l`
+if [ -z "${VALID_REV}"]; then
+  if [ -n "${rev}" ]; then     # -r option
+    VALID_REV=${rev}
+  elif [ -n "${sha}" ]; then   # -s option
+    VALID_REV=${sha}
+  else                         # enquire local source-code repository
+    VALID_REV=$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2>/dev/null)
+  fi
 fi
+localchanges=`git status --short -uno 2>/dev/null | wc -l`
 VALID_REV=$(echo ${VALID_REV} | tr '[:upper:]' '[:lower:]' | tr -d -c '[:xdigit:]+')
 if [[ ${#VALID_REV} -lt 8 ]] || [[ ${#VALID_REV} -gt 41 ]]; then
   echo "Error: incompatible source-code-revision identifier" && exit 1

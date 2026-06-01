@@ -183,11 +183,9 @@ fi
 # identifier for accessing the SETTE validation database; a '+' suffix
 # indicates local changes with regard to the upstream source-code revision
 # indicated by the hash-function value
-VALID_REV=${CI_COMMIT_SHORT_SHA:-$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)}
-[ -z "${CI_COMMIT_SHORT_SHA}" ] && localchanges=`git -C ${MAIN_DIR} status --short -uno | wc -l` || localchanges=0
-if [[ $localchanges > 0 ]] ; then
-  VALID_REV="${VALID_REV}+"
-fi
+[ -z "${VALID_REV}" ] && VALID_REV=$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2>/dev/null)
+localchanges=`git -C ${MAIN_DIR} status --short -uno 2>/dev/null | wc -l`
+[ ${localchanges} -gt 0 ] && VALID_REV="${VALID_REV}"
 
 # Check the validity of the compilation-environment name, the
 # source-code-transformation name, and the source-code-revision identifier:
