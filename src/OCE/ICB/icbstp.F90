@@ -128,7 +128,9 @@ CONTAINS
             !
             !                                   !* write out time
             ll_verbose = .FALSE.
-            IF( nverbose_write > 0 .AND. MOD( kt-1 , nverbose_write ) == 0 )   ll_verbose = ( nn_verbose_level > 0 )
+            IF( nverbose_write > 0 ) THEN
+               IF (MOD( kt-1 , nverbose_write ) == 0 )   ll_verbose = ( nn_verbose_level > 0 )
+            ENDIF
             !
             IF( ll_verbose )   WRITE(numicb,9100) nktberg, ndastp, nsec_day
        9100 FORMAT('kt= ',i8, ' day= ',i8,' secs=',i8)
@@ -159,7 +161,9 @@ CONTAINS
          !
          !                                   !* For each berg, record trajectory (when needed)
             ll_sample_traj = .FALSE.
-            IF( nsample_rate > 0 .AND. MOD(kt-1,nsample_rate) == 0 )   ll_sample_traj = .TRUE.
+            IF( nsample_rate > 0 ) THEN
+               IF (MOD(kt-1,nsample_rate) == 0 )   ll_sample_traj = .TRUE.
+            ENDIF
             IF( ll_sample_traj .AND. ASSOCIATED(first_berg) )   CALL icb_trj_write( kt )
    
          !                                   !* Gridded diagnostics
@@ -177,7 +181,9 @@ CONTAINS
          !
          !                                   !* Diagnose budgets
             ll_budget = .FALSE.
-            IF( nverbose_write > 0 .AND. MOD(kt-1,nverbose_write) == 0 ) ll_budget = ln_bergdia
+            IF( nverbose_write > 0 ) THEN
+               IF (MOD(kt-1,nverbose_write) == 0 ) ll_budget = ln_bergdia
+            ENDIF
             CALL icb_dia( ll_budget )
          !
          ENDIF ! end if "IF MOD(kt-1,nn_fsbc ) == 0" 

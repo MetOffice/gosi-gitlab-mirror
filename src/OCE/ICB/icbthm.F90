@@ -97,7 +97,8 @@ CONTAINS
              &                      psst=pt%sst, pcn=pt%cn, &
              &                      psss=pt%sss             )
          !
-         IF ( nsample_rate > 0 .AND. MOD(kt-1,nsample_rate) == 0 ) THEN
+         IF ( nsample_rate > 0) THEN
+            IF (MOD(kt-1,nsample_rate) == 0 ) &
             CALL icb_utl_interp( Kmm, pt%xi, pt%yj, pe1=pt%e1, pe2=pt%e2, &
                &                       pui=pt%ui, pssh_i=pt%ssh_x,        &
                &                       pvi=pt%vi, pssh_j=pt%ssh_y,        &
