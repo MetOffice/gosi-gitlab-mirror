@@ -24,7 +24,7 @@ format_field1="%-35s"
 declare -i {REPRO_EC,RESTA_EC,REFCMP_EC,CPUCMP_EC,OCEOUT_EC,ROT_EC,PHYOPT_EC,VARIANTS_EC,MD_WARN}=0
 
 # List of status time-series files
-statfiles="run.stat tracer.stat obs.stat"
+statfiles=(run.stat tracer.stat obs.stat)
 
 function get_dorv() {
   if [ ${VALID_REV} == 'old' ] ; then
@@ -36,20 +36,21 @@ function get_dorv() {
 }
 
 function get_ktdiff() {
-  ktdiff=`diff ${1} ${2} | head -2 | grep it | awk '{ print $4 }'`
-}
-
-function get_ktdiff2() {
-  ktdiff=`diff ${1} ${2} |  head -2 | tail -1l | awk '{print $2}'`
+  # form diff we used to first line that summarised the diff:
+  #   - get all the diff summary lines XX,YY(optional)acdWW,ZZ(optional)
+  #   - then the first line
+  #   - then get first element using ',','a','c' or 'd' as field separator
+  ktdiff=`diff ${1} ${2} | grep -E '^[0-9]+[,.0-9]*[acd][0-9]+[,.0-9]*$' | head -1 | awk -F '[,acd]' '{print $1}'`
 }
 
 function rottest() { 
+  local err
 #
 # Rotational symmetry checks. Expects ROT_000, ROT_090, and ROT_180 test-run directories
 #
   vdir=$1
   nam=$2
-  pass=$3
+
 #
 # database path
   get_dorv
@@ -58,7 +59,7 @@ function rottest() {
 # check if directory is here
   if [ ! -d ${db_path} ]; then
     printf "${format_field1} %s %s\n" $nam  "directory                    MISSING :" $dorv
-    ROT_EC=1
+    ROT_EC=$((ROT_EC + 1))
     MD_WARN=1
     return
   fi
@@ -71,170 +72,43 @@ function rottest() {
     [ ! -d ${db_path}/ROT_180 ] && return
 
     # check ocean output
-    runtest $vdir $nam $pass ROT
+    runtest $vdir $nam ROT
 
     # run rotational-symmetry test
-    f1o=${db_path}/ROT_000/ocean.output
-    f1s=${db_path}/ROT_000/run.stat
-    f1t=${db_path}/ROT_000/tracer.stat
-    f2o=${db_path}/ROT_180/ocean.output
-    f2s=${db_path}/ROT_180/run.stat
-    f2t=${db_path}/ROT_180/tracer.stat
-    f3o=${db_path}/ROT_090/ocean.output
-    f3s=${db_path}/ROT_090/run.stat
-    f3t=${db_path}/ROT_090/tracer.stat
+    #
+    # check incomplete
+    for ROT in ROT_000 ROT_180 ROT_090; do
+      check_incomplete ${db_path}/$ROT/ $nam
+      err=$?
+      ROT_EC=$((ROT_EC + err))
+      if [ $err != 0 ]; then return ; fi
+    done
+    #
+    # check tracer and run.stat
+    for file in ${statfiles[@]}; do
+      f1=${db_path}/ROT_000/$file
+      f2=${db_path}/ROT_180/$file
+      f3=${db_path}/ROT_090/$file
 
-    if  [ ! -f $f1s ] &&  [ ! -f $f1t ] ; then 
-      printf "${format_field1} %s\n" $nam " incomplete test"
-      ROT_EC=1
-      return
-    fi
-    if  [ ! -f $f2s ] &&  [ ! -f $f2t ] ; then 
-      printf "${format_field1} %s\n" $nam " incomplete test"
-      ROT_EC=1
-      return
-    fi
-    if  [ ! -f $f3s ] &&  [ ! -f $f3t ] ; then 
-      printf "${format_field1} %s\n" $nam " incomplete test"
-      ROT_EC=1
-      return
-    fi
-#
-    done_oce=0
-
-    if  [  -f $f1s ] && [  -f $f2s ]; then 
-      cmp -s $f1s $f2s
-      if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then 
-          printf "${format_field1} %s %s\n" $nam "run.stat    180deg rotation  passed  :" $dorv
-        fi
-      else
-        get_ktdiff $f1s $f2s
-        printf "\e[38;5;196m${format_field1} %s %s %s %-5s %s\e[0m\n" $nam "run.stat    180deg rotation  FAILED  :" $dorv " (results are different after " $ktdiff " time steps)"
-        ROT_EC=1
-#
-# Offer view of differences on the second pass
-#
-        if [ $pass == 1 ]; then
-          echo "<return> to view run.stat differences"
-          read y
-          sdiff $f1s $f2s
-          echo "<return> to view ocean.output differences"
-          read y
-          sdiff $f1o $f2o | grep "|"
-          done_oce=1
-          echo "<return> to continue"
-          read y
-        fi
-      fi
-    fi
-
-    done_oce=0
-
-    if  [  -f $f1s ] && [  -f $f3s ]; then 
-      cmp -s $f1s $f3s
-      if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then 
-          printf "${format_field1} %s %s\n" $nam "run.stat     90deg rotation  passed  :" $dorv
-        fi
-      else
-        get_ktdiff $f1s $f3s
-        printf "\e[38;5;196m${format_field1} %s %s %s %-5s %s\e[0m\n" $nam "run.stat     90deg rotation  FAILED  :" $dorv " (results are different after " $ktdiff " time steps)"
-        ROT_EC=1
-#
-# Offer view of differences on the second pass
-#
-        if [ $pass == 1 ]; then
-          echo "<return> to view run.stat differences"
-          read y
-          sdiff $f1s $f3s
-          echo "<return> to view ocean.output differences"
-          read y
-          sdiff $f1o $f3o | grep "|"
-          done_oce=1
-          echo "<return> to continue"
-          read y
-        fi
-      fi
-    fi
-
-#
-# Check tracer.stat files (if they exist)
-#
-    if  [  -f $f1t ] && [  -f $f2t ]; then
-      cmp -s $f1t $f2t
-      if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then 
-          printf "${format_field1} %s %s\n" $nam "tracer.stat 180deg rotation  passed  :" $dorv
-        fi
-      else
-        get_ktdiff2 $f1t $f2t
-        printf "\e[38;5;196m${format_field1} %s %s %s %-5s %s\e[0m\n" $nam "tracer.stat 180deg rotation  FAILED  :" $dorv " (results are different after " $ktdiff " time steps)"
-        ROT_EC=1
-#
-# Offer view of differences on the second pass
-#
-        if [ $pass == 1 ]; then
-          echo "<return> to view tracer.stat differences"
-          read y
-          sdiff $f1t $f2t
-#
-# Only offer ocean.output view if it has not been viewed previously
-#
-          if [ $done_oce == 0 ]; then
-            echo "<return> to view ocean.output differences"
-            read y
-            sdiff $f1o $f2o | grep "|"
-          fi
-          echo "<return> to continue"
-          read y
-        fi
-      fi
-    fi
-
-    if  [  -f $f1t ] && [  -f $f3t ]; then
-      cmp -s $f1t $f3t
-      if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then 
-          printf "${format_field1} %s %s\n" $nam "tracer.stat  90deg rotation  passed  :" $dorv
-        fi
-      else
-        get_ktdiff2 $f1t $f3t
-        printf "\e[38;5;196m${format_field1} %s %s %s %-5s %s\e[0m\n" $nam "tracer.stat  90deg rotation  FAILED  :" $dorv " (results are different after " $ktdiff " time steps)"
-        ROT_EC=1
-#
-# Offer view of differences on the second pass
-#
-        if [ $pass == 1 ]; then
-          echo "<return> to view tracer.stat differences"
-          read y
-          sdiff $f1t $f3t
-#
-# Only offer ocean.output view if it has not been viewed previously
-#
-          if [ $done_oce == 0 ]; then
-            echo "<return> to view ocean.output differences"
-            read y
-            sdiff $f1o $f3o | grep "|"
-          fi
-          echo "<return> to continue"
-          read y
-        fi
-      fi
-    fi
-
+      compare_files $f1 $f2 $file $nam ROT180 $dorv
+      ROT_EC=$((ROT_EC + $?))
+      #
+      compare_files $f1 $f3 $file $nam ROT90 $dorv
+      ROT_EC=$((ROT_EC + $?))
+    done
   fi
 }
 
 function resttest() {
+  local err
 #
 # Restartability checks. Expects LONG and SHORT run directories
 # Compares end of LONG stat files with equivalent entries from the SHORT stat files.
 #
   vdir=$1
   nam=$2
-  pass=$3
 #
+  RESTA_EC=0
 # database path
   get_dorv
   db_path="${vdir}/${dorv}/${VALID_VAR}/${nam}"
@@ -248,142 +122,37 @@ function resttest() {
   fi
 
   if [ -d ${db_path} ]; then
+    #
     # check ocean output
     runtest $vdir $nam $pass RST
     #
-    # run restartibility test
-    f1o=${db_path}/LONG/ocean.output
-    f1s=${db_path}/LONG/run.stat
-    f1t=${db_path}/LONG/tracer.stat
-    f1h=${db_path}/LONG/obs.stat
-    f2o=${db_path}/SHORT/ocean.output
-    f2s=${db_path}/SHORT/run.stat
-    f2t=${db_path}/SHORT/tracer.stat
-    f2h=${db_path}/SHORT/obs.stat
-
-    if  [ ! -f $f1s ] &&  [ ! -f $f1t ] ; then
-      printf "${format_field1} %s\n" $nam " incomplete test"
-      RESTA_EC=1
-      return
-    fi
-    if  [ ! -f $f2s ] &&  [ ! -f $f2t ] ; then
-      printf "${format_field1} %s\n" $nam " incomplete test"
-      RESTA_EC=1
-      return
-    fi
-#
-    done_oce=0
-
-    if  [  -f $f1s ] && [  -f $f2s ]; then
-      nl=(`wc -l $f2s`)
-      tail -${nl[0]} $f1s > f1.tmp$$
-      cmp -s f1.tmp$$ $f2s
-      if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then
-          printf "${format_field1} %s %s\n" $nam "run.stat    restartability   passed  :" $dorv
-        fi
-      else
-        get_ktdiff f1.tmp$$ $f2s
-        printf "\e[38;5;196m${format_field1} %s %s %s %-5s %s\e[0m\n" $nam "run.stat    restartability   FAILED : " $dorv " (results are different after " $ktdiff " time steps)"
-        RESTA_EC=1
-#
-# Offer view of differences on the second pass
-#
-        if [ $pass == 1 ]; then
-          echo "<return> to view run.stat differences"
-          read y
-          sdiff f1.tmp$$ $f2s
-          echo "<return> to view ocean.output differences"
-          read y
-          sdiff $f1o $f2o | grep "|"
-          done_oce=1
-          echo "<return> to continue"
-          read y
-        fi
-      fi
-    fi
-#
-# Check tracer.stat files (if they exist)
-#
-    if  [  -f $f1t ] && [  -f $f2t ]; then
-      nl=(`wc -l $f2t`)
-      tail -${nl[0]} $f1t > f1.tmp$$
-      cmp -s f1.tmp$$ $f2t
-      if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then
-          printf "${format_field1} %s %s\n" $nam "tracer.stat restartability   passed  :" $dorv
-        fi
-      else
-        get_ktdiff2 f1.tmp$$ $f2t
-        printf "\e[38;5;196m${format_field1} %s %s %s %-5s %s\e[0m\n" $nam "tracer.stat    restartability   FAILED : " $dorv " (results are different after " $ktdiff " time steps)"
-        RESTA_EC=1
-#
-# Offer view of differences on the second pass
-#
-        if [ $pass == 1 ]; then
-          echo "<return> to view tracer.stat differences"
-          read y
-          sdiff f1.tmp$$ $f2t
-#
-# Only offer ocean.output view if it has not been viewed previously
-#
-          if [ $done_oce == 0 ]; then
-            echo "<return> to view ocean.output differences"
-            read y
-            sdiff $f1o $f2o | grep "|"
-          fi
-          echo "<return> to continue"
-          read y
-        fi
-      fi
-    fi
-#
-# Check obs.stat files (if they exist)
-#
-    if  [  -f $f1h ] && [  -f $f2h ]; then
-      nl=(`wc -l $f2h`)
-      tail -${nl[0]} $f1h > f1.tmp$$
-      cmp -s f1.tmp$$ $f2h
-      if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then
-          printf "${format_field1} %s %s\n" $nam "obs.stat    restartability   passed  :" $dorv
-        fi
-      else
-        get_ktdiff2 f1.tmp$$ $f2h
-        printf "\e[38;5;196m${format_field1} %s %s %s %-5s %s\e[0m\n" $nam "obs.stat    restartability   FAILED  :" $dorv " (results are different after " $ktdiff " time steps)"
-        RESTA_EC=1
-#
-# Offer view of differences on the second pass
-#
-        if [ $pass == 1 ]; then
-          echo "<return> to view obs.stat differences"
-          read y
-          sdiff f1.tmp$$ $f2h
-#
-# Only offer ocean.output view if it has not been viewed previously
-#
-          if [ $done_oce == 0 ]; then
-            echo "<return> to view ocean.output differences"
-            read y
-            sdiff $f1o $f2o | grep "|"
-          fi
-          echo "<return> to continue"
-          read y
-        fi
-      fi
-    fi
-    rm f1.tmp$$
+    # check incomplete
+    for RUN in LONG SHORT; do
+      check_incomplete ${db_path}/$RUN/ $nam
+      err=$?
+      RESTA_EC=$((RESTA_EC + err))
+      if [ $err != 0 ]; then return ; fi
+    done
+    #
+    # check run.stat tracer.stat obs.stat
+    for file in ${statfiles[@]}; do
+      f1=${db_path}/LONG/$file
+      f2=${db_path}/SHORT/$file
+      compare_files $f1 $f2 $file $nam RESTA $dorv
+      RESTA_EC=$(( RESTA_EC + $? ))
+    done
+    #
   fi
 }
 
 function reprotest(){
+  local err
 #
 # Reproducibility checks. Expects REPRO_N_M and REPRO_I_J run directories
 # Compares end of stat files from each
 #
   vdir=$1
   nam=$2
-  pass=$3
 #
 # database path
   get_dorv
@@ -392,134 +161,153 @@ function reprotest(){
 # check if directory is here
   if [ ! -d ${db_path} ]; then
     printf "${format_field1} %s %s\n" $nam  "directory                    MISSING :" $dorv
-    REPRO_EC=R1
+    REPRO_EC=1
     MD_WARN=1
     return
   fi
 #
   if [ -d ${db_path} ]; then
     # check ocean output
-    runtest $vdir $nam $pass REPRO
+    runtest $vdir $nam REPRO
     #
     # check reproducibility
     rep1=`ls -1rt ${db_path}/ | grep REPRO | tail -2l | head -1 `
     rep2=`ls -1rt ${db_path}/ | grep REPRO | tail -1l`
     if [ $rep1 == $rep2 ]; then
        rep2=''
+       # Should this trigger an error ?
     fi
-    f1o=${db_path}/$rep1/ocean.output
-    f1s=${db_path}/$rep1/run.stat
-    f1t=${db_path}/$rep1/tracer.stat
-    f1h=${db_path}/$rep1/obs.stat
-    f2o=${db_path}/$rep2/ocean.output
-    f2s=${db_path}/$rep2/run.stat
-    f2t=${db_path}/$rep2/tracer.stat
-    f2h=${db_path}/$rep2/obs.stat
-
-    if  [ ! -f $f1s ] && [ ! -f $f1t ] ; then
-      printf "${format_field1} %s\n" $nam " incomplete test"
-      REPRO_EC=1
-      return
-    fi
-    if  [ ! -f $f2s ] && [ ! -f $f2t ] ; then
-      printf "${format_field1} %s\n" $nam " incomplete test"
-      REPRO_EC=1
-      return
-    fi
-#
-    done_oce=0
-
-    if  [ -f $f1s ] && [ -f $f2s ] ; then
-      cmp -s $f1s $f2s
-      if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then
-          printf "${format_field1} %s %s\n" $nam  "run.stat    reproducibility  passed  :" $dorv
-        fi
-      else
-        get_ktdiff $f1s $f2s
-        printf "\e[38;5;196m${format_field1} %s %s %s %-5s %s\e[0m\n" $nam "run.stat    reproducibility  FAILED : " $dorv " (results are different after " $ktdiff " time steps)"
-        REPRO_EC=1
-#
-# Offer view of differences on the second pass
-#
-        if [ $pass == 1 ]; then
-          echo "<return> to view run.stat differences"
-          read y
-          sdiff $f1s $f2s
-          echo "<return> to view ocean.output differences"
-          read y
-          sdiff $f1o $f2o | grep "|"
-          done_oce=1
-          echo "<return> to continue"
-          read y
-        fi
-      fi
-    fi
-#
-# Check tracer.stat files (if they exist)
-#
-    if  [ -f $f1t ] && [ -f $f2t ] ; then
-      cmp -s $f1t $f2t
-      if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then           printf "${format_field1} %s %s\n" $nam "tracer.stat reproducibility  passed  :" $dorv
-        fi
-      else
-        get_ktdiff2 $f1t $f2t
-        printf "\e[38;5;196m${format_field1} %s %s %s %-5s %s\e[0m\n" $nam "tracer.stat reproducibility  FAILED : " $dorv " (results are different after " $ktdiff " time steps)"
-        REPRO_EC=1
-#
-# Offer view of differences on the second pass
-#
-        if [ $pass == 1 ]; then
-          echo "<return> to view tracer.stat differences"
-          read y
-          sdiff $f1t $f2t
-#
-# Only offer ocean.output view if it has not been viewed previously
-#
-          if [ $done_oce == 0 ]; then
-            echo "<return> to view ocean.output differences"
-            read y
-            sdiff $f1o $f2o | grep "|"
-          fi
-          echo "<return> to continue"
-          read y
-        fi
-      fi
-    fi
-#
-# Check obs.stat files (if they exist)
-#
-    if  [ -f $f1h ] && [ -f $f2h ] ; then
-      cmp -s $f1h $f2h
-      if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then           printf "${format_field1} %s %s\n" $nam "obs.stat    reproducibility  passed  :" $dorv
-        fi
-      else
-        get_ktdiff2 $f1h $f2h
-        printf "\e[38;5;196m${format_field1} %s %s %s %-5s %s\e[0m\n" $nam "obs.stat    reproducibility  FAILED  :" $dorv " (results are different after " $ktdiff " time steps)"
-        REPRO_EC=1
-#
-# Offer view of differences on the second pass
-#
-        if [ $pass == 1 ]; then
-          echo "<return> to view obs.stat differences"
-          read y
-          sdiff $f1h $f2h
-#
-# Only offer ocean.output view if it has not been viewed previously
-#
-          if [ $done_oce == 0 ]; then
-            echo "<return> to view ocean.output differences"
-            read y
-            sdiff $f1o $f2o | grep "|"
-          fi
-          echo "<return> to continue"
-          read y
-        fi
-      fi
-    fi
+    #
+    # check incomplete
+    for RUN in $rep1 $rep2; do
+      check_incomplete ${db_path}/$RUN/ $nam
+      err=$?
+      REPRO_EC=$((REPRO_EC + err))
+      if [ $err != 0 ]; then return ; fi
+    done
+    #
+    # check run.stat tracer.stat obs.stat
+    for file in ${statfiles[@]}; do
+      f1=${db_path}/$rep1/$file
+      f2=${db_path}/$rep2/$file
+      compare_files $f1 $f2 $file $nam REPRO $dorv
+      REPRO_EC=$(( REPRO_EC + $? ))
+    done
   fi
+}
+
+function check_incomplete() {
+    local path=$1
+    local nam=$2         # Nom de la configuration
+
+    local f1=${path}/run.stat    # Chemin du premier fichier
+    local f2=${path}/tracer.stat # Chemin du second fichier
+
+    local err=0
+    # check files presence
+    if  [ ! -f $f1 ] && [ ! -f $f2 ] ; then
+      printf "${format_field1} %s\n" $nam " incomplete test"
+      err=1
+    else
+      err=0
+    fi
+    #
+    return $err
+}
+
+function compare_files() {
+    local f1=$1          # Chemin du premier fichier
+    local f2=$2          # Chemin du second fichier
+    local file_name=$3   # Nom du fichier (ex: "run.stat")
+    local nam=$4         # Nom de la configuration
+    local test_type=$5   # Type de test (ex: "REST")
+    local dorv=$6        # Répertoire de révision
+
+    local rtest
+    local rref
+    local test_name
+
+    # set up names for the various tests
+    if [ $test_type == 'RESTA' ]; then
+      test_name='restartability'
+    elif [ $test_type == 'REPRO' ]; then
+      test_name='reproducibility'
+    elif [ $test_type == 'ROT90' ]; then
+      test_name='90deg rotation'
+    elif [ $test_type == 'ROT180' ]; then
+      test_name='180deg rotation'
+    elif [ $test_type == 'SHA' ]; then
+      test_name='sha comparison'
+    elif [ $test_type == 'SA' ]; then
+      test_name='standalone comp.'
+    else
+      echo "Error : comparison type not recognised: $test_type"
+      return 1
+    fi
+
+    msg_passed=("$nam" "$file_name" "$test_name" "passed" ":" "$dorv")
+    msg_failed=("$nam" "$file_name" "$test_name" "FAILED" ":" "$dorv" "(results differ after" "$ktdiff" "time steps)")
+    fmt_passed="${format_field1} %-11s %-16s %-7s %s %s\n"
+    fmt_failed="\e[38;5;160m${format_field1} %-11s %-16s %-7s %s %s %s %-5s %s\e[0m\n"
+    ktidx=7
+
+    if [ $test_type == 'SHA' ]; then
+      msg_passed=("$nam" "$file_name" "files are identical" "${TESTD}")
+      msg_failed=("$nam" "$file_name" "files are DIFFERENT (after" "$ktdiff" "time steps)" "${TESTD}")
+      fmt_passed="${format_field1} %-28s %s (%s)\n"
+      fmt_failed="${format_field1} %-28s %s %s %-5s (%s)\n"
+      ktidx=3
+    elif [ $test_type == 'SA' ]; then
+      rref=`dirname $f1 | awk -F '/' '{print $NF}'` 
+      rtest=`dirname $f2 | awk -F '/' '{print $NF}'` 
+      label=`printf "%-7s %s" "${rtest}" "vs ${nam}/${rref}"`
+      msg_passed=("${label}" "$file_name" "identical        passed  : ${dorv}")
+      msg_failed=("${label}" "$file_name" "differs          FAILED  : ${dorv} (results differ after" "$ktdiff" "time steps)")
+      fmt_passed="${format_field1} %-11s %s\n"
+      fmt_failed="\e[38;5;160m${format_field1} %-11s %s %s %s\e[0m\n"
+      ktidx=3
+    fi
+
+    # Compare les fichiers
+    if  [ -f $f1 ] && [ -f $f2 ] ; then
+       
+      # if restartability, only the last X lines are tested
+      if [ $test_type == 'RESTA' ]; then
+        nl=(`wc -l $f2`)
+        tail -${nl[0]} $f1 > f1.tmp$$
+        f1=f1.tmp$$
+      fi
+       
+      if cmp -s "$f1" "$f2"; then
+
+	# print passed message
+        printf "$fmt_passed" "${msg_passed[@]}"
+	 
+	# clean tmp file
+        if [ $test_type == 'RESTA' ]; then rm -f $f1; fi
+	 
+	# return error code
+        return 0
+
+      else
+	
+	# get kt
+        get_ktdiff $f1 $f2
+
+	# print failed message
+        msg_failed[$ktidx]="$ktdiff"
+
+	# print failed message
+        printf "$fmt_failed" "${msg_failed[@]}"
+	 
+	# clean tmp file
+        if [ $test_type == 'RESTA' ]; then rm -f $f1; fi
+	 
+	# return error code
+        return 1
+
+      fi
+    fi
 }
 
 function getavgtime() {
@@ -528,6 +316,27 @@ function getavgtime() {
     else
 	grep -e 'avg over all MPI processes ' $1 | head -n 1 | sed -e 's/[^0-9\.]//g'
     fi
+}
+
+function compare_timing() {
+#
+# print timing comparison of 2 timing file
+  local f1=$1          # Chemin du premier fichier
+  local f2=$2          # Chemin du second fichier
+  local nam=$3         # Nom de la configuration
+
+  if  [ -f $f1 ] && [ -f $f2 ] ; then
+    tnew=$( getavgtime $f1 )
+    tref=$( getavgtime $f2 )
+    if [[ $? == 0 ]] && [[ -n "${tnew}" ]] && [[ -n "${tref}" ]]; then
+      tdif=$( echo ${tnew} ${tref} | awk '{print $1 - $2}')
+      if (( $(echo "$tnew > $tref" |bc -l) )); then
+        printf "${format_field1} %10s %11s %14s %11s %14s \\e[41;33;196m%10s\\e[0m\n" $nam "ref. time:" $tref "cur. time:" $tnew "diff.:" $tdif
+      else
+        printf "${format_field1} %10s %11s %14s %11s %14s \\e[42;01;196m%10s\\e[0m\n" $nam "ref. time:" $tref "cur. time:" $tnew "diff.:" $tdif
+      fi
+    fi
+  fi
 }
 
 function runcmpres(){
@@ -539,7 +348,6 @@ function runcmpres(){
   nam=$2
   vdirref=$3
   dorvref=$4
-  pass=$5
 #
 # database path
   get_dorv
@@ -565,92 +373,15 @@ function runcmpres(){
   if [ -d ${db_path} ]; then
     # Selection of the test run used for the comparison (LONG or one of the reproducibility-test runs)
     TESTD=$(ls -1 ${db_path}/ | grep -m 1 -e '^LONG$' -e '^REPRO_'); TESTD=${TESTD:-LONG}
-    f1s=${db_path}/${TESTD}/run.stat
-    f1t=${db_path}/${TESTD}/tracer.stat
-    f1h=${db_path}/${TESTD}/obs.stat
-    f2s=${db_path_ref}/${TESTD}/run.stat
-    f2t=${db_path_ref}/${TESTD}/tracer.stat
-    f2h=${db_path_ref}/${TESTD}/obs.stat
-    if  [ ! -f $f1s ] && [ ! -f $f1t ] ; then
-      printf "${format_field1} %s\n" $nam "incomplete test"
-      REFCMP_EC=1
-      return
-    fi
-    if  [ ! -f $f2s ] && [ ! -f $f2t ] ; then
-      printf "${format_field1} %s\n" $nam "incomplete test"
-      REFCMP_EC=1
-      return
-    fi
-#
-    done_oce=0
+    #
+    # check run.stat tracer.stat obs.stat
+    for file in ${statfiles[@]}; do
+      f1=${db_path}/${TESTD}/$file
+      f2=${db_path_ref}/${TESTD}/$file
+      compare_files $f1 $f2 $file $nam SHA $dorv
+      REFCMP_EC=$(( REFCMP_EC + $? ))
+    done
 
-    if  [ -f $f1s ] && [ -f $f2s ] ; then
-      cmp -s $f1s $f2s
-      if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then
-          printf "${format_field1} %-28s %s (%s)\n" $nam "run.stat" "files are identical " ${TESTD}
-        fi
-      else
-        get_ktdiff $f1s $f2s
-        printf "${format_field1} %-28s %s %s %-5s (%s)\n" $nam "run.stat" "files are DIFFERENT (results are different after " $ktdiff " time steps) " ${TESTD}
-        REFCMP_EC=1
-#
-# Offer view of differences on the second pass
-#
-        if [ $pass == 1 ]; then
-          echo "<return> to view run.stat differences"
-          read y
-          sdiff $f1s $f2s
-          done_oce=1
-          echo "<return> to continue"
-          read y
-        fi
-      fi
-    fi
-    # Check tracer.stat files (if they exist)
-#
-    if  [ -f $f1t ] && [ -f $f2t ] ; then
-      cmp -s $f1t $f2t
-      if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then
-          printf "${format_field1} %-28s %s (%s)\n" $nam "tracer.stat" "files are identical " ${TESTD}
-        fi
-      else
-        get_ktdiff2 $f1t $f2t
-        printf "${format_field1} %-28s %s %s %-5s (%s)\n" $nam "tracer.stat" "files are DIFFERENT (results are different after " $ktdiff " time steps) " ${TESTD}
-        REFCMP_EC=1
-#
-# Offer view of differences on the second pass
-#
-        if [ $pass == 1 ]; then
-          echo "<return> to view tracer.stat differences"
-          read y
-          sdiff $f1t $f2t
-        fi
-      fi
-    fi
-    # Check obs.stat files (if they exist)
-#
-    if  [ -f $f1h ] && [ -f $f2h ] ; then
-      cmp -s $f1h $f2h
-      if [ $? == 0 ]; then
-        if [ $pass == 0 ]; then
-          printf "${format_field1} %-28s %s (%s)\n" $nam "obs.stat" "files are identical " ${TESTD}
-        fi
-      else
-        get_ktdiff2 $f1h $f2h
-        printf "${format_field1} %-28s %s %s %-5s (%s)\n" $nam "obs.stat" "files are DIFFERENT (results are different after " $ktdiff " time steps) " ${TESTD}
-        REFCMP_EC=1
-#
-# Offer view of differences on the second pass
-#
-        if [ $pass == 1 ]; then
-          echo "<return> to view obs.stat differences"
-          read y
-          sdiff $f1h $f2h
-        fi
-      fi
-    fi
   fi
 }
 
@@ -662,7 +393,6 @@ function runcmptim(){
   nam=$2
   vdirref=$3
   dorvref=$4
-  pass=$5
 #
 # database path
   get_dorv
@@ -685,23 +415,9 @@ function runcmptim(){
     TESTD=$(ls -1 ${db_path}/ | grep -m 1 -e '^LONG$' -e '^REPRO_'); TESTD=${TESTD:-LONG}
     f1a=${db_path}/${TESTD}/timing.output
     f2a=${db_path_ref}/${TESTD}/timing.output
-#
-# Report average CPU time differences (if available)
-#
-    if  [ -f $f1a ] && [ -f $f2a ] ; then
-      tnew=$( getavgtime $f1a )
-      tref=$( getavgtime $f2a )
-      if [[ $? == 0 ]] && [[ -n "${tnew}" ]] && [[ -n "${tref}" ]]; then
-        if [ $pass == 0 ]; then
-          tdif=$( echo ${tnew} ${tref} | awk '{print $1 - $2}')
-          if (( $(echo "$tnew > $tref" |bc -l) )); then
-            printf "${format_field1} %10s %10s %14s %10s %14s \\e[41;33;196m%10s\\e[0m\n" $nam "ref. time:" $tref "cur. time:" $tnew "diff.:" $tdif
-          else
-            printf "${format_field1} %10s %10s %14s %10s %14s \\e[42;01;196m%10s\\e[0m\n" $nam "ref. time:" $tref "cur. time:" $tnew "diff.:" $tdif
-          fi
-        fi
-      fi
-    fi
+    #
+    # Report average CPU time differences (if available)
+    compare_timing $f1a $f2a ${nam}
   fi
 }
 
@@ -717,8 +433,7 @@ function runtest(){
 #
   vdir=$1                                                   # validation sub-directory
   naml=$2                                                   # test configuration
-  pass=$3                                                   # pass (0 or 1)
-  ttype=$4                                                  # test-run type: test-run name,
+  ttype=$3                                                  # test-run type: test-run name,
   phyopt=0
   cpl=0
   [[ $ttype == 'RST' ]] && ttype="LONG|SHORT"               #    'RST' (checks both 'LONG' and 'SHORT' test runs), or
@@ -740,20 +455,13 @@ function runtest(){
        naml2=$naml
        [ $phyopt == 1 ] && naml2="${naml}/${tdir#EXP-}"
        if  [ ! -f $f1o ] ; then
-          if [ $pass == 0 ]; then printf "${format_field1} %s %s\n" "${naml2}" "ocean.output                 MISSING :" $dorv ; fi
+          printf "${format_field1} %s %s\n" "${naml2}" "ocean.output                 MISSING :" $dorv
           [ $phyopt == 0 ] && OCEOUT_EC=1 && return   # record error and stop testing unless there are
           [ $phyopt == 1 ] && PHYOPT_EC=1             #    further PHYOPTS test variants to be tested
        else
           nerr=`grep 'E R R O R' $f1o | wc -l`
           if [[ $nerr > 0 ]]; then
              printf "\e[38;5;196m${format_field1} %s %s %s\e[0m\n" "${naml2}" "run                          FAILED : " $dorv " ( E R R O R in ocean.output) "
-             if [ $pass == 1 ]; then
-                echo "<return> to view end of ocean.output"
-                read y
-                tail -100 $f1o
-                echo ''
-                echo "full ocean.output available here: $f1o"
-             fi
              [ $phyopt == 0 ] && OCEOUT_EC=1 && return   # record error and stop testing unless there are
              [ $phyopt == 1 ] && PHYOPT_EC=1             #    further PHYOPTS test variants to be tested
           elif [ $phyopt == 1 ]; then
@@ -764,7 +472,7 @@ function runtest(){
        fi
     done
   else
-     if [ $pass == 0 ]; then printf "${format_field1} %s %s\n" ${naml} "directory                    MISSING :" $dorv ; fi
+     printf "${format_field1} %s %s\n" ${naml} "directory                    MISSING :" $dorv
      [ $phyopt == 0 ] && OCEOUT_EC=1
      [ $phyopt == 1 ] && PHYOPT_EC=1
      MD_WARN=1
@@ -781,49 +489,26 @@ function standalonetest(){
   nam=$2     # Base configuration name
   rref=$3    # Name of the reference run
   rtest=$4   # Name of the run of the alternative configuration
-  pass=$5    # First (0) or second (1) pass
 #
 # database path
   get_dorv
   db_path="${vdir}/${dorv}/${VALID_VAR}/${nam}"
-#
-  EC0=1   # Initial test error code
+  #
+  # check directory presence
   if [ ! -d ${db_path} ] || [ ! -d ${db_path}_${rtest} ]; then
     printf "${format_field1} %-28s %s\n" "${nam}_${rtest} vs ${nam}" "directory" "MISSING"
+    VARIANTS_EC=$(( VARIANTS_EC + 1 ))
+    return
   fi
-  for testfile in ${statfiles}; do
+  #
+  # check stats files
+  for testfile in ${statfiles[@]}; do
     f1=${db_path}/${rref}/${testfile}
     f2=${db_path}_${rtest}/${rtest}/${testfile}
-    if [ -f ${f1} ] && [ -f ${f2} ]; then
-      EC=1   # Initial test-file error code
-      label=`printf "%-7s %s" "${rtest}" "vs ${nam}/${rref}"`
-      # Comparison
-      cmp -s ${f1} ${f2}
-      if [ $? == 0 ]; then
-        if [ ${pass} == 0 ]; then
-          printf "${format_field1} %-11s %s\n" "${label}" "${testfile}" "identical        passed  : ${dorv}"
-          EC=0    # Mark current comparison as succesful
-          EC0=0   # Mark overall test as successful
-        fi
-      else
-        if [ ${testfile} == 'run.stat' ]; then
-          get_ktdiff ${f1} ${f2}
-        else
-          get_ktdiff2 ${f1} ${f2}
-        fi
-        printf "\e[38;5;196m${format_field1} %-11s %s\e[0m\n" "${label}" "${testfile}" "differs          FAILED  : ${dorv} (results differ after ${ktdiff} time steps)"
-        if [ ${pass} -eq 1 ]; then
-          echo "<enter> to view the difference"
-          read y
-          sdiff $f1 $f2
-          echo "<enter> to continue"
-          read y
-        fi
-      fi
-      [ ${EC} == 1 ] && VARIANTS_EC=1   # Unsuccessful comparison found
-    fi
+
+    compare_files $f1 $f2 $testfile $nam SA $dorv
+    VARIANTS_EC=$(( VARIANTS_EC + $? ))
   done
-  [ ${EC0} == 1 ] && VARIANTS_EC=1   # No successful comparison found
 }
 
 ########################### END of function definitions #################################
@@ -1094,19 +779,6 @@ var2="${var2%\"}"
 for v in ${var2//\";\"/ }; do printf "           %-24s : %s\n" ${v/\",\"/ }; done
 echo ""
 
-#
-for pass in  $RPT_PASSES
-do
-
-  if [ $pass == 0 ]; then
-    echo ""
-    echo "!!---------------1st pass------------------!!"
-  fi
-  if [ $pass == 1 ]; then
-     echo ""
-     echo "!!---------------2nd pass------------------!!"
-  fi
-
   # Rotational symmetry 
   if [ ${DO_ROTSYM} -eq 1 ]; then
      echo ""
@@ -1114,7 +786,7 @@ do
      ROTSYM_CONFIGS=(${TEST_CONFIGS[@]/CPL_OASIS})
      for rotational_test in ${ROTSYM_CONFIGS[@]}
      do
-        rottest $NEMO_VALID ${rotational_test} $pass
+        rottest $NEMO_VALID ${rotational_test}
      done
   fi
 
@@ -1126,7 +798,7 @@ do
     RESTART_CONFIGS=(${RESTART_CONFIGS[@]/CPL_OASIS})
     for restart_test in ${RESTART_CONFIGS[@]}
     do
-      [ "${restart_test}" != "ORCA2_ICE_OBS" ] && resttest $NEMO_VALID $restart_test $pass
+      [ "${restart_test}" != "ORCA2_ICE_OBS" ] && resttest $NEMO_VALID $restart_test
     done
   fi
 
@@ -1139,7 +811,7 @@ do
     for repro_test in ${REPRO_CONFIGS[@]}
     do
       if [[ ${repro_test} != *"OVERFLOW"* && ${repro_test} != *"LOCK_EXCHANGE"* && ${repro_test} != *"IWAVE"* ]]; then
-         reprotest $NEMO_VALID $repro_test $pass
+         reprotest $NEMO_VALID $repro_test
       fi
     done
   fi
@@ -1150,7 +822,7 @@ do
     echo "   !----phyopt----!   "
     PHYOPTS_CONFIGS=(${TEST_CONFIGS[@]/CPL_OASIS})
     for phyopt_test in ${PHYOPTS_CONFIGS[@]}; do
-       runtest $NEMO_VALID $phyopt_test $pass "EXP"
+       runtest $NEMO_VALID $phyopt_test "EXP"
     done
   fi
 
@@ -1162,7 +834,7 @@ do
      for coupling_test in ${TEST_CONFIGS[@]}
      do
         for valid_test in ${COUPLING_CONFIGS[@]} ; do
-            [[ ${coupling_test} == ${valid_test} ]] && runtest $NEMO_VALID ${coupling_test} $pass "CPL" && break
+            [[ ${coupling_test} == ${valid_test} ]] && runtest $NEMO_VALID ${coupling_test} "CPL" && break
         done
      done
   fi
@@ -1184,7 +856,7 @@ do
           run_test=`echo ${standalone_run} | cut -f 2 -d ':'`
           run_ref=`echo ${standalone_run} | cut -f 3 -d ':'`
           if [[ ${TEST_CONFIGS[@]} =~ "${conf}" ]]; then
-              standalonetest ${NEMO_VALID} ${conf} ${run_ref} ${run_test} ${pass}
+              standalonetest ${NEMO_VALID} ${conf} ${run_ref} ${run_test}
           fi
       done
   fi
@@ -1202,13 +874,13 @@ do
       echo ''
       for runcmp_test in ${TEST_CONFIGS[@]}
       do
-        runcmpres $NEMO_VALID $runcmp_test $NEMO_VALID_REF $VALID_REV_REF $pass
+        runcmpres $NEMO_VALID $runcmp_test $NEMO_VALID_REF $VALID_REV_REF
       done
       echo ''
       echo 'Report timing differences between REFERENCE and VALID (if available) :'
       for repro_test in ${TEST_CONFIGS[@]}
       do
-        runcmptim $NEMO_VALID $repro_test $NEMO_VALID_REF $VALID_REV_REF $pass
+        runcmptim $NEMO_VALID $repro_test $NEMO_VALID_REF $VALID_REV_REF
       done
     else
       echo ''
@@ -1217,8 +889,6 @@ do
       echo ''
     fi
   fi
-
-done
 
 if [[ ${MD_WARN} -ge 1 ]]; then
 
@@ -1240,6 +910,7 @@ if [[ ${MD_WARN} -ge 1 ]]; then
     echo "  'param.cfg' ('TEST_TYPES' and 'TEST_CONFIG_AVAILABLE', respectively)."
     echo
 fi
+#
 # error code
 SETTE_EC=$((REPRO_EC+RESTA_EC+REFCMP_EC+CPUCMP_EC+OCEOUT_EC+AGRIF_EC+PHYOPT_EC+ROT_EC+VARIANTS_EC))
 echo ""
