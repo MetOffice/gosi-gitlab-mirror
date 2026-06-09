@@ -122,6 +122,12 @@ CONTAINS
          ztrbbio(:,:,:,jn) = tr(:,:,:,jn,Kbb)
       END DO
 
+      ! At that point, RHS is in flux (from TOP)
+      ! Thus, we need to convert RHS from flux to concentration
+      DO jn = jp_pcs0, jp_pcs1              
+         tr(:,:,:,jn,Krhs) = tr(:,:,:,jn,Krhs) * rfact
+      END DO
+
       !
       IF( ll_bc )    CALL p4z_bc( kt, Kbb, Kmm, Krhs )   ! external sources of nutrients 
       !
