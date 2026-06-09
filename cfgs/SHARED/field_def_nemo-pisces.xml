@@ -58,9 +58,9 @@
     <field id="GSi_e3t"      long_name="GSi * e3t"                                unit="mmol/m2"  > GSi * e3t </field >
     <field id="NFe"          long_name="Nano iron Concentration"                  unit="mmol/m3" />
     <field id="NFe_e3t"      long_name="NFe * e3t"                                unit="mmol/m2"  > NFe * e3t </field >
-    <field id="NCHL"         long_name="Nano chlorophyl Concentration"            unit="gChl/m3"   />
+    <field id="NCHL"         long_name="Nano chlorophyl Concentration"            unit="mgChl/m3"   />
     <field id="NCHL_e3t"     long_name="NCHL * e3t"                               unit="mmol/m2"  > NCHL * e3t </field >
-    <field id="DCHL"         long_name="Diatoms chlorophyl Concentration"         unit="gChl/m3"   />
+    <field id="DCHL"         long_name="Diatoms chlorophyl Concentration"         unit="mgChl/m3"   />
     <field id="DCHL_e3t"     long_name="DCHL * e3t"                               unit="mmol/m2"  > DCHL * e3t </field >
     <field id="NO3"          long_name="Nitrate Concentration"                    unit="mmol/m3" />
     <field id="NO3_e3t"      long_name="NO3 * e3t"                                unit="mmol/m2"  > NO3 * e3t </field >
@@ -97,7 +97,7 @@
     <field id="PICP_e3t"     long_name="PICP * e3t"                               unit="mmol/m2"  > PICP * e3t </field >
     <field id="PFe"          long_name="Picophytoplankton Fe biomass"             unit="mmol/m3" />
     <field id="PFe_e3t"      long_name="PFe * e3t"                                unit="mmol/m2"  > PFe * e3t </field >
-    <field id="PCHL"         long_name="Picophytoplankton Chl biomass"            unit="gChl/m3" />
+    <field id="PCHL"         long_name="Picophytoplankton Chl biomass"            unit="mgChl/m3" />
     <field id="PCHL_e3t"     long_name="PCHL * e3t"                               unit="mmol/m2"  > PCHL * e3t </field >
     <field id="DZC"          long_name="Diazotroph C biomass"                     unit="mmol/m3" />
     <field id="DZC_e3t"      long_name="DZC * e3t"                                unit="mmol/m2"  > DZC * e3t </field >
@@ -246,7 +246,7 @@
       <field id="SIZEP"       long_name="Mean relative size of picophyto."        unit="-"           />
       <field id="SIZED"       long_name="Mean relative size of diatoms"           unit="-"           />
       <field id="THETANANO"   long_name="Diagnostic Chl:C ratio"                  unit="mgChl/mgC"   />
-      <field id="CHL"         long_name="Total Chl"                               unit="gChl/m3"     />
+      <field id="CHL"         long_name="Total Chl"                               unit="mgChl/m3"     />
       <field id="RASSD"       long_name="Size of the protein machinery (Diat.)"   unit="-"           />
       <field id="RASSN"       long_name="Size of the protein machinery (Nano.)"   unit="-"           />
       <field id="RASSP"       long_name="Size of the protein machinery (Pico.)"   unit="-"           />
