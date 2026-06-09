@@ -46,7 +46,7 @@ MODULE sbcrnf
    LOGICAL           , PUBLIC ::   ln_rnf_icb        !: iceberg flux is specified in a file
    LOGICAL                    ::   ln_icb_mass       !: Scale iceberg flux to match FW flux from coupled model
    LOGICAL                    ::   ln_rnf_tem        !: temperature river runoffs attribute specified in a file
-   LOGICAL           , PUBLIC ::   ln_rnf_sal        !: salinity    river runoffs attribute specified in a file
+   LOGICAL                    ::   ln_rnf_sal        !: salinity    river runoffs attribute specified in a file
    TYPE(FLD_N)       , PUBLIC ::   sn_rnf            !: information about the runoff file to be read
    TYPE(FLD_N)                ::   sn_cnf            !: information about the runoff mouth file to be read
    TYPE(FLD_N)                ::   sn_i_rnf        !: information about the iceberg flux file to be read
@@ -111,6 +111,7 @@ CONTAINS
       !
       REAL(wp), DIMENSION(A2D(0)) ::   zqicb
       REAL(wp) ::   zqfr
+      REAL(wp), PARAMETER ::   zrnf_sal = 0._wp ! salinity of river runoff if not prescribed
       INTEGER  ::   ji, jj    ! dummy loop indices
       INTEGER  ::   z_err = 0 ! dummy integer for error handling
       !!----------------------------------------------------------------------
@@ -199,7 +200,11 @@ CONTAINS
             rnf_tsc(:,:,jp_tem) = MAX( sst_m(A2D(0)), 0.0_wp ) * rnf(A2D(0)) * r1_rho0
          ENDIF
          !                                                           ! use runoffs salinity data
-         IF( ln_rnf_sal )   rnf_tsc(:,:,jp_sal) = ( sf_s_rnf(1)%fnow(:,:,1) ) * rnf(A2D(0)) * r1_rho0
+         IF( ln_rnf_sal ) THEN
+            rnf_tsc(:,:,jp_sal) = ( sf_s_rnf(1)%fnow(:,:,1) ) * rnf(A2D(0)) * r1_rho0
+         ELSE
+            rnf_tsc(:,:,jp_sal) = zrnf_sal * rnf(A2D(0)) * r1_rho0
+         ENDIF
          !                                                           ! else use S=0 for runoffs (done one for all in the init)
                                          CALL iom_put( 'runoffs'     , rnf(:,:)                         )   ! output runoff mass flux
          IF( iom_use('hflx_rnf_cea') )   CALL iom_put( 'hflx_rnf_cea', rnf_tsc(:,:,jp_tem) * rho0 * rcp )   ! output runoff sensible heat (W/m2)

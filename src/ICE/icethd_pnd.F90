@@ -100,7 +100,7 @@ CONTAINS
    END FUNCTION ice_thd_pnd_alloc
 
    
-   SUBROUTINE ice_thd_pnd
+   SUBROUTINE ice_thd_pnd( kt )
 
       !!-------------------------------------------------------------------
       !!               ***  ROUTINE ice_thd_pnd   ***
@@ -111,9 +111,22 @@ CONTAINS
       !!              No heat, no salt.
       !!              The current diagnostics lacks a contribution from drainage
       !!-------------------------------------------------------------------
+      INTEGER, INTENT(in) :: kt      ! Ocean time step
+      !
       INTEGER ::   ji, jj, jl        ! loop indices
       !!-------------------------------------------------------------------
       IF( ln_timing )   CALL timing_start('icethd_pnd')
+
+      ! Melt pond diagnostics
+      IF( kt == nit000 ) THEN
+         IF( iom_use('dvpn_mlt') .OR. iom_use('dvpn_lid') .OR. iom_use('dvpn_drn') .OR. iom_use('dvpn_rnf') ) THEN
+            ll_diag_pnd = .TRUE.
+            ! Allocate arrays
+            IF( ice_thd_pnd_alloc() /= 0 )   CALL ctl_stop( 'STOP', 'ice_thd_pnd: unable to allocate arrays' )
+         ELSE
+            ll_diag_pnd = .FALSE.
+         ENDIF
+      ENDIF
 
       IF( ln_icediachk )   CALL ice_cons_hsm( 0, 'icethd_pnd', rdiag_v, rdiag_s, rdiag_t, rdiag_fv, rdiag_fs, rdiag_ft )
       IF( ln_icediachk )   CALL ice_cons2D  ( 0, 'icethd_pnd',  diag_v,  diag_s,  diag_t,  diag_fv,  diag_fs,  diag_ft )
@@ -1334,7 +1347,7 @@ CONTAINS
 !!$         ELSEIF( nn_liquidus == 2 ) THEN ; Sbrine(jk) = -18.7_wp * zt1 - 0.519_wp * zt2 - 0.00535_wp * zt3 ! --- 3rd order liquidus, VC19
 !!$         ELSEIF( nn_liquidus == 3 ) THEN ; Sbrine(jk) = -17.6_wp * zt1 - 0.389_wp * zt2 - 0.00362_wp * zt3 ! --- Weast 71 liquidus in RJW14
 !!$         ENDIF
-          IF( (zti(jk)-rt0) <  - epsi06 ) THEN   ;   zv_br(jk) = zsi(jk) / zs_br
+          IF( (zti(jk)-rt0) <  - epsi06 ) THEN   ;   zv_br(jk) = zsi(jk) / MAX( zs_br, epsi10 )
           ELSE                                   ;   zv_br(jk) = 0._wp
           ENDIF
        ENDDO
@@ -1346,11 +1359,16 @@ CONTAINS
           ice_perm_eff = 3.e-8_wp * ztmp * ztmp * ztmp
        ELSEIF( np_perm_eff == 2 ) THEN ! Harmonic Mean                         
           ztmp = 0._wp
+          ice_perm_eff = 0._wp    ! default: impermeable
           DO jk = 1, nlay_i
+             IF( zv_br(jk) < epsi06 ) THEN
+                ztmp = 0._wp
+                EXIT              ! one zero layer => whole column is impermeable
+             ENDIF
              zperm = 3.e-8_wp * zv_br(jk)*zv_br(jk)*zv_br(jk)
              ztmp = ztmp + 1._wp / zperm
           END DO
-          ice_perm_eff = REAL( nlay_i, wp ) / ztmp
+          IF( ztmp > 0._wp )   ice_perm_eff = REAL( nlay_i, wp ) / ztmp
        END IF
 
    END FUNCTION ice_perm_eff
@@ -1417,16 +1435,6 @@ CONTAINS
       CASE( np_pndCST )
          IF( ln_pnd_lids ) THEN ; ln_pnd_lids = .FALSE. ; CALL ctl_warn( 'ln_pnd_lids=false when constant ponds' ) ; ENDIF
       END SELECT
-      !
-      IF( iom_use('dvpn_mlt') .OR. iom_use('dvpn_lid') .OR. iom_use('dvpn_drn') .OR. iom_use('dvpn_rnf') ) THEN
-         ll_diag_pnd = .TRUE.
-      ELSE
-         ll_diag_pnd = .FALSE.
-      ENDIF
-      !                              ! allocate arrays
-      IF( ll_diag_pnd ) THEN
-         IF( ice_thd_pnd_alloc() /= 0 )   CALL ctl_stop( 'STOP', 'ice_thd_pnd_init: unable to allocate arrays' )
-      ENDIF
       !
    END SUBROUTINE ice_thd_pnd_init
 

@@ -767,14 +767,17 @@ CONTAINS
                   &           - ( pu(ji,jj+1,jk) + pu(ji,jj,jk) ) * dj_e1u_2e1e2f(ji,jj)   ) * z1_e3f(ji,jj)
             END_2D
          CASE ( np_CRV )                           !* Coriolis + relative vorticity
-            DO_2D( 1, 1, 1, 1 )
-               zwz(ji,jj) = (  ff_f(ji,jj) + ( ( e2v(ji+1,jj  ) * pv(ji+1,jj,jk) - e2v(ji,jj) * pv(ji,jj,jk) )   & ! add () for
-                  &                          - ( e1u(ji  ,jj+1) * pu(ji,jj+1,jk) - e1u(ji,jj) * pu(ji,jj,jk) )   & ! NP repro
-                  &                          ) * r1_e1e2f(ji,jj)   ) * z1_e3f(ji,jj)
-            END_2D
-            IF( ln_dynvor_msk ) THEN                     ! mask the relative vorticity
+            IF( ln_dynvor_msk ) THEN 
                DO_2D( 1, 1, 1, 1 )
-                  zwz(ji,jj) = ( zwz(ji,jj) - ff_f(ji,jj) ) * fmask(ji,jj,jk) + ff_f(ji,jj)
+                  zwz(ji,jj) = (  ff_f(ji,jj) + ( ( e2v(ji+1,jj  ) * pv(ji+1,jj,jk) - e2v(ji,jj) * pv(ji,jj,jk) )   & ! add () for
+                     &                          - ( e1u(ji  ,jj+1) * pu(ji,jj+1,jk) - e1u(ji,jj) * pu(ji,jj,jk) )   & ! NP repro
+                     &                          ) * r1_e1e2f(ji,jj) * fmask(ji,jj,jk)   ) * z1_e3f(ji,jj)
+               END_2D
+            ELSE
+               DO_2D( 1, 1, 1, 1 )
+                  zwz(ji,jj) = (  ff_f(ji,jj) + ( ( e2v(ji+1,jj  ) * pv(ji+1,jj,jk) - e2v(ji,jj) * pv(ji,jj,jk) )   & ! add () for
+                     &                          - ( e1u(ji  ,jj+1) * pu(ji,jj+1,jk) - e1u(ji,jj) * pu(ji,jj,jk) )   & ! NP repro
+                     &                          ) * r1_e1e2f(ji,jj)   ) * z1_e3f(ji,jj)
                END_2D
             ENDIF
          CASE ( np_CME )                           !* Coriolis + metric

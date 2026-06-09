@@ -2250,6 +2250,7 @@ CONTAINS
 #endif
 
             IF( lldogrd ) THEN                                            ! add new grid definitions
+               ! 2D grid (not representing any particular vertical level)
                clgrd = TRIM(cdid)//'_2D'//clsfx(jn)                       ! new 2D grid name
                IF( .NOT. xios_is_valid_grid(clgrd) ) THEN                 ! if not already defined
                   CALL xios_add_child( gridgroup_hdl, grid_hdl, clgrd )       ! add a new 2D grid to grid_definition
@@ -2257,6 +2258,18 @@ CONTAINS
                   CALL xios_set_domain_attr( clgrd, domain_ref = cldom )      ! link this new domain to cldom
                   CALL xios_set_domain_attr( clgrd, name = cdid )             ! force the name to avoid duplicated dimension names
                ENDIF
+
+               ! Surface grid (2D grid representing the surface specifically)
+               clgrd = TRIM(cdid)//'_sfc'//clsfx(jn)                      ! new surface grid name
+               IF( .NOT. xios_is_valid_grid(clgrd) ) THEN                 ! if not already defined
+                  CALL xios_add_child( gridgroup_hdl, grid_hdl, clgrd )       ! add a new surface grid to grid_definition
+                  CALL xios_add_child( grid_hdl, domain_hdl, clgrd )          ! add a new domain
+                  CALL xios_set_domain_attr( clgrd, domain_ref = cldom )      ! link this new domain to cldom
+                  CALL xios_set_domain_attr( clgrd, name = cdid )             ! force the name to avoid duplicated dimension names
+               ENDIF
+               IF( PRESENT(mask_3D) )   CALL xios_set_grid_attr( clgrd, mask_2D = mask_3D(:,:,1) )
+
+               ! 3D grid
                clgrd = TRIM(cdid)//'_3D'//clsfx(jn)                       ! new 3D grid name
                IF( .NOT. xios_is_valid_grid(clgrd) ) THEN                 ! if not already defined
                   CALL xios_add_child( gridgroup_hdl, grid_hdl, clgrd )       ! add a new 3D grid to grid_definition
@@ -2568,8 +2581,11 @@ CONTAINS
                          zmask(:,:,1    ) = tmask(Nis0:Nie0, Njs0:Nje0,1)
          END SELECT
          !
-         CALL iom_set_domain_attr( "grid_"//cdgrd, mask_1D = RESHAPE(zmask(:,:,1),(/Ni_0*Nj_0    /)) /= 0.   &
-            &                                    , mask_3D = RESHAPE(zmask(:,:,:),(/Ni_0,Nj_0,jpk/)) /= 0. )
+         ! The 2D domain mask (mask_1D) is applied to all levels and the 3D grid mask (mask_3D) is combined with this.
+         ! mask_1D is therefore treated as a 'default' mask, valid wherever we have any ocean points in the column (to account
+         ! for ISF cavities). mask_3D then provides an accurate mask for the grid.
+         CALL iom_set_domain_attr( "grid_"//cdgrd, mask_1D = RESHAPE(MAXVAL(zmask(:,:,:), DIM=3 ),(/Ni_0*Nj_0    /)) /= 0.   &
+            &                                    , mask_3D = RESHAPE(       zmask(:,:,:)         ,(/Ni_0,Nj_0,jpk/)) /= 0. )
       ENDIF
       !
    END SUBROUTINE set_grid

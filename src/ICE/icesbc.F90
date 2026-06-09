@@ -388,7 +388,7 @@ CONTAINS
          !     qlead is the energy received from the atm. in the leads.
          !     If warming (zqld >= 0), then the energy in the leads is used to melt ice (bottom melting) => fhld  (W/m2)
          !     If cooling (zqld <  0), then the energy in the leads is used to grow ice in open water    => qlead (J.m-2)
-         IF( ( zqld - zqfr ) < 0._wp .OR. at_i(ji,jj) < epsi10 ) THEN
+         IF( ( zqld - zqfr ) < 0._wp ) THEN
             fhld (ji,jj) = 0._wp
             ! upper bound for qlead: qlead should be equal to zqld
             !                        but before using this heat for ice formation, we suppose that the ocean cools down till the freezing point.
@@ -405,21 +405,26 @@ CONTAINS
             qlead(ji,jj) = 0._wp
          ENDIF
          !
-         ! stop ice formation in open water if ice is very slow (i.e. landfast) and ice concentration reaches its max (minus a threshold at 0.01)
+         ! stop ice formation in open water if ice is very slow (i.e. landfast) and ice concentration reaches its max (minus a threshold at 0.001)
+         !                                                                      and ice is thicker than 3 meters (arbitrary)
          !    Note: This threshold is necessary when reading a landfast mask otherwise ice grows up to its limit at 20m
          !          The limit for ice velocity should be 0.5 mm/s as for observations of landfast but it works better with larger values
          !          Hence, we use 5 mm/s 
-         IF(  zvel(ji,jj) <= 5.e-03_wp .AND. at_i(ji,jj) >= (rn_amax_2d(ji,jj)-0.01_wp) )   qlead(ji,jj) = 0._wp
+         IF( zvel(ji,jj) <= 5.e-03_wp .AND. at_i(ji,jj) >= (rn_amax_2d(ji,jj)-0.001_wp) .AND. vt_i(ji,jj) >= 3._wp )   qlead(ji,jj) = 0._wp
          !
-         ! If the grid cell is almost fully covered by ice (no leads)
+         ! If the grid cell is almost fully covered by ice (no leads) and ice is thicker than 3 meters (arbitrary)
          ! => stop ice formation in open water
-         IF( at_i(ji,jj) >= (1._wp - epsi10) )   qlead(ji,jj) = 0._wp
+         IF( at_i(ji,jj) >= (1._wp - epsi10) .AND. vt_i(ji,jj) >= 3._wp )   qlead(ji,jj) = 0._wp
          !
          ! If ln_leadhfx is false
          ! => do not use energy of the leads to melt sea-ice
          IF( .NOT.ln_leadhfx )   fhld(ji,jj) = 0._wp
          !
       END_2D
+
+      ! If ln_leadhfx is false
+      ! => do not use transmitted solar flux to melt sea-ice (equivalent of setting frq_m=0)
+      IF( .NOT.ln_leadhfx )   frq_m(:,:) = 0._wp
 
       ! In case we bypass open-water ice formation
       IF( .NOT. ln_icedO )  qlead(:,:) = 0._wp

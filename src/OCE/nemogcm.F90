@@ -259,7 +259,7 @@ CONTAINS
       INTEGER ::   ios, ilocal_comm   ! local integers
       !!
       NAMELIST/namctl/ sn_cfctl, ln_timing, ln_diacfl, nn_isplt, nn_jsplt , nn_ictls,   &
-         &                                             nn_ictle, nn_jctls , nn_jctle
+         &                                  nn_npfchk, nn_ictle, nn_jctls , nn_jctle
       NAMELIST/namcfg/ ln_read_cfg, cn_domcfg, ln_closea, ln_write_cfg, cn_domcfg_out
       !!----------------------------------------------------------------------
       !
@@ -411,6 +411,14 @@ CONTAINS
                            CALL timing_open( lwp, mpi_comm_oce )   ! open timing report file
       IF( ln_timing    )   CALL timing_start( 'nemo_init' )
       !
+                           !
+                           ! Open local logical unit if verbose North Pole Folding check mode
+                           !
+                           IF ( l_IdoNFold .AND. nn_npfchk == 1 .AND. .NOT. lwp ) THEN
+                              CALL ctl_opn( numout, 'ocean.output', 'REPLACE', 'FORMATTED', 'SEQUENTIAL', -1, -1, .FALSE., narea )
+                              lwp = .TRUE.
+                           ENDIF
+
                            CALL     phy_cst         ! Physical constants
                            CALL     eos_init        ! Equation of state
                            CALL     wad_init        ! Wetting and drying options
@@ -558,6 +566,10 @@ CONTAINS
          WRITE(numout,*) '                              sn_cfctl%ptimincr  = ', sn_cfctl%ptimincr
          WRITE(numout,*) '      timing by routine               ln_timing  = ', ln_timing
          WRITE(numout,*) '      CFL diagnostics                 ln_diacfl  = ', ln_diacfl
+         WRITE(numout,*) '      North Pole Folding check        nn_npfchk  = ', nn_npfchk
+         WRITE(numout,*) '               nn_npfchk = 0: no check             '           
+         WRITE(numout,*) '                           1: verbose checking     '           
+         WRITE(numout,*) '                           2: stop if NPF mismatch '
       ENDIF
       !
       IF( .NOT.ln_read_cfg )   ln_closea = .false.   ! dealing possible only with a domcfg file
@@ -574,7 +586,6 @@ CONTAINS
       IF( 1._wp /= SIGN(1._wp,-0._wp)  )   CALL ctl_stop( 'nemo_ctl: The intrinsec SIGN function follows f2003 standard.',  &
          &                                                'Compile with key_nosignedzero enabled:',   &
          &                                                '--> add -Dkey_nosignedzero to the definition of %CPP in your arch file' )
-      !
 #if defined key_agrif
       IF( ln_timing )   CALL ctl_warn( 'AGRIF not yet implemented with ln_timing = true')
 #endif
