@@ -453,7 +453,7 @@ CONTAINS
       REAL(wp), DIMENSION(:,:,:)  , INTENT(inout)           ::   pdata     ! IN to keep the value if nothing is done
       REAL(wp), DIMENSION(:,:,:,:), INTENT(in   ), OPTIONAL ::   pmask     ! coupling mask
       !!
-      INTEGER                                             ::   jc,jm     ! local loop index
+      INTEGER                                             ::   jc,jm,jl  ! local loop index
       INTEGER                                             ::   ib, iu(2) ! depth level indexes
       LOGICAL                                             ::   llaction, ll_1st, ll_mask, ll3D
       !!--------------------------------------------------------------------
@@ -496,7 +496,11 @@ CONTAINS
                IF( llaction ) THEN   ! data received from oasis do not include halos
 
                   kinfo = OASIS_Rcv
-                  IF( ll_mask ) exfld(:,:,1:iu(1)) = exfld(:,:,1:iu(1)) * pmask(1:Ni_0,1:Nj_0,1:iu(1),jm)
+                  IF( ll_mask ) THEN
+                     DO jl = 1, iu(1)
+                        exfld(:,:,jl) = exfld(:,:,jl) * pmask(1:Ni_0,1:Nj_0,1,jm)
+                     ENDDO
+                  ENDIF
 
                   IF( ll_1st ) THEN
                      pdata(1:Ni_0,1:Nj_0,ib:iu(2)) = exfld(:,:,1:iu(1))
