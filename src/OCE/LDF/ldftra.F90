@@ -419,10 +419,16 @@ CONTAINS
          !                                             !   max value aht0 (aei0 if nn_aei_ijk_t=21)
          !                                             !   increase to aht0 within 20N-20S
          IF( ln_ldfeiv .AND. nn_aei_ijk_t == 21 ) THEN   ! use the already computed aei.
-            ahtu(:,:,1) = aeiu(:,:,1)
-            ahtv(:,:,1) = aeiv(:,:,1)
+            DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
+               ahtu(ji,jj,1) = aeiu(ji,jj,miku(ji,jj))
+               ahtv(ji,jj,1) = aeiv(ji,jj,mikv(ji,jj))
+            END_2D
          ELSE                                            ! compute aht.
             CALL ldf_eiv( kt, aht0, ahtu, ahtv, Kmm )
+            DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
+               ahtu(ji,jj,1) = ahtu(ji,jj,miku(ji,jj))
+               ahtv(ji,jj,1) = ahtv(ji,jj,mikv(ji,jj))
+            END_2D
          ENDIF
          !
          z1_f20   = 1._wp / (  2._wp * omega * SIN( rad * 20._wp )  )   ! 1 / ff(20 degrees)
@@ -436,7 +442,10 @@ CONTAINS
             ahtu(ji,jj,1) = (  MAX( zaht_min, ahtu(ji,jj,1) ) + zaht  )     ! min value zaht_min
             ahtv(ji,jj,1) = (  MAX( zaht_min, ahtv(ji,jj,1) ) + zahf  )     ! increase within 20S-20N
          END_2D
-         DO jk = 1, jpkm1                             ! deeper value = surface value + mask for all levels
+         !
+         ! deeper value = surface value * mask for all levels
+         ! first we mask the interior and then the surface value (because of ice shelf cavities)
+         DO jk = jpkm1, 1, -1
             ahtu(:,:,jk) = ahtu(:,:,1) * umask(:,:,jk)
             ahtv(:,:,jk) = ahtv(:,:,1) * vmask(:,:,jk)
          END DO
@@ -652,13 +661,15 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj,jpk), INTENT(inout) ::   paeiu, paeiv   ! eiv coefficient      [m2/s]
       !
       INTEGER  ::   ji, jj, jk    ! dummy loop indices
-      REAL(wp) ::   zfw, ze3w, zn2, z1_f20, zzaei, z2_3    ! local scalars
-      REAL(wp), DIMENSION(jpi,jpj) ::   zn, zah, zhw, zRo, zRo_lim, zTclinic_recip, zaeiw, zratio   ! 2D workspace
-      REAL(wp), DIMENSION(jpi,jpj,jpk) :: zmodslp ! 3D workspace 
+      REAL(wp) ::   zfw, ze3w, zn2, z1_f20, zzaei    ! local scalars
+      REAL(wp) ::   z2_3
+      REAL(wp), DIMENSION(jpi,jpj) ::   zn, zah, zhw, zRo, zaeiw, zaeiu, zaeiv   ! 2D workspace
+      REAL(wp), DIMENSION(jpi,jpj) ::   zRo_lim, zTclinic_recip, zratio
+      REAL(wp), DIMENSION(jpi,jpj,jpk) :: zmodslp ! 3D workspace
       !!----------------------------------------------------------------------
       !
       zn (:,:) = 0._wp        ! Local initialization
-      zmodslp(:,:,:) = 0._wp 
+      zmodslp(:,:,:) = 0._wp
       zhw(:,:) = 5._wp
       zah(:,:) = 0._wp
       zRo(:,:) = 0._wp
@@ -706,8 +717,8 @@ CONTAINS
          zRo(ji,jj) = .4 * zn(ji,jj) / zfw
          zRo_lim(ji,jj) = MAX(  2.e3 , MIN( zRo(ji,jj), 40.e3 )  )
          ! Compute aeiw by multiplying Ro^2 and T^-1
-         zTclinic_recip(ji,jj) = SQRT( MAX(zah(ji,jj),0._wp) / zhw(ji,jj) ) * tmask(ji,jj,1)
-         zaeiw(ji,jj) = zRo_lim(ji,jj) * zRo_lim(ji,jj) * zTclinic_recip(ji,jj) 
+         zTclinic_recip(ji,jj) = SQRT( MAX(zah(ji,jj),0._wp) / zhw(ji,jj) ) * ssmask(ji,jj)
+         zaeiw(ji,jj) = zRo_lim(ji,jj) * zRo_lim(ji,jj) * zTclinic_recip(ji,jj)
       END_2D
       IF( iom_use('N_2d') ) CALL iom_put('N_2d',zn(:,:)/zhw(:,:))
       IF( iom_use('modslp') ) CALL iom_put('modslp',SQRT(zmodslp(:,:,:)) )
@@ -753,9 +764,9 @@ CONTAINS
                zaeiw(ji,jj) = MIN( zaeiw(ji,jj), MAX( 0._wp, MIN( 1._wp, 0.001*(ht_0(ji,jj) - 2000._wp) ) ) * paei0 )
             END_2D
          CASE(5) !! Rossby radius ramp type 1 applied to Treguier et al coefficient rather than cap:
-                 !! Note the ramp is RR/GS=[2.0,1.0] (not [2.0,0.5] as for cases 2,3) and we ramp up 
+                 !! Note the ramp is RR/GS=[2.0,1.0] (not [2.0,0.5] as for cases 2,3) and we ramp up
                  !! to 5% of the Treguier et al coefficient, aiming for peak values of around 100m2/s
-                 !! at high latitudes rather than 2000m2/s which is what you get in eORCA025 with an 
+                 !! at high latitudes rather than 2000m2/s which is what you get in eORCA025 with an
                  !! uncapped coefficient.
             DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
                zratio(ji,jj) = zRo(ji,jj)/MIN(e1t(ji,jj),e2t(ji,jj))
@@ -764,18 +775,18 @@ CONTAINS
             END_2D
             CALL iom_put('RR_GS',zratio)
          CASE DEFAULT
-               CALL ctl_stop('ldf_eiv: Unrecognised option for nn_ldfeiv_shape.')         
+               CALL ctl_stop('ldf_eiv: Unrecognised option for nn_ldfeiv_shape.')
       END SELECT
       !
       DO_2D( 0, 0, 0, 0 )
-         paeiu(ji,jj,1) = 0.5_wp * ( zaeiw(ji,jj) + zaeiw(ji+1,jj  ) ) * umask(ji,jj,1)
-         paeiv(ji,jj,1) = 0.5_wp * ( zaeiw(ji,jj) + zaeiw(ji  ,jj+1) ) * vmask(ji,jj,1)
+         zaeiu(ji,jj) = 0.5_wp * ( zaeiw(ji,jj) + zaeiw(ji+1,jj  ) ) * ssumask(ji,jj)
+         zaeiv(ji,jj) = 0.5_wp * ( zaeiw(ji,jj) + zaeiw(ji  ,jj+1) ) * ssvmask(ji,jj)
       END_2D
-      CALL lbc_lnk( 'ldftra', paeiu(:,:,1), 'U', 1.0_wp , paeiv(:,:,1), 'V', 1.0_wp )      ! lateral boundary condition
+      CALL lbc_lnk( 'ldftra', zaeiu(:,:), 'U', 1.0_wp , zaeiv(:,:), 'V', 1.0_wp )      ! lateral boundary condition
 
-      DO jk = 2, jpkm1                          !==  deeper values equal the surface one  ==!
-         paeiu(:,:,jk) = paeiu(:,:,1) * umask(:,:,jk)
-         paeiv(:,:,jk) = paeiv(:,:,1) * vmask(:,:,jk)
+      DO jk = 1, jpkm1                          !==  deeper values equal the surface one  ==!
+         paeiu(:,:,jk) = zaeiu(:,:) * umask(:,:,jk)
+         paeiv(:,:,jk) = zaeiv(:,:) * vmask(:,:,jk)
       END DO
       !
    END SUBROUTINE ldf_eiv

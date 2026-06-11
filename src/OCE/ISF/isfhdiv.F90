@@ -48,19 +48,19 @@ CONTAINS
          !
 #if defined key_RK3
          ! ice shelf cavity contribution (RK3)
-         IF ( ln_isfcav_mlt ) CALL isf_hdiv_mlt(misfkt_cav, misfkb_cav, rhisf_tbl_cav, rfrac_tbl_cav, &
+         IF ( ln_isfcav_mlt ) CALL isf_hdiv_mlt(Kmm, misfkt_cav, misfkb_cav, rhisf_tbl_cav, rfrac_tbl_cav, &
             &                                                                             fwfisf_cav, phdiv)
          !
          ! ice shelf parametrisation contribution (RK3)
-         IF ( ln_isfpar_mlt ) CALL isf_hdiv_mlt(misfkt_par, misfkb_par, rhisf_tbl_par, rfrac_tbl_par, &
+         IF ( ln_isfpar_mlt ) CALL isf_hdiv_mlt(Kmm, misfkt_par, misfkb_par, rhisf_tbl_par, rfrac_tbl_par, &
                                                                                           fwfisf_par, phdiv)
 #else
          ! ice shelf cavity contribution (MLF)
-         IF ( ln_isfcav_mlt ) CALL isf_hdiv_mlt(misfkt_cav, misfkb_cav, rhisf_tbl_cav, rfrac_tbl_cav, &
+         IF ( ln_isfcav_mlt ) CALL isf_hdiv_mlt(Kmm, misfkt_cav, misfkb_cav, rhisf_tbl_cav, rfrac_tbl_cav, &
             &                                                                             fwfisf_cav, phdiv, fwfisf_cav_b)
          !
          ! ice shelf parametrisation contribution (MLF)
-         IF ( ln_isfpar_mlt ) CALL isf_hdiv_mlt(misfkt_par, misfkb_par, rhisf_tbl_par, rfrac_tbl_par, &
+         IF ( ln_isfpar_mlt ) CALL isf_hdiv_mlt(Kmm, misfkt_par, misfkb_par, rhisf_tbl_par, rfrac_tbl_par, &
                                                                                           fwfisf_par, phdiv, fwfisf_par_b)
 #endif
          !
@@ -85,7 +85,7 @@ CONTAINS
    END SUBROUTINE isf_hdiv
 
 
-   SUBROUTINE isf_hdiv_mlt( ktop, kbot, phtbl, pfrac, pfwf, phdiv, pfwf_b )
+   SUBROUTINE isf_hdiv_mlt( Kmm, ktop, kbot, phtbl, pfrac, pfwf, phdiv, pfwf_b )
       !!----------------------------------------------------------------------
       !!                  ***  SUBROUTINE sbc_isf_div  ***
       !!       
@@ -96,10 +96,12 @@ CONTAINS
       !!
       !! ** Action  :   phdivn   increased by the ice shelf outflow
       !!----------------------------------------------------------------------
+      INTEGER , INTENT(in)                                  ::   Kmm      !  ocean time level index
       INTEGER , DIMENSION(A2D(1))           , INTENT(in   ) ::   ktop , kbot
-      REAL(wp), DIMENSION(A2D(1))           , INTENT(in   ) ::   pfrac, phtbl
+      REAL(wp), DIMENSION(A2D(1))           , INTENT(in   ) ::   pfrac
       REAL(wp), DIMENSION(jpi,jpj)          , INTENT(in   ) ::   pfwf
       REAL(wp), DIMENSION(A2D(1),jpk)       , INTENT(inout) ::   phdiv
+      REAL(wp), DIMENSION(A2D(1))           , INTENT(inout) ::   phtbl
       REAL(wp), DIMENSION(:,:)    , OPTIONAL, INTENT(in   ) ::   pfwf_b
       !!----------------------------------------------------------------------
       INTEGER  ::   ji, jj, jk   ! dummy loop indices
@@ -108,22 +110,33 @@ CONTAINS
       !!----------------------------------------------------------------------
       !
       !==   fwf distributed over several levels   ==!
+      REAL(wp), DIMENSION(A2D(1),jpk) ::   ze3t   ! 3D workspace for key_qco
+      !!---------------------------------------------------------------------
+      !
+      !
+      ! temporary arrays for key_qco
+      DO_3D( 1, 1, 1, 1, 1, jpk )
+         ze3t(ji,jj,jk) = e3t(ji,jj,jk,Kmm)
+      END_3D
       !
       ! update divergence at each level affected by ice shelf top boundary layer
       DO_2D( 1, 1, 1, 1 )
-         ! compute integrated divergence correction
-         IF( phtbl(ji,jj) /= 0._wp ) THEN
-#if defined key_RK3
-            zhdiv = pfwf(ji,jj) * r1_rho0 / phtbl(ji,jj)
-#else
-            zhdiv = 0.5_wp * ( pfwf(ji,jj) + pfwf_b(ji,jj) ) * r1_rho0 / phtbl(ji,jj)
-#endif
-         ELSE
-            zhdiv = 0._wp
-         ENDIF
          !
+         ! top and bottom lvls of the isf tbl
          ikt = ktop(ji,jj)
          ikb = kbot(ji,jj)
+         !
+         ! update phtbl (is at least ze3t(ji,jj,ikt))
+         phtbl(ji,jj) = SUM( ze3t(ji,jj,ikt:ikb-1) * tmask(ji,jj,ikt:ikb-1) ) + pfrac(ji,jj) * ze3t(ji,jj,ikb) * tmask(ji,jj,ikb)
+         phtbl(ji,jj) = MAX( phtbl(ji,jj), ze3t(ji,jj,ikt) )
+         !
+         ! compute integrated divergence correction
+#if defined key_RK3
+         zhdiv = pfwf(ji,jj) * r1_rho0 / phtbl(ji,jj)
+#else
+         zhdiv = 0.5_wp * ( pfwf(ji,jj) + pfwf_b(ji,jj) ) * r1_rho0 / phtbl(ji,jj)
+#endif
+         !
          ! level fully include in the ice shelf boundary layer
          DO jk = ikt, ikb - 1
             phdiv(ji,jj,jk) = phdiv(ji,jj,jk) - zhdiv

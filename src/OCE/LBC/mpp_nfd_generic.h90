@@ -1,6 +1,7 @@
 
-   SUBROUTINE mpp_nfd_/**/PRECISION( ptab, cd_nat, psgn, kfillmode, pfillval, kfld, ldfull )
+   SUBROUTINE mpp_nfd_/**/PRECISION( cdname, ptab, cd_nat, psgn, kfillmode, pfillval, kfld, ldfull )
       TYPE(PTR_4d_/**/PRECISION),  DIMENSION(:), INTENT(inout) ::   ptab        ! pointer of arrays on which apply the b.c.
+      CHARACTER(len=*)                 , INTENT(in   ) ::   cdname      ! name of the calling subroutine
       CHARACTER(len=1), DIMENSION(kfld), INTENT(in   ) ::   cd_nat      ! nature of array grid-points
       REAL(PRECISION),  DIMENSION(kfld), INTENT(in   ) ::   psgn        ! sign used across the north fold boundary
       INTEGER                          , INTENT(in   ) ::   kfillmode   ! filling method for halo over land 
@@ -8,16 +9,29 @@
       INTEGER                          , INTENT(in   ) ::   kfld        ! number of pt3d arrays
       LOGICAL                , OPTIONAL, INTENT(in   ) ::   ldfull      ! .true. if we also update the last line of the inner domain
       !
-      LOGICAL  ::   llfull
+      LOGICAL  ::   llchk_pnult                         ! TRUE if NPF extraline unequal value checking activated
+      LOGICAL  ::   llfullarg                           ! TRUE if ldfull argument present (force NPF extraline update)
+      LOGICAL  ::   llfullprsc                          ! value of prescibed ldfull argument (FALSE if none)
+      LOGICAL  ::   llfullprep                          ! TRUE if data for the NFD extraline update is required 
+                                                        !  for checking or correction
+      LOGICAL  ::   llfullappl                          ! TRUE for actual update of NFD extraline
+      LOGICAL  ::   ll_npfverbose                       ! TRUE for verbose diagnostic
+
+      INTEGER, DIMENSION(kfld)  ::   ineedfull          ! nb of unequal gpts detected on NPF extra-line
+
+      INTEGER  ::   numnpfc                             ! logical unit for NPF checking output
       INTEGER  ::   ji,  jj,  jk,  jl, jf, jr, jg, jn   ! dummy loop indices
       INTEGER  ::   ierr, ibuffsize, impp, ipi0
       INTEGER  ::   ii1, ii2, ij1, ij2, ij3, iig, inei
       INTEGER  ::   i0max, ilntot, iisht, ijsht, ihsz
       INTEGER  ::   iproc, ijnr, ipjtot, iF_TU, i012
+
       INTEGER,         DIMENSION(kfld)               ::   ipi, ipj, ipj1, ipj2, ipk, ipl   ! dimension of the input array
       INTEGER,         DIMENSION(kfld)               ::   ihls                             ! halo size
       INTEGER,         DIMENSION(:)    , ALLOCATABLE ::   ireq_s, ireq_r   ! for mpi_isend when avoiding mpi_allgather
       INTEGER,         DIMENSION(:)    , ALLOCATABLE ::   ipjfld ! number of sent lines for each field
+      INTEGER,         DIMENSION(2,kfld)             ::   ijpos
+      REAL(PRECISION), DIMENSION(kfld)               ::   zval, zerr
       REAL(PRECISION)                                ::   zhuge, zztmp
       REAL(PRECISION), DIMENSION(:,:)  , ALLOCATABLE ::   zbufs  ! buffer, receive and work arrays
       REAL(PRECISION), DIMENSION(:,:,:), ALLOCATABLE ::   zbufr  ! buffer, receive and work arrays
@@ -26,6 +40,7 @@
       TYPE(PTR_4D_/**/PRECISION), DIMENSION(1) ::   ztabglo        ! array or pointer of arrays on which apply the b.c.
       !!----------------------------------------------------------------------
       !
+      ineedfull(:) = 0
       zhuge = HUGE(0._/**/PRECISION)   ! avoid to call the huge function inside do loops
       !
       DO jf = 1, kfld
@@ -55,13 +70,57 @@
          ! In consequence, we may want to force the folding on these points by setting l_full_nf_update = .TRUE.
          ! This is slightly slower but necessary to avoid different values on identical grid points!!
          !
-         llfull = .FALSE.
-         IF ( PRESENT(ldfull) )   llfull = ldfull
-         ! also force during the first step to make sure all the init are ok
-         llfull = llfull .OR. ncom_stp <= nit000
+
+         ! NPF check: Warning or Stopping mode
+         !    nn_npfchk from namelist
+                           ! 0: do not activate NPF checking (default)
+                           ! 1: Warning and Infos mode (last 10 time steps only)
+                           ! 2: Stop simulation if NPF overwriting error
+
+         ! By default, do not prepare update extra NPF (half)-line
+         llfullprep = .FALSE.
+
+         ! If warning mode, do it during the last 10 time steps
+         ! If stop mode, do it since the beginning (second time step)
+         IF( nn_npfchk >= 1) THEN
+           ! Prepare checking of unequal values in North Pole folding (NPF)
+           llfullprep  = .TRUE.
+           ! Actually do the check of unequal values in North Pole folding (NPF)
+           llchk_pnult = .TRUE.
+         ELSE
+           llchk_pnult = .FALSE.
+         ENDIF
+
+         ll_npfverbose = ( nn_npfchk == 1 .AND. ncom_stp >= nitend-10 ) .OR. nn_npfchk == 2
+
+         ! Detect the full update argument (explicitely required NPF operation)
+         llfullarg = .FALSE.
+         llfullprsc = .FALSE.
+         IF ( PRESENT(ldfull) ) then
+            ! An operation on NPF is explicitely required
+            llfullarg = .TRUE.
+            ! Value of the explicitely required operation (TRUE=overwriting, FALSE=no overwriting)
+            llfullprsc = ldfull
+         ENDIF
+
+         ! force extra NPF line update :
+         ! - if explicitely required 
+         ! - at each lbc_lnk during the first step to make sure all the init are ok
+         ! but do not force if the opposite is explicitely required
+         llfullappl = ( llfullprsc .OR. ncom_stp <= nit000 ) .AND. .NOT. ( llfullarg .AND. .NOT. llfullprsc )
+
+         ! if forcing, necessarily do preliminary check
+         llfullprep = llfullprep .OR. llfullappl
+
+         ! Define logical unit for output
+         IF ( lwp ) THEN
+            numnpfc = numout   ! numout opened for local ocean.ouput : verbose output there
+         ELSE
+            numnpfc = 6        ! numout not opened : standard output in stop mode (nn_npfchk=2) 
+         ENDIF
          
          ALLOCATE(ipjfld(kfld))                 ! how many lines do we send for each field?
-         IF( llfull ) THEN
+         IF( llfullprep ) THEN
             DO jf = 1, kfld                     ! Loop over the number of arrays to be processed
                ipjfld(jf) = ihls(jf) + COUNT( (/ c_NFtype == 'T'  .OR. cd_nat(jf) == 'V' .OR. cd_nat(jf) == 'F' /) )
             END DO
@@ -188,7 +247,22 @@
                      inei = nfd_rksnd(ii1,ij3,iig)       ! neigbhour-index in the buffer
                      IF( nfd_rknei(inei) == -1 .AND. kfillmode == jpfillnothing )   CYCLE   ! no neighbourg and do nothing to fill
                      ii2 = nfd_jisnd(ii1,ij3,iig)        ! i-index in the buffer, starts at 1 in the inner domain
-                     ptab(jf)%pt4d(ji,ij1,jk,jl) = psgn(jf) * zbufr(ii2,ij2,inei)
+                     ! Counting done only if required - llchk_pnult == true -
+                     ! and only for internal points (halo points may not have been calculated, giving false positives)
+                     IF (llchk_pnult .AND. (ji > ihsz) .AND. (ji <= (ipi(jf) - ihsz))) then
+                        ! Count nb of North pole folding grid points with different values despite same position
+                        IF (ptab(jf)%pt4d(ji,ij1,jk,jl) /= ( psgn(jf) * zbufr(ii2,ij2,inei) ) ) then
+                           ineedfull(jf) = ineedfull(jf) + 1                        ! one more point needs overwriting
+                           ijpos(:,jf) = (/mig(ii1,nn_hls),mjg(ij1+iisht,nn_hls)/)  ! record global position of the last point
+                           zval(jf) = ptab(jf)%pt4d(ji,ij1,jk,jl)                   ! record the value of this point
+                           zerr(jf) = ptab(jf)%pt4d(ji,ij1,jk,jl) &
+                                    - psgn(jf) * zbufr(ii2,ij2,inei)                ! record the difference between the two folds
+                        ENDIF
+                     ENDIF
+                     ! Remove different values only if required in the code or at first time step
+                     ! (relevant if NPF double value checking)
+                     IF ( llfullappl ) &
+                        ptab(jf)%pt4d(ji,ij1,jk,jl) = psgn(jf) * zbufr(ii2,ij2,inei)
                   END DO
                END DO
                !               
@@ -201,6 +275,54 @@
          CALL mpi_waitall(nfd_nbnei, ireq_s, MPI_STATUSES_IGNORE, ierr)   ! wait for all Isend
          !
          DEALLOCATE( zbufs, ireq_s )
+
+         !
+         ! Print result of double value checking
+         !
+         IF ( llchk_pnult ) THEN
+            ! Loop over fields
+            DO jf = 1, kfld
+               ! If double value detected
+               IF ( ineedfull(jf) > 0 ) THEN
+                  ! but overwriting not done
+                  IF ( .not. llfullappl ) THEN
+                     ! because overwriting explicitely not prescribed
+                     IF ( llfullarg .AND. .NOT. llfullprsc ) THEN
+                        IF ( nn_npfchk == 1 .AND. ll_npfverbose ) &
+                           WRITE(numnpfc,'(A,I5,A,A,A,I2)') '[kt =', ncom_stp, '] North Pole folding double value detection:  Warning - need full NP update though opposite prescribed in ', trim(cdname), ' field ', jf
+
+                     ! overwriting really missing
+                     ELSE
+                        !
+                        IF( ll_npfverbose ) THEN
+                           IF ( nn_npfchk == 2 ) THEN
+                              WRITE(numnpfc,'(A,I5,A,I5,A,A,A,I2,A,I5)') '[kt =', ncom_stp, ' narea =', narea,'] North Pole folding double value detection:  Error   - need full NP update in ', trim(cdname), ' field ', jf, ':', ineedfull(jf)
+                              WRITE(numnpfc,"(A,2I5,F23.16,F23.16)") ' Erroneous gpt last global Position, value, difference: ', ijpos(:,jf), zval(jf), zerr(jf)
+                              CALL FLUSH(numnpfc)
+                              CALL ctl_stop( 'STOP', &
+                                 &           'Error found by North Pole folding double value detection- see stdout for details')
+                           ELSE
+                              WRITE(numnpfc,'(A,I5,A,A,A,I2,A,I5)') '[kt =', ncom_stp, '] North Pole folding double value detection:  Error   - need full NP update in ', trim(cdname), ' field ', jf, ':', ineedfull(jf)
+                              WRITE(numnpfc,"(A,2I5,F23.16,F23.16)") ' Erroneous gpt last global Position, value, difference: ', ijpos(:,jf), zval(jf), zerr(jf)
+                           ENDIF
+                        ENDIF
+                     ENDIF
+
+                  ! overwriting done on purpose
+                  ELSE
+                     IF ( nn_npfchk == 1 .AND. ll_npfverbose ) &
+                        WRITE(numnpfc,'(A,I5,A,A,A,I2)') '[kt =', ncom_stp, '] North Pole folding double value detection:  Info    - full NP update done on purpose in ', trim(cdname), ' field ', jf
+                  END IF
+
+               ! If double value not detected
+               ELSE
+                  ! but update explicitly required
+                  IF ( llfullappl .AND. nn_npfchk == 1.AND. ll_npfverbose ) &
+                     WRITE(numnpfc,'(A,I5,A,A,A,I2)') '[kt =', ncom_stp, '] North Pole folding double value detection:  Warning - do not need full NP update in ', trim(cdname), ' field ', jf
+               ENDIF
+            END DO   ! End loop over fields
+            CALL FLUSH(numnpfc)
+         ENDIF
          !
       ELSE                             !==  allgather exchanges  ==!
          !

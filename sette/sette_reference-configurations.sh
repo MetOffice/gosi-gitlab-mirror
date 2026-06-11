@@ -113,10 +113,12 @@ TOOLS_DIR=${MAIN_DIR}/tools
 if [ -n "${CUSTOM_DIR}" ]; then
   CMP_NAM_L=$(echo ${CMP_NAM} | tr '[:upper:]' '[:lower:]')
   if [[ -n "${NEMO_DEBUG}" || ${CMP_NAM_L} =~ ("debug"|"dbg") ]]; then
-    export CMP_DIR=${CUSTOM_DIR}/${SETTE_SUB_VAL}_${NEMO_REV}_DEBUG
+    CMP_DIR=${CUSTOM_DIR}/${SETTE_SUB_VAL}_${NEMO_REV}_DEBUG
   else
-    export CMP_DIR=${CUSTOM_DIR}/${SETTE_SUB_VAL}_${NEMO_REV}
+    CMP_DIR=${CUSTOM_DIR}/${SETTE_SUB_VAL}_${NEMO_REV}
   fi
+  [ ${USING_RK3} == 'no' ] && RK3MLF_SFX="MLF" || RK3MLF_SFX="RK3"
+  export CMP_DIR=${CMP_DIR}_${RK3MLF_SFX}
 fi
 CMP_NAM=${1:-$COMPILER}
 CMP_NAM_L=$(echo ${CMP_NAM} | tr '[:upper:]' '[:lower:]')

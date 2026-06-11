@@ -336,7 +336,7 @@ CONTAINS
             zt_i_new       = zswitch_sal * t_bo_1d(ji) + ( 1. - zswitch_sal) * t_i_1d(ji, nlay_i)
             
             zEi            = rcpi * ( zt_i_new - (ztmelts+rt0) ) &                                         ! Specific enthalpy of forming ice (J/kg, <0)
-               &             - rLfus * ( 1.0 - ztmelts / ( MIN( zt_i_new - rt0, -epsi10 ) ) ) + rcp * ztmelts
+               &             - rLfus * MAX( 0._wp, 1.0 - ztmelts / ( MIN( zt_i_new - rt0, -epsi10 ) ) ) + rcp * ztmelts ! clem: max to deal with different eq. freezing in ice and ocean (but useless for now)
             
             zEw            = rcp  * ( t_bo_1d(ji) - rt0 )                                                  ! Specific enthalpy of seawater (J/kg, < 0)
             

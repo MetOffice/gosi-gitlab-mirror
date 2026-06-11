@@ -1552,6 +1552,8 @@
    nn_jsplt    =    1             !  number of processors in j-direction
    ln_timing   = .false.          !  timing by routine write out in timing.output file
    ln_diacfl   = .false.          !  CFL diagnostics write out in cfl_diagnostics.ascii
+   nn_npfchk   =    0             !  Control NPF duplicated line identity
+                                  !  0:no check, 1:verbose checking, 2:stop if NPF mismatch
 /
 !-----------------------------------------------------------------------
 &namsto        ! Stochastic parametrization of EOS                      (default: OFF)

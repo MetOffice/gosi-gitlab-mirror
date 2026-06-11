@@ -140,7 +140,7 @@
       <field id="SedCO3por"   long_name="Bicarbonates"                            unit="mol/m3"        />
     </field_group>     <!-- End of field group for grid_T_3DS (Diag_S) -->
 
-    <field_group id="group_DS_T_2D" grid_ref="grid_T_2D" >  <!-- Start of field group for grid_T_2D (Diag_S) -->
+    <field_group id="group_DS_T_2D" grid_ref="grid_T_sfc" >  <!-- Start of field group for grid_T_2D (Diag_S) -->
     <field id="FlxSi"       long_name="Si sediment flux"                        unit="mol/cm2/s"     />
     <field id="FlxO2"       long_name="O2 sediment flux"                        unit="mol/cm2/s"     />
     <field id="FlxDIC"      long_name="DIC sediment flux"                       unit="mol/cm2/s"     />
@@ -289,7 +289,7 @@
       <field id="TPBFE_e3t"   long_name="TPBFE * e3t"                              unit="mol/m2/s"       > TPBFE  * e3t </field >
     </field_group>     <!-- End of field group for grid_T_3D_inner (diad_T) -->
 
-    <field_group id="group_diad_T_2D_inner" grid_ref="grid_T_2D_inner" >  <!-- Start of field group for grid_T_2D_inner (diad_T) -->
+    <field_group id="group_diad_T_2D_inner" grid_ref="grid_T_sfc_inner" >  <!-- Start of field group for grid_T_2D_inner (diad_T) -->
     <field id="pdust"       long_name="dust concentration"                      unit="kg/m3"         />
     <field id="Sdenit"      long_name="Nitrate reduction in the sediments"      unit="mol/m2/s"    />
     <field id="Ironice"     long_name="Iron input/uptake due to sea ice"        unit="mol/m2/s"     />

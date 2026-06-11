@@ -118,7 +118,9 @@ CONTAINS
       REAL(wp), DIMENSION(:,:,:)     , INTENT(in ) ::   pvarin       ! tbl property to average between ktop, kbot over phtbl
       REAL(wp), DIMENSION(A2D(0))    , INTENT(out) ::   pvarout      ! tbl property averaged over phtbl between level ktop and kbot
       !!--------------------------------------------------------------------
+
       CALL isf_tbl_avg_t( ktop, kbot, phtbl, pfrac, pe3, pvarin, lbnd_ij(pvarin), pvarout )
+
    END SUBROUTINE isf_tbl_avg
 
    SUBROUTINE isf_tbl_avg_t( ktop, kbot, phtbl, pfrac, pe3, pvarin, ktvarin, pvarout )
@@ -220,7 +222,7 @@ CONTAINS
       ! test: this routine run with pdep = 0 should return 1
       !
       DO_2D( 1, 1, 1, 1 )
-         ! comput ktop
+         ! compute ktop
          ikt = 2
          DO WHILE ( gdepw_0(ji,jj,ikt) <= pdep(ji,jj) ) ;  ikt = ikt + 1 ;  END DO
          ktop(ji,jj) = ikt - 1

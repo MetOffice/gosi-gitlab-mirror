@@ -131,7 +131,7 @@
       ELSEIF( nn_comm == 2  ) THEN 
          CALL lbc_lnk_neicoll( cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, lsend, lrecv, ld4only, ldfull )
       ELSEIF( nn_comm == 30 ) THEN 
-         CALL lbc_lnk_iprobe( cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, lsend, lrecv, ld4only, ldfull )
+         CALL lbc_lnk_iprobe( cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, lsend, lrecv, ld4only, ldfull  )
       ELSEIF( nn_comm == 31 ) THEN 
          CALL lbc_lnk_waitany( cdname, ptab_ptr, cdna_ptr, psgn_ptr, kfld, kfillmode, pfillval, lsend, lrecv, ld4only, ldfull )
       ELSEIF( nn_comm == 32 ) THEN 
