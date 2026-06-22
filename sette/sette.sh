@@ -12,6 +12,10 @@ dry_run=0
 SETTE_REPORT=0
 WAIT_SETTE=0
 export SCTRANSFORMS=()
+export DOTENV_FILE=""
+#
+# source sette functions
+. ./all_functions.sh
 #
 # controls for some common namelist, run-time options:
 #
@@ -39,13 +43,10 @@ export USER_INPUT='yes'        # Default: yes => request user input on decisions
                                #                 1. regarding mismatched options
                                #                 2. regardin incompatible options
                                #                 3. regarding creation of directories
-export SETTE_THIS_BRANCH=${CI_COMMIT_BRANCH:-$(git log -1 --pretty=%D HEAD | sed 's|.*origin/||g;s|, .*||g;s|.*-> ||g' )}
-export SETTE_SUB_VAL=${SETTE_THIS_BRANCH}
-export NEMO_REV=$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)
 
 # Parse command-line arguments
 if [ $# -gt 0 ]; then
-  while getopts n:x:v:g:cybrshTqQteiACFNXuaw option; do
+  while getopts n:x:v:g:d:cybrshTqQteiACFNXuaw option; do
      case $option in
         c) export SETTE_CLEAN_CONFIGS='yes'
            export SETTE_SYNC_CONFIGS='yes'
@@ -118,6 +119,9 @@ if [ $# -gt 0 ]; then
         u) export USER_INPUT='no'
            echo "-u: sette.sh will not expect any user interaction == no safety net!" 
            echo "";;
+        d) export DOTENV_FILE="${OPTARG}"
+           echo "-d: sette will use ${DOTENV_FILE} .env file instead of .git directory to define related variables"
+           echo "";;
         h | *) echo 'sette.sh with no arguments (in this case all configuration will be tested with default options)'
                echo '-T to set ln_timing false for configurations (default: true)'
                echo '-t set ln_tile false in all tests that support it (default: true)'
@@ -143,6 +147,7 @@ if [ $# -gt 0 ]; then
                echo '-s to synchronise the sette MY_SRC and EXP00 with the reference MY_SRC and EXPREF'
                echo '-w to wait for Sette jobs to finish'
                echo '-r to print Sette report after Sette jobs completion'
+               echo '-d to use .env file instead of .git directory to define related variables'
                echo '-u to run sette.sh without any user interaction. This means no checks on creating'
                echo '          directories etc. i.e. no safety net!' ; exit 42 ;;
      esac
@@ -153,6 +158,14 @@ fi
 # Get SETTE parameters
 . ./param.default
 [ -f ./param.cfg ] && . ./param.cfg || echo "warning: \"param.cfg\" file not found; SETTE will use default paramaters from \"param.default\" file"
+
+# Define sette variables from local .git repository (default) or .env file ("-d" option)
+if [ -z "${DOTENV_FILE}" ]; then
+  set_git_var
+else
+  set_dotenv_var
+fi
+
 #
 # Set the common compile keys to add or delete based on command-line arguments:
 #
@@ -193,6 +206,7 @@ if [ ! -d $NEMO_VALIDATION_DIR ] ; then
   echo "but this is a dry run so it will not be created"
  fi
 fi
+[ -z "${SETTE_SUB_VAL}" ] && export SETTE_SUB_VAL=${SETTE_THIS_BRANCH}
 if [ ! -d $NEMO_VALIDATION_DIR/$SETTE_SUB_VAL ] && [ ${dry_run} -eq 0 ] ; then
    mkdir $NEMO_VALIDATION_DIR/$SETTE_SUB_VAL
 fi

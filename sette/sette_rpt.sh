@@ -15,6 +15,9 @@ format_field1="%-35s"
 # exit codes
 declare -i {REPRO_EC,RESTA_EC,TRANSFORM_EC,REFCMP_EC,CPUCMP_EC,OCEOUT_EC,AGRIF_EC,PHYOPT_EC}=0
 
+# source sette functions
+. ./all_functions.sh
+
 function get_dorv() {
   if [ $lastchange == 'old' ] ; then
     dorv=`ls -1rt $vdir/$mach/ | tail -1l `
@@ -737,10 +740,11 @@ function identictest(){
 
 # Processing of command-line arguments
 rev=""; sha=""
+export DOTENV_FILE=""
 
   if [ $# -gt 0 ]; then
     echo ""
-    while getopts n:r:s:R:S:c:x:v:V:ubQh option; do
+    while getopts n:r:s:R:S:c:x:v:V:d:ubQh option; do
        case $option in
           c) mach=$OPTARG;;
           r) rev=$OPTARG
@@ -789,6 +793,9 @@ rev=""; sha=""
              RK3MLF_SFX="MLF"
              echo "-Q: will use MLF compilation directory (key_qco and key_RK3 deactivated) instead of RK3 (default)"
              echo "";;
+          d) export DOTENV_FILE="${OPTARG}"
+             echo "-d: sette will use ${DOTENV_FILE} .env file instead of .git directory to define related variables"
+             echo "";;
           h | *) echo ''
                  echo 'sette_rpt.sh : '
                  echo '     display result for the latest change'
@@ -812,6 +819,7 @@ rev=""; sha=""
                  echo ' -u to run sette_rpt.sh without any user interaction'
                  echo ' -b to check DEBUG directory of COMPILER_name'
                  echo ' -Q to check MLF directory of COMPILER_name (default is RK3)'
+                 echo ' -d to use .env file instead of .git directory to define related variables'
                  echo ''
                  exit 42;;
        esac
@@ -819,12 +827,17 @@ rev=""; sha=""
     shift $((OPTIND - 1))
   fi
 # if $1 (remaining arguments)
-  if [[ ! -z $1 ]] ; then rev=$1 ; fi
-  mach=${mach}_${RK3MLF_SFX}
+if [[ ! -z $1 ]] ; then rev=$1 ; fi
+mach=${mach}_${RK3MLF_SFX}
 
-# https://stackoverflow.com/questions/6059336/how-to-find-the-current-git-branch-in-detached-head-state
-branchname=${CI_COMMIT_BRANCH:-$(git log -1 --pretty=%D HEAD | sed 's|.*origin/||g;s|, .*||g;s|.*-> ||g' )}
-if [ ! -z $SETTE_SUB_VAL ] ; then
+# Define sette variables from local .git repository (default) or .env file ("-d" option)
+if [ -z "${DOTENV_FILE}" ]; then
+  set_git_var
+else
+  set_dotenv_var
+fi
+
+if [ ! -z "${SETTE_SUB_VAL}" ] ; then
    NEMO_VALIDATION_DIR=$NEMO_VALIDATION_DIR/$SETTE_SUB_VAL
    if [ -d $NEMO_VALIDATION_REF/$SETTE_SUB_VAL ] && [ -z $SETTE_SUB_VAL2 ] && [ ${USER_INPUT} == "yes" ] ; then
       while true; do
@@ -857,6 +870,11 @@ if [ -n "${refrev}" ] ; then
    NEMO_REV_REF=${refrev}
 fi
 if [ -n "${refsha}" ] ; then
+   if [ -n "${DOTENV_FILE}" ]; then
+     echo "Warning: .git directory not available; comparison using \"-S\" option not possible"
+     unset refsha
+     break
+   fi
    NEMO_REF_SHA=${refsha}
    NEMO_REF_DATE=$(date --date=@$(git show --no-patch --format=%ct ${NEMO_REF_SHA}) +"%y%j")
    NEMO_REV_REF=${NEMO_REF_DATE}_${NEMO_REF_SHA}
@@ -878,7 +896,6 @@ fi
 # Show current revision tag and branch name
 #
 echo ""
-localchanges=0
 # -r option
 if [ -n "${rev}" ]; then
   nemo_revision=${rev}
@@ -886,14 +903,13 @@ if [ -n "${rev}" ]; then
 # -s option
 elif [ -n "${sha}" ]; then
   nemo_revision=${sha}
-  rev_date=$(date --date=@$(git show --no-patch --format=%ct ${nemo_revision}) +"%y%j")
+  rev_date=$(date --date=@${REV_DATE0} +"%y%j")
   lastchange=${rev_date}_${nemo_revision}
 # current git repo SHA
 else
-  nemo_revision=$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null)
-  rev_date=$(date --date=@$(git show --no-patch --format=%ct ${nemo_revision}) +"%y%j")
+  nemo_revision=${NEMO_REV}
+  rev_date=$(date --date=@${REV_DATE0} +"%y%j")
   lastchange=${rev_date}_${nemo_revision}
-  localchanges=`git status --short -uno | wc -l`
   if [[ $localchanges -gt 0 ]] ; then lastchange="${lastchange}+"; fi
 fi
 
