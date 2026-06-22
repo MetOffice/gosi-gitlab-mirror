@@ -48,7 +48,6 @@ set -o posix
 #
 #   (NOTE: this file is the same for all configrations to be tested with sette_test-cases.sh)
 #
-#   all_functions.sh : loads functions used by sette (note: new functions can be added here)
 #   set_namelist     : function declared in all_functions that sets namelist parameters 
 #   post_test_tidyup : creates validation storage directory and copies required output files 
 #                      (run.stat and ocean.output) in it after execution of test.
@@ -137,7 +136,6 @@ cp BATCH_TEMPLATE/${JOB_PREFIX}-${COMPILER} job_batch_template || exit 1
 # ISOMIP+         : 
 # WAD
 
-. ./all_functions.sh
 for config in ${TEST_CONFIGS[@]}
 do
     for (( l_t=-1 ; l_t < ${#SCTRANSFORMS[@]} ; l_t++ )); do
