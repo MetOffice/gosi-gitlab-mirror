@@ -48,7 +48,6 @@ set -o posix
 #
 #   (NOTE: this file is the same for all configrations to be tested with sette_test-cases.sh)
 #
-#   all_functions.sh : loads functions used by sette (note: new functions can be added here)
 #   set_namelist     : function declared in all_functions that sets namelist parameters 
 #   post_test_tidyup : creates validation storage directory and copies required output files 
 #                      (run.stat and ocean.output) in it after execution of test.
@@ -133,7 +132,6 @@ cp BATCH_TEMPLATE/${JOB_PREFIX}-${CMP_NAM} job_batch_template || exit 1
 # CPL_OASIS      : ORCA2 coupled to TOYATM tool using OASIS
 CONFIGS_AVAILABLE=( OVERFLOW LOCK_EXCHANGE IWAVE VORTEX ICE_AGRIF ISOMIP+ SWG CPL_OASIS )
 
-. ./all_functions.sh
 for config in ${TEST_CONFIGS[@]} ; do
 
     # Ignore unavailable configurations

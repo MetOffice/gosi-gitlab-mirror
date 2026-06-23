@@ -170,6 +170,65 @@ clean_config() {
    fi
 }
 
+# extract usefull informations from .git directory
+set_git_var () {
+  # git worktree case
+  if [ -f ${MAIN_DIR}/.git ]; then
+    GIT_DIR=$(readlink -f $(cat ${MAIN_DIR}/.git | sed 's/gitdir: //'))
+  # git directory case
+  else
+    GIT_DIR="${MAIN_DIR}/.git"
+  fi
+  if [ -d "${GIT_DIR}" ]; then
+    # sette.sh
+    export SETTE_THIS_BRANCH=`git -C ${MAIN_DIR} log -1 --pretty=%D HEAD | sed 's|.*origin/||g;s|, .*||g;s|.*-> ||g'`
+    export VALID_REV=`git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2> /dev/null`
+    REV_DATE0=`git -C ${MAIN_DIR} show --no-patch --format=%ct ${NEMO_REV}`
+    localchanges=`git -C ${MAIN_DIR} status --short -uno | wc -l`
+    # sette_rpt.sh
+    branchname=${SETTE_THIS_BRANCH}
+  else
+    echo "WARNING: local .git directory not found -> related informations unavailable"
+    # sette.sh
+    export SETTE_THIS_BRANCH="undef"
+    export NEMO_REV="undef"
+    REV_DATE0=0
+    localchanges=0
+    # sette_rpt.sh
+    branchname="undef"
+  fi
+}
+
+# define variables from .env file
+set_dotenv_var () {
+  if [[ -n "${DOTENV_FILE}" && -s ${DOTENV_FILE} ]]; then
+    while read l; do
+      local NEMO_BRANCH=""
+      local NEMO_SHA=""
+      local NEMO_DATE=""
+      eval "local ${l%=*}='${l#*=}'"
+      # sette.sh
+      [ -n "${NEMO_BRANCH}" ] && export SETTE_THIS_BRANCH=${NEMO_BRANCH}
+      [ -n "${NEMO_SHA}"    ] && export VALID_REV=${NEMO_SHA}
+      [ -n "${NEMO_DATE}"   ] && REV_DATE0=${NEMO_DATE}
+      # sette_rpt.sh
+      [ -n "${NEMO_BRANCH}" ] && export branchname=${NEMO_BRANCH}
+      unset ${l%=*}
+    done < ${DOTENV_FILE}
+    localchanges=0
+  else
+    echo "WARNING: .env file not found -> related informations unavailable"
+    # sette.sh
+    export SETTE_THIS_BRANCH="undef"
+    export NEMO_REV="undef"
+    REV_DATE0=0
+    localchanges=0
+    # sette_rpt.sh
+    branchname="undef"
+  fi
+}
+
+
 # define validation dir
 set_valid_dir () {
     export NEMO_VALID=${NEMO_VALIDATION_DIR}/${VALID_REV}/${VALID_VAR}/${SETTE_CONFIG%${SETTE_STG}}/${TEST_NAME}
