@@ -20,6 +20,10 @@ NEMO_DEBUG=""
 dry_run=0
 SETTE_REPORT=0
 WAIT_SETTE=0
+export DOTENV_FILE=""
+
+# source sette functions
+. ./all_functions.sh
 
 # Controls that determine the SETTE build and run-time-configuration variant
 #
@@ -55,7 +59,8 @@ TRANSFORM=""
 
 # Parse command-line arguments
 if [ $# -gt 0 ]; then
-  while getopts n:x:g:cybrshTqQteiACFNXuawm:z:p: option; do
+  while getopts n:x:g:cybrshTqQteiACFNXuawm:z:p:d: option; do
+
      case $option in
         p) export SETTE_TEST_PHASES=($OPTARG)
            echo "-p: SETTE phase(s) ${SETTE_TEST_PHASES[@]} selected"
@@ -136,6 +141,9 @@ if [ $# -gt 0 ]; then
         A) export USING_MPMD='no'
            echo "-A: Tasks will be run in attached (SPMD) mode"
            echo "";;
+        d) export DOTENV_FILE="${OPTARG}"
+           echo "-d: sette will use ${DOTENV_FILE} .env file instead of .git directory to define related variables"
+           echo "";;
         # Usage message
         h | *) echo 'sette.sh with no arguments (in this case all configuration will be tested with default options)'
                echo '-p space-separated list of SETTE test phases (if omitted, all available phases,'
@@ -162,6 +170,7 @@ if [ $# -gt 0 ]; then
                echo '-s to synchronise the sette MY_SRC and EXP00 with the reference MY_SRC and EXPREF'
                echo '-w to wait for Sette jobs to finish'
                echo '-r to print Sette report after Sette jobs completion'
+               echo '-d to use .env file instead of .git directory to define related variables'
                echo '-u to run sette.sh without any user interaction. This means no checks on creating'
                echo '          directories etc. i.e. no safety net!'
                echo '-m to select computing architecture file (arch_<machine_name>.fcm) and batch template to run SETTE'
@@ -179,13 +188,18 @@ else
    echo "warning: \"param.cfg\" file not found; SETTE will use default paramaters from \"param.default\" file"
 fi
 
+# Define sette variables from local .git repository (default) or .env file ("-d" option)
+if [ -z "${DOTENV_FILE}" ]; then
+  set_git_var
+else
+  set_dotenv_var
+fi
+
 # Retrieval of the source-code revision: it will be used as the primary
 # identifier for accessing the SETTE validation database; a '+' suffix
 # indicates local changes with regard to the upstream source-code revision
 # indicated by the hash-function value
-[ -z "${VALID_REV}" ] && VALID_REV=$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2>/dev/null)
-localchanges=`git -C ${MAIN_DIR} status --short -uno 2>/dev/null | wc -l`
-[ ${localchanges} -gt 0 ] && VALID_REV="${VALID_REV}"
+[ ${localchanges} -gt 0 ] && VALID_REV="${VALID_REV}+"
 
 # Check the validity of the compilation-environment name, the
 # source-code-transformation name, and the source-code-revision identifier:

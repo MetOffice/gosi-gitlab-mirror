@@ -26,6 +26,9 @@ declare -i {REPRO_EC,RESTA_EC,REFCMP_EC,CPUCMP_EC,OCEOUT_EC,ROT_EC,PHYOPT_EC,VAR
 # List of status time-series files
 statfiles=(run.stat tracer.stat obs.stat)
 
+# source sette functions
+. ./all_functions.sh
+
 function get_dorv() {
   if [ ${VALID_REV} == 'old' ] ; then
     dorv=`ls -1rt $vdir/ | tail -1l `
@@ -571,9 +574,10 @@ TRANSFORM_REF=""
 
 # Processing of command-line arguments
 rev=""; sha=""; refrev=""; refsha=""
+export DOTENV_FILE=""
 if [ $# -gt 0 ]; then
   echo ""
-  while getopts r:s:R:S:x:un:v:V:m:M:z:Z:qXbTitaeCNtAh option; do
+  while getopts r:s:R:S:x:un:v:V:m:M:z:Z:d:qXbTitaeCNtAh option; do
      case $option in
         r) rev=$OPTARG
            echo "-r: will use ${rev} revision for current report"
@@ -647,6 +651,9 @@ if [ $# -gt 0 ]; then
         N) USING_NOGATHER=${USING_NOGATHER/yes/no};;
         t) USING_TILING=${USING_TILING/yes/no};;
         A) USING_MPMD=${USING_MPMD/yes/no};;
+        d) export DOTENV_FILE="${OPTARG}"
+           echo "-d: sette will use ${DOTENV_FILE} .env file instead of .git directory to define related variables"
+           echo "";;
         # Usage message
         h | *) echo 'Usage: sette_rpt.sh [options]'
                echo
@@ -692,6 +699,7 @@ if [ $# -gt 0 ]; then
                echo ' -N ll_nnogather=false selected in global configurations'
                echo ' -t tiling suppressed'
                echo ' -A SPMD mode selected'
+               echo ' -d to use .env file instead of .git directory to define related variables'
                echo ''
                exit 42;;
      esac
@@ -700,6 +708,13 @@ if [ $# -gt 0 ]; then
 fi
 # if $1 (remaining arguments)
 if [[ ! -z $1 ]] ; then rev=$1 ; fi
+
+# Define sette variables from local .git repository (default) or .env file ("-d" option)
+if [ -z "${DOTENV_FILE}" ]; then
+  set_git_var
+else
+  set_dotenv_var
+fi
 
 # Identifier to select the build and run-time-configuration variant
 # (hash-function value)
@@ -727,16 +742,13 @@ NEMO_VALID_REF=${NEMO_VALIDATION_REF}
 [ ! -d "${NEMO_VALID_REF}" ] && NEMO_VALID_REF=/path/to/reference/sette/results
 
 # The source-code-revision identifier
-if [ -z "${VALID_REV}"]; then
+if [ -z "${VALID_REV}" ]; then
   if [ -n "${rev}" ]; then     # -r option
     VALID_REV=${rev}
   elif [ -n "${sha}" ]; then   # -s option
     VALID_REV=${sha}
-  else                         # enquire local source-code repository
-    VALID_REV=$(git -C ${MAIN_DIR} rev-parse --short=8 HEAD 2>/dev/null)
   fi
 fi
-localchanges=`git status --short -uno 2>/dev/null | wc -l`
 VALID_REV=$(echo ${VALID_REV} | tr '[:upper:]' '[:lower:]' | tr -d -c '[:xdigit:]+')
 if [[ ${#VALID_REV} -lt 8 ]] || [[ ${#VALID_REV} -gt 41 ]]; then
   echo "Error: incompatible source-code-revision identifier" && exit 1

@@ -47,7 +47,6 @@ set -o posix
 #
 #   (NOTE: this file is the same for all configrations to be tested with sette)
 #
-#   all_functions.sh : loads functions used by sette (note: new functions can be added here)
 #   set_namelist     : function declared in all_functions that sets namelist parameters 
 #   post_test_tidyup : creates validation storage directory and copies required output files 
 #                      (run.stat and ocean.output) in it after execution of test.
@@ -133,7 +132,6 @@ cp BATCH_TEMPLATE/${JOB_PREFIX}-${CMP_NAM} job_batch_template || exit 1
 # C1D               :
 CONFIGS_AVAILABLE=( GYRE_PISCES GYRE_GO ORCA2_ICE_PISCES ORCA2_OFF_PISCES AMM12 ORCA2_SAS_ICE ORCA2_ICE_OBS AGRIF_DEMO WED025 C1D )
 
-. ./all_functions.sh
 for config in ${TEST_CONFIGS[@]} ; do
 
     # Ignore unavailable configurations
