@@ -287,12 +287,6 @@ CONTAINS
                   IF( ll_diag_rdg ) THEN
                      diag_opening(ji,jj) = diag_opening(ji,jj) + opening(ji,jj)
                      diag_closing(ji,jj) = diag_closing(ji,jj) + closing_net(ji,jj)
-                     diag_airdg1 (ji,jj) = diag_airdg1 (ji,jj) + airdg1 (ji,jj) * r1_Dt_ice
-                     diag_airft1 (ji,jj) = diag_airft1 (ji,jj) + airft1 (ji,jj) * r1_Dt_ice
-                     diag_airdg2 (ji,jj) = diag_airdg2 (ji,jj) + airdg2 (ji,jj) * r1_Dt_ice
-                     diag_airft2 (ji,jj) = diag_airft2 (ji,jj) + airft2 (ji,jj) * r1_Dt_ice
-                     diag_virdg  (ji,jj) = diag_virdg  (ji,jj) + virdg  (ji,jj) * r1_Dt_ice
-                     diag_virft  (ji,jj) = diag_virft  (ji,jj) + virft  (ji,jj) * r1_Dt_ice
                   ENDIF
                   !
                   ! --- Check convergence --- !
@@ -827,6 +821,16 @@ CONTAINS
                   !
                   IF( nn_icesal == 4 ) THEN   ;   szv_i(ji,jj,:,jl1) = szv_i(ji,jj,:,jl1) * ( 1._wp - afrdg - afrft )
                   ELSE                        ;   sv_i (ji,jj,  jl1) = sv_i (ji,jj,  jl1) * ( 1._wp - afrdg - afrft )
+                  ENDIF
+
+                  ! --- Ridging diagnostics ---!
+                  IF( ll_diag_rdg ) THEN
+                     diag_airdg1 (ji,jj) = diag_airdg1 (ji,jj) + airdg1 (ji,jj) * r1_Dt_ice
+                     diag_airft1 (ji,jj) = diag_airft1 (ji,jj) + airft1 (ji,jj) * r1_Dt_ice
+                     diag_airdg2 (ji,jj) = diag_airdg2 (ji,jj) + airdg2 (ji,jj) * r1_Dt_ice
+                     diag_airft2 (ji,jj) = diag_airft2 (ji,jj) + airft2 (ji,jj) * r1_Dt_ice
+                     diag_virdg  (ji,jj) = diag_virdg  (ji,jj) + virdg  (ji,jj) * r1_Dt_ice
+                     diag_virft  (ji,jj) = diag_virft  (ji,jj) + virft  (ji,jj) * r1_Dt_ice
                   ENDIF
 
                ENDIF
