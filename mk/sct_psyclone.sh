@@ -17,7 +17,7 @@
 #     sct_psyclone.sh <psyclone path> 'passthrough' <configuration directory> <input file>
 #
 # ----------------------------------------------------------------------
-# NEMO 4.3 , NEMO Consortium (2023)
+# NEMO 5.1.a, NEMO Consortium (2026)
 # Software governed by the CeCILL license (see ./LICENSE)
 # ----------------------------------------------------------------------
 set -o posix
@@ -53,6 +53,8 @@ ACTION='TRANSFORM'
 #    but explicitly disable the processing of files that PSyclone 3.0.0
 #    would fail to process or not correctly reproduce in the PSyclone
 #    passthrough,
+[[ "${FILENAME}" == 'tsltde.f90'            ]] && ACTION='EXCLUDE'   # see PSyclone issue #3400
+                                                                     # (https://github.com/stfc/PSyclone/issues/3400)
 [[ "${FILENAME}" == 'agrif_ice_interp.f90'  ]] && ACTION='EXCLUDE'   # avoid procedure-pointer-initialisation parsing failure
 [[ "${FILENAME}" == 'agrif_ice_update.f90'  ]] && ACTION='EXCLUDE'   # avoid procedure-pointer-initialisation parsing failure
 [[ "${FILENAME}" == 'agrif_oce_interp.f90'  ]] && ACTION='EXCLUDE'   # avoid procedure-pointer-initialisation parsing failure
