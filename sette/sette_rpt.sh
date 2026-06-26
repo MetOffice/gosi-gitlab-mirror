@@ -635,7 +635,7 @@ if [ $# -gt 0 ]; then
            msg="source-code transformation option"
            for sct in ${SCTRANSFORMS[@]}; do [[ "${OPTARG}" == "${sct}" ]] && arg="${sct}"; done
            [[ ! "${arg}" =~ ^[[:alnum:]]{1,64}$ ]] && echo "-${option}: incompatible name of the ${msg}" && exit 1
-           [[ -z "${arg}" ]] && echo "-${option}: the requested ${msg} is not available"; exit 1
+           [[ -z "${arg}" ]] && echo "-${option}: the requested ${msg} is not available" && exit 1
            [[ "${option}" == "z" ]] && echo "-z: ${msg} '${arg}' selected" && TRANSFORM="${arg}"
            [[ "${option}" == "Z" ]] && echo "-Z: reference ${msg} '${arg}' selected" && TRANSFORM_REF="${arg}" && DO_COMPARE=1
            echo "";;
