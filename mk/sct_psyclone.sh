@@ -5,6 +5,7 @@
 # History : 4.3  ! 2023-03  (S. Mueller) Incorporation of PSyclone processing into the build system
 #           5.0  ! 2025-01  (S. Mueller) Update for PSyclone-3.0.0 compatibility
 #           5.0  ! 2025-03  (S. Mueller) Adjustment for PSyclone-3.1.0 compatibility
+#           5.0  ! 2026-06  (S. Mueller) Adjustment for PSyclone-3.2.2 compatibility
 # ----------------------------------------------------------------------
 #
 # Wrapper script to launch the transformation of an individual source-code file
@@ -17,7 +18,7 @@
 #     sct_psyclone.sh <psyclone path> 'passthrough' <configuration directory> <input file>
 #
 # ----------------------------------------------------------------------
-# NEMO 4.3 , NEMO Consortium (2023)
+# NEMO 5.0, NEMO Consortium (2026)
 # Software governed by the CeCILL license (see ./LICENSE)
 # ----------------------------------------------------------------------
 set -o posix
@@ -47,6 +48,7 @@ fi
 PSYCLONE_APIV="2"
 [[ $( "${PSYCLONE_PATH}/bin/psyclone" -v ) == "PSyclone version: 3.0.0" ]] && PSYCLONE_APIV="3" && PSYCLONE_VERSION="3.0.0"
 [[ $( "${PSYCLONE_PATH}/bin/psyclone" -v ) == "PSyclone version: 3.1.0" ]] && PSYCLONE_APIV="3" && PSYCLONE_VERSION="3.1.0"
+[[ $( "${PSYCLONE_PATH}/bin/psyclone" -v ) == "PSyclone version: 3.2.2" ]] && PSYCLONE_APIV="3" && PSYCLONE_VERSION="3.2.2"
 #
 # Set action for the file to transformation,
 ACTION='TRANSFORM'
