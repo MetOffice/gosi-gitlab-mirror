@@ -117,20 +117,20 @@ CONTAINS
                !
                CASE( 0 )                !==  newtonian damping throughout the water column  ==!
                   DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-                     ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,jk,jn,Krhs) + restotr(ji,jj,jk) * ( ztrcdta(ji,jj,jk) - ptr(ji,jj,jk,jn,Kbb) )
+                     ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,jk,jn,Krhs) + restotr(ji,jj,jk) * ( ztrcdta(ji,jj,jk) - ptr(ji,jj,jk,jn,Kbb) ) * e3t(ji,jj,jk,Kmm)
                   END_3D
                   !
                CASE ( 1 )                !==  no damping in the turbocline (avt > 5 cm2/s)  ==!
                   DO_3D( 0, 0, 0, 0, 1, jpkm1 )
                      IF( avt(ji,jj,jk) <= avt_c )  THEN 
-                        ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,jk,jn,Krhs) + restotr(ji,jj,jk) * ( ztrcdta(ji,jj,jk) - ptr(ji,jj,jk,jn,Kbb) )
+                        ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,jk,jn,Krhs) + restotr(ji,jj,jk) * ( ztrcdta(ji,jj,jk) - ptr(ji,jj,jk,jn,Kbb) ) * e3t(ji,jj,jk,Kmm)
                      ENDIF
                   END_3D
                   !
                CASE ( 2 )               !==  no damping in the mixed layer   ==! 
                   DO_3D( 0, 0, 0, 0, 1, jpkm1 )
                      IF( gdept(ji,jj,jk,Kmm) >= hmlp (ji,jj) ) THEN
-                        ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,jk,jn,Krhs) + restotr(ji,jj,jk) * ( ztrcdta(ji,jj,jk) - ptr(ji,jj,jk,jn,Kbb) )
+                        ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,jk,jn,Krhs) + restotr(ji,jj,jk) * ( ztrcdta(ji,jj,jk) - ptr(ji,jj,jk,jn,Kbb) ) * e3t(ji,jj,jk,Kmm)
                      END IF
                   END_3D
                   !  

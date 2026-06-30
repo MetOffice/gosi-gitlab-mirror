@@ -93,7 +93,7 @@ CONTAINS
       !!                         this may be a problem for some advection schemes
       !!
       !! References: Fox-Kemper et al., JPO, 38, 1145-1165, 2008
-      !!             Fox-Kemper and Ferrari, JPO, 38, 1166-1179, 2008
+      !!             Fox-Kemper, et al., Ocean Modelling,39, 61-78, 2011
       !!----------------------------------------------------------------------
       INTEGER,  DIMENSION(2)              , INTENT(in   ) ::   ktFuv
       INTEGER                             , INTENT(in   ) ::   kt         ! ocean time-step index

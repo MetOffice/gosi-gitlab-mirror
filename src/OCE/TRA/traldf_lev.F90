@@ -6,6 +6,7 @@ MODULE traldf_lev
    !! History :  3.7  ! 2014-01  (G. Madec, S. Masson)  Original code, re-entrant laplacian (traldf_lap_blp module)
    !!            4.5  ! 2022-06  (S. Techene, G, Madec)  refactorization to reduce local memory usage
    !!                 !                                + removal of old partial-step treatment
+   !!            5.x  !  2026-03  (S. Griffies, G. Madec)  thickness weighted tracer tendency 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -52,9 +53,9 @@ CONTAINS
       !!
       !! ** Method  :   iso-level laplacian diffusive operator evaluated using
       !!      Kbb fields (forward time integration). The horizontal diffusive 
-      !!      trends of the tracer is given by:
-      !!          difft = 1/(e1e2t*e3t_Kmm) {  di-1[ ahtu e2u*e3u_Kmm/e1u di(t(Kbb)) ]
-      !!                                     + dj-1[ ahtv e1v*e3v_Kmm/e2v dj(t(Kbb)) ] }
+      !!      thickness weighted trends of the tracer is given by:
+      !!          difft = 1/(e1e2t) {  di-1[ ahtu e2u*e3u_Kmm/e1u di(t(Kbb)) ]
+      !!                             + dj-1[ ahtv e1v*e3v_Kmm/e2v dj(t(Kbb)) ] }
       !!      Add this trend to the general tracer trend pt_rhs :
       !!          pt_rhs = pt_rhs + difft
       !!
@@ -94,7 +95,7 @@ CONTAINS
                pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs)                  &
                   &                 + (  ( zfu(ji,jj) - zfu(ji-1,jj) )      &
                   &                    + ( zfv(ji,jj) - zfv(ji,jj-1) )  )   &
-                  &                 * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
+                  &                 * r1_e1e2t(ji,jj)
             END_2D
             !
             !                                   !=  "Poleward" & 2D-integrated diffusive heat and salt transports  =!
@@ -176,7 +177,7 @@ CONTAINS
                pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs)                    &
                   &                 - (  ( zfu(ji,jj) - zfu(ji-1,jj) )      &
                   &                    + ( zfv(ji,jj) - zfv(ji,jj-1) )  )   &
-                  &                 *  r1_e1e2t(ji,jj) /  e3t(ji,jj,jk,Kmm)
+                  &                 *  r1_e1e2t(ji,jj) 
             END_2D
             !
             !                                   !=  "Poleward" & 2D-integrated diffusive heat and salt transports  =!

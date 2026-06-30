@@ -171,8 +171,7 @@ CONTAINS
                IF( ln_trc_ais(jn) ) THEN
                   jl = n_trc_indais(jn)
                   DO_2D( 0, 0, 0, 0 )
-                     zfact = 1. / e3t(ji,jj,1,Kmm)
-                     ztra = fwficb(ji,jj) * r1_rho0 * ptr(ji,jj,1,jn,Kbb) * zfact
+                     ztra = fwficb(ji,jj) * r1_rho0 * ptr(ji,jj,1,jn,Kbb)
                      ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,1,jn,Krhs) + ztra
                   END_2D
                END IF
@@ -198,10 +197,10 @@ CONTAINS
                      END IF   
                      ! level fully include in the ice shelf boundary layer
                      DO jk = ikt, ikb - 1
-                        ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,jk,jn,Krhs) + zcalv * ptr(ji,jj,jk,jn,Kbb)
+                        ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,jk,jn,Krhs) + zcalv * e3t(ji,jj,jk,Kmm) * ptr(ji,jj,jk,jn,Kbb)
                      END DO
                      ! level partially include in ice shelf boundary layer
-                     ptr(ji,jj,ikb,jn,Krhs) = ptr(ji,jj,ikb,jn,Krhs) +  zcalv * ptr(ji,jj,ikb,jn,Kbb) * zfrac
+                     ptr(ji,jj,ikb,jn,Krhs) = ptr(ji,jj,ikb,jn,Krhs) +  zcalv * e3t(ji,jj,ikb,Kmm) * ptr(ji,jj,ikb,jn,Kbb) * zfrac
                   END_2D
                ENDIF   
             END DO
@@ -217,7 +216,7 @@ CONTAINS
                   jl = n_trc_indais(jn)
                   DO_2D( 0, 0, 0, 0 )
                      DO jk = 1, icblev
-                        zcalv  =  fwficb(ji,jj) * r1_rho0 
+                        zcalv  =  fwficb(ji,jj) * r1_rho0 *  e3t(ji,jj,jk,Kmm)
                         ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,jk,jn,Krhs) + rf_trafac(jl) * zcalv / gdepw(ji,jj,icblev+1,Kmm)
                      END DO   
                   END_2D
@@ -245,10 +244,10 @@ CONTAINS
                      END IF
                      ! level fully include in the ice shelf boundary layer
                      DO jk = ikt, ikb - 1
-                        ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,jk,jn,Krhs) + rf_trafac(jl) * zcalv
+                        ptr(ji,jj,jk,jn,Krhs) = ptr(ji,jj,jk,jn,Krhs) + rf_trafac(jl) * e3t(ji,jj,jk,Kmm) * zcalv
                      END DO
                      ! level partially include in ice shelf boundary layer
-                     ptr(ji,jj,ikb,jn,Krhs) = ptr(ji,jj,ikb,jn,Krhs) + rf_trafac(jl) * zcalv * zfrac
+                     ptr(ji,jj,ikb,jn,Krhs) = ptr(ji,jj,ikb,jn,Krhs) + rf_trafac(jl) * zcalv * e3t(ji,jj,ikb,Kmm) * zfrac
                   END_2D
                ENDIF
             END DO

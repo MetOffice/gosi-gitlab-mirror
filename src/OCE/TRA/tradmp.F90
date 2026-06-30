@@ -14,6 +14,7 @@ MODULE tradmp
    !!            3.4  ! 2011-04  (G. Madec, C. Ethe) Merge of dtatem and dtasal + suppression of CPP keys
    !!            3.6  ! 2015-06  (T. Graham)  read restoring coefficient in a file
    !!            3.7  ! 2015-10  (G. Madec)  remove useless trends arrays
+   !!            5.x  ! 2026-03  (S. Griffies, G. Madec)  thickness weighted tracer tendency 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -127,7 +128,8 @@ CONTAINS
          DO jn = 1, jpts
             DO_3D( 0, 0, 0, 0, 1, jpkm1 )
                pts(ji,jj,jk,jn,Krhs) = pts(ji,jj,jk,jn,Krhs)           &
-                  &                  + resto(ji,jj,jk) * ( zts_dta(ji,jj,jk,jn) - pts(ji,jj,jk,jn,Kbb) )
+                  &                  + resto(ji,jj,jk) * ( zts_dta(ji,jj,jk,jn) - pts(ji,jj,jk,jn,Kbb) )  &
+                  &                                    * e3t(ji,jj,jk,Kmm) 
             END_3D
          END DO
          !
@@ -135,9 +137,11 @@ CONTAINS
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )
             IF( avt(ji,jj,jk) <= avt_c ) THEN
                pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs)   &
-                  &                      + resto(ji,jj,jk) * ( zts_dta(ji,jj,jk,jp_tem) - pts(ji,jj,jk,jp_tem,Kbb) )
+                  &                      + resto(ji,jj,jk) * ( zts_dta(ji,jj,jk,jp_tem) - pts(ji,jj,jk,jp_tem,Kbb) ) &
+                  &                                        * e3t(ji,jj,jk,Kmm)  
                pts(ji,jj,jk,jp_sal,Krhs) = pts(ji,jj,jk,jp_sal,Krhs)   &
-                  &                      + resto(ji,jj,jk) * ( zts_dta(ji,jj,jk,jp_sal) - pts(ji,jj,jk,jp_sal,Kbb) )
+                  &                      + resto(ji,jj,jk) * ( zts_dta(ji,jj,jk,jp_sal) - pts(ji,jj,jk,jp_sal,Kbb) ) &
+                  &                                        * e3t(ji,jj,jk,Kmm)  
             ENDIF
          END_3D
          !
@@ -145,9 +149,12 @@ CONTAINS
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )
             IF( gdept(ji,jj,jk,Kmm) >= hmlp (ji,jj) ) THEN
                pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs)   &
-                  &                      + resto(ji,jj,jk) * ( zts_dta(ji,jj,jk,jp_tem) - pts(ji,jj,jk,jp_tem,Kbb) )
+                  &                      + resto(ji,jj,jk) * ( zts_dta(ji,jj,jk,jp_tem) - pts(ji,jj,jk,jp_tem,Kbb) ) &
+                  &                                        * e3t(ji,jj,jk,Kmm)  
                pts(ji,jj,jk,jp_sal,Krhs) = pts(ji,jj,jk,jp_sal,Krhs)   &
-                  &                      + resto(ji,jj,jk) * ( zts_dta(ji,jj,jk,jp_sal) - pts(ji,jj,jk,jp_sal,Kbb) )
+                  &                      + resto(ji,jj,jk) * ( zts_dta(ji,jj,jk,jp_sal) - pts(ji,jj,jk,jp_sal,Kbb) ) &
+                  &                                        * e3t(ji,jj,jk,Kmm)  
+
             ENDIF
          END_3D
          !
@@ -160,13 +167,13 @@ CONTAINS
 
          IF( iom_use('hflx_dmp_cea') ) THEN
             DO_3D( 0, 0, 0, 0, 1, jpk )
-               zwrk(ji,jj,jk) = ( pts(ji,jj,jk,jp_tem,Krhs) - ztrdts(ji,jj,jk,jp_tem) ) * e3t(ji,jj,jk,Kmm)
+               zwrk(ji,jj,jk) = ( pts(ji,jj,jk,jp_tem,Krhs) - ztrdts(ji,jj,jk,jp_tem) )
             END_3D
             CALL iom_put('hflx_dmp_cea', SUM( zwrk(:,:,:), dim=3 ) * rcp * rho0 ) ! W/m2
          ENDIF
          IF( iom_use('sflx_dmp_cea') ) THEN
             DO_3D( 0, 0, 0, 0, 1, jpk )
-               zwrk(ji,jj,jk) = ( pts(ji,jj,jk,jp_sal,Krhs) - ztrdts(ji,jj,jk,jp_sal) ) * e3t(ji,jj,jk,Kmm)
+               zwrk(ji,jj,jk) = ( pts(ji,jj,jk,jp_sal,Krhs) - ztrdts(ji,jj,jk,jp_sal) ) 
             END_3D
             CALL iom_put('sflx_dmp_cea', SUM( zwrk(:,:,:), dim=3 ) * rho0 )       ! g/m2/s
          ENDIF

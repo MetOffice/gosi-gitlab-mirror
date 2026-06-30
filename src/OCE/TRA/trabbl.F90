@@ -13,6 +13,7 @@ MODULE trabbl
    !!             -   ! 2010-11  (G. Madec) add mbk. arrays associated to the deepest ocean level
    !!             -   ! 2013-04  (F. Roquet, G. Madec)  use of eosbn2 instead of local hard coded alpha and beta
    !!            4.0  ! 2017-04  (G. Madec)  ln_trabbl namelist variable instead of a CPP key
+   !!            5.x  ! 2026-03  (S. Griffies, G. Madec)  thickness weighted tracer tendency 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -178,7 +179,6 @@ CONTAINS
       !
       INTEGER  ::   ji, jj, jn   ! dummy loop indices
       INTEGER  ::   ik           ! local integers
-      REAL(wp) ::   zbtr         ! local scalars
       REAL(wp), DIMENSION(T2D(1)) ::   zptb   ! workspace
       !!----------------------------------------------------------------------
       !
@@ -196,7 +196,7 @@ CONTAINS
                &                    - ahu_bbl(ji-1,jj  ) * ( zptb(ji  ,jj  ) - zptb(ji-1,jj  ) ) )     &
                &                  + ( ahv_bbl(ji  ,jj  ) * ( zptb(ji  ,jj+1) - zptb(ji  ,jj  ) )       &
                &                    - ahv_bbl(ji  ,jj-1) * ( zptb(ji  ,jj  ) - zptb(ji  ,jj-1) ) ) )   &
-               &                * r1_e1e2t(ji,jj) / e3t(ji,jj,ik,Kmm)
+               &                * r1_e1e2t(ji,jj) 
          END_2D
          !                                                  ! ===========
       END DO                                                ! end tracer
@@ -227,7 +227,7 @@ CONTAINS
       INTEGER  ::   ji, jj, jk, jn           ! dummy loop indices
       INTEGER  ::   iis , iid , ijs , ijd    ! local integers
       INTEGER  ::   ikus, ikud, ikvs, ikvd   !   -       -
-      REAL(wp) ::   zbtr, ztra               ! local scalars
+      REAL(wp) ::   ztra                     ! local scalars
       REAL(wp) ::   zu_bbl, zv_bbl           !   -      -
       !!----------------------------------------------------------------------
       !                                                          ! ===========
@@ -241,20 +241,17 @@ CONTAINS
                zu_bbl = ABS( utr_bbl(ji,jj) )
                !
                IF( ntsi <= iis .AND. iis <= ntei ) THEN        ! up  -slope T-point (shelf bottom point)
-                  zbtr = r1_e1e2t(iis,jj) / e3t(iis,jj,ikus,Kmm)
-                  ztra = zu_bbl * ( pt(iid,jj,ikus,jn) - pt(iis,jj,ikus,jn) ) * zbtr
+                  ztra = zu_bbl * ( pt(iid,jj,ikus,jn) - pt(iis,jj,ikus,jn) ) * r1_e1e2t(iis,jj)
                   pt_rhs(iis,jj,ikus,jn) = pt_rhs(iis,jj,ikus,jn) + ztra
                ENDIF
                !
                IF( ntsi <= iid .AND. iid <= ntei ) THEN        ! down-slope upper to down T-point (deep column)
                   DO jk = ikus, ikud-1
-                     zbtr = r1_e1e2t(iid,jj) / e3t(iid,jj,jk,Kmm)
-                     ztra = zu_bbl * ( pt(iid,jj,jk+1,jn) - pt(iid,jj,jk,jn) ) * zbtr
+                     ztra = zu_bbl * ( pt(iid,jj,jk+1,jn) - pt(iid,jj,jk,jn) ) * r1_e1e2t(iid,jj)
                      pt_rhs(iid,jj,jk,jn) = pt_rhs(iid,jj,jk,jn) + ztra
                   END DO
                   !
-                  zbtr = r1_e1e2t(iid,jj) / e3t(iid,jj,ikud,Kmm)
-                  ztra = zu_bbl * ( pt(iis,jj,ikus,jn) - pt(iid,jj,ikud,jn) ) * zbtr
+                  ztra = zu_bbl * ( pt(iis,jj,ikus,jn) - pt(iid,jj,ikud,jn) ) * r1_e1e2t(iid,jj)
                   pt_rhs(iid,jj,ikud,jn) = pt_rhs(iid,jj,ikud,jn) + ztra
                ENDIF
             ENDIF
@@ -266,20 +263,17 @@ CONTAINS
                zv_bbl = ABS( vtr_bbl(ji,jj) )
                !
                IF( ntsj <= ijs .AND. ijs <= ntej ) THEN           ! up  -slope T-point (shelf bottom point)
-                  zbtr = r1_e1e2t(ji,ijs) / e3t(ji,ijs,ikvs,Kmm)
-                  ztra = zv_bbl * ( pt(ji,ijd,ikvs,jn) - pt(ji,ijs,ikvs,jn) ) * zbtr
+                  ztra = zv_bbl * ( pt(ji,ijd,ikvs,jn) - pt(ji,ijs,ikvs,jn) ) * r1_e1e2t(ji,ijs)
                   pt_rhs(ji,ijs,ikvs,jn) = pt_rhs(ji,ijs,ikvs,jn) + ztra
                ENDIF
                !
                IF( ntsj <= ijd .AND. ijd <= ntej ) THEN           ! down-slope upper to down T-point (deep column)
                   DO jk = ikvs, ikvd-1
-                     zbtr = r1_e1e2t(ji,ijd) / e3t(ji,ijd,jk,Kmm)
-                     ztra = zv_bbl * ( pt(ji,ijd,jk+1,jn) - pt(ji,ijd,jk,jn) ) * zbtr
+                     ztra = zv_bbl * ( pt(ji,ijd,jk+1,jn) - pt(ji,ijd,jk,jn) ) * r1_e1e2t(ji,ijd)
                      pt_rhs(ji,ijd,jk,jn) = pt_rhs(ji,ijd,jk,jn)  + ztra
                   END DO
                   !                                               ! down-slope T-point (deep bottom point)
-                  zbtr = r1_e1e2t(ji,ijd) / e3t(ji,ijd,ikvd,Kmm)
-                  ztra = zv_bbl * ( pt(ji,ijs,ikvs,jn) - pt(ji,ijd,ikvd,jn) ) * zbtr
+                  ztra = zv_bbl * ( pt(ji,ijs,ikvs,jn) - pt(ji,ijd,ikvd,jn) ) * r1_e1e2t(ji,ijd)
                   pt_rhs(ji,ijd,ikvd,jn) = pt_rhs(ji,ijd,ikvd,jn) + ztra
                ENDIF
             ENDIF

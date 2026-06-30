@@ -165,7 +165,7 @@ CONTAINS
             qtr_cfc(ji,jj,jl) = -zak_cfc * ( tr(ji,jj,1,jn,Kbb) - zca_cfc )   &
                &                         * tmask(ji,jj,1) * ( 1. - fr_i(ji,jj) )
             ! Add the surface flux to the trend
-            tr(ji,jj,1,jn,Krhs) = tr(ji,jj,1,jn,Krhs) + qtr_cfc(ji,jj,jl) / e3t(ji,jj,1,Kmm) 
+            tr(ji,jj,1,jn,Krhs) = tr(ji,jj,1,jn,Krhs) + qtr_cfc(ji,jj,jl) 
 
             ! cumulation of surface flux at each time step
             qint_cfc(ji,jj,jl) = qint_cfc(ji,jj,jl) + qtr_cfc(ji,jj,jl) * rn_Dt

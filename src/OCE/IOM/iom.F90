@@ -127,8 +127,9 @@ CONTAINS
       !
       REAL(wp), ALLOCATABLE, DIMENSION(:,:) :: zt_bnds, zw_bnds
       REAL(wp), DIMENSION(2,jpkam1)         :: za_bnds   ! ABL vertical boundaries
+      REAL(wp)    :: zz
       LOGICAL ::   ll_closedef
-      LOGICAL ::   ll_exist
+      LOGICAL ::   ll_exist, ll_tst
       !!----------------------------------------------------------------------
       !
       ll_closedef = .TRUE.
@@ -171,6 +172,12 @@ CONTAINS
       CASE (30)   ;   CALL xios_define_calendar( TYPE = "D360",      time_origin = ref_date, start_date = start_date )
       END SELECT
 
+      ! Physical constants definition
+      ll_tst = xios_setvar( 'rho0'   , rho0 )
+      ll_tst = xios_setvar( 'cpocean', rcp  )
+      ll_tst = xios_setvar( 'rhoic'  , rhoi )
+      ll_tst = xios_setvar( 'rhosn'  , rhos )
+      
       ! horizontal grid definition
       IF(.NOT.llrst_context) CALL set_scalar
       !

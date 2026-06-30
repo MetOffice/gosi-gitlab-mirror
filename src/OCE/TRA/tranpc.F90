@@ -9,6 +9,7 @@ MODULE tranpc
    !!            3.0  ! 2008-06  (G. Madec)  applied on ta, sa and called before tranxt in step.F90
    !!            3.3  ! 2010-05  (C. Ethe, G. Madec)  merge TRC-TRA
    !!            3.6  ! 2015-05  (L. Brodeau) new algorithm based on local Brunt-Vaisala freq.
+   !!            5.x  ! 2026-04  (S.M. Griffies + G. Madec) thickness weighted tracer tendency 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -300,9 +301,11 @@ CONTAINS
 
          END_2D
          !
-         IF( l_trdtra ) THEN         ! send the Non penetrative mixing trends for diagnostic
-            ztrdt(:,:,:) = ( pts(T2D(0),:,jp_tem,Kaa) - ztrdt(:,:,:) ) * r1_Dt
-            ztrds(:,:,:) = ( pts(T2D(0),:,jp_sal,Kaa) - ztrds(:,:,:) ) * r1_Dt
+         IF( l_trdtra ) THEN         ! send the non-penetrative mixing trends for diagnostic
+            DO_3D( 0, 0, 0, 0, 1, jpk )
+               ztrdt(ji,jj,jk) = ( pts(ji,jj,jk,jp_tem,Kaa) - ztrdt(ji,jj,jk) ) * r1_Dt * e3t(ji,jj,jk,Kaa)   
+               ztrds(ji,jj,jk) = ( pts(ji,jj,jk,jp_sal,Kaa) - ztrds(ji,jj,jk) ) * r1_Dt * e3t(ji,jj,jk,Kaa)   
+            END_3D
             CALL trd_tra( kt, Kmm, Krhs, 'TRA', jp_tem, jptra_npc, ztrdt )
             CALL trd_tra( kt, Kmm, Krhs, 'TRA', jp_sal, jptra_npc, ztrds )
             DEALLOCATE( ztrdt, ztrds )

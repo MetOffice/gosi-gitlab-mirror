@@ -33,6 +33,10 @@ MODULE trcsms_age
    !! NEMO/TOP 5.0, NEMO Consortium (2024)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
+   !! * Substitutions
+#  include "do_loop_substitute.h90"
+#  include "domzgr_substitute.h90"
+
 CONTAINS
 
    SUBROUTINE trc_sms_age( kt, Kbb, Kmm, Krhs )
@@ -61,10 +65,14 @@ CONTAINS
       END DO
       !
       tr(:,:,nl_age,jp_age,Krhs) = frac_kill_age * rn_age_kill_rate * tr(:,:,nl_age,jp_age,Kbb)  &
-          &                   + frac_add_age  * rryear * tmask(:,:,nl_age)
+             &                   + frac_add_age  * rryear * tmask(:,:,nl_age)
       !
       DO jk = nlb_age, jpk
          tr(:,:,jk,jp_age,Krhs) = tmask(:,:,jk) * rryear
+      END DO
+      !
+      DO jk = 1, jpk
+         tr(:,:,jk,jp_age,Krhs) = tr(:,:,jk,jp_age,Krhs) * e3t(:,:,jk,Kmm)
       END DO
       !
       IF( l_trdtrc  )   CALL trd_trc( tr(:,:,:,jp_age,Krhs), jp_age, jptra_sms, kt, Kmm )   ! save trends

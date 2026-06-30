@@ -2841,8 +2841,8 @@ CONTAINS
       END IF
       !
       DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-         pts(ji,jj,jk,jp_tem,Krhs) =  pts(ji,jj,jk,jp_tem,Krhs) - ( ghamt(ji,jj,jk) - ghamt(ji,jj,jk+1) ) / e3t(ji,jj,jk,Kmm)
-         pts(ji,jj,jk,jp_sal,Krhs) =  pts(ji,jj,jk,jp_sal,Krhs) - ( ghams(ji,jj,jk) - ghams(ji,jj,jk+1) ) / e3t(ji,jj,jk,Kmm)
+         pts(ji,jj,jk,jp_tem,Krhs) =  pts(ji,jj,jk,jp_tem,Krhs) - ( ghamt(ji,jj,jk) - ghamt(ji,jj,jk+1) ) !!smg / e3t(ji,jj,jk,Kmm)
+         pts(ji,jj,jk,jp_sal,Krhs) =  pts(ji,jj,jk,jp_sal,Krhs) - ( ghams(ji,jj,jk) - ghams(ji,jj,jk+1) ) !!smg / e3t(ji,jj,jk,Kmm)
       END_3D
       !
       IF ( l_trdtra ) THEN   ! Save the non-local tracer flux trends for diagnostics

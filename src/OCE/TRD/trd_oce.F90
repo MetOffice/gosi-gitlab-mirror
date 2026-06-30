@@ -3,7 +3,8 @@ MODULE trd_oce
    !!                   ***  MODULE trd_oce  ***
    !! Ocean trends :   set tracer and momentum trend variables
    !!======================================================================
-   !! History :  1.0  !  2004-08  (C. Talandier) Original code
+   !! History :  1.0   !  2004-08  (C. Talandier) Original code
+   !! History :  5.0.2 !  2026-04  (S.M. Griffies + G. Madec) tracer trends 
    !!----------------------------------------------------------------------
    USE par_oce                 ! ocean parameters
    USE trdmxl_oce              ! ocean active mixed layer tracers trends variables
@@ -38,10 +39,9 @@ MODULE trd_oce
    INTEGER, PUBLIC, PARAMETER ::   jptra_yad  =  2     !: y- horizontal advection
    INTEGER, PUBLIC, PARAMETER ::   jptra_zad  =  3     !: z- vertical   advection
    INTEGER, PUBLIC, PARAMETER ::   jptra_sad  =  4     !: z- vertical   advection
-   INTEGER, PUBLIC, PARAMETER ::   jptra_totad  =  5   !: total         advection
+   INTEGER, PUBLIC, PARAMETER ::   jptra_adv  =  5     !: 3D            advection
    INTEGER, PUBLIC, PARAMETER ::   jptra_ldf  =  6     !: lateral       diffusion
    INTEGER, PUBLIC, PARAMETER ::   jptra_zdf  =  7     !: vertical      diffusion
-   INTEGER, PUBLIC, PARAMETER ::   jptra_zdfp =  8     !: "PURE" vert.  diffusion (ln_traldf_iso=T)
    INTEGER, PUBLIC, PARAMETER ::   jptra_evd  =  9     !: EVD term (convection)
    INTEGER, PUBLIC, PARAMETER ::   jptra_bbc  = 10     !: Bottom Boundary Condition (geoth. heating) 
    INTEGER, PUBLIC, PARAMETER ::   jptra_bbl  = 11     !: Bottom Boundary Layer (diffusive and/or advective)
@@ -51,10 +51,19 @@ MODULE trd_oce
    INTEGER, PUBLIC, PARAMETER ::   jptra_qsr  = 14     !: penetrative solar radiation
    INTEGER, PUBLIC, PARAMETER ::   jptra_nsr  = 15     !: non solar radiation / C/D on salinity  (+runoff if ln_rnf=T)
    INTEGER, PUBLIC, PARAMETER ::   jptra_tot  = 16     !: Model total trend
+   !                                                  !!* vertical implicit e3t*trend diagnostics
+   INTEGER, PUBLIC, PARAMETER ::   jptra_zdf_tot = 30  !: total trend
+   INTEGER, PUBLIC, PARAMETER ::   jptra_zdf_avt = 31  !: vertical diffusion 
+   INTEGER, PUBLIC, PARAMETER ::   jptra_zdf_evd = 32  !: enhanced vertical diffusion 
+   INTEGER, PUBLIC, PARAMETER ::   jptra_zdf_ldf = 33  !: K33 term in neutral diffusion
+   INTEGER, PUBLIC, PARAMETER ::   jptra_zdf_zad = 34  !: vertical advection 
+   INTEGER, PUBLIC, PARAMETER ::   jptra_zdf_mfc = 35  !: mass flux convection 
    !
    !                                                  !!!* Passive tracers trends indices (use if "key_top" defined)
    INTEGER, PUBLIC, PARAMETER ::   jptra_sms  = 18     !: sources m. sinks
    INTEGER, PUBLIC, PARAMETER ::   jptra_rad  = 19     !: corr. trn<0 in trcrad
+
+
    !
    !                                                  !!!* Momentum trends indices
    INTEGER, PUBLIC, PARAMETER ::   jptot_dyn  = 13     !: Total trend nb: change it when adding/removing one indice below

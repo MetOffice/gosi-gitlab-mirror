@@ -3,7 +3,8 @@ MODULE traadv_fct
    !!                       ***  MODULE  traadv_fct  ***
    !! Ocean  tracers:  horizontal & vertical advective trend (2nd/4th order Flux Corrected Transport method)
    !!==============================================================================
-   !! History :  3.7  !  2015-09  (L. Debreu, G. Madec)  original code (inspired from traadv_tvd.F90)
+   !! History :  3.7  !  2015-09  (L. Debreu, G. Madec)   original code (inspired from traadv_tvd.F90)
+   !!            5.x  !  2026-03  (S. Griffies, G. Madec) thickness weighted tracer tendency 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -81,7 +82,7 @@ CONTAINS
       INTEGER                                  , INTENT(in   ) ::   kn_fct_v        ! order of the FCT scheme (=2 or 4)
       INTEGER                                  , INTENT(in   ) ::   kn_fct_imp      ! treatment of implicit optmized(1) or accurate(2)
       REAL(wp)                                 , INTENT(in   ) ::   pdt             ! tracer time-step
-      REAL(wp), DIMENSION(T2D(nn_hls),jpk     ), INTENT(in   ) ::   pU, pV, pW      ! 3 ocean volume flux components
+      REAL(wp), DIMENSION(T2D(nn_hls),jpk     ), INTENT(in   ) ::   pU, pV, pW      ! ocean volume flux components [m^3/s]
       REAL(wp), DIMENSION(jpi,jpj,jpk,kjpt,jpt), INTENT(inout) ::   pt              ! tracers and RHS of tracer equation
       !
       INTEGER  ::   ji, jj, jk, jn                 ! dummy loop indices
@@ -318,7 +319,7 @@ CONTAINS
                &      + ( ztFv(ji,jj,jk) - ztFv(ji  ,jj-1,jk  ) )   &
                &      + ( ztFw(ji,jj,jk) - ztFw(ji  ,jj  ,jk+1) ) ) * r1_e1e2t(ji,jj)
             !
-            pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) + ztra / e3t(ji,jj,jk,Kmm) * tmask(ji,jj,jk) !!clem
+            pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) + ztra * tmask(ji,jj,jk)                     !!clem
             ! update upstream (for implicit)
             zta_up1(ji,jj,jk) = zta_up1(ji,jj,jk) + pdt * ztra / e3t(ji,jj,jk,Kaa) * tmask(ji,jj,jk)
          END_3D
@@ -333,7 +334,7 @@ CONTAINS
                ztFw(ji,jj,jk) = ztFw(ji,jj,jk) + ztmp(ji,jj,jk) * e1e2t(ji,jj)  ! update vertical fluxes
             END_3D
             DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-               pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - ( ztmp(ji,jj,jk) - ztmp(ji,jj,jk+1) ) / e3t(ji,jj,jk,Kmm)
+               pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - ( ztmp(ji,jj,jk) - ztmp(ji,jj,jk+1) ) 
             END_3D
          END IF
          !
@@ -346,7 +347,7 @@ CONTAINS
                ztrdz(ji,jj,jk) = ztrdz(ji,jj,jk) + ztFw(ji,jj,jk)  !
             END_3D                                                 !
             !
-            IF( l_trd ) THEN              ! trend diagnostics
+            IF( l_trd ) THEN              ! trend diagnostics 
                CALL trd_tra( kt, Kmm, Krhs, cdtype, jn, jptra_xad, ztrdx, pU, pt(:,:,:,jn,Kmm) )
                CALL trd_tra( kt, Kmm, Krhs, cdtype, jn, jptra_yad, ztrdy, pV, pt(:,:,:,jn,Kmm) )
                CALL trd_tra( kt, Kmm, Krhs, cdtype, jn, jptra_zad, ztrdz, pW, pt(:,:,:,jn,Kmm) )
@@ -376,11 +377,13 @@ CONTAINS
       !!                    ***  ROUTINE upstream  ***
       !!
       !! **  Purpose :   compute the upstream fluxes and upstream guess of tracer
+      !! 
+!! gm / smg: this routine is not used in RK3 and so it should be removed. 
       !!----------------------------------------------------------------------
       INTEGER                             , INTENT(in   ) ::   Kbb, Kmm, Kaa    ! ocean time level indices
       REAL(wp)                            , INTENT(in   ) ::   pDt              ! tracer time-step
       REAL(wp), DIMENSION(:,:,:)          , INTENT(in   ) ::   pt_b             ! before tracer
-      REAL(wp), DIMENSION(T2D(nn_hls),jpk), INTENT(in   ) ::   pU, pV, pW       ! 3 velocity components
+      REAL(wp), DIMENSION(T2D(nn_hls),jpk), INTENT(in   ) ::   pU, pV, pW       ! volume transport components [m^3/s]
       REAL(wp), DIMENSION(T2D(nn_hls),jpk), INTENT(  out) ::   ptFu, ptFv, ptFw ! upstream fluxes
       REAL(wp), DIMENSION(T2D(nn_hls),jpk), INTENT(  out) ::   pt_up1           ! tracer or upstream guess of tracer
       REAL(wp), DIMENSION(:,:,:)          , INTENT(inout) ::   pt_rhs           ! RHS tendency
@@ -460,9 +463,10 @@ CONTAINS
             pt_rhs(ji,jj,jk) = pt_rhs(ji,jj,jk) - ( ztmp(ji,jj,jk) - ztmp(ji,jj,jk+1) ) / e3t(ji,jj,jk,Kmm)
          END_3D
       ENDIF
-
+      !
    END SUBROUTINE fct_up1_1stp
 
+   
    SUBROUTINE fct_up1_2stp( Kbb, Kmm, Kaa, pDt, pt_b, pU, pV, pW, ptFu, ptFv, ptFw, pt_up1, pt_rhs )
       !!---------------------------------------------------------------------
       !!                    ***  ROUTINE upstream  ***
@@ -472,7 +476,7 @@ CONTAINS
       INTEGER                             , INTENT(in   ) ::   Kbb, Kmm, Kaa    ! ocean time level indices
       REAL(wp)                            , INTENT(in   ) ::   pDt              ! tracer time-step
       REAL(wp), DIMENSION(:,:,:)          , INTENT(in   ) ::   pt_b             ! before tracer
-      REAL(wp), DIMENSION(T2D(nn_hls),jpk), INTENT(in   ) ::   pU, pV, pW       ! 3 velocity components
+      REAL(wp), DIMENSION(T2D(nn_hls),jpk), INTENT(in   ) ::   pU, pV, pW       ! ocean volume flux components [m^3/s]
       REAL(wp), DIMENSION(T2D(nn_hls),jpk), INTENT(  out) ::   ptFu, ptFv, ptFw ! upstream fluxes
       REAL(wp), DIMENSION(T2D(nn_hls),jpk), INTENT(  out) ::   pt_up1           ! tracer or upstream guess of tracer
       REAL(wp), DIMENSION(:,:,:)          , INTENT(inout) ::   pt_rhs           ! RHS tendency
@@ -596,7 +600,7 @@ CONTAINS
             &      + ( ptFv(ji,jj,jk) - ptFv(ji  ,jj-1,jk  ) )   &
             &      + ( ptFw(ji,jj,jk) - ptFw(ji  ,jj  ,jk+1) ) ) * r1_e1e2t(ji,jj)
 
-         pt_rhs(ji,jj,jk) = pt_rhs(ji,jj,jk) + ztra / e3t(ji,jj,jk,Kmm) * tmask(ji,jj,jk) !!clem
+         pt_rhs(ji,jj,jk) = pt_rhs(ji,jj,jk) + ztra                     * tmask(ji,jj,jk) 
          
          IF( ll_zAimp1 )   ztra = ztra - ( wi(ji,jj,jk) - wi(ji,jj,jk+1) ) * pt_b(ji,jj,jk)
          !
@@ -621,19 +625,18 @@ CONTAINS
             ptFw(ji,jj,jk) = ptFw(ji,jj,jk) + ztmp(ji,jj,jk) * e1e2t(ji,jj)  ! update vertical fluxes
          END_3D
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-            pt_rhs(ji,jj,jk) = pt_rhs(ji,jj,jk) - ( ztmp(ji,jj,jk) - ztmp(ji,jj,jk+1) ) / e3t(ji,jj,jk,Kmm)
+            pt_rhs(ji,jj,jk) = pt_rhs(ji,jj,jk) - ( ztmp(ji,jj,jk) - ztmp(ji,jj,jk+1) )
          END_3D
-
+         ! 
          ! udpdate tridiag matrix with full time step (not half) => clem: is it used?
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )
             zwdia(ji,jj,jk) =  1._wp + zDt * ( MAX( wi(ji,jj,jk  ) , 0._wp ) - MIN( wi(ji,jj,jk+1) , 0._wp ) ) / e3t(ji,jj,jk,Kaa)
             zwinf(ji,jj,jk) =          zDt *   MIN( wi(ji,jj,jk  ) , 0._wp )                                   / e3t(ji,jj,jk,Kaa)
             zwsup(ji,jj,jk) =        - zDt *   MAX( wi(ji,jj,jk+1) , 0._wp )                                   / e3t(ji,jj,jk,Kaa)
          END_3D
-
+         !
       ENDIF
-
-      
+      !
    END SUBROUTINE fct_up1_2stp
 
    
@@ -644,7 +647,7 @@ CONTAINS
       !! **  Purpose :   compute monotonic tracer fluxes from the upstream
       !!       scheme and the before field by a nonoscillatory algorithm
       !!
-      !! **  Method  :   ... ???
+      !! **  Method  : 
       !!       warning : pbef and paft must be masked, but the boundaries
       !!       conditions on the fluxes are not necessary zalezak (1979)
       !!       drange (1995) multi-dimensional forward-in-time and upstream-

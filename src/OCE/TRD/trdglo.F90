@@ -86,7 +86,7 @@ CONTAINS
             !
             CASE( 'TRA' )          !==  Tracers (T & S)  ==!
                DO_3D( 0, 0, 0, 0, 1, jpkm1 )   ! global sum of mask volume trend and trend*T (including interior mask)
-                  zvm = e1e2t(ji,jj) * e3t(ji,jj,jk,Kmm) * tmask(ji,jj,jk) * tmask_i(ji,jj)
+                  zvm = e1e2t(ji,jj) * tmask(ji,jj,jk) * tmask_i(ji,jj)  
                   zvt = ptrdx(ji,jj,jk) * zvm
                   zvs = ptrdy(ji,jj,jk) * zvm
                   tmo(ktrd) = tmo(ktrd) + zvt
@@ -121,7 +121,7 @@ CONTAINS
                   zvt = ptrdx(ji,jj,jk) * tmask_i(ji+1,jj) * tmask_i(ji,jj) * umask(ji,jj,jk)   &
                      &                                     * e1e2u  (ji,jj) * e3u(ji,jj,jk,Kmm)
                   zvs = ptrdy(ji,jj,jk) * tmask_i(ji,jj+1) * tmask_i(ji,jj) * vmask(ji,jj,jk)   &
-                     &                                     * e1e2v  (ji,jj) * e3u(ji,jj,jk,Kmm)
+                     &                                     * e1e2v  (ji,jj) * e3v(ji,jj,jk,Kmm)    
                   umo(ktrd) = umo(ktrd) + zvt
                   vmo(ktrd) = vmo(ktrd) + zvs
                   hke(ktrd) = hke(ktrd) + uu(ji,jj,jk,Kmm) * zvt + vv(ji,jj,jk,Kmm) * zvs

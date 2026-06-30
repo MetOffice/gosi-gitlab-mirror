@@ -1,5 +1,5 @@
 MODULE trabbc
-   !!==============================================================================
+    !!==============================================================================
    !!                       ***  MODULE  trabbc  ***
    !! Ocean active tracers:  bottom boundary condition (geothermal heat flux)
    !!==============================================================================
@@ -8,6 +8,7 @@ MODULE trabbc
    !!             -   ! 2002-11 (A. Bozec)  tra_bbc_init: original code
    !!            3.3  ! 2010-10 (G. Madec)  dynamical allocation + suppression of key_trabbc
    !!             -   ! 2010-11 (G. Madec)  use mbkt array (deepest ocean t-level)
+   !!            5.x  ! 2026-03 (S. Griffies, G. Madec)  thickness weighted tracer tendency 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -92,7 +93,7 @@ CONTAINS
       !                             !  Add the geothermal trend on temperature
       DO_2D( 0, 0, 0, 0 )
          pts(ji,jj,mbkt(ji,jj),jp_tem,Krhs) = pts(ji,jj,mbkt(ji,jj),jp_tem,Krhs)   &
-            &             + qgh_trd0(ji,jj) / e3t(ji,jj,mbkt(ji,jj),Kmm)
+            &             + qgh_trd0(ji,jj)
       END_2D
       !
       IF( l_trdtra ) THEN        ! Send the trend for diagnostics

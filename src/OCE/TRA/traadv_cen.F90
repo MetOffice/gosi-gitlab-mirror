@@ -4,7 +4,8 @@ MODULE traadv_cen
    !! Ocean  tracers:   advective trend (2nd/4th order centered)
    !!======================================================================
    !! History :  3.7  ! 2014-05  (G. Madec)  original code
-   !!            4.5  ! 2022-06  (S. Techene, G, Madec) refactorization to reduce local memory usage
+   !!            4.5  ! 2022-06  (S. Techene, G. Madec)  refactorization to reduce local memory usage
+   !!            5.x  ! 2026-03  (S. Griffies, G. Madec)  thickness weighted tracer tendency 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -62,7 +63,7 @@ CONTAINS
       INTEGER                                  , INTENT(in   ) ::   kjpt            ! number of tracers
       INTEGER                                  , INTENT(in   ) ::   kn_cen_h        ! =2/4 (2nd or 4th order scheme)
       INTEGER                                  , INTENT(in   ) ::   kn_cen_v        ! =2/4 (2nd or 4th order scheme)
-      REAL(wp), DIMENSION(:,:,:               ), INTENT(in   ) ::   pU, pV, pW      ! 3 ocean volume flux components
+      REAL(wp), DIMENSION(:,:,:               ), INTENT(in   ) ::   pU, pV, pW      ! 3 ocean volume flux components   [m^3/s]
       REAL(wp), DIMENSION(jpi,jpj,jpk,kjpt,jpt), INTENT(inout) ::   pt              ! tracers and RHS of tracer equation
       !!
       CALL tra_adv_cen_t( kt, kit000, cdtype, pU, pV, pW, lbnd_ij(pU),  &
@@ -151,8 +152,7 @@ CONTAINS
                !
                DO_2D( 0, 0, 0, 0 )                     ! Horizontal divergence of advective fluxes
                   pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - (  ( ztFu(ji,jj) - ztFu(ji-1,jj  ) )    &   ! add () for NP repro
-                     &                                           + ( ztFv(ji,jj) - ztFv(ji  ,jj-1) )  ) * r1_e1e2t(ji,jj)   &
-                     &                                        / e3t(ji,jj,jk,Kmm)
+                     &                                           + ( ztFv(ji,jj) - ztFv(ji  ,jj-1) )  ) * r1_e1e2t(ji,jj)  
                END_2D
                !                                 ! "Poleward" heat and salt transports
                IF( l_ptr )   CALL dia_ptr_hst( jn, 'adv', ztFv(:,:) )
@@ -180,8 +180,7 @@ CONTAINS
                !
                DO_2D( 0, 0, 0, 0 )                                         ! Horizontal divergence of advective fluxes
                   pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - (  ( ztFu(ji,jj) - ztFu(ji-1,jj  ) )    &   ! add () for NP repro
-                     &                                           + ( ztFv(ji,jj) - ztFv(ji  ,jj-1) )  ) * r1_e1e2t(ji,jj)   &
-                     &                                        / e3t(ji,jj,jk,Kmm)
+                     &                                           + ( ztFv(ji,jj) - ztFv(ji  ,jj-1) )  ) * r1_e1e2t(ji,jj)  
                END_2D
                !                                 ! "Poleward" heat and salt transports
                IF( l_ptr )   CALL dia_ptr_hst( jn, 'adv', ztFv(:,:) )
@@ -212,15 +211,13 @@ CONTAINS
                DO_2D( 0, 0, 0, 0 )                             ! Vertical fluxes
                   ztFw_kp1 = 0.5_wp * pW(ji,jj,jk+1) * ( pt(ji,jj,jk+1,jn,Kmm) + pt(ji,jj,jk,jn,Kmm) ) * wmask(ji,jj,jk+1)
                   !
-                  pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - (  ztFw(ji,jj) - ztFw_kp1  ) * r1_e1e2t(ji,jj)   &
-                       &                                        / e3t(ji,jj,jk,Kmm)
+                  pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - (  ztFw(ji,jj) - ztFw_kp1  ) * r1_e1e2t(ji,jj) 
                   ztFw(ji,jj) = ztFw_kp1
                END_2D
             END DO
             jk = jpkm1                                         ! bottom vertical flux set to zero for all tracers
             DO_2D( 0, 0, 0, 0 )
-               pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - ztFw(ji,jj) * r1_e1e2t(ji,jj)   &
-                  &                                        / e3t(ji,jj,jk,Kmm)
+               pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - ztFw(ji,jj) * r1_e1e2t(ji,jj)  
             END_2D
             !
          CASE(  4  )                         !* 4th order compact
@@ -231,8 +228,7 @@ CONTAINS
                DO_2D( 0, 0, 0, 0 )
                   ztFw_kp1 = pW(ji,jj,jk+1) * ztw(ji,jj,jk+1) * wmask(ji,jj,jk+1)
                   !                          ! Divergence of advective fluxes
-                  pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - (  ztFw(ji,jj) - ztFw_kp1  ) * r1_e1e2t(ji,jj)   &
-                     &                                        / e3t(ji,jj,jk,Kmm)
+                  pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - (  ztFw(ji,jj) - ztFw_kp1  ) * r1_e1e2t(ji,jj)  
                   !                          ! update
                   ztFw(ji,jj) = ztFw_kp1
                END_2D
@@ -241,8 +237,7 @@ CONTAINS
             !
             jk = jpkm1       ! bottom vertical flux set to zero for all tracers
             DO_2D( 0, 0, 0, 0 )
-               pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - ztFw(ji,jj) * r1_e1e2t(ji,jj)   &
-                  &                                        / e3t(ji,jj,jk,Kmm)
+               pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - ztFw(ji,jj) * r1_e1e2t(ji,jj) 
             END_2D
             !
          END SELECT
