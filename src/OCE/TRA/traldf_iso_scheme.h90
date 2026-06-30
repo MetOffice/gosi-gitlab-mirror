@@ -9,8 +9,9 @@
    !!                        bilaplacian: 2nd pass
 #endif
    !!======================================================================
-   !! History :  4.5  ! 2022-08  (S. Techene, G, Madec) refactorization to reduce local memory usage
-   !!                                                 + no more re-entering lap with traldf_iso_blp creation
+   !! History :  4.5  !  2022-08  (S. Techene, G. Madec) refactorization to reduce local memory usage
+   !!                                                  + no more re-entering lap with traldf_iso_blp creation
+   !!            5.x  !  2026-03  (S. Griffies, G. Madec)  thickness weighted tracer tendency 
    !!----------------------------------------------------------------------
 
 	    
@@ -146,7 +147,11 @@
                      &                  (  ( zfu(ji,jj) - zfu(ji-1,jj) )      &
                      &                   + ( zfv(ji,jj) - zfv(ji,jj-1) )      &
                      &                   + ( zfw(ji,jj) - zfw_kp1      )  )   & 
-                     &                 * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
+#if   defined iso_lap || defined iso_blp_p2
+                     &                 * r1_e1e2t(ji,jj)                          ! thickness weight lap or bilap tracer tend 
+#elif defined iso_blp_p1
+                     &                 * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)      ! tracer Laplacian tendency
+#endif 
                   !
                   zfw(ji,jj) = zfw_kp1          !==  Store zfw for next level calculation  ==!
                   !
@@ -164,8 +169,12 @@
 #endif
                      &                  (  ( zfu(ji,jj) - zfu(ji-1,jj) )      &
                      &                   + ( zfv(ji,jj) - zfv(ji,jj-1) )      &
-                     &                   + ( zfw(ji,jj)                )  )   & 
-                     &                 * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
+                     &                   + ( zfw(ji,jj)                )  )   &   
+#if   defined iso_lap || defined iso_blp_p2
+                     &                 * r1_e1e2t(ji,jj)                          ! thickness weight lap or bilap tracer tend
+#elif defined iso_blp_p1
+                     &                 * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)      ! tracer Laplacian tendency 
+#endif 
                END_2D
                !
 	    ENDIF

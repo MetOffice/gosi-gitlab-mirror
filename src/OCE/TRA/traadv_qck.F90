@@ -5,6 +5,7 @@ MODULE traadv_qck
    !!==============================================================================
    !! History :  3.0  !  2008-07  (G. Reffray)  Original code
    !!            3.3  !  2010-05  (C.Ethe, G. Madec)  merge TRC-TRA + switch from velocity to transport
+   !!            5.x  !  2026-03  (S. Griffies, G. Madec)  thickness weighted tracer tendency 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -133,7 +134,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj,jpk,kjpt,jpt), INTENT(inout) ::   pt              ! active tracers and RHS of tracer equation
       !!
       INTEGER  ::   ji, jj, jk, jn   ! dummy loop indices
-      REAL(wp) ::   ztra, zbtr, zdir, zdx, zmsk   ! local scalars
+      REAL(wp) ::   ztra, zdir, zdx, zmsk   ! local scalars
       REAL(wp), DIMENSION(T2D(1),jpk) ::   zwx, zfu, zfc, zfd
       !----------------------------------------------------------------------
       !
@@ -184,9 +185,8 @@ CONTAINS
          !
          ! Computation of the trend
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-            zbtr = r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
             ! horizontal advective trends
-            ztra = - zbtr * ( zwx(ji,jj,jk) - zwx(ji-1,jj,jk) )
+            ztra = - ( zwx(ji,jj,jk) - zwx(ji-1,jj,jk) ) * r1_e1e2t(ji,jj) 
             !--- add it to the general tracer trends
             pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) + ztra
          END_3D
@@ -212,7 +212,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj,jpk,kjpt,jpt), INTENT(inout) ::   pt              ! active tracers and RHS of tracer equation
       !!
       INTEGER  :: ji, jj, jk, jn                ! dummy loop indices
-      REAL(wp) :: ztra, zbtr, zdir, zdx, zmsk   ! local scalars
+      REAL(wp) :: ztra, zdir, zdx, zmsk   ! local scalars
       REAL(wp), DIMENSION(T2D(1),jpk) ::   zwy, zfu, zfc, zfd   ! 3D workspace
       !----------------------------------------------------------------------
       !
@@ -266,9 +266,8 @@ CONTAINS
          !
          ! Computation of the trend
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-            zbtr = r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
             ! horizontal advective trends
-            ztra = - zbtr * ( zwy(ji,jj,jk) - zwy(ji,jj-1,jk) )
+            ztra = - ( zwy(ji,jj,jk) - zwy(ji,jj-1,jk) ) * r1_e1e2t(ji,jj)
             !--- add it to the general tracer trends
             pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) + ztra
          END_3D
@@ -321,8 +320,7 @@ CONTAINS
          ENDIF
          !
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )   !==  Tracer flux divergence added to the general trend  ==!
-            pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - ( zwz(ji,jj,jk) - zwz(ji,jj,jk+1) )   &
-               &                                * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
+            pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - ( zwz(ji,jj,jk) - zwz(ji,jj,jk+1) ) * r1_e1e2t(ji,jj) 
          END_3D
          !                                 ! Send trends for diagnostic
          IF( l_trd )  CALL trd_tra( kt, Kmm, Krhs, cdtype, jn, jptra_zad, zwz, pW, pt(:,:,:,jn,Kmm) )

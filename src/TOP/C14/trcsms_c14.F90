@@ -132,7 +132,7 @@ CONTAINS
       !
       ! Add the surface flux to the trend of jp_c14
       DO_2D( 0, 0, 0, 0 )
-         tr(ji,jj,1,jp_c14,Krhs) = tr(ji,jj,1,jp_c14,Krhs) + qtr_c14(ji,jj) / e3t(ji,jj,1,Kmm) 
+         tr(ji,jj,1,jp_c14,Krhs) = tr(ji,jj,1,jp_c14,Krhs) + qtr_c14(ji,jj)
       END_2D
       !
       ! Computation of decay effects on jp_c14

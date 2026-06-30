@@ -10,6 +10,7 @@ MODULE trasbc
    !!             -   !  2010-09  (C. Ethe, G. Madec) Merge TRA-TRC
    !!            3.6  !  2014-11  (P. Mathiot) isf melting forcing
    !!            4.1  !  2019-09  (P. Mathiot) isf moved in traisf
+   !!            5.x  !  2026-03  (S.M. Griffies, G. Madec)  thickness weighted tracer tendency 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -114,9 +115,9 @@ CONTAINS
          !
          IF( .NOT.lk_linssh ) THEN           !* only heat and salt fluxes associated with mass fluxes
             DO_2D( 0, 0, 0, 0 )
-               z1_rho0_e3t = r1_rho0 / e3t(ji,jj,1,Kmm)
-               pts(ji,jj,1,jp_tem,Krhs) = pts(ji,jj,1,jp_tem,Krhs) - emp(ji,jj)*pts(ji,jj,1,jp_tem,Kbb) * z1_rho0_e3t
-               pts(ji,jj,1,jp_sal,Krhs) = pts(ji,jj,1,jp_sal,Krhs) - emp(ji,jj)*pts(ji,jj,1,jp_sal,Kbb) * z1_rho0_e3t
+!! CE              z1_rho0_e3t = r1_rho0 / e3t(ji,jj,1,Kmm)
+               pts(ji,jj,1,jp_tem,Krhs) = pts(ji,jj,1,jp_tem,Krhs) - emp(ji,jj)*pts(ji,jj,1,jp_tem,Kbb) * r1_rho0 !! *z1_rho0_e3t
+               pts(ji,jj,1,jp_sal,Krhs) = pts(ji,jj,1,jp_sal,Krhs) - emp(ji,jj)*pts(ji,jj,1,jp_sal,Kbb) * r1_rho0 !! *z1_rho0_e3t
             END_2D
          ENDIF
          !
@@ -124,11 +125,10 @@ CONTAINS
          !
          IF( lk_linssh ) THEN                !* linear free surface
             DO_2D( 0, 0, 0, 0 )
-               z1_rho0_e3t = r1_rho0 / e3t(ji,jj,1,Kmm)
                pts(ji,jj,1,jp_tem,Krhs) = pts(ji,jj,1,jp_tem,Krhs) + (  r1_rcp * qns(ji,jj)   &                                ! non solar heat flux
-                  &                                                +             emp(ji,jj)*pts(ji,jj,1,jp_tem,Kbb)  ) * z1_rho0_e3t  ! add concentration/dilution effect due to constant volume cell
+                  &                                                +             emp(ji,jj)*pts(ji,jj,1,jp_tem,Kbb)  ) * r1_rho0 !! *z1_rho0_e3t  ! add concentration/dilution effect due to constant volume cell
                pts(ji,jj,1,jp_sal,Krhs) = pts(ji,jj,1,jp_sal,Krhs) + (           sfx(ji,jj)    &                               ! salt flux due to freezing/melting
-                  &                                                +             emp(ji,jj)*pts(ji,jj,1,jp_sal,Kbb)  ) * z1_rho0_e3t  ! add concentration/dilution effect due to constant volume cell
+                  &                                                +             emp(ji,jj)*pts(ji,jj,1,jp_sal,Kbb)  ) * r1_rho0 !! *z1_rho0_e3t  ! add concentration/dilution effect due to constant volume cell
             END_2D
             IF( .NOT. l_istiled .OR. ntile == nijtile ) THEN             ! Do only on the last tile
                IF( iom_use('emp_x_sst') )   CALL iom_put( "emp_x_sst", emp (:,:) * pts(:,:,1,jp_tem,Kbb) )
@@ -136,9 +136,8 @@ CONTAINS
             ENDIF
          ELSE
             DO_2D( 0, 0, 0, 0 )
-               z1_rho0_e3t = r1_rho0 / e3t(ji,jj,1,Kmm)
-               pts(ji,jj,1,jp_tem,Krhs) = pts(ji,jj,1,jp_tem,Krhs) +  r1_rcp * qns(ji,jj) * z1_rho0_e3t
-               pts(ji,jj,1,jp_sal,Krhs) = pts(ji,jj,1,jp_sal,Krhs) +           sfx(ji,jj) * z1_rho0_e3t
+               pts(ji,jj,1,jp_tem,Krhs) = pts(ji,jj,1,jp_tem,Krhs) +  r1_rcp * qns(ji,jj) * r1_rho0 
+               pts(ji,jj,1,jp_sal,Krhs) = pts(ji,jj,1,jp_sal,Krhs) +           sfx(ji,jj) * r1_rho0
             END_2D
          ENDIF
       END SELECT
@@ -153,8 +152,8 @@ CONTAINS
             IF( rnf(ji,jj) /= 0._wp ) THEN
                zdep = 1._wp / h_rnf(ji,jj)
                DO jk = 1, nk_rnf(ji,jj)
-                  pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs)  + rnf_tsc(ji,jj,jp_tem) * zdep
-                  pts(ji,jj,jk,jp_sal,Krhs) = pts(ji,jj,jk,jp_sal,Krhs)  + rnf_tsc(ji,jj,jp_sal) * zdep
+                  pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs)  + rnf_tsc(ji,jj,jp_tem) * e3t(ji,jj,jk,Kmm)
+                  pts(ji,jj,jk,jp_sal,Krhs) = pts(ji,jj,jk,jp_sal,Krhs)  + rnf_tsc(ji,jj,jp_sal) * e3t(ji,jj,jk,Kmm)
                END DO
             ENDIF
          END_2D

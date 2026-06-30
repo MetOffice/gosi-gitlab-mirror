@@ -10,11 +10,11 @@
        <variable id="ref_year"  type="int"> 1900 </variable>
        <variable id="ref_month" type="int"> 01 </variable>
        <variable id="ref_day"   type="int"> 01 </variable>
-       <variable id="rho0"      type="float" > 1026.0 </variable>
-       <variable id="cpocean"   type="float" > 3991.86795711963 </variable>
+       <variable id="rho0"      type="float" > -1. </variable>  <!-- defined by iom_init -->
+       <variable id="cpocean"   type="float" > -1. </variable>  <!-- defined by iom_init -->
        <variable id="convSpsu"  type="float" > 0.99530670233846  </variable>
-       <variable id="rhoic"     type="float" > 917.0 </variable>
-       <variable id="rhosn"     type="float" > 330.0 </variable>
+       <variable id="rhoic"     type="float" > -1. </variable>  <!-- defined by iom_init -->
+       <variable id="rhosn"     type="float" > -1. </variable>  <!-- defined by iom_init -->
        <variable id="missval"   type="float" > 1.e20 </variable>
     </variable_definition>
 

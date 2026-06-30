@@ -5,6 +5,7 @@ MODULE traadv_ubs
    !!==============================================================================
    !! History :  1.0  !  2006-08  (L. Debreu, R. Benshila)  Original code
    !!            3.3  !  2010-05  (C. Ethe, G. Madec)  merge TRC-TRA + switch from velocity to transport
+   !!            5.x  !  2026-03  (S. Griffies, G. Madec)  thickness weighted tracer tendency 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -15,7 +16,7 @@ MODULE traadv_ubs
    USE dom_oce        ! ocean space and time domain
    USE trc_oce        ! share passive tracers/Ocean variables
    USE trd_oce        ! trends: ocean variables
-   USE traadv_fct      ! acces to routine interp_4th_cpt
+   USE traadv_fct     ! acces to routine interp_4th_cpt
    USE trdtra         ! trends manager: tracers
    USE diaptr         ! poleward transport diagnostics
    USE diaar5         ! AR5 diagnostics
@@ -186,11 +187,11 @@ CONTAINS
             !                     !==  add the horizontal advective trend  ==!
             DO_2D( 0, 0, 0, 0 )
                ztra = - (  ( ztFu(ji,jj) - ztFu(ji-1,jj  ) )   &   ! add () for NP reproducibility
-                  &      + ( ztFv(ji,jj) - ztFv(ji  ,jj-1) ) ) * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
+                  &      + ( ztFv(ji,jj) - ztFv(ji  ,jj-1) ) ) * r1_e1e2t(ji,jj) 
                !
                pt(ji,jj,jk,jn,Krhs) =   pt(ji,jj,jk,jn,Krhs) +       ztra   * tmask(ji,jj,jk)
                !
-               zti(ji,jj,jk)        = ( pt(ji,jj,jk,jn,Kbb ) + pdt * ztra ) * tmask(ji,jj,jk)
+               zti(ji,jj,jk)        = ( pt(ji,jj,jk,jn,Kbb ) + pdt * ztra / e3t(ji,jj,jk,Kmm) ) * tmask(ji,jj,jk)
             END_2D
             !
             IF( l_trd .OR. l_hst .OR. l_ptr ) THEN   ! trend diagnostics // heat/salt transport
@@ -238,10 +239,10 @@ CONTAINS
             !
             !                               !== trend and after field with monotonic scheme ==!
             DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-               ztra = - ( ztFw(ji,jj,jk) - ztFw(ji,jj,jk+1) ) * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
+               ztra = - ( ztFw(ji,jj,jk) - ztFw(ji,jj,jk+1) ) * r1_e1e2t(ji,jj) 
                !
                pt (ji,jj,jk,jn,Krhs) =   pt (ji,jj,jk,jn,Krhs) +       ztra   * tmask(ji,jj,jk)
-               zti(ji,jj,jk)         = ( zti(ji,jj,jk)         + pdt * ztra ) * tmask(ji,jj,jk)
+               zti(ji,jj,jk)         = ( zti(ji,jj,jk)         + pdt * ztra / e3t(ji,jj,jk,Kmm) ) * tmask(ji,jj,jk) 
             END_3D
             !                               !==  anti-diffusive flux : high order minus low order ==!
             DO_3D( 0, 0, 0, 0, 2, jpkm1 )
@@ -293,7 +294,7 @@ CONTAINS
          END SELECT
          !
          DO_3D( 0, 0, 0, 0, 1, jpkm1 )   !  final trend with corrected fluxes
-            ztra = - ( ztFw(ji,jj,jk) - ztFw(ji,jj,jk+1) ) * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
+            ztra = - ( ztFw(ji,jj,jk) - ztFw(ji,jj,jk+1) ) * r1_e1e2t(ji,jj)
             pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) + ztra * tmask(ji,jj,jk)
          END_3D
          !

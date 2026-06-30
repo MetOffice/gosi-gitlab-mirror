@@ -14,6 +14,7 @@ MODULE traqsr
    !!            3.7  !  2015-11  (G. Madec, A. Coward)  remove optimisation for fix volume
    !!            4.0  !  2020-11  (A. Coward)  optimisation
    !!            4.5  !  2021-03  (G. Madec)  further optimisation + adaptation for RK3
+   !!            5.x  !  2026-03  (S. Griffies, G. Madec)  thickness weighted tracer tendency 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -159,8 +160,7 @@ CONTAINS
       CASE( np_BIO )                                     !==  bio-model fluxes                        ==!
          DO_3D( 0, 0, 0, 0, 1, nkV )
             !                                                  !- temperature trend at jk t-level
-            ze3t   = e3t(ji,jj,jk,Kmm)
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( etot3(ji,jj,jk) - etot3(ji,jj,jk+1) ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( etot3(ji,jj,jk) - etot3(ji,jj,jk+1) )
          END_3D
          !                                                     !- sea-ice : store the 1st level attenuation coefficient
          WHERE( etot3(T2D(0),1) /= 0._wp )   ;   fraqsr_1lev(T2D(0)) = 1._wp - etot3(T2D(0),2) / etot3(T2D(0),1)
@@ -333,7 +333,7 @@ CONTAINS
             zzeT = ( zze0 + zzeB + zzeG + zzeR ) * wmask(ji,jj,jk+1)                                 ! Total             -      -
             !
             !                                      !- temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT )
             ze0(ji,jj) = zze0   ;   zeR(ji,jj) = zzeR           ! IR    ; Red  store at jk+1 w-level
             zeG(ji,jj) = zzeG   ;   zeB(ji,jj) = zzeB           ! Green ; Blue   -        -      -
             zeT(ji,jj) = zzeT                                   ! total          -        -      -
@@ -362,7 +362,7 @@ CONTAINS
             zzeT = ( zzeR + zzeG + zzeB ) * wmask(ji,jj,jk+1)                                       ! Total             -      -
             !
             !                                      !- temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             zeR(ji,jj) = zzeR                                  ! Red          store at jk+1 w-level
             zeG(ji,jj) = zzeG   ;   zeB(ji,jj) = zzeB          ! Green ; Blue   -        -      -
             zeT(ji,jj) = zzeT                                  ! total          -        -      -
@@ -382,7 +382,7 @@ CONTAINS
             zzeG = zeG(ji,jj) * EXP( - ze3t * r1_LG )   ;   zzeB = zeB(ji,jj) * EXP( - ze3t * r1_LB ) ! Green ; Blue
             zzeT = ( zzeG + zzeB ) * wmask(ji,jj,jk+1)                                                ! Total             -      -
             !                                      !- temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             zeG(ji,jj) = zzeG   ;   zeB(ji,jj) = zzeB          ! Green ; Blue store at jk+1 w-level
             zeT(ji,jj) = zzeT                                  ! total          -        -      -
          END_2D
@@ -400,7 +400,7 @@ CONTAINS
             zzeB = zeB(ji,jj) * EXP( - ze3t * r1_LB )          ! Blue
             zzeT = ( zzeB ) * wmask(ji,jj,jk+1)                ! Total             -      -
             !                                      !- temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             zeB(ji,jj) = zzeB                                  ! Blue store at jk+1 w-level
             zeT(ji,jj) = zzeT                                  ! total  -        -      -
          END_2D
@@ -467,7 +467,7 @@ CONTAINS
             zzeG = zeG(ji,jj) * EXP( - ze3t * r1_LG  )   ;   zzeB = zeB(ji,jj) * EXP( - ze3t * r1_LB )   ! Green ; Blue      -      -
             zzeT = ( zze0 + zzeB + zzeG + zzeR ) * wmask(ji,jj,jk+1)                                     ! Total             -      -
             !                                               ! temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             ze0(ji,jj) = zze0   ;   zeR(ji,jj) = zzeR           ! IR    ; Red  store at jk+1 w-level
             zeG(ji,jj) = zzeG   ;   zeB(ji,jj) = zzeB           ! Green ; Blue   -        -      -
             zeT(ji,jj) = zzeT                                   ! total          -        -      -
@@ -486,7 +486,7 @@ CONTAINS
             zzeG = zeG(ji,jj) * EXP( - ze3t * r1_LG )   ;   zzeB = zeB(ji,jj) * EXP( - ze3t * r1_LB ) ! Green ; Blue      -      -
             zzeT = ( zzeB + zzeG + zzeR ) * wmask(ji,jj,jk+1)                                         ! Total             -      -
             !                                               ! temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             zeR(ji,jj) = zzeR                                   ! Red          store at jk+1 w-level
             zeG(ji,jj) = zzeG   ;   zeB(ji,jj) = zzeB           ! Green ; Blue   -        -      -
             zeT(ji,jj) = zzeT                                   ! total          -        -      -
@@ -499,7 +499,7 @@ CONTAINS
             zzeG = zeG(ji,jj) * EXP( - ze3t * r1_LG )   ;   zzeB = zeB(ji,jj) * EXP( - ze3t * r1_LB ) ! Green ; Blue at jk+1 w-level
             zzeT = ( zzeG + zzeB ) * wmask(ji,jj,jk+1)                                                ! Total             -      -
             !                                               ! temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             zeG(ji,jj) = zzeG   ;   zeB(ji,jj) = zzeB             ! Green ; Blue store at jk+1 w-level
             zeT(ji,jj) = zzeT                                     ! total          -        -      -
          END_2D
@@ -511,7 +511,7 @@ CONTAINS
             zzeB = zeB(ji,jj) * EXP( - ze3t * r1_LB )             ! Blue at jk+1 w-level
             zzeT = ( zzeB ) * wmask(ji,jj,jk+1)                   ! Total     -      -
             !                                               ! temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             zeB(ji,jj) = zzeB                                     ! Blue store at jk+1 w-level
             zeT(ji,jj) = zzeT                                     ! total  -        -      -
          END_2D
@@ -575,7 +575,7 @@ CONTAINS
             zzatt = (   zz0 * EXP( -gdepw(ji,jj,jk+1,Kmm)*r1_si0 )     &
                &      + zz1 * EXP( -gdepw(ji,jj,jk+1,Kmm)*r1_si1 )   ) * wmask(ji,jj,jk+1)
             !                                            ! temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + qsr(ji,jj) * ( zatt(ji,jj) - zzatt ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + qsr(ji,jj) * ( zatt(ji,jj) - zzatt ) 
             zatt(ji,jj) = zzatt                          ! save for the next level computation
          END_2D
          !                                         !* sea-ice *!   store the 1st level attenuation coeff.
@@ -589,7 +589,7 @@ CONTAINS
             ze3t  = e3t(ji,jj,jk,Kmm)                    ! light attenuation at jk+1 w-level (divided by rho0_rcp)
             zzatt = (   zz1 * EXP( -gdepw(ji,jj,jk+1,Kmm)*r1_si1 )   ) * wmask(ji,jj,jk+1)
             !                                            ! temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + qsr(ji,jj) * ( zatt(ji,jj) - zzatt ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + qsr(ji,jj) * ( zatt(ji,jj) - zzatt ) 
             zatt(ji,jj) = zzatt                       ! save for the next level computation
          END_2D
       END DO      
@@ -742,7 +742,7 @@ CONTAINS
             zzeT = ( zze0 + zzeU + zzeB + zzeG + zzeR ) * wmask(ji,jj,jk+1)                          ! Total             -      -
             !
             !                                      !- temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             ze0(ji,jj) = zze0   ;   zeR(ji,jj) = zzeR           ! IR    ; Red  store at jk+1 w-level
             zeG(ji,jj) = zzeG   ;   zeB(ji,jj) = zzeB           ! Green ; Blue   -        -      -
             zeU(ji,jj) = zzeU   ;   zeT(ji,jj) = zzeT           ! UV    ; total  -        -      -
@@ -771,7 +771,7 @@ CONTAINS
             zzeT = ( zzeR + zzeG + zzeB + zzeU ) * wmask(ji,jj,jk+1)                                ! Total             -      -
             !
             !                                      !- temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             zeR(ji,jj) = zzeR   ;   zeU(ji,jj) = zzeU          ! Red   ;   UV store at jk+1 w-level
             zeG(ji,jj) = zzeG   ;   zeB(ji,jj) = zzeB          ! Green ; Blue   -        -      -
             zeT(ji,jj) = zzeT                                  ! total          -        -      -
@@ -792,7 +792,7 @@ CONTAINS
             zzeU = zeU(ji,jj) * EXP( - ze3t * r1_LU )                                                 !    UV
             zzeT = ( zzeG + zzeB + zzeU ) * wmask(ji,jj,jk+1)                                         ! Total             -      -
             !                                      !- temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             zeG(ji,jj) = zzeG   ;   zeB(ji,jj) = zzeB          ! Green ; Blue store at jk+1 w-level
             zeU(ji,jj) = zzeU   ;   zeT(ji,jj) = zzeT          !    UV ; total  -        -      -
          END_2D
@@ -812,7 +812,7 @@ CONTAINS
             zzeU = zeU(ji,jj) * EXP( - ze3t * r1_LU )          !   UV 
             zzeT = ( zzeB + zzeU ) * wmask(ji,jj,jk+1)         ! Total             -      -
             !                                      !- temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             zeB(ji,jj) = zzeB  ;  zeU(ji,jj) = zzeU            ! Blue ; UV store at jk+1 w-level
             zeT(ji,jj) = zzeT                                  ! total       -        -      -
          END_2D
@@ -831,7 +831,7 @@ CONTAINS
             zzeB = zeB(ji,jj) * EXP( - ze3t * r1_LB )          ! Blue
             zzeT = ( zzeB ) * wmask(ji,jj,jk+1)         ! Total             -      -
             !                                      !- temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             zeB(ji,jj) = zzeB                                 ! Blue ; UV store at jk+1 w-level
             zeT(ji,jj) = zzeT                                 ! total       -        -      -
          END_2D
@@ -906,7 +906,7 @@ CONTAINS
             zzeT = ( zze0 + zzeU + zzeB + zzeG + zzeR ) * wmask(ji,jj,jk+1)                          ! Total             -      -
             !
             !                                      !- temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             ze0(ji,jj) = zze0   ;   zeR(ji,jj) = zzeR           ! IR    ; Red  store at jk+1 w-level
             zeG(ji,jj) = zzeG   ;   zeB(ji,jj) = zzeB           ! Green ; Blue   -        -      -
             zeU(ji,jj) = zzeU   ;   zeT(ji,jj) = zzeT           ! UV    ; total  -        -      -
@@ -928,7 +928,7 @@ CONTAINS
             zzeT = ( zzeR + zzeG + zzeB + zzeU ) * wmask(ji,jj,jk+1)                                ! Total             -      -
             !
             !                                      !- temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             zeR(ji,jj) = zzeR   ;   zeU(ji,jj) = zzeU          ! Red   ;   UV store at jk+1 w-level
             zeG(ji,jj) = zzeG   ;   zeB(ji,jj) = zzeB          ! Green ; Blue   -        -      -
             zeT(ji,jj) = zzeT                                  ! total          -        -      -
@@ -942,7 +942,7 @@ CONTAINS
             zzeU = zeU(ji,jj) * EXP( - ze3t * r1_LU )                                                 !    UV
             zzeT = ( zzeG + zzeB + zzeU ) * wmask(ji,jj,jk+1)                                         ! Total             -      -
             !                                      !- temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             zeG(ji,jj) = zzeG   ;   zeB(ji,jj) = zzeB          ! Green ; Blue store at jk+1 w-level
             zeU(ji,jj) = zzeU   ;   zeT(ji,jj) = zzeT          !    UV ; total  -        -      -
          END_2D
@@ -955,7 +955,7 @@ CONTAINS
             zzeU = zeU(ji,jj) * EXP( - ze3t * r1_LU )          !   UV 
             zzeT = ( zzeB + zzeU ) * wmask(ji,jj,jk+1)         ! Total             -      -
             !                                      !- temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             zeB(ji,jj) = zzeB  ;  zeU(ji,jj) = zzeU            ! Blue ; UV store at jk+1 w-level
             zeT(ji,jj) = zzeT                                  ! total       -        -      -
          END_2D
@@ -967,7 +967,7 @@ CONTAINS
             zzeB = zeB(ji,jj) * EXP( - ze3t * r1_LB )          ! Blue
             zzeT = ( zzeB ) * wmask(ji,jj,jk+1)         ! Total             -      -
             !                                      !- temperature trend at jk t-level
-            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) / ze3t
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + r1_rho0_rcp * ( zeT(ji,jj) - zzeT ) 
             zeB(ji,jj) = zzeB                                 ! Blue ; UV store at jk+1 w-level
             zeT(ji,jj) = zzeT                                 ! total       -        -      -
          END_2D

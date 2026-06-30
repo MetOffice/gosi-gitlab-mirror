@@ -113,8 +113,8 @@ CONTAINS
               DO jn = 1, jptra
                  DO_3D( 0, 0, 0, 0, 1, jpkm1 )
                    ze3Tb  = e3t(ji,jj,jk,Kbb) * tr(ji,jj,jk,jn,Kbb )
-                   ze3Tr  = e3t(ji,jj,jk,Kmm) * tr(ji,jj,jk,jn,Krhs)
-                   z1_e3t = 1._wp / e3t(ji,jj,jk, Kaa)
+                   ze3Tr  = tr(ji,jj,jk,jn,Krhs)
+                   z1_e3t = 1._wp / e3t(ji,jj,jk,Kaa)
                    tr(ji,jj,jk,jn,Kaa) = ( ze3Tb + rDt_trc * ze3Tr * tmask(ji,jj,jk) ) * z1_e3t
                 END_3D
               END DO

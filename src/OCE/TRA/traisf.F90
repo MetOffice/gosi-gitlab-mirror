@@ -4,6 +4,7 @@ MODULE traisf
    !! Ocean active tracers:  ice shelf boundary condition
    !!======================================================================
    !! History :  4.0  !  2019-09  (P. Mathiot) original file
+   !!            5.x  !  2026-03  (S. Griffies, G. Madec)  thickness weighted tracer tendency 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -58,13 +59,13 @@ CONTAINS
       ENDIF
       !
       ! cavity case
-      IF ( ln_isfcav_mlt ) CALL isf_mlt(misfkt_cav, misfkb_cav, rhisf_tbl_cav, rfrac_tbl_cav, risf_cav_tsc, pts(:,:,:,:,Krhs))
+      IF( ln_isfcav_mlt )   CALL isf_mlt( Kmm, Krhs, misfkt_cav, misfkb_cav, rhisf_tbl_cav, rfrac_tbl_cav, risf_cav_tsc, pts ) 
       !
       ! parametrisation case
-      IF ( ln_isfpar_mlt ) CALL isf_mlt(misfkt_par, misfkb_par, rhisf_tbl_par, rfrac_tbl_par, risf_par_tsc, pts(:,:,:,:,Krhs))
+      IF( ln_isfpar_mlt )   CALL isf_mlt( Kmm, Krhs, misfkt_par, misfkb_par, rhisf_tbl_par, rfrac_tbl_par, risf_par_tsc, pts ) 
       !
       ! ice sheet coupling case
-      IF ( ln_isfcpl ) THEN
+      IF( ln_isfcpl ) THEN
          !
          ! Dynamical stability at start up after change in under ice shelf cavity geometry is achieve by correcting the divergence.
          ! This is achieved by applying a volume flux in order to keep the horizontal divergence after remapping
@@ -75,16 +76,16 @@ CONTAINS
          ! ensure 0 trend due to unconservation of the ice shelf coupling
          IF ( ln_isfcpl_cons ) CALL isf_cpl(Kmm, risfcpl_cons_tsc, pts(:,:,:,:,Krhs))
          !
-      END IF
+      ENDIF
       !
-      IF ( ln_isfdebug ) THEN
-         IF( .NOT. l_istiled .OR. ntile == nijtile ) THEN                       ! Do only for the full domain
+      IF( ln_isfdebug ) THEN
+         IF( .NOT.l_istiled .OR. ntile == nijtile ) THEN                       ! Do only for the full domain
             CALL debug('tra_isf: pts(:,:,:,:,Krhs) T', pts(:,:,:,1,Krhs))
             CALL debug('tra_isf: pts(:,:,:,:,Krhs) S', pts(:,:,:,2,Krhs))
          ENDIF
-      END IF
+      ENDIF
       !
-      IF(sn_cfctl%l_prtctl)   CALL prt_ctl( tab3d_1=pts(:,:,:,jp_tem,Krhs), clinfo1=' isf  - Ta: ', mask1=tmask,   &
+      IF( sn_cfctl%l_prtctl )   CALL prt_ctl( tab3d_1=pts(:,:,:,jp_tem,Krhs), clinfo1=' isf  - Ta: ', mask1=tmask,   &
          &                                  tab3d_2=pts(:,:,:,jp_sal,Krhs), clinfo2=       ' Sa: ', mask2=tmask, clinfo3='tra' )
       !
       IF( ln_timing )   CALL timing_stop('tra_isf')
@@ -92,7 +93,7 @@ CONTAINS
    END SUBROUTINE tra_isf
 
    
-   SUBROUTINE isf_mlt( ktop, kbot, phtbl, pfrac, ptsc, pts )
+   SUBROUTINE isf_mlt( Kmm, Krhs, ktop, kbot, phtbl, pfrac, ptsc, pts )
       !!----------------------------------------------------------------------
       !!                  ***  ROUTINE isf_mlt  ***
       !!
@@ -101,10 +102,11 @@ CONTAINS
       !! *** Action :: Update pts(:,:,:,:,Krhs) with the surface boundary condition trend
       !!
       !!----------------------------------------------------------------------
-      REAL(wp), DIMENSION(A2D(nn_hls),jpk,jpts)     , INTENT(inout) ::   pts
-      INTEGER , DIMENSION(A2D(1))                   , INTENT(in   ) ::   ktop , kbot
-      REAL(wp), DIMENSION(A2D(1))                   , INTENT(in   ) ::   phtbl, pfrac
-      REAL(wp), DIMENSION(A2D(0),jpts)              , INTENT(in   ) ::   ptsc
+      INTEGER                                  , INTENT(in   ) ::   Kmm, Krhs  ! ocean time level indices
+      INTEGER , DIMENSION(A2D(1))              , INTENT(in   ) ::   ktop, kbot
+      REAL(wp), DIMENSION(A2D(1))              , INTENT(in   ) ::   phtbl, pfrac
+      REAL(wp), DIMENSION(A2D(0),jpts)         , INTENT(in   ) ::   ptsc
+      REAL(wp), DIMENSION(jpi,jpj,jpk,jpts,jpt), INTENT(inout) ::   pts        ! active tracers and RHS of tracer equation
       !!
       INTEGER  ::   ji, jj, jk   ! dummy loop index
       INTEGER  ::   ikt, ikb     ! top and bottom level of the tbl
@@ -119,11 +121,11 @@ CONTAINS
          ikt = ktop(ji,jj)
          ikb = kbot(ji,jj)
          DO jk = ikt, ikb - 1
-            pts(ji,jj,jk,jp_tem) = pts(ji,jj,jk,jp_tem) + ztc
+            pts(ji,jj,jk,jp_tem,Krhs) = pts(ji,jj,jk,jp_tem,Krhs) + ztc * e3t(ji,jj,jk,Kmm) 
          END DO
          !
          ! level partially include in ice shelf boundary layer
-         pts(ji,jj,ikb,jp_tem) = pts(ji,jj,ikb,jp_tem) + ztc * pfrac(ji,jj)
+         pts(ji,jj,ikb,jp_tem,Krhs) = pts(ji,jj,ikb,jp_tem,Krhs) + ztc * pfrac(ji,jj) * e3t(ji,jj,ikb,Kmm)  
          !
       END_2D
       !
@@ -145,8 +147,8 @@ CONTAINS
       !!----------------------------------------------------------------------
       !
       DO_3D( 0, 0, 0, 0, 1, jpk )
-         ptsa(ji,jj,jk,jp_tem) = ptsa(ji,jj,jk,jp_tem) + ptsc(ji,jj,jk,jp_tem) * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
-         ptsa(ji,jj,jk,jp_sal) = ptsa(ji,jj,jk,jp_sal) + ptsc(ji,jj,jk,jp_sal) * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
+         ptsa(ji,jj,jk,jp_tem) = ptsa(ji,jj,jk,jp_tem) + ptsc(ji,jj,jk,jp_tem) * r1_e1e2t(ji,jj) 
+         ptsa(ji,jj,jk,jp_sal) = ptsa(ji,jj,jk,jp_sal) + ptsc(ji,jj,jk,jp_sal) * r1_e1e2t(ji,jj) 
       END_3D
       !
    END SUBROUTINE isf_cpl

@@ -5,6 +5,7 @@ MODULE traldf_triad
    !!======================================================================
    !! History :  3.3  ! 2010-10  (G. Nurser, C. Harris, G. Madec)  Griffies operator (original code)
    !!            3.7  ! 2013-12  (F. Lemarie, G. Madec)  triad operator (Griffies) + Method of Stabilizing Correction
+   !!            5.x  ! 2026-03  (S. Griffies, G. Madec)  thickness weighted tracer tendency 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -434,17 +435,27 @@ CONTAINS
                   END_2D
                END DO
             ENDIF
-            !                             !==  horizontal divergence and add to the general trend  ==!
-            DO_2D( iij-1, iij-1, iij-1, iij-1 )
+            
+         END DO
+
+         !                             !==  horizontal divergence and add to the general trend  ==!
+         IF( ln_traldf_lap .OR. kpass==2 ) THEN       
+            DO_3D( iij-1, iij-1, iij-1, iij-1, 1, jpkm1 )
+               pt_rhs(ji,jj,jk,jn) = pt_rhs(ji,jj,jk,jn)                                           &
+                  &                       + zsign * ( ( zftu(ji-1,jj  ,jk) - zftu(ji,jj,jk) )      & ! () for NP reproducibility
+                  &                                 + ( zftv(ji  ,jj-1,jk) - zftv(ji,jj,jk) ) )    &
+                  &                               * r1_e1e2t(ji,jj) 
+            END_3D
+         ELSE ! biharmonic at kpass=1 ==> divide by e3t
+            DO_3D( iij-1, iij-1, iij-1, iij-1, 1, jpkm1 )
                pt_rhs(ji,jj,jk,jn) = pt_rhs(ji,jj,jk,jn)                                           &
                   &                       + zsign * ( ( zftu(ji-1,jj  ,jk) - zftu(ji,jj,jk) )      & ! () for NP reproducibility
                   &                                 + ( zftv(ji  ,jj-1,jk) - zftv(ji,jj,jk) ) )    &
                   &                               / (  e1e2t(ji,jj) * e3t(ji,jj,jk,Kmm)  )
-            END_2D
-            !
-         END DO
+            END_3D
+         ENDIF            
          !
-         !                                !==  add the vertical 33 flux  ==!
+         !                             !==  add the vertical 33 flux  ==!
          IF( ln_traldf_lap ) THEN               ! laplacian case: eddy coef = ah_wslp2 - akz
             DO_3D( iij-1, iij-1, iij-1, iij-1, 2, jpkm1 )
                ztfw(ji,jj,jk) = ztfw(ji,jj,jk) - e1e2t(ji,jj) / e3w(ji,jj,jk,Kmm) * tmask(ji,jj,jk)   &
@@ -466,12 +477,19 @@ CONTAINS
                END_3D
             END SELECT
          ENDIF
-         !
-         DO_3D( iij-1, iij-1, iij-1, iij-1, 1, jpkm1 )      !==  Divergence of vertical fluxes added to pta  ==!
-            pt_rhs(ji,jj,jk,jn) = pt_rhs(ji,jj,jk,jn)    &
-            &                                  + zsign * (  ztfw(ji,jj,jk+1) - ztfw(ji,jj,jk)  )   &
-               &                                              / ( e1e2t(ji,jj) * e3t(ji,jj,jk,Kmm) )
-         END_3D
+         !                                                     !==  Divergence of vertical fluxes added to pta  ==! 
+         IF( ln_traldf_lap .OR. kpass==2 ) THEN       
+            DO_3D( iij-1, iij-1, iij-1, iij-1, 1, jpkm1 )    
+               pt_rhs(ji,jj,jk,jn) = pt_rhs(ji,jj,jk,jn)    &
+                  &                                  + zsign * (  ztfw(ji,jj,jk+1) - ztfw(ji,jj,jk)  ) * r1_e1e2t(ji,jj)  
+            END_3D
+         ELSE ! biharmonic at kpass=1 ==> divide by e3t   
+            DO_3D( iij-1, iij-1, iij-1, iij-1, 1, jpkm1 )     
+               pt_rhs(ji,jj,jk,jn) = pt_rhs(ji,jj,jk,jn)    &
+                  &                                  + zsign * (  ztfw(ji,jj,jk+1) - ztfw(ji,jj,jk)  )   &
+                  &                                              / ( e1e2t(ji,jj) * e3t(ji,jj,jk,Kmm) )
+            END_3D
+         ENDIF    
          !
          IF( ( kpass == 1 .AND. ln_traldf_lap ) .OR.  &     !==  first pass only (  laplacian)  ==!
              ( kpass == 2 .AND. ln_traldf_blp ) ) THEN      !==  2nd   pass      (bilaplacian)  ==!

@@ -23,6 +23,9 @@ MODULE stprk3_stg
    USE bdydyn         ! ocean open boundary conditions (define bdy_dyn)
    USE lbclnk         ! ocean lateral boundary conditions (or mpp link)
    USE tramle         ! ML eddy induced transport (tra_adv_mle  routine)
+!!smg
+   USE trdtra,   ONLY : trd_tra_tot ! total T,S thickness weighted tendency 
+!!smg
 # if defined key_top
    USE trcstp_rk3
 # endif
@@ -40,8 +43,10 @@ MODULE stprk3_stg
    INTEGER,  PUBLIC, PARAMETER ::   np_LIN = 0   ! linear interpolation of barotropic mode at each stage: ORCA1 OK
    INTEGER,  PUBLIC, PARAMETER ::   np_IMP = 1   ! implicitation of barotropic mode at each stage: ORCA2 OK
    INTEGER,  PUBLIC, PARAMETER ::   np_HYB = 2   ! hybrid version linear interpolation of ssh implicitation barotropic velocities
-
-   INTEGER  :: n_baro_upd =  np_HYB     ! Forward in time update of barotropic mode
+!!smg   
+   LOGICAL  ::   lo_trd_tot = .FALSE.   ! flag for total e3t*tracer trend 
+!!smg
+   INTEGER  ::   n_baro_upd =  np_HYB   ! Forward in time update of barotropic mode
                                         ! at stages 1 & 2
 
    REAL(wp) ::   r1_2 = 1._wp / 2._wp
@@ -103,6 +108,7 @@ CONTAINS
          IF(lwp) WRITE(numout,*)
          IF(lwp) WRITE(numout,*) 'stp_stg : Runge Kutta 3rd order at stage ', kstg
          IF(lwp) WRITE(numout,*) '~~~~~~~~~~~'
+         lo_trd_tot = iom_use('ttrd_tot') .OR. iom_use('strd_tot')
       ENDIF
       !
 #if ! defined key_PSYCLONE_2p5p0
@@ -548,16 +554,24 @@ CONTAINS
             DO_3D( 0, 0, 0, 0, 1, jpkm1 )
 #  if defined key_linssh
                !              ! linear ssh : applied on tracer
-               ts(ji,jj,jk,jn,Kaa) = ( ts(ji,jj,jk,jn,Kbb ) + rDt * ts(ji,jj,jk,jn,Krhs) * tmask(ji,jj,jk) )
+               ts(ji,jj,jk,jn,Kaa) = ( ts(ji,jj,jk,jn,Kbb ) + rDt * ts(ji,jj,jk,jn,Krhs) &
+                                                                  / e3t(ji,jj,jk,Krhs)   * tmask(ji,jj,jk) )   !!smg
+!!smg          ts(ji,jj,jk,jn,Kaa) = ( ts(ji,jj,jk,jn,Kbb ) + rDt * ts(ji,jj,jk,jn,Krhs) * tmask(ji,jj,jk) )
 #  elif defined key_qco  
                !              ! qco : thickness weighted time-stepping using (1+r3.) only
-               ts(ji,jj,jk,jn,Kaa) = (        ( 1._wp + r3t(ji,jj,Kbb) )*ts(ji,jj,jk,jn,Kbb )                      &
-                  &                   + rDt * ( 1._wp + r3t(ji,jj,Kmm) )*ts(ji,jj,jk,jn,Krhs)*tmask(ji,jj,jk)  )   &
+!!smg               ts(ji,jj,jk,jn,Kaa) = (        ( 1._wp + r3t(ji,jj,Kbb) )*ts(ji,jj,jk,jn,Kbb )                      &
+!!smg                  &                   + rDt * ( 1._wp + r3t(ji,jj,Kmm) )*ts(ji,jj,jk,jn,Krhs)*tmask(ji,jj,jk)  )   &
+!!smg                  &                /          ( 1._wp + r3t(ji,jj,Kaa) )
+               ts(ji,jj,jk,jn,Kaa) = (        ( 1._wp + r3t(ji,jj,Kbb) )*ts(ji,jj,jk,jn,Kbb )                                      &  
+                  &                   + rDt                             *ts(ji,jj,jk,jn,Krhs)/e3t_0(ji,jj,jk)*tmask(ji,jj,jk)  )   &  !!smg 
                   &                /          ( 1._wp + r3t(ji,jj,Kaa) )
 #  else   
                !              ! 4D e3t : thickness weighted time-stepping using e3t
+!!smg               ts(ji,jj,jk,jn,Kaa) = (         e3t(ji,jj,jk,Kbb)*ts(ji,jj,jk,jn,Kbb )                      &
+!!smg                  &                    + rDt * e3t(ji,jj,jk,Kmm)*ts(ji,jj,jk,jn,Krhs)*tmask(ji,jj,jk)  )   &
+!!smg                  &                /           e3t(ji,jj,jk,Kaa)
                ts(ji,jj,jk,jn,Kaa) = (         e3t(ji,jj,jk,Kbb)*ts(ji,jj,jk,jn,Kbb )                      &
-                  &                    + rDt * e3t(ji,jj,jk,Kmm)*ts(ji,jj,jk,jn,Krhs)*tmask(ji,jj,jk)  )   &
+                  &                    + rDt *                   ts(ji,jj,jk,jn,Krhs)*tmask(ji,jj,jk)  )   &  !!smg
                   &                /           e3t(ji,jj,jk,Kaa)
 #  endif
             END_3D
@@ -602,6 +616,10 @@ CONTAINS
             !
          END DO
          IF( ln_tile ) CALL dom_tile_stop
+
+         !!smg 
+         IF( lo_trd_tot )   CALL trd_tra_tot( Kbb, Kaa )
+         
          IF( ln_zdfosm .AND. lrst_oce ) CALL osm_rst( kstp, Kmm, 'WRITE' )   ! Write OSMOSIS fields and ww to restart file
          !
          IF( .NOT.lk_linssh ) THEN

@@ -4,6 +4,7 @@ MODULE trdpen
    !! Ocean diagnostics:  Potential Energy trends
    !!=====================================================================
    !! History :  3.5  !  2012-02  (G. Madec) original code 
+   !!            5.x  !  2026-04  (S. Griffies + G. Madec) thickness weighted diagnostics 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -108,7 +109,6 @@ CONTAINS
                                 ENDIF
       CASE ( jptra_ldf  )   ;   CALL iom_put( "petrd_ldf" , zpe )   ! lateral  diffusion
       CASE ( jptra_zdf  )   ;   CALL iom_put( "petrd_zdf" , zpe )   ! lateral  diffusion (K_z)
-      CASE ( jptra_zdfp )   ;   CALL iom_put( "petrd_zdfp", zpe )   ! vertical diffusion (K_z)
       CASE ( jptra_dmp  )   ;   CALL iom_put( "petrd_dmp" , zpe )   ! internal 3D restoring (tradmp)
       CASE ( jptra_bbl  )   ;   CALL iom_put( "petrd_bbl" , zpe )   ! bottom boundary layer
       CASE ( jptra_npc  )   ;   CALL iom_put( "petrd_npc" , zpe )   ! non penetr convect adjustment

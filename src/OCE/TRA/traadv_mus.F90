@@ -10,6 +10,7 @@ MODULE traadv_mus
    !!            3.4  !  2012-06  (P. Oddo, M. Vichi) include the upstream where needed
    !!            3.7  !  2015-09  (G. Madec) add the ice-shelf cavities boundary condition
    !!            4.5  !  2022-06  (S. Techene, G, Madec) refactorization to reduce local memory usage
+   !!            5.x  !  2026-03  (S. Griffies, G. Madec)  thickness weighted tracer tendency 
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -190,8 +191,7 @@ CONTAINS
             !
             DO_2D( 0, 0, 0, 0 )              !-- Tracer advective trend
                pt(ji,jj,jk,jn,Krhs) = pt(ji,jj,jk,jn,Krhs) - ( ( zwx(ji,jj) - zwx(ji-1,jj  ) )       &   ! ad () for NP repro
-               &                                             + ( zwy(ji,jj) - zwy(ji  ,jj-1) ) )     &
-               &                                   * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
+               &                                             + ( zwy(ji,jj) - zwy(ji  ,jj-1) ) )  * r1_e1e2t(ji,jj) 
             END_2D
             !                                 ! "Poleward" heat and salt transports
             IF( l_ptr )  CALL dia_ptr_hst( jn, 'adv', zwy(:,:) )
@@ -228,8 +228,7 @@ CONTAINS
                DO_2D( 0, 0, 0, 0 )                              ! update pt(Krhs) under the ice-shelf  
                   ik = mikt(ji,jj)                              ! the flux at ik-1 is zero ( inside ice-shelf )
                   IF( ik > 1 ) THEN
-                     pt(ji,jj,ik,jn,Krhs) =  pt(ji,jj,ik,jn,Krhs) - pW(ji,jj,ik) * pt(ji,jj,ik,jn,Kbb)   &
-                        &                                         * r1_e1e2t(ji,jj) / e3t(ji,jj,ik,Kmm)
+                     pt(ji,jj,ik,jn,Krhs) =  pt(ji,jj,ik,jn,Krhs) - pW(ji,jj,ik) * pt(ji,jj,ik,jn,Kbb) * r1_e1e2t(ji,jj) 
                   ENDIF
                END_2D              
             ENDIF
@@ -261,8 +260,7 @@ CONTAINS
                   zzwy = pt(ji,jj,jk  ,jn,Kbb) + xind(ji,jj,jk) * zw * zslpz(ji,jj)
                   zfW_kp1 = pW(ji,jj,jk+1) * ( zalpha * zzwx + (1.-zalpha) * zzwy ) * wmask(ji,jj,jk+1)
                   !                         !-- vertical advective trend at jk
-                  pt(ji,jj,jk,jn,Krhs) =  pt(ji,jj,jk,jn,Krhs) - ( zfW(ji,jj) - zfW_kp1 )   &
-                     &                                      * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
+                  pt(ji,jj,jk,jn,Krhs) =  pt(ji,jj,jk,jn,Krhs) - ( zfW(ji,jj) - zfW_kp1 ) * r1_e1e2t(ji,jj)
                   !                                   ! updates for next level
                   zdzt_kp1(ji,jj) = zdzt_kp2
                   zslpz   (ji,jj) = zslpz_kp1
@@ -270,8 +268,7 @@ CONTAINS
                END_2D
             ELSE
                DO_2D( 0, 0, 0, 0 )          !-- vertical advective trend at jpkm1
-                  pt(ji,jj,jk,jn,Krhs) =  pt(ji,jj,jk,jn,Krhs) - zfW(ji,jj)    &
-                     &                                      * r1_e1e2t(ji,jj) / e3t(ji,jj,jk,Kmm)
+                  pt(ji,jj,jk,jn,Krhs) =  pt(ji,jj,jk,jn,Krhs) - zfW(ji,jj) * r1_e1e2t(ji,jj) 
                END_2D
             ENDIF
 	 END DO                  ! end of jk loop

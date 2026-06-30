@@ -134,17 +134,20 @@ CONTAINS
          !!gm : to be completed ! 
          !		   IF( ....
          !!gm end
-      CASE( jptra_zdfp )               ! iso-neutral diffusion: "pure" vertical diffusion
-         !                                   ! regroup iso-neutral diffusion in one term
-         tmltrd(:,:,jpmxl_ldf) = tmltrd(:,:,jpmxl_ldf) + ( tmltrd(:,:,jpmxl_zdf) - tmltrd(:,:,jpmxl_zdfp) )
-         smltrd(:,:,jpmxl_ldf) = smltrd(:,:,jpmxl_ldf) + ( smltrd(:,:,jpmxl_zdf) - smltrd(:,:,jpmxl_zdfp) )
-         !                                   ! put in zdf the dia-neutral diffusion
-         tmltrd(:,:,jpmxl_zdf) = tmltrd(:,:,jpmxl_zdfp)
-         smltrd(:,:,jpmxl_zdf) = smltrd(:,:,jpmxl_zdfp)
-         IF( ln_zdfnpc ) THEN
-            tmltrd(:,:,jpmxl_zdf) = tmltrd(:,:,jpmxl_zdf) + tmltrd(:,:,jpmxl_npc)
-            smltrd(:,:,jpmxl_zdf) = smltrd(:,:,jpmxl_zdf) + smltrd(:,:,jpmxl_npc)
-         ENDIF
+         
+!!smg/gm to be updated with new e3t*trend calculation         
+!!$      CASE( jptra_zdfp )               ! iso-neutral diffusion: "pure" vertical diffusion
+!!$         !                                   ! regroup iso-neutral diffusion in one term
+!!$         tmltrd(:,:,jpmxl_ldf) = tmltrd(:,:,jpmxl_ldf) + ( tmltrd(:,:,jpmxl_zdf) - tmltrd(:,:,jpmxl_zdfp) )
+!!$         smltrd(:,:,jpmxl_ldf) = smltrd(:,:,jpmxl_ldf) + ( smltrd(:,:,jpmxl_zdf) - smltrd(:,:,jpmxl_zdfp) )
+!!$         !                                   ! put in zdf the dia-neutral diffusion
+!!$         tmltrd(:,:,jpmxl_zdf) = tmltrd(:,:,jpmxl_zdfp)
+!!$         smltrd(:,:,jpmxl_zdf) = smltrd(:,:,jpmxl_zdfp)
+!!$         IF( ln_zdfnpc ) THEN
+!!$            tmltrd(:,:,jpmxl_zdf) = tmltrd(:,:,jpmxl_zdf) + tmltrd(:,:,jpmxl_npc)
+!!$            smltrd(:,:,jpmxl_zdf) = smltrd(:,:,jpmxl_zdf) + smltrd(:,:,jpmxl_npc)
+!!$         ENDIF
+         
       END SELECT
       !
    END SUBROUTINE trd_tra_mxl

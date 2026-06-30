@@ -8,7 +8,7 @@
 ============================================================================================================
     -->
     
-    <file_definition type="multiple_file" name="@expname@_@freq@_@startdate@_@enddate@" sync_freq="10d" min_digits="4">
+    <file_definition type="one_file" name="@expname@_@freq@_@startdate@_@enddate@" sync_freq="10d" min_digits="4">
     
       <file_group id="oce_1ts" output_freq="1ts"  output_level="10" enabled=".TRUE."/> <!-- 1 time step files -->
 
@@ -19,12 +19,21 @@
       <file_group id="oce_6h" output_freq="6h"  output_level="10" enabled=".TRUE."/> <!-- 6h files -->
      
       <file_group id="oce_1d" output_freq="1d"  output_level="10" enabled=".TRUE."/> <!-- 1d files -->
-      <file_group id="oce_3d" output_freq="3d"  output_level="10" enabled=".TRUE."/> <!-- 3d files -->    
+      <file_group id="oce_3d" output_freq="3d"  output_level="10" enabled=".TRUE."/> <!-- 3d files -->
+      
       <file_group id="oce_5d" output_freq="5d"  output_level="10" enabled=".TRUE.">  <!-- 5d files -->   
- 
+
         <file id="file1" name_suffix="_grid_T" description="ocean T grid variables" >
-	  <field field_ref="toce"         name="votemper"  />
-	  <field field_ref="soce"         name="vosaline"  />
+            <field field_ref = "sst2" long_name="square of sea surface temperature" standard_name="square_of_sea_surface_temperature"   unit="degC2"     > sst * sst </field >
+           <field field_ref="e3t"     />
+           <field field_ref="toce_e3t_300" unit="degress_C*m"  detect_missing_value="true" />
+           <field field_ref="qt"   />
+          <field field_ref="ttrd_xad"  unit="m*degC/s" />
+          <field field_ref="ttrd_yad"  unit="m*degC/s" />
+          <field field_ref="ttrd_zad"  unit="m*degC/s" />
+          <field field_ref="ttrd_tot"      long_name="temperature-trend: total model trend"         unit="m*degC/s" />
+          <field field_ref="toce"         name="votemper"  />
+  	  <field field_ref="soce"         name="vosaline"  />
 	  <field field_ref="sst"          name="sosstsst"  />
 	  <field field_ref="sss"          name="sosaline"  />
 	  <field field_ref="ssh"          name="sossheig"  />
@@ -35,8 +44,9 @@
 	  <field field_ref="mldr10_1"     name="somxl010"  />
 	  <field field_ref="mldkz5"       name="somixhgt"  />
           <field field_ref="utau"         name="sozotaux"  />
-          <field field_ref="vtau"         name="sometauy"  /> 
+          <field field_ref="vtau"         name="sometauy"  />	  
         </file>
+
 	
         <file id="file2" name_suffix="_grid_U" description="ocean U grid variables" >
           <field field_ref="uoce"         name="vozocrtx"  />
@@ -64,6 +74,25 @@
           <field field_ref="Fer"      />
 	</file>
 	
+        <!--Budget terms for temperature*e3t in W/m^2. Residual computed to check closure. -->     	
+        <!--Residual will not be zero at k=1 since we need to also subtract the 2D field ttrd_qns_budget.
+	    But we cannot do that operation with xios, since xios cannot perform operations combining
+	    2D and 3D fields. -->
+ 	<file id="file6" name_suffix="_budget_T"  description="ocean budget terms: rho0*Cp*e3t*trends [W/m^2]" >
+          <field field_ref="ttrd_tot_budget" /> 
+          <field field_ref="ttrd_adv_budget" />
+          <field field_ref="ttrd_ldf_budget" />
+          <field field_ref="ttrd_qsr_budget" />
+          <field field_ref="ttrd_zdf_tot_budget" />
+          <field field_ref="ttrd_zdf_ldf_budget" />
+          <field field_ref="ttrd_zdf_zad_budget" />
+          <field field_ref="ttrd_zdf_avt_budget" />
+          <field field_ref="ttrd_zdf_evd_budget" />
+          <field field_ref="ttrd_qns_budget" />
+          <field field_ref="ttrd_tot_budget"  unit="W/m^2" name="ttrd_res"     operation="instant" freq_op="5d" > ttrd_tot_budget     - (ttrd_adv_budget + ttrd_ldf_budget + ttrd_zdf_tot_budget + ttrd_qsr_budget) </field>
+          <field field_ref="ttrd_tot_budget"  unit="W/m^2" name="ttrd_zdf_res" operation="instant" freq_op="5d" > ttrd_zdf_tot_budget - (ttrd_zdf_avt_budget + ttrd_zdf_ldf_budget + ttrd_zdf_zad_budget)           </field>
+        </file>
+
       </file_group>
 
       <file_group id="oce_1m" output_freq="1mo" output_level="10" enabled=".TRUE."/> <!-- real monthly files -->

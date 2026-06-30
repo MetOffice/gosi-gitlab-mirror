@@ -14,6 +14,7 @@ MODULE traadv
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
+   !!   tra_adv_trp   : compute transport for tracer advection
    !!   tra_adv       : compute ocean tracer advection trend
    !!   tra_adv_init  : control the different options of advection scheme
    !!----------------------------------------------------------------------
@@ -119,8 +120,8 @@ CONTAINS
       INTEGER                                     , INTENT(in   ) ::   kt                  ! ocean time-step index
       INTEGER                                     , INTENT(in   ) ::   kstg, kit000        ! RK3 stage and init index
       INTEGER                                     , INTENT(in   ) ::   Kbb, Kmm, Kaa, Krhs ! time level indices
-      REAL(wp), DIMENSION(AB2D(ktFuv),JPK)        , INTENT(inout) ::   pFu, pFv            ! advective transport
-      REAL(wp), DIMENSION(jpi,jpj,jpk)            , INTENT(inout) ::   pFw                 !
+      REAL(wp), DIMENSION(AB2D(ktFuv),JPK)        , INTENT(inout) ::   pFu, pFv            ! advective volume transport  [m^3/s]
+      REAL(wp), DIMENSION(jpi,jpj,jpk)            , INTENT(inout) ::   pFw                 ! advective volume transport  [m^3/s]
       !
       INTEGER ::   ji, jj, jk        ! dummy loop index
       REAL(wp)::   z_stfp, z_2stfp   ! local scalar
@@ -245,6 +246,7 @@ CONTAINS
       !
    END SUBROUTINE tra_adv_trp_t
 
+   
    SUBROUTINE tra_adv( kt, Kbb, Kmm, Kaa, pts, Krhs, pau, pav, paw, kstg )
       !!----------------------------------------------------------------------
       !!                  ***  ROUTINE tra_adv  ***
@@ -256,7 +258,7 @@ CONTAINS
       INTEGER                                  , INTENT(in   ) ::   kt                  ! ocean time-step index
       INTEGER                                  , INTENT(in   ) ::   Kbb, Kmm, Kaa, Krhs ! time level indices
       INTEGER                                  , INTENT(in   ) ::   kstg                ! optional stage indicator
-      REAL(wp), DIMENSION(jpi,jpj,jpk)         , INTENT(in   ) ::   pau, pav, paw       ! advective velocity
+      REAL(wp), DIMENSION(jpi,jpj,jpk)         , INTENT(in   ) ::   pau, pav, paw       ! advective transport  [m^3/s]
       REAL(wp), DIMENSION(jpi,jpj,jpk,jpts,jpt), INTENT(inout) ::   pts                 ! active tracers and RHS of tracer equation
       !
       INTEGER ::   ji, jj, jk   ! dummy loop index
@@ -313,7 +315,7 @@ CONTAINS
          !
          END SELECT
          !
-         CALL iom_put( "uocetr_eff", pau )                                        ! output effective transport
+         CALL iom_put( "uocetr_eff", pau )                                        ! output effective transport [m^3/s]
          CALL iom_put( "vocetr_eff", pav )
          CALL iom_put( "wocetr_eff", paw )
          !
@@ -327,8 +329,8 @@ CONTAINS
                ztrdt(ji,jj,jk) = pts(ji,jj,jk,jp_tem,Krhs) - ztrdt(ji,jj,jk)
                ztrds(ji,jj,jk) = pts(ji,jj,jk,jp_sal,Krhs) - ztrds(ji,jj,jk)
             END_3D
-            CALL trd_tra( kt, Kmm, Krhs, 'TRA', jp_tem, jptra_totad, ztrdt )
-            CALL trd_tra( kt, Kmm, Krhs, 'TRA', jp_sal, jptra_totad, ztrds )
+            CALL trd_tra( kt, Kmm, Krhs, 'TRA', jp_tem, jptra_adv, ztrdt )
+            CALL trd_tra( kt, Kmm, Krhs, 'TRA', jp_sal, jptra_adv, ztrds )
             DEALLOCATE( ztrdt, ztrds )
          ENDIF
 
