@@ -2567,7 +2567,7 @@ CONTAINS
             !
             IF( smysnd(jps_ivx1)%laction ) THEN           ! ice velocities
                ztmp1(A2D(0)) = zitx1(A2D(0))
-               ztmp1(A2D(0)) = zity1(A2D(0))
+               ztmp2(A2D(0)) = zity1(A2D(0))
                CALL oce2geo ( ztmp1, ztmp2, 'T', zitx1, zity1, zitz1 )
             ENDIF
          ENDIF
@@ -2639,7 +2639,7 @@ CONTAINS
          !            !
          !            IF( smysnd(jps_ivx1)%laction ) THEN           ! ice velocities
          !               ztmp1(A2D(0)) = zitx1(A2D(0))
-         !               ztmp1(A2D(0)) = zity1(A2D(0))
+         !               ztmp2(A2D(0)) = zity1(A2D(0))
          !               CALL oce2geo ( ztmp1, ztmp2, 'T', zitx1, zity1, zitz1 )
          !            ENDIF
          !         ENDIF
