@@ -71,7 +71,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       ipi = SIZE(pxin, 1)         ;   ipj = SIZE(pxin, 2)
       iisht = ( jpi - ipi ) / 2   ;   ijsht = ( jpj - ipj ) / 2
-      ii1  =   1 + iisht          ;   ij1  =   1 + iisht
+      ii1  =   1 + iisht          ;   ij1  =   1 + ijsht
       iipi = ipi + iisht          ;   ijpj = ipj + ijsht
       !
       IF( lmust_init ) THEN      ! at 1st call only: set  gsin. & gcos.
@@ -373,7 +373,7 @@ CONTAINS
       !
       ipi = SIZE(pxx, 1)          ;   ipj = SIZE(pxx, 2)
       iisht = ( jpi - ipi ) / 2   ;   ijsht = ( jpj - ipj ) / 2
-      ii1  =   1 + iisht          ;   ij1  =   1 + iisht
+      ii1  =   1 + iisht          ;   ij1  =   1 + ijsht
       iipi = ipi + iisht          ;   ijpj = ipj + ijsht
       !
       pte(1:ipi,1:ipj) = - gsinlon(ii1:iipi,ij1:ijpj,ig) * pxx(1:ipi,1:ipj)   &
@@ -459,7 +459,7 @@ CONTAINS
       !
       ipi = SIZE(pte, 1)          ;   ipj = SIZE(pte, 2)
       iisht = ( jpi - ipi ) / 2   ;   ijsht = ( jpj - ipj ) / 2
-      ii1  =   1 + iisht          ;   ij1  =   1 + iisht
+      ii1  =   1 + iisht          ;   ij1  =   1 + ijsht
       iipi = ipi + iisht          ;   ijpj = ipj + ijsht
       !
       pxx(1:ipi,1:ipj) = - gsinlon(ii1:iipi,ij1:ijpj,ig)                                 * pte(1:ipi,1:ipj)   &
