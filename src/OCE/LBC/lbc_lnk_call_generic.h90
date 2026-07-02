@@ -87,7 +87,7 @@
       IF( PRESENT(psgn20) )   CALL load_ptr_/**/XD/**/_/**/PRECISION( pt20, cdna20, psgn20, ptab_ptr, cdna_ptr, psgn_ptr, kfld )
       IF( PRESENT(psgn21) )   CALL load_ptr_/**/XD/**/_/**/PRECISION( pt21, cdna21, psgn21, ptab_ptr, cdna_ptr, psgn_ptr, kfld )
       IF( PRESENT(psgn22) )   CALL load_ptr_/**/XD/**/_/**/PRECISION( pt22, cdna22, psgn22, ptab_ptr, cdna_ptr, psgn_ptr, kfld )
-      IF( PRESENT(psgn23) )   CALL load_ptr_/**/XD/**/_/**/PRECISION( pt23, cdna23, psgn16, ptab_ptr, cdna_ptr, psgn_ptr, kfld )
+      IF( PRESENT(psgn23) )   CALL load_ptr_/**/XD/**/_/**/PRECISION( pt23, cdna23, psgn23, ptab_ptr, cdna_ptr, psgn_ptr, kfld )
       IF( PRESENT(psgn24) )   CALL load_ptr_/**/XD/**/_/**/PRECISION( pt24, cdna24, psgn24, ptab_ptr, cdna_ptr, psgn_ptr, kfld )
       IF( PRESENT(psgn25) )   CALL load_ptr_/**/XD/**/_/**/PRECISION( pt25, cdna25, psgn25, ptab_ptr, cdna_ptr, psgn_ptr, kfld )
       IF( PRESENT(psgn26) )   CALL load_ptr_/**/XD/**/_/**/PRECISION( pt26, cdna26, psgn26, ptab_ptr, cdna_ptr, psgn_ptr, kfld )
