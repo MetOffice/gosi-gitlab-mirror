@@ -358,7 +358,7 @@ CONTAINS
       CASE( 2 )   ! chl 3D data
          DO_3D( 0, 0, 0, 0, 1, ipk-1 )                          ! 3D attenuation coefficients
             !                                                        ! make sure zchl value is such that: 0.03 < zchl < 10. 
-            zchl = MAX(  0.03_wp , MIN( sf_chl(1)%fnow(ji,jj,ipk) , 10._wp )  )
+            zchl = MAX(  0.03_wp , MIN( sf_chl(1)%fnow(ji,jj,jk) , 10._wp )  )
             !                                                        ! Convert chlorophyll value to attenuation coefficient
             itab(ji,jj,jk) = NINT( 41 + 20.*LOG10(zchl) + 1.e-15 )   ! look-up table index
          END_3D
@@ -818,7 +818,7 @@ CONTAINS
       CASE( 2 )   ! chl 3D data
          DO_3D( 0, 0, 0, 0, 1, ipk-1 )                        ! 3D attenuation coefficients
             !                                                        ! make sure zchl value is such that: 0.03 < zchl < 10. 
-            zchl = MAX(  0.03_wp , MIN( sf_chl(1)%fnow(ji,jj,ipk) , 10._wp )  )
+            zchl = MAX(  0.03_wp , MIN( sf_chl(1)%fnow(ji,jj,jk) , 10._wp )  )
             !                                                        ! Convert chlorophyll value to attenuation coefficient
             itab(ji,jj,jk) = NINT( 41 + 20.*LOG10(zchl) + 1.e-15 )   ! look-up table index
          END_3D
