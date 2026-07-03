@@ -246,7 +246,8 @@ CONTAINS
       !!----------------------------------------------------------------------
       REAL(wp), DIMENSION (:,:), INTENT(inout) ::   p2d
       !
-      INTEGER ::   ji, ji2, jj, jj2     ! dummy loop indices
+      INTEGER ::   ji, ji1, ji2, jj, jj1, jj2     ! dummy loop indices
+      REAL(wp)::   ztmp
       !!----------------------------------------------------------------------
       !
       IF( SIZE(p2d,1) /= jpi ) CALL ctl_stop( 'STOP', 'wrong call of sum3x3_2d, the first dimension is not equal to jpi' ) 
@@ -257,10 +258,16 @@ CONTAINS
       DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
          IF( MOD(mig(ji,nn_hls), 3) == MOD(nn_hls, 3) .AND.   &              ! 1st bottom left corner always at (Nis0-1, Njs0-1)
            & MOD(mjg(jj,nn_hls), 3) == MOD(nn_hls, 3)         ) THEN         ! bottom left corner of a 3x3 box
+            ji1 = MIN(mig(ji,nn_hls)+1, jpiglo) - nimpp + 1                  ! middle position of the box
+            jj1 = MIN(mjg(jj,nn_hls)+1, jpjglo) - njmpp + 1                  ! middle position of the box
             ji2 = MIN(mig(ji,nn_hls)+2, jpiglo) - nimpp + 1                  ! right position of the box
             jj2 = MIN(mjg(jj,nn_hls)+2, jpjglo) - njmpp + 1                  ! upper position of the box
             IF( ji2 <= jpi .AND. jj2 <= jpj ) THEN                           ! the box is fully included in the local mpi domain
-               p2d(ji:ji2,jj:jj2) = SUM(p2d(ji:ji2,jj:jj2))
+               ! original version: p2d(ji:ji2,jj:jj2) = SUM(p2d(ji:ji2,jj:jj2)) -->  but SUM is not symmetrical
+               ! we could use higher precision sum (DDPDD) or use parentheses to force the symmetry
+               ztmp = p2d(ji1,jj1) + ( ( p2d(ji,jj1) + p2d(ji2,jj1) ) + ( p2d(ji1,jj ) + p2d(ji1,jj2) ) )   &
+                  &                + ( ( p2d(ji,jj ) + p2d(ji2,jj2) ) + ( p2d(ji ,jj2) + p2d(ji2,jj ) ) )
+               p2d(ji:ji2,jj:jj2) = ztmp
             ENDIF
          ENDIF
       END_2D
@@ -276,8 +283,9 @@ CONTAINS
       !!----------------------------------------------------------------------
       REAL(wp), DIMENSION (:,:,:), INTENT(inout) ::   p3d
       !
-      INTEGER ::   ji, ji2, jj, jj2, jn     ! dummy loop indices
-      INTEGER ::   ipn                      ! Third dimension size
+      INTEGER ::   ji, ji1, ji2, jj, jj1, jj2, jn     ! dummy loop indices
+      INTEGER ::   ipn                                ! Third dimension size
+      REAL(wp)::   ztmp
       !!----------------------------------------------------------------------
       !
       IF( SIZE(p3d,1) /= jpi ) CALL ctl_stop( 'STOP', 'wrong call of sum3x3_3d, the first dimension is not equal to jpi' ) 
@@ -291,10 +299,16 @@ CONTAINS
          DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
             IF( MOD(mig(ji,nn_hls), 3) == MOD(nn_hls, 3) .AND.   &              ! 1st bottom left corner always at (Nis0-1, Njs0-1)
               & MOD(mjg(jj,nn_hls), 3) == MOD(nn_hls, 3)         ) THEN         ! bottom left corner of a 3x3 box
+               ji1 = MIN(mig(ji,nn_hls)+1, jpiglo) - nimpp + 1                  ! middle position of the box
+               jj1 = MIN(mjg(jj,nn_hls)+1, jpjglo) - njmpp + 1                  ! middle position of the box
                ji2 = MIN(mig(ji,nn_hls)+2, jpiglo) - nimpp + 1                  ! right position of the box
                jj2 = MIN(mjg(jj,nn_hls)+2, jpjglo) - njmpp + 1                  ! upper position of the box
                IF( ji2 <= jpi .AND. jj2 <= jpj ) THEN                           ! the box is fully included in the local mpi domain
-                  p3d(ji:ji2,jj:jj2,jn) = SUM(p3d(ji:ji2,jj:jj2,jn))
+                  ! original version: p3d(ji:ji2,jj:jj2,jn) = SUM(p3d(ji:ji2,jj:jj2,jn)) -->  but SUM is not symmetrical
+                  ! we could use higher precision sum (DDPDD) or use parentheses to force the symmetry
+                  ztmp = p3d(ji1,jj1,jn) + ( ( p3d(ji,jj1,jn) + p3d(ji2,jj1,jn) ) + ( p3d(ji1,jj ,jn) + p3d(ji1,jj2,jn) ) )   &
+                     &                   + ( ( p3d(ji,jj ,jn) + p3d(ji2,jj2,jn) ) + ( p3d(ji ,jj2,jn) + p3d(ji2,jj ,jn) ) )
+                  p3d(ji:ji2,jj:jj2,jn) = ztmp
                ENDIF
             ENDIF
          END_2D
