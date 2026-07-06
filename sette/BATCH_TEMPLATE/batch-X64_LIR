@@ -23,14 +23,8 @@ set +x
   X_PER_NODE=8
   if [ $XCORES -le $X_PER_NODE ]; then X_PER_NODE=$XCORES; fi
   if [ $OCORES -le $O_PER_NODE ]; then O_PER_NODE=$OCORES; fi
-  export SETTE_DIR=DEF_SETTE_DIR
 
 ###############################################################
-#
-#
-# load sette functions (only post_test_tidyup needed)
-#
-  . ${SETTE_DIR}/all_functions.sh
 ###############################################################
 #
 # Don't remove neither change the following line
@@ -42,25 +36,26 @@ set +x
 #
 # These variables are needed by post_test_tidyup function in all_functions.sh
 #
+  export SETTE_DIR=DEF_SETTE_DIR
   export MPIRUN="mpirun"
-  export INPUT_DIR=DEF_INPUT_DIR
-  export CONFIG_DIR=DEF_CONFIG_DIR
-  export TOOLS_DIR=DEF_TOOLS_DIR
   export NEMO_VALIDATION_DIR=DEF_NEMO_VALIDATION
   export NEW_CONF=DEF_NEW_CONF
   export CMP_NAM=DEF_CMP_NAM
   export TEST_NAME=DEF_TEST_NAME
   export EXE_DIR=DEF_EXE_DIR
-
-  # Load environment if exists
-  env_file=`find ${TOOLS_DIR}/../arch -name arch-${CMP_NAM}.env`
+#
+# load sette functions (only post_test_tidyup needed)
+  . ${SETTE_DIR}/all_functions.sh
+#
+# Load environment if exists
+  env_file=`find ${SETTE_DIR}/../arch -name arch-${CMP_NAM}.env`
   if [ -f "${env_file}" ] ; then
      echo "Load environment file arch-${CMP_NAM}.env"
      . ${env_file}
   fi
 
-  ulimit -a
   ulimit -s unlimited
+  ulimit -a
 #
 # end of set up
 ###############################################################
@@ -68,9 +63,6 @@ set +x
 # change to the working directory 
 #
   cd ${EXE_DIR}
-  if [[ ${NEW_CONF} =~ "ICE_AGRIF" ]]; then
-    sed -i'' -e 's/detect_missing_value="true"/detect_missing_value="false"/' field_def_nemo-ice.xml
-  fi
   echo Running on host `hostname`
   echo Time is `date`
   echo Directory is `pwd`
@@ -78,6 +70,11 @@ set +x
 #  Run the parallel MPI executable 
 #
   echo "Running time ${MPIRUN} ./nemo"
+#
+# ICE_AGRIF bug with XIOS
+  if [[ ${NEW_CONF} =~ "ICE_AGRIF" ]]; then
+    sed -i'' -e 's/detect_missing_value="true"/detect_missing_value="false"/' field_def_nemo-ice.xml
+  fi
 #
   if [ $XCORES -gt 0 ]; then
 #
