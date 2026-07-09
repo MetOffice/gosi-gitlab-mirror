@@ -104,7 +104,8 @@ CONTAINS
       END DO
       ! at least 2 halos will be corrected -> no need to correct rim 1 before rim 0
       IF( ANY(llsend1) .OR. ANY(llrecv1) ) THEN   ! if need to send/recv in at least one direction
-         CALL lbc_lnk( 'bdytra', pts(:,:,:,jn,Kaa), 'T',  1.0_wp, kfillmode=jpfillnothing ,lsend=llsend1, lrecv=llrecv1 )
+         CALL lbc_lnk( 'bdytra', pts(:,:,:,jp_tem,Kaa), 'T',  1.0_wp, pts(:,:,:,jp_sal,Kaa), 'T',  1.0_wp, & 
+                 &      kfillmode=jpfillnothing ,lsend=llsend1, lrecv=llrecv1 )
       ENDIF
       !
    END SUBROUTINE bdy_tra
@@ -168,7 +169,7 @@ CONTAINS
             DO ib = 1, idx_bdy(ib_bdy)%nblen(igrd)
                ii = idx_bdy(ib_bdy)%nbi(ib,igrd)
                ij = idx_bdy(ib_bdy)%nbj(ib,igrd)
-               zwgt = idx_bdy(ib_bdy)%nbd(ib,igrd)
+               zwgt = idx_bdy(ib_bdy)%nbdout(ib,igrd)
                IF( in_hdom(ii, ij) ) THEN
                   DO ik = 1, jpkm1
                      zta = zwgt * ( dta_bdy(ib_bdy)%tem(ib,ik) - pts(ii,ij,ik,jp_tem,Kbb) ) * tmask(ii,ij,ik)

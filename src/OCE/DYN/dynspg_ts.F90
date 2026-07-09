@@ -71,7 +71,6 @@ MODULE dynspg_ts
    PUBLIC dyn_drg_init      ! called by stp2d
    !
    INTEGER         ::   icycle         ! Number of barotropic sub-steps for each internal step nn_e <= 2.5 nn_e
-   REAL(wp)        ::   rDt_e          ! Barotropic time step
    LOGICAL, PUBLIC ::   ll_cold_start  ! =T : missing restart fields  ==> cold start  =F : ==> hot start 
    REAL(wp) ::   r1_wgt1s       ! Temporal weights sums
    REAL(wp) ::   r1_wgt2s

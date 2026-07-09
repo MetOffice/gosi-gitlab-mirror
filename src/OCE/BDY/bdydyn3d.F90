@@ -326,11 +326,11 @@ CONTAINS
       !
       igrd = 2      ! Orlanski bc on u-velocity; 
       !            
-      CALL bdy_orlanski_3d( idx, igrd, puu(:,:,:,Kbb), puu(:,:,:,Kaa), dta%u3d, ll_npo, llrim0 )
+      CALL bdy_orlanski_3d( idx, igrd, puu(:,:,:,Kbb), puu(:,:,:,Kaa), dta%u3d, llrim0, ll_npo )
 
       igrd = 3      ! Orlanski bc on v-velocity
       !  
-      CALL bdy_orlanski_3d( idx, igrd, pvv(:,:,:,Kbb), pvv(:,:,:,Kaa), dta%v3d, ll_npo, llrim0 )
+      CALL bdy_orlanski_3d( idx, igrd, pvv(:,:,:,Kbb), pvv(:,:,:,Kaa), dta%v3d, llrim0, ll_npo )
       !
    END SUBROUTINE bdy_dyn3d_orlanski
 
@@ -360,7 +360,7 @@ CONTAINS
             DO jb = 1, idx_bdy(ib_bdy)%nblen(igrd)
                ii   = idx_bdy(ib_bdy)%nbi(jb,igrd)
                ij   = idx_bdy(ib_bdy)%nbj(jb,igrd)
-               zwgt = idx_bdy(ib_bdy)%nbd(jb,igrd)
+               zwgt = idx_bdy(ib_bdy)%nbdout(jb,igrd)
                IF( in_hdom(ii, ij) ) THEN
                   DO jk = 1, jpkm1
                      puu(ii,ij,jk,Krhs) = ( puu(ii,ij,jk,Krhs) + zwgt * ( dta_bdy(ib_bdy)%u3d(jb,jk) - &
@@ -373,7 +373,7 @@ CONTAINS
             DO jb = 1, idx_bdy(ib_bdy)%nblen(igrd)
                ii   = idx_bdy(ib_bdy)%nbi(jb,igrd)
                ij   = idx_bdy(ib_bdy)%nbj(jb,igrd)
-               zwgt = idx_bdy(ib_bdy)%nbd(jb,igrd)
+               zwgt = idx_bdy(ib_bdy)%nbdout(jb,igrd)
                IF( in_hdom(ii, ij) ) THEN
                   DO jk = 1, jpkm1
                      pvv(ii,ij,jk,Krhs) = ( pvv(ii,ij,jk,Krhs) + zwgt * ( dta_bdy(ib_bdy)%v3d(jb,jk) -  &

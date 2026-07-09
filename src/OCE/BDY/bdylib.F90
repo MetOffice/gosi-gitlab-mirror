@@ -236,9 +236,9 @@ CONTAINS
          ! Mask derivatives to ensure correct land boundary conditions for each variable.
          ! Centred derivative is calculated as average of "left" and "right" derivatives for 
          ! this reason. 
-         ! Note no rn_Dt factor in expression for zdt because it cancels in the expressions for 
+         ! Note no rDt factor in expression for zdt because it cancels in the expressions for 
          ! zrx and zry.
-         zdt   =     phia(iibm1   ,ijbm1   ) - phib(iibm1   ,ijbm1   )
+         zdt   =     phib(iibm1   ,ijbm1   ) - phia(iibm1   ,ijbm1   )
          zdx   = ( ( phia(iibm1   ,ijbm1   ) - phia(iibm2   ,ijbm2   ) ) / zex2 ) * zmask_x 
          zdy_1 = ( ( phib(iibm1   ,ijbm1   ) - phib(iibm1jm1,ijbm1jm1) ) / zey1 ) * zmask_y1    
          zdy_2 = ( ( phib(iibm1jp1,ijbm1jp1) - phib(iibm1   ,ijbm1   ) ) / zey2 ) * zmask_y2 
@@ -251,11 +251,16 @@ CONTAINS
          znor2 = zdx * zdx + zdy * zdy
          znor2 = max(znor2,zepsilon)
          !
-         zrx = zdt * zdx / ( zex1 * znor2 ) 
+         zrx = zdt * zdx / ( zex1 * znor2 )
+!!         zrx = 0.4 * rDt_e / zex1 !! (expected SOLITON's value) 
 !!$         zrx = min(zrx,2.0_wp)
          zout = sign( 1.0_wp, zrx )
          zout = 0.5*( zout + abs(zout) )
-         zwgt = 2.*rn_Dt*( (1.-zout) * idx%nbd(jb,igrd) + zout * idx%nbdout(jb,igrd) )
+         IF (ln_dynspg_ts ) THEN
+            zwgt = rDt_e*( (1.-zout) * idx%nbd(jb,igrd) + zout * idx%nbdout(jb,igrd) )
+         ELSE
+            zwgt =   rDt*( (1.-zout) * idx%nbd(jb,igrd) + zout * idx%nbdout(jb,igrd) )
+         ENDIF 
          ! only apply radiation on outflow points 
          if( ll_npo ) then     !! NPO version !!
             phia(ii,ij) = (1.-zout) * ( phib(ii,ij) + zwgt * ( phi_ext(jb) - phib(ii,ij) ) )        &
@@ -266,6 +271,10 @@ CONTAINS
             zsign_ups = 0.5*( zsign_ups + abs(zsign_ups) )
             zey = zsign_ups * zey1 + (1.-zsign_ups) * zey2 
             zry = zdt * zdy / ( zey * znor2 ) 
+            zry = min(zry, 1._wp)
+            zry = max(zry,-1._wp)
+            IF  ((phib(iijm1,ijjm1)==0._wp.AND.zsign_ups==1._wp).OR. &
+                &(phib(iijp1,ijjp1)==0._wp.AND.zsign_ups==0._wp)) zry = 0._wp    
             phia(ii,ij) = (1.-zout) * ( phib(ii,ij) + zwgt * ( phi_ext(jb) - phib(ii,ij) ) )        &
            &            + zout      * ( phib(ii,ij) + zrx*phia(iibm1,ijbm1)                         &
            &                    - zsign_ups      * zry * ( phib(ii   ,ij   ) - phib(iijm1,ijjm1 ) ) &
@@ -353,7 +362,7 @@ CONTAINS
       ELSE               ;   ibeg = idx%nblenrim0(igrd)+1   ;   iend = idx%nblenrim(igrd)    ! rim 1
       ENDIF
       !
-      DO jk = 1, jpk
+      DO jk = 1, jpkm1
          !            
          DO jb = ibeg, iend
             ii  = idx%nbi(jb,igrd)
@@ -400,7 +409,7 @@ CONTAINS
             ! Mask derivatives to ensure correct land boundary conditions for each variable.
             ! Centred derivative is calculated as average of "left" and "right" derivatives for 
             ! this reason. 
-            zdt   =     phia(iibm1   ,ijbm1   ,jk) - phib(iibm1   ,ijbm1   ,jk)
+            zdt   =     phib(iibm1   ,ijbm1   ,jk) - phia(iibm1   ,ijbm1   ,jk)
             zdx   = ( ( phia(iibm1   ,ijbm1   ,jk) - phia(iibm2   ,ijbm2   ,jk) ) / zex2 ) * zmask_x                  
             zdy_1 = ( ( phib(iibm1   ,ijbm1   ,jk) - phib(iibm1jm1,ijbm1jm1,jk) ) / zey1 ) * zmask_y1  
             zdy_2 = ( ( phib(iibm1jp1,ijbm1jp1,jk) - phib(iibm1   ,ijbm1   ,jk) ) / zey2 ) * zmask_y2      
@@ -418,7 +427,7 @@ CONTAINS
 !!$            zrx = min(zrx,2.0_wp)
             zout = sign( 1.0_wp, zrx )
             zout = 0.5*( zout + abs(zout) )
-            zwgt = 2.*rn_Dt*( (1.-zout) * idx%nbd(jb,igrd) + zout * idx%nbdout(jb,igrd) )
+            zwgt = rDt*( (1.-zout) * idx%nbd(jb,igrd) + zout * idx%nbdout(jb,igrd) )
             ! only apply radiation on outflow points 
             if( ll_npo ) then     !! NPO version !!
                phia(ii,ij,jk) = (1.-zout) * ( phib(ii,ij,jk) + zwgt * ( phi_ext(jb,jk) - phib(ii,ij,jk) ) ) &
@@ -429,6 +438,10 @@ CONTAINS
                zsign_ups = 0.5*( zsign_ups + abs(zsign_ups) )
                zey = zsign_ups * zey1 + (1.-zsign_ups) * zey2 
                zry = zdt * zdy / ( zey * znor2 ) 
+               zry = min(zry, 1._wp)
+               zry = max(zry,-1._wp)
+               IF  ((phib(iijm1,ijjm1,jk)==0._wp.AND.zsign_ups==1._wp).OR. &
+                   &(phib(iijp1,ijjp1,jk)==0._wp.AND.zsign_ups==0._wp)) zry = 0._wp    
                phia(ii,ij,jk) = (1.-zout) * ( phib(ii,ij,jk) + zwgt * ( phi_ext(jb,jk) - phib(ii,ij,jk) ) )    &
               &               + zout      * ( phib(ii,ij,jk) + zrx*phia(iibm1,ijbm1,jk)                        &
               &                       - zsign_ups      * zry * ( phib(ii   ,ij   ,jk) - phib(iijm1,ijjm1,jk) ) &

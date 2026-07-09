@@ -1784,11 +1784,11 @@ CONTAINS
          END_2D
          CALL mpp_sum( 'bdyini', ztestmask )   ! sum over the global domain
 
-         IF ((ztestmask(1)==1._wp).AND.(icornn(ib,1)==0)) THEN
+         IF ((ztestmask(1)==1._wp).AND.(icornn(ib,1)==0).AND.( jpindt(ib)>2)) THEN
             WRITE(ctmp1,*) ' Open boundary segment ', npckgn(ib)
             CALL ctl_stop( ctmp1, ' does not start on land' )
          ENDIF
-         IF ((ztestmask(2)==1._wp).AND.(icornn(ib,2)==0)) THEN
+         IF ((ztestmask(2)==1._wp).AND.(icornn(ib,2)==0).AND.( jpinft(ib)<(Ni0glo-1))) THEN
             WRITE(ctmp1,*) ' Open boundary segment ', npckgn(ib)
             CALL ctl_stop( ctmp1, ' does not end on land' )
          ENDIF
