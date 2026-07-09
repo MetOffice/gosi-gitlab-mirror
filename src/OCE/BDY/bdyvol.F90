@@ -134,15 +134,13 @@ CONTAINS
          DO jb = 1, idx%nblenrim(jgrd)
                ii = idx%nbi(jb,jgrd)
                ij = idx%nbj(jb,jgrd)
-               !IF( ii == 1 .OR. ii == jpi .OR. ij == 1 .OR. ij == jpj )  CYCLE   ! to remove ?
-               pua2d(ii,ij) = pua2d(ii,ij) - idx%flagu(jb,jgrd) * zubtpecor * ( tmask_i(ii,ij) * tmask_i(ii+1,ij) )
+               pua2d(ii,ij) = pua2d(ii,ij) - idx%flagu(jb,jgrd) * zubtpecor * ssumask(ii,ij)
          END DO
          jgrd = 3                              ! correct v component
          DO jb = 1, idx%nblenrim(jgrd)
                ii = idx%nbi(jb,jgrd)
                ij = idx%nbj(jb,jgrd)
-               !IF( ii == 1 .OR. ii == jpi .OR. ij == 1 .OR. ij == jpj )  CYCLE   ! to remove ?
-               pva2d(ii,ij) = pva2d(ii,ij) - idx%flagv(jb,jgrd) * zubtpecor * ( tmask_i(ii,ij) * tmask_i(ii,ij+1) )
+               pva2d(ii,ij) = pva2d(ii,ij) - idx%flagv(jb,jgrd) * zubtpecor * ssvmask(ii,ij)
          END DO
          !
       END DO

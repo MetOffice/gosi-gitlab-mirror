@@ -35,6 +35,7 @@ MODULE dom_oce
    !! ----------------------------
    LOGICAL , PUBLIC ::   ln_meshmask    !: =T  create a mesh-mask file (mesh_mask.nc)
    REAL(wp), PUBLIC ::   rn_Dt          !: time step for the dynamics and tracer
+   REAL(wp), PUBLIC ::   rDt_e          !: Barotropic time step
    LOGICAL , PUBLIC ::   ln_c1d         !: =T  single column domain (1x1 pt)
    LOGICAL , PUBLIC ::   ln_shuman      !: =T  shuman averaging
 
