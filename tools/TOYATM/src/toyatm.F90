@@ -39,9 +39,9 @@ PROGRAM TOYATM
   !
   INTEGER :: il_paral(3) ! Decomposition for each proc
   !
-  INTEGER :: ierror, ios
+  INTEGER :: ierror, ios, status
   INTEGER, PARAMETER :: w_unit = 711
-  INTEGER :: FILE_Debug=1
+  INTEGER :: FILE_Debug=2
   !
   ! Names of exchanged Fields
   CHARACTER(len=8), DIMENSION(3), PARAMETER :: var_name = (/'ATSSTSST','ATSOLFLX','ATFLXEMP'/) ! 8 characters field
@@ -58,6 +58,7 @@ PROGRAM TOYATM
   INTEGER                       :: var_sh(4) ! local dimensions of the arrays; 2 x rank (=4)
   INTEGER :: ji, jj
   INTEGER :: auxfileid, auxdimid(2), auxvarid(2)
+  INTEGER :: dimid
   !
   ! NEMO namelist parameters
   INTEGER                       :: numnam_cfg=80, nn_it000, nn_itend
@@ -170,23 +171,46 @@ PROGRAM TOYATM
   !
   IF (mype == 0) THEN
      ! Define longitude and latitude
+     WRITE(w_unit,*) 'grid ...', TRIM(data_gridname)
      CALL check_nf90( nf90_open( data_gridname, nf90_write, auxfileid ) )
+     WRITE(w_unit,*) 'grid opened'
      CALL check_nf90( nf90_redef( auxfileid ) )
-     CALL check_nf90( nf90_def_dim( auxfileid, "toylon", nlon, auxdimid(1)) )
-     CALL check_nf90( nf90_def_dim( auxfileid, "toylat", nlat, auxdimid(2)) )
-     CALL check_nf90( nf90_def_var( auxfileid, cl_grd_src//'.lon', NF90_DOUBLE, auxdimid, auxvarid(1)))
-     CALL check_nf90( nf90_def_var( auxfileid, cl_grd_src//'.lat', NF90_DOUBLE, auxdimid, auxvarid(2)))
+     WRITE(w_unit,*) 'grid redef'
+
+     status = nf90_inq_dimid(auxfileid, "toylon", auxdimid(1))
+     status = nf90_inq_dimid(auxfileid, "toylat", auxdimid(2))
+     WRITE(w_unit,*) status
+     IF (status /= NF90_NOERR) THEN
+        CALL check_nf90( nf90_def_dim( auxfileid, "toylon", nlon, auxdimid(1)) )
+        CALL check_nf90( nf90_def_dim( auxfileid, "toylat", nlat, auxdimid(2)) )
+        CALL check_nf90( nf90_def_var( auxfileid, cl_grd_src//'.lon', NF90_DOUBLE, auxdimid, auxvarid(1)))
+        CALL check_nf90( nf90_def_var( auxfileid, cl_grd_src//'.lat', NF90_DOUBLE, auxdimid, auxvarid(2)))
+     ELSE
+        CALL check_nf90( nf90_inq_varid(auxfileid, cl_grd_src//'.lon', auxvarid(1)) )
+        CALL check_nf90( nf90_inq_varid(auxfileid, cl_grd_src//'.lat', auxvarid(2)) )
+     END IF
      CALL check_nf90( nf90_enddef( auxfileid ) )
+     WRITE(w_unit,*) 'grid enddef'
      CALL check_nf90( nf90_put_var( auxfileid, auxvarid(1), gg_lon ) )
      CALL check_nf90( nf90_put_var( auxfileid, auxvarid(2), gg_lat ) )
+     WRITE(w_unit,*) 'grid put var'
      CALL check_nf90( nf90_close( auxfileid ) )
+     WRITE(w_unit,*) 'grid close'
 
+     WRITE(w_unit,*) 'mask ...'
      ! Define mask
      CALL check_nf90( nf90_open( data_maskname, nf90_write, auxfileid ) )
      CALL check_nf90( nf90_redef( auxfileid ) )
-     CALL check_nf90( nf90_def_dim( auxfileid, "toylon", nlon, auxdimid(1)) )
-     CALL check_nf90( nf90_def_dim( auxfileid, "toylat", nlat, auxdimid(2)) )
-     CALL check_nf90( nf90_def_var( auxfileid, cl_grd_src//'.msk', NF90_INT, auxdimid, auxvarid(1)))
+
+     status = nf90_inq_dimid(auxfileid, "toylon", auxdimid(1))
+     status = nf90_inq_dimid(auxfileid, "toylat", auxdimid(2))
+     IF (status /= NF90_NOERR) THEN
+        CALL check_nf90( nf90_def_dim( auxfileid, "toylon", nlon, auxdimid(1)) )
+        CALL check_nf90( nf90_def_dim( auxfileid, "toylat", nlat, auxdimid(2)) )
+        CALL check_nf90( nf90_def_var( auxfileid, cl_grd_src//'.msk', NF90_INT, auxdimid, auxvarid(1)))
+     ELSE
+        CALL check_nf90( nf90_inq_varid(auxfileid, cl_grd_src//'.msk', auxvarid(1)) )
+     END IF
      CALL check_nf90( nf90_enddef( auxfileid ) )
      CALL check_nf90( nf90_put_var( auxfileid, auxvarid(1), gg_mask ) )
      CALL check_nf90( nf90_close( auxfileid ) )
@@ -317,7 +341,7 @@ CONTAINS
       INTEGER, INTENT(IN   ) :: status
       INTEGER, INTENT(INOUT), OPTIONAL :: errorFlag
    !---------------------------------------------------------------------
-
+      
       IF( status /= nf90_noerr ) THEN
          WRITE(w_unit,*) 'ERROR! : '//TRIM(nf90_strerror(status))
          IF( PRESENT( errorFlag ) ) THEN

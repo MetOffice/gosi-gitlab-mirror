@@ -130,7 +130,7 @@ function resttest() {
     runtest $vdir $nam $pass RST
     #
     # check incomplete
-    for RUN in LONG SHORT; do
+    for RUN in REF RST; do
       check_incomplete ${db_path}/$RUN/ $nam
       err=$?
       RESTA_EC=$((RESTA_EC + err))
@@ -139,8 +139,8 @@ function resttest() {
     #
     # check run.stat tracer.stat obs.stat
     for file in ${statfiles[@]}; do
-      f1=${db_path}/LONG/$file
-      f2=${db_path}/SHORT/$file
+      f1=${db_path}/REF/$file
+      f2=${db_path}/RST/$file
       compare_files $f1 $f2 $file $nam RESTA $dorv
       RESTA_EC=$(( RESTA_EC + $? ))
     done
@@ -174,8 +174,8 @@ function reprotest(){
     runtest $vdir $nam REPRO
     #
     # check reproducibility
-    rep1=`ls -1rt ${db_path}/ | grep REPRO | tail -2l | head -1 `
-    rep2=`ls -1rt ${db_path}/ | grep REPRO | tail -1l`
+    rep1=MPPREF
+    rep2=MPP
     if [ $rep1 == $rep2 ]; then
        rep2=''
        # Should this trigger an error ?
@@ -375,7 +375,7 @@ function runcmpres(){
 #
   if [ -d ${db_path} ]; then
     # Selection of the test run used for the comparison (LONG or one of the reproducibility-test runs)
-    TESTD=$(ls -1 ${db_path}/ | grep -m 1 -e '^LONG$' -e '^REPRO_'); TESTD=${TESTD:-LONG}
+    TESTD=REF
     #
     # check run.stat tracer.stat obs.stat
     for file in ${statfiles[@]}; do
@@ -415,7 +415,7 @@ function runcmptim(){
 #
   if [ -d ${db_path} ]; then
     # Selection of the test run used for the comparison (LONG or one of the reproducibility-test runs)
-    TESTD=$(ls -1 ${db_path}/ | grep -m 1 -e '^LONG$' -e '^REPRO_'); TESTD=${TESTD:-LONG}
+    TESTD=REF
     f1a=${db_path}/${TESTD}/timing.output
     f2a=${db_path_ref}/${TESTD}/timing.output
     #
@@ -439,7 +439,7 @@ function runtest(){
   ttype=$3                                                  # test-run type: test-run name,
   phyopt=0
   cpl=0
-  [[ $ttype == 'RST' ]] && ttype="LONG|SHORT"               #    'RST' (checks both 'LONG' and 'SHORT' test runs), or
+  [[ $ttype == 'RST' ]] && ttype="REF|RST"                  #    'RST' (checks both 'LONG' and 'SHORT' test runs), or
   [[ $ttype == 'EXP' ]] && ttype="^EXP-"      && phyopt=1   #    'EXP' (checks PHYOPTS test runs)
   [[ $ttype == 'CPL' ]] && ttype="^CPL"       && cpl=1      #    'CPL' (checks COUPLING test runs)
 #
@@ -860,10 +860,10 @@ echo ""
   if [ ${DO_VARIANTS} -eq 1 ]; then
       echo ""
       echo "   !----standalone----!   "
-      #for standalone_run in ORCA2_ICE_OBS:SAO:REPRO_8_4 AGRIF_DEMO:NOAGRIF:ORCA2; do   # As a workaround for integration testing,
+      #for standalone_run in ORCA2_ICE_OBS:SAO:REF AGRIF_DEMO:NOAGRIF:NOAGRIF; do   # As a workaround for integration testing,
       #   the reference run used for the testing of the ORCA2_ICE_OBS configuration has been adjusted to a run that is unconnected
       #   to the REPRO test type 
-      for standalone_run in ORCA2_ICE_OBS:SAO:ORCA2 AGRIF_DEMO:NOAGRIF:ORCA2; do
+      for standalone_run in ORCA2_ICE_OBS:SAO:SAOREF AGRIF_DEMO:NOAGRIF:NOAGRIF; do
           conf=`echo ${standalone_run} | cut -f 1 -d ':'`
           run_test=`echo ${standalone_run} | cut -f 2 -d ':'`
           run_ref=`echo ${standalone_run} | cut -f 3 -d ':'`

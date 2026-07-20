@@ -79,6 +79,143 @@
 #
 #   * creation
 #-
+# --------------- set namelist common to all jobs ------
+set_common_namelist() {
+    NAMELIST_FILE=${1}
+    # get stat files
+    set_namelist ${NAMELIST_FILE}_cfg sn_cfctl%l_runstat .true.
+    set_namelist ${NAMELIST_FILE}_cfg sn_cfctl%l_obsstat .true.
+    set_namelist ${NAMELIST_FILE}_cfg sn_cfctl%l_trcstat .true.
+    set_namelist ${NAMELIST_FILE}_cfg sn_cfctl%l_lsb_sum .true.
+
+    # set timing, halo, tiling ...
+    set_namelist_opt ${NAMELIST_FILE}_cfg ln_timing    ${USING_TIMING} .true. .false.
+    set_namelist_opt ${NAMELIST_FILE}_cfg nn_hls       ${USING_EXTRA_HALO} 3 2
+    set_namelist_opt ${NAMELIST_FILE}_cfg nn_comm      ${USING_COLLECTIVES} 2 1
+    set_namelist_opt ${NAMELIST_FILE}_cfg ln_nnogather ${USING_NOGATHER} .true. .false.
+
+    # some configuration do not support tiling.
+    if [[ "${TILE_FLAG}" == "1" ]]; then
+        set_namelist_opt ${NAMELIST_FILE}_cfg ln_tile  ${USING_TILING} .true. .false.
+    fi
+}
+# ------------------------------------------------------
+
+# -------------- prepare run function ------------------
+prepare_job() {
+    IT000=(${1}) ; ITEND=(${2})
+    JPNI=(${3})   ; JPNJ=(${4}) ; NPROC=${5}
+    TEST_NAME=${6}
+    FILES=${7}
+    COMP=${8}
+    NPROC_MODEL2=${9}
+
+    # prepare validation direction
+    set_valid_dir
+    clean_valid_dir
+
+    # ???
+    . ${SETTE_DIR}/prepare_exe_dir.sh
+
+    # case SAO
+    if [[ "$TEST_NAME" == "SAO" ]]; then
+        ln -s ../../${SETTE_CONFIG_REF}/SAOREF/${MODELDATA} ${EXE_DIR}/.
+    fi
+
+    # case PHYOPTS
+    # at this stage EXE_DIR is pointing toward the exp directory (changed in prepare_exe)
+    if [[ "$TEST_NAME" == EXP-* ]]; then
+        PHYEXP=${TEST_NAME#EXP-}
+        \cp -f ${EXE_DIR}/namelist_${PHYEXP}_cfg ${EXE_DIR}/namelist_cfg
+    fi
+
+    # case CPLOASIS
+    if [[ "$TEST_NAME" == CPL ]]; then
+        export TOYATM_DIR="${MAIN_DIR}/tools/TOYATM/BLD/bin"
+        # copy namcouple to EXP00 (not done by makenemo)
+        if [ -f ${OASIS_DIR}/lib/libyaxt.a ]; then
+            cp -av ${CONFIG_DIR0}/${config}/EXPREF/namcouple_oasis6 namcouple
+        else
+            cp -av ${CONFIG_DIR0}/${config}/EXPREF/namcouple .
+        fi
+    fi
+
+    # update job physical parameters
+    set_physical_namelist
+
+    # clean job file
+    if [ $TEST_NAME == 'RST' ] || [ $TEST_NAME == 'SAO' ]; then
+        JOB_FILE=${JOB_FILE_REF}
+    else
+        JOB_FILE=${EXE_DIR}/run_job.sh
+        if [ -f ${JOB_FILE} ] ; then \rm ${JOB_FILE} ; fi
+    fi
+
+    # prepare specific namelist parameter (AGRIF or not)
+    # only one element means AGRIF is not used
+    AGRIF_LVL=${#IT000[@]} ; AGRIF_LVL=$((AGRIF_LVL-1))
+
+    if [ $TEST_NAME == 'NOAGRIF' ]; then
+        set_noagrif_namelist
+        if [ -f ${EXE_DIR}/AGRIF_FixedGrids.in ]; then 
+            sed -i "1s/.*/0/" ${EXE_DIR}/AGRIF_FixedGrids.in
+        fi
+        AGRIF_LVL=0
+    fi
+
+    LVL=0
+    while [ "$LVL" -le "${AGRIF_LVL}" ]; do
+        # get namelist file name
+        EXPNAME=${TEST_NAME}
+        if [ "$LVL" -eq 0 ]; then 
+            NAMELISTFILE=namelist
+        else
+            NAMELISTFILE=${LVL}_namelist
+        fi
+
+        # set common namelist
+        set_common_namelist $NAMELISTFILE
+
+        set_namelist ${NAMELISTFILE}_cfg cn_exp \"${EXPNAME}\"
+        set_namelist ${NAMELISTFILE}_cfg nn_it000 ${IT000[$LVL]}
+        set_namelist ${NAMELISTFILE}_cfg nn_itend ${ITEND[$LVL]}
+        set_namelist ${NAMELISTFILE}_cfg jpni     ${JPNI[$LVL]}
+        set_namelist ${NAMELISTFILE}_cfg jpnj     ${JPNJ[$LVL]}
+
+        # ROT specificities
+        if [[ "$TEST_NAME" == ROT* ]]; then
+            if [[ "${TEST_NAME#ROT-}" == "000" ]]; then set_namelist ${NAMELISTFILE}_cfg nn_rot 0; fi
+            if [[ "${TEST_NAME#ROT-}" == "090" ]]; then set_namelist ${NAMELISTFILE}_cfg nn_rot 1; fi
+            if [[ "${TEST_NAME#ROT-}" == "180" ]]; then set_namelist ${NAMELISTFILE}_cfg nn_rot 2; fi
+        fi
+ 
+        # RST specificities
+        if [ $TEST_NAME == 'RST' ]; then
+            #if iceberg activated, generation of test iceberg needs to be switch off for the rst run
+            if [ ${USING_ICEBERGS} == "yes" ]; then
+                COMP="${COMP} ICB"
+                set_namelist ${NAMELISTFILE}_cfg ln_use_test .false.
+            fi
+            #if agrif, need to update initialisation in the short rst run
+            if [ "$LVL" -gt 0 ]; then
+                set_namelist ${NAMELISTFILE}_cfg ln_init_chfrpar .false.
+            fi
+        fi
+        # set nit000, nn_stock ...
+        if [ $TEST_NAME == 'RST' ] || [ $TEST_NAME == 'REF' ]; then
+            set_namelist_rst ${NAMELISTFILE} ${ITEND[$LVL]} REF "${COMP}"
+        fi
+
+        LVL=$((LVL + 1))
+    done
+
+    # prepare job files
+    . ${SETTE_DIR}/prepare_job.sh "${FILES}" ${NPROC} ${TEST_NAME} ${MPIRUN_FLAG} ${JOB_FILE} ${NUM_XIOSERVERS} ${NEMO_VALID} ${NPROC_MODEL2}
+}
+# --------------- end prepare_run function --------------
+
+
+
 # function to find namelists parameters
 supergrep () {
             grep "^ *$1 *=" $2 | sed -e "s% *\!.*%%"
@@ -285,7 +422,7 @@ set_namelist_opt () {
 set_namelist_rst () {
     ITRST=$(( ${2} / 2 ))
     set_namelist ${1}_cfg nn_stock ${ITRST}
-    if [[ ${TEST_NAME} == "SHORT" ]]; then
+    if [[ ${TEST_NAME} == "RST" ]]; then
         NEMO_COMPONENTS="${4} "
         ITRST8=$( printf "%08d" ${ITRST} )
         aprefix=${1%${1#[0-9]_}}
@@ -295,22 +432,22 @@ set_namelist_rst () {
             set_namelist ${1}_cfg nn_rstctl 2
             set_namelist ${1}_cfg cn_ocerst_in \"${3}_${ITRST8}_restart\"
             if [[ ${NPROC} -eq 1 ]]; then
-                ln -sf ../LONG/${aprefix}${3}_${ITRST8}_restart.nc .
+                ln -sf ../REF/${aprefix}${3}_${ITRST8}_restart.nc .
             else
                 for (( i=1; i<=${NPROC}; i++ )); do
                     L_NPROC=$(printf "%04d\n" $(( $i - 1 )) )
-                    ln -sf ../LONG/${aprefix}${3}_${ITRST8}_restart_${L_NPROC}.nc .
+                    ln -sf ../REF/${aprefix}${3}_${ITRST8}_restart_${L_NPROC}.nc .
                 done
             fi
         fi
         if [[ "${NEMO_COMPONENTS} " =~ "ICE " ]]; then
             set_namelist ${1}_ice_cfg cn_icerst_in \"${3}_${ITRST8}_restart_ice\"
             if [[ ${NPROC} -eq 1 ]]; then
-                ln -sf ../LONG/${aprefix}${3}_${ITRST8}_restart_ice.nc .
+                ln -sf ../REF/${aprefix}${3}_${ITRST8}_restart_ice.nc .
             else
                 for (( i=1; i<=${NPROC}; i++ )); do
                     L_NPROC=$(printf "%04d\n" $(( $i - 1 )) )
-                    ln -sf ../LONG/${aprefix}${3}_${ITRST8}_restart_ice_${L_NPROC}.nc .
+                    ln -sf ../REF/${aprefix}${3}_${ITRST8}_restart_ice_${L_NPROC}.nc .
                 done
             fi
         fi
@@ -320,7 +457,7 @@ set_namelist_rst () {
             set_namelist ${1}_top_cfg cn_trcrst_in \"${3}_${ITRST8}_restart_trc\"
             for (( i=1; i<=${NPROC}; i++ )); do
                 L_NPROC=$(printf "%04d\n" $(( $i - 1 )) )
-                ln -sf ../LONG/${aprefix}${3}_${ITRST8}_restart_trc_${L_NPROC}.nc .
+                ln -sf ../REF/${aprefix}${3}_${ITRST8}_restart_trc_${L_NPROC}.nc .
             done
         fi
         if [[ "${NEMO_COMPONENTS} " =~ "ABL " ]]; then
@@ -329,7 +466,7 @@ set_namelist_rst () {
             for (( i=1; i<=${NPROC}; i++ )); do
                 L_NPROC=$(printf "%04d\n" $(( $i - 1 )) )
                 if [[ ${USING_ABL} == "yes" ]]; then
-                    ln -sf ../LONG/${aprefix}${3}_${ITRST8}_restart_abl_${L_NPROC}.nc .
+                    ln -sf ../REF/${aprefix}${3}_${ITRST8}_restart_abl_${L_NPROC}.nc .
                 fi
             done
         fi
@@ -338,7 +475,7 @@ set_namelist_rst () {
             if [[ ${USING_ICEBERGS} == "yes" ]]; then
                 for (( i=1; i<=${NPROC}; i++ )); do
                     L_NPROC=$(printf "%04d\n" $(( $i - 1 )) )
-                    ln -sf ../LONG/${aprefix}${3}_${ITRST8}_restart_icb_${L_NPROC}.nc .
+                    ln -sf ../REF/${aprefix}${3}_${ITRST8}_restart_icb_${L_NPROC}.nc .
                 done
             fi
         fi

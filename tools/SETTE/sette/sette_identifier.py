@@ -184,12 +184,11 @@ class SetteIdentifierConfiguration(SetteIdentifier):
 class SetteIdentifierTestrun(SetteIdentifier):
     """Validate SETTE test-run identifier"""
 
-    validation_patterns = ['EXP-[a-zA-Z0-9]{1,25}', 'LONG', 'NOAGRIF', 'ORCA2',
-            'REPRO_[1-9]_[1-9]', 'ROT_0[09]0', 'ROT_180', 'SAO', 'SHORT']
+    validation_patterns = ['EXP-[a-zA-Z0-9]{1,25}', 'MPP', 'MPPREF', 'NOAGRIF',
+            'REF', 'ROT_0[09]0', 'ROT_180', 'RST', 'SAO', 'SAOREF']
     identifier_type = 'testrun'
-    description = 'LONG, NOAGRIF, ORCA2, ROT_000, ROT_090, ROT_180, SAO, '
-    description += 'SHORT, or REPRO_<m>_<n> with <m> and <n> being a single '
-    description += 'digit, or a name starting in EXP-'
+    description = 'MPP, MPPREF, NOAGRIF, REF, ROT_000, ROT_090, ROT_180, RST, '
+    description += 'SAO, SAOREF, or a name starting in EXP-'
     len_max = 30
 
 class SetteIdentifierFile(SetteIdentifier):
