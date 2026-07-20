@@ -87,7 +87,7 @@ minargcount=6
 #
 # set and export TEST_NAME. It will be used within the post_test_tidyup function
 #
-INPUTARFILE=$1
+INPUTARFILE=($1)
 NB_PROC=$2
 TEST_NAME=$3
 MPI_FLAG=$4
@@ -115,17 +115,17 @@ echo "            " >> ${SETTE_DIR}/output.sette
 ################################################################
 # SET INPUT 
 # get the input tarfile if needed
-if [ "$(cat ${SETTE_DIR}/$INPUTARFILE | wc -w)" -ne 0 ] ; then
-   echo "looking for input files in ${SETTE_DIR}/$INPUTARFILE " >> ${SETTE_DIR}/output.sette
+if [ ${#INPUTARFILE[@]} -ne 0 ] ; then
+   echo "looking for input files $INPUTARFILE in ${SETTE_DIR}/" >> ${SETTE_DIR}/output.sette
 # number of tarfiles: NBTAR
-   NBTAR=`cat ${SETTE_DIR}/$INPUTARFILE |wc -l` 
+   NBTAR=${#INPUTARFILE[@]} 
    echo "NB of tarfiles ${NBTAR} " >> ${SETTE_DIR}/output.sette
 # loop on tarfiles
 # read file name and directory
-   while read tar_file dir_conf_forc 
-   do
-       echo looking for tarfile ${tar_file} and directory ${FORCING_DIR}/${dir_conf_forc}
-       echo looking for tarfile ${tar_file} and directory ${FORCING_DIR}/${dir_conf_forc} >> ${SETTE_DIR}/output.sette
+   for tar_file in ${INPUTARFILE[@]} ; do
+       dir_conf_forc=${tar_file%.tar*}
+       echo looking for tarfile ${tar_file} in directory ${FORCING_DIR}/${dir_conf_forc}
+       echo looking for tarfile ${tar_file} in directory ${FORCING_DIR}/${dir_conf_forc} >> ${SETTE_DIR}/output.sette
        if [ -d ${FORCING_DIR}/${dir_conf_forc} ] ; then
 	   # input dir ar there, only check the links
            echo "input dir ar there, only check the links" >> ${SETTE_DIR}/output.sette
@@ -169,7 +169,7 @@ if [ "$(cat ${SETTE_DIR}/$INPUTARFILE | wc -w)" -ne 0 ] ; then
        do
            [ -f ${EXE_DIR}/${fida} ] || ln -sf ${FORCING_DIR}/${dir_conf_forc}/${fida} ${EXE_DIR}/.
        done
-   done < ${SETTE_DIR}/$INPUTARFILE
+   done
    
 else
     echo "no input file to be searched "

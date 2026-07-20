@@ -8,6 +8,7 @@
 # NEMO/SETTE 5.1.a, NEMO Consortium (2026)
 # Software governed by the CeCILL license (see ./LICENSE.txt)
 # ----------------------------------------------------------------------
+
 set +x
 
 # initialise user dependent variable
@@ -337,23 +338,12 @@ fi
 if [ ${dry_run} -eq 1 ] ; then echo "dryrun only: no tests performed" ; exit ; fi
 
 # run sette on reference configuration
-. ./sette_reference-configurations.sh
+. ./sette_configuration_test.sh
 if [[ $? != 0 ]]; then
    echo ""
    echo "--------------------------------------------------------------"
-   echo "./sette_cfg-ref.sh didn't finish properly, need investigations"
+   echo "./sette_configuration_test.sh didn't finish properly, need investigations"
    echo "--------------------------------------------------------------"
-   echo ""
-   exit 42
-fi
-
-# run sette on test cases
-. ./sette_test-cases.sh
-if [[ $? != 0 ]]; then
-   echo ""
-   echo "-----------------------------------------------------------------"
-   echo "./sette_test-cases.sh didn't finish properly, need investigations"
-   echo "-----------------------------------------------------------------"
    echo ""
    exit 42
 fi
