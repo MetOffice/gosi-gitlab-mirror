@@ -2346,7 +2346,7 @@ CONTAINS
                   ENDDO
                CASE default                  ;   CALL ctl_stop( 'sbc_cpl_snd: wrong definition of sn_snd_temp%clcat' )
                END SELECT
-            CASE( 'oce and weighted ice')    ;   ztmp1(:,:) =   ts(:,:,1,jp_tem,Kmm) + rt0
+            CASE( 'oce and weighted ice')    ;   ztmp1(:,:) = ztmp1(:,:) + rt0
                SELECT CASE( sn_snd_temp%clcat )
                CASE( 'yes' )
                   ztmp3(:,:,1:jpl) = tn_ice(:,:,1:jpl) * a_i(:,:,1:jpl)
