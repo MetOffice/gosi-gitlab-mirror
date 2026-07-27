@@ -105,6 +105,16 @@ CONTAINS
       !-------------------------------------------------------
       ! Recombine velocities
       !-------------------------------------------------------
+      ! Update barotropic velocities correction in case the bdy scheme on baroclinic velocities
+      ! does not lead to purely baroclinic velocities
+      zua2d(:,:) = zua2d(:,:) * hu(:,:,Kaa)
+      zva2d(:,:) = zva2d(:,:) * hv(:,:,Kaa)
+      DO jk = 1, jpkm1
+         zua2d(:,:) = zua2d(:,:) - e3u(:,:,jk,Kaa) * puu(:,:,jk,Kaa) * umask(:,:,jk)
+         zva2d(:,:) = zva2d(:,:) - e3v(:,:,jk,Kaa) * pvv(:,:,jk,Kaa) * vmask(:,:,jk)
+      END DO
+      zua2d(:,:) = zua2d(:,:) * r1_hu(:,:,Kaa)
+      zva2d(:,:) = zva2d(:,:) * r1_hv(:,:,Kaa)
       !
       DO jk = 1 , jpkm1
          puu(:,:,jk,Kaa) = ( puu(:,:,jk,Kaa) + zua2d(:,:) ) * umask(:,:,jk)
