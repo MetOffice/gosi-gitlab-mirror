@@ -248,51 +248,45 @@ for config in ${TEST_CONFIGS[@]} ; do
         set_xio_using_server iodef.xml ${USING_MPMD}
     fi
 
-    # enforce run of REF if RST|MPP activated
+    # Select the REF test run if either the RST or the SAO test run has been
+    # requested
     if [ "${DO_RST}" == "1" ] ; then DO_REF=1 ; fi
+    if [ "${DO_SAO}" == "1" ] && [ "${SAO_FLAG}" == "1" ] ; then DO_REF=1 ; fi
 
     # *_FLAGS are overwritten by config cards when needed.
     if [ "${DO_COUPLING}" == "1" ] && [ ${CPL_FLAG} == "1" ] ; then DO_REF=0 ; fi
 
 # ------------------------------------------------------
     
-    # prepare reference run  
+    # Prepare the reference test run (REF) as well as the test runs that depend
+    # on it (RST or SAO)
     if [ ${DO_REF} == "1" ] ; then 
-        SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" REF "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}")
-        prepare_job "${SETTINGS[@]}" ; JOB_FILE_REF=${JOB_FILE}
-    fi
 
-    # prepare restartability run
-    # script to run RST added to REF run_job.sh
-    if [ ${DO_RST} == "1" ] && [ ${RST_FLAG} == "1" ] ; then
-        SETTINGS=("${RST_NIT000}" "${RST_NITEND}" "${RST_JPNI}" "${RST_JPNJ}" "${RST_NPROC}" RST "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}")
+        SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" REF "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
         prepare_job "${SETTINGS[@]}"
+        JOB_FILE_REF=${JOB_FILE}
+
+        # Prepare the restartability test run (RST), dependent on the reference
+        # test run (REF)
+        if [ ${DO_RST} == "1" ] && [ ${RST_FLAG} == "1" ] ; then
+            SETTINGS=("${RST_NIT000}" "${RST_NITEND}" "${RST_JPNI}" "${RST_JPNJ}" "${RST_NPROC}" RST "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "${JOB_FILE_REF}")
+            prepare_job "${SETTINGS[@]}"
+        fi
+
+        # Prepare the SAO test run (SAO), dependent on the reference test run
+        # (REF)
+        if [ ${DO_SAO} == "1" ] && [ ${SAO_FLAG} == "1" ] ; then
+            SETTE_CONFIG=${SETTE_CONFIG_VAR}
+            SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" SAO "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "${JOB_FILE_REF}")
+            prepare_job "${SETTINGS[@]}"
+            SETTE_CONFIG=${SETTE_CONFIG_REF}
+        fi
+
+        # Submit reference and dependent jobs (if any)
+        if [ ${DO_REF} == "1" ] ; then . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE_REF} ${INTERACT_FLAG} ${MPIRUN_FLAG} ; fi
+
     fi
-    
-    # submit reference (and restartability run if needed) job
-    if [ ${DO_REF} == "1" ] ; then . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE_REF} ${INTERACT_FLAG} ${MPIRUN_FLAG} ; fi
 
-
-# ------------------------------------------------------
-    # manage SAO run
-    # SAO_FLAG overwriten by config card if not 0
-    if [ ${DO_SAO} == "1" ] && [ ${SAO_FLAG} == "1" ] ; then
-        
-        # run reference SAO (to be removed later as = REF)
-        SETTE_CONFIG=${SETTE_CONFIG_REF}
-        SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" SAOREF "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}")
-        prepare_job "${SETTINGS[@]}" ; JOB_FILE_REF=${JOB_FILE}
-
-        # prepare stand alone observation run
-        SETTE_CONFIG=${SETTE_CONFIG_VAR}
-        SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" SAO "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}")
-        prepare_job "${SETTINGS[@]}"
-
-        SETTE_CONFIG=${SETTE_CONFIG_REF}
-
-        # submit SAO run
-        . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE_REF} ${INTERACT_FLAG} ${MPIRUN_FLAG}
-    fi
 # ------------------------------------------------------
     # manage coupling run
     if [ ${DO_COUPLING} == "1" ] && [ ${CPL_FLAG} == "1" ] ; then
@@ -302,7 +296,7 @@ for config in ${TEST_CONFIGS[@]} ; do
         echo ''
 
         # prepare reproducibility run
-        SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" CPL "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}")
+        SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" CPL "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
         prepare_job "${SETTINGS[@]}"
 
         # submit reproducibility job
@@ -318,14 +312,14 @@ for config in ${TEST_CONFIGS[@]} ; do
         echo ''
 
         # prepare reproducibility reference run (to be removed later as = REF)
-        SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" MPPREF "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}")
+        SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" MPPREF "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
         prepare_job "${SETTINGS[@]}"
 
         # submit reproducibility reference job
         . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
 
         # prepare reproducibility run
-        SETTINGS=("${MPP_NIT000}" "${MPP_NITEND}" "${MPP_JPNI}" "${MPP_JPNJ}" "${MPP_NPROC}" MPP "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}")
+        SETTINGS=("${MPP_NIT000}" "${MPP_NITEND}" "${MPP_JPNI}" "${MPP_JPNJ}" "${MPP_NPROC}" MPP "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
         prepare_job "${SETTINGS[@]}"
 
         # submit reproducibility job
@@ -351,7 +345,7 @@ for config in ${TEST_CONFIGS[@]} ; do
             echo ''
 
             # prepare physical variant run
-            SETTINGS=("${REF_NIT000}" "${PHY_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" "${TEST_NAME}" "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}")
+            SETTINGS=("${REF_NIT000}" "${PHY_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" "${TEST_NAME}" "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
             prepare_job "${SETTINGS[@]}"
 
             # submit physical variant job
@@ -369,7 +363,7 @@ for config in ${TEST_CONFIGS[@]} ; do
             echo ''
 
             # prepare physical variant run
-            SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" "${TEST_NAME}" "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}")
+            SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" "${TEST_NAME}" "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
             prepare_job "${SETTINGS[@]}"
             
             # submit physical variant job
@@ -391,7 +385,7 @@ for config in ${TEST_CONFIGS[@]} ; do
             SETTE_CONFIG="${VARIANT_NAME}"${CONFIG_SUFFIX}
             
             # prepare physical variant run
-            SETTINGS=("${NOAGRIF_NIT000}" "${NOAGRIF_NITEND}" "${NOAGRIF_JPNI}" "${NOAGRIF_JPNJ}" "${NOAGRIF_NPROC}" "NOAGRIF" "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}")
+            SETTINGS=("${NOAGRIF_NIT000}" "${NOAGRIF_NITEND}" "${NOAGRIF_JPNI}" "${NOAGRIF_JPNJ}" "${NOAGRIF_NPROC}" "NOAGRIF" "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
             prepare_job "${SETTINGS[@]}"
 
             # submit noagrif variant job 

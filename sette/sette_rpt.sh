@@ -863,7 +863,7 @@ echo ""
       #for standalone_run in ORCA2_ICE_OBS:SAO:REF AGRIF_DEMO:NOAGRIF:NOAGRIF; do   # As a workaround for integration testing,
       #   the reference run used for the testing of the ORCA2_ICE_OBS configuration has been adjusted to a run that is unconnected
       #   to the REPRO test type 
-      for standalone_run in ORCA2_ICE_OBS:SAO:SAOREF AGRIF_DEMO:NOAGRIF:NOAGRIF; do
+      for standalone_run in ORCA2_ICE_OBS:SAO:REF AGRIF_DEMO:NOAGRIF:NOAGRIF; do
           conf=`echo ${standalone_run} | cut -f 1 -d ':'`
           run_test=`echo ${standalone_run} | cut -f 2 -d ':'`
           run_ref=`echo ${standalone_run} | cut -f 3 -d ':'`

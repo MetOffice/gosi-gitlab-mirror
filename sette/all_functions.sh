@@ -109,6 +109,7 @@ prepare_job() {
     FILES=${7}
     COMP=${8}
     NPROC_MODEL2=${9}
+    JOB_FILE="${10}"
 
     # prepare validation direction
     set_valid_dir
@@ -119,7 +120,7 @@ prepare_job() {
 
     # case SAO
     if [[ "$TEST_NAME" == "SAO" ]]; then
-        ln -s ../../${SETTE_CONFIG_REF}/SAOREF/${MODELDATA} ${EXE_DIR}/.
+        ln -s ../../${SETTE_CONFIG_REF}/REF/${MODELDATA} ${EXE_DIR}/.
     fi
 
     # case PHYOPTS
@@ -143,10 +144,8 @@ prepare_job() {
     # update job physical parameters
     set_physical_namelist
 
-    # clean job file
-    if [ $TEST_NAME == 'RST' ] || [ $TEST_NAME == 'SAO' ]; then
-        JOB_FILE=${JOB_FILE_REF}
-    else
+    # if required, set up a new job file
+    if [ ! -f "${JOB_FILE}" ] ; then
         JOB_FILE=${EXE_DIR}/run_job.sh
         if [ -f ${JOB_FILE} ] ; then \rm ${JOB_FILE} ; fi
     fi
