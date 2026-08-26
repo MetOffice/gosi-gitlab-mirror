@@ -89,13 +89,60 @@ CONTAINS
       REAL(wp), DIMENSION(A2D(0)), INTENT(inout) ::   pqhc, pfwf, pqoce  ! fresh water and ice-ocean heat fluxes
       !!
       INTEGER ::   ji, jj     ! dummy loop indices
+      REAL(wp)                     ::   zgreenland_fwfisf_sum, zantarctica_fwfisf_sum
+      LOGICAL :: ll_wrtstp
       !!--------------------------------------------------------------------
+
+      ll_wrtstp  = (( MOD( kt, sn_cfctl%ptimincr ) == 0 ) .OR. ( kt == nitend )) .AND. (nn_print>0)
       !
       ! Read specified fwf from isf to oce
       CALL fld_read ( kt, 1, sf_isfpar_fwf )
       !
       DO_2D( 0, 0, 0, 0 )
          pfwf(ji,jj) =   sf_isfpar_fwf(1)%fnow(ji,jj,1)    * mskisf_par(ji,jj)  ! fresh water flux from the isf (fwfisf <0 mean melting)       ( > 0 from isf to oce)
+      END_2D
+
+      IF( lk_oasis) THEN
+         ! nn_coupled_iceshelf_fluxes uninitialised unless lk_oasis=true
+         IF( nn_coupled_iceshelf_fluxes .gt. 0 ) THEN
+
+            ! Adjust total iceshelf melt rates so that sum of iceberg calving and iceshelf melting in the northern
+            ! and southern hemispheres equals rate of increase of mass of greenland and antarctic ice sheets
+            ! to preserve total freshwater conservation in coupled models without an active ice sheet model.
+
+            ! All related global sums must be done bit reproducibly
+            zgreenland_fwfisf_sum = glob_sum( 'sbcisf', fwfisf(:,:) * e1t(:,:) * e2t(:,:) * greenland_icesheet_mask(:,:) )
+
+            ! use ABS function because we need to preserve the sign of fwfisf
+            WHERE( greenland_icesheet_mask(:,:) == 1.0 )                                                                  &
+            &    fwfisf(:,:) = fwfisf(:,:)  * ABS( greenland_icesheet_mass_rate_of_change * (1.0-rn_greenland_calving_fraction) &
+            &                           / ( zgreenland_fwfisf_sum + 1.0e-10_wp ) )
+
+            ! check
+            IF(lwp .AND. ll_wrtstp) WRITE(numout, *) 'Greenland iceshelf melting climatology (kg/s) : ',zgreenland_fwfisf_sum
+
+            zgreenland_fwfisf_sum = glob_sum( 'sbcisf', fwfisf(:,:) * e1t(:,:) * e2t(:,:) * greenland_icesheet_mask(:,:) )
+
+            IF(lwp .AND. ll_wrtstp) WRITE(numout, *) 'Greenland iceshelf melting adjusted value (kg/s) : ',zgreenland_fwfisf_sum
+
+            zantarctica_fwfisf_sum = glob_sum( 'sbcisf', fwfisf(:,:) * e1t(:,:) * e2t(:,:) * antarctica_icesheet_mask(:,:) )
+
+            ! use ABS function because we need to preserve the sign of fwfisf
+            WHERE( antarctica_icesheet_mask(:,:) == 1.0 ) &
+            &    fwfisf(:,:) = fwfisf(:,:)  * ABS( antarctica_icesheet_mass_rate_of_change * (1.0-rn_antarctica_calving_fraction) &
+            &                           / ( zantarctica_fwfisf_sum + 1.0e-10_wp ) )
+
+            ! check
+            IF(lwp .AND. ll_wrtstp) WRITE(numout, *) 'Antarctica iceshelf melting climatology (kg/s) : ',zantarctica_fwfisf_sum
+
+            zantarctica_fwfisf_sum = glob_sum( 'sbcisf', fwfisf(:,:) * e1t(:,:) * e2t(:,:) * antarctica_icesheet_mask(:,:) )
+
+            IF(lwp .AND. ll_wrtstp) WRITE(numout, *) 'Antarctica iceshelf melting adjusted value (kg/s) : ',zantarctica_fwfisf_sum
+
+         ENDIF
+      ENDIF
+
+      DO_2D( 0, 0, 0, 0 )
          pqoce(ji,jj) = - pfwf(ji,jj) * rLfusisf           * mskisf_par(ji,jj)  ! ocean/ice shelf flux assume to be equal to latent heat flux  ( > 0 from isf to oce)
          pqhc (ji,jj) =   pfwf(ji,jj) * ptfrz(ji,jj) * rcp * mskisf_par(ji,jj)  ! heat content flux                                            ( > 0 from isf to oce)
       END_2D

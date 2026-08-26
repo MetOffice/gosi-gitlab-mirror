@@ -30,6 +30,7 @@ MODULE cpl_oasis3
    USE xios                         ! I/O server
 #endif
    USE par_oce                      ! ocean parameters
+   USE cpl_rnf_1d, ONLY: nn_cpl_river   ! Variables used in 1D river outflow
    USE dom_oce                      ! ocean space and time domain
    USE in_out_manager               ! I/O manager
    USE lbclnk                       ! ocean lateral boundary conditions (or mpp link)
@@ -41,13 +42,26 @@ MODULE cpl_oasis3
    IMPLICIT NONE
    PRIVATE
 
+#if ! defined key_oasis3
+   ! Dummy interface to oasis_get if not using oasis
+   INTERFACE oasis_get
+      MODULE PROCEDURE oasis_get_1d, oasis_get_2d
+   END INTERFACE
+#endif
+
    PUBLIC   cpl_init
    PUBLIC   cpl_define
    PUBLIC   cpl_snd
    PUBLIC   cpl_rcv
+   PUBLIC   cpl_rcv_1d
    PUBLIC   cpl_freq
    PUBLIC   cpl_finalize
 
+#if defined key_mpp_mpi
+   INCLUDE 'mpif.h'
+#endif
+
+   INTEGER, PARAMETER         ::   localRoot  = 0
    INTEGER, PUBLIC            ::   OASIS_Rcv  = 1    !: return code if received field
    INTEGER, PUBLIC            ::   OASIS_idle = 0    !: return code if nothing done by oasis
    INTEGER                    ::   ncomp_id          ! id returned by oasis_init_comp
@@ -84,6 +98,7 @@ MODULE cpl_oasis3
       INTEGER, DIMENSION(nmaxcat,nmaxcpl) ::   nid   ! Id of the field (no more than 9 categories and 9 extrena models)
       INTEGER               ::   nct       ! Number of categories in field
       INTEGER               ::   ncplmodel ! Maximum number of models to/from which this variable may be sent/received
+      INTEGER               ::   dimensions ! Number of dimensions of coupling field
    END TYPE FLD_CPL
 
    TYPE(FLD_CPL), DIMENSION(:), ALLOCATABLE, PUBLIC ::   srcv, ssnd   !: Coupling fields
@@ -143,12 +158,27 @@ CONTAINS
       INTEGER, INTENT(in) ::   kcplmodel      ! Maximum number of models to/from which NEMO is potentialy sending/receiving data
       !
       INTEGER :: id_part
+      INTEGER :: id_part_0d     ! Partition for 0d fields
+      INTEGER :: id_part_rnf_1d ! Partition for 1d river outflow fields
+      INTEGER :: id_part_2d     ! Partition for 2d fields
+      INTEGER :: id_part_2d_ext ! Partition for 2d fields extended for old (pre vn4.2) style remapping weights!
+      INTEGER :: id_part_temp   ! Temperary partition used to choose either 0d or 1d partitions
       INTEGER :: paral(5)       ! OASIS3 box partition
+
+      INTEGER :: paral_ext(5)       ! OASIS3 box partition extended
       INTEGER :: ishape(4)      ! shape of arrays passed to PSMILe
+      INTEGER :: ishape0d1d(2)  ! Shape of 0D or 1D arrays passed to PSMILe.
+      INTEGER :: var_nodims(2)  ! Number of coupling field dimensions.
+                                ! var_nodims(1) is redundant from OASIS3-MCT vn4.0 onwards
+                                ! but retained for backward compatibility.
+                                ! var_nodims(2) is the number of fields in a bundle
+                                ! or 1 for unbundled fields (bundles are not yet catered for
+                                ! in NEMO hence we default to 1). 
       INTEGER :: ji,jc,jm       ! local loop indicees
       LOGICAL :: llenddef       ! should we call xios_oasis_enddef and oasis_enddef?
       CHARACTER(LEN=64) :: zclname
       CHARACTER(LEN=2) :: cli2
+      INTEGER :: i_offset       ! Used in calculating offset for extended partition.
       !!--------------------------------------------------------------------
 
       IF(lwp) WRITE(numout,*)
@@ -168,6 +198,9 @@ CONTAINS
       ishape(2) = Ni_0
       ishape(3) = 1
       ishape(4) = Nj_0
+
+      ishape0d1d(1) = 0
+      ishape0d1d(2) = 0
       !
       ! ... Allocate memory for data exchange
       !
@@ -192,7 +225,93 @@ CONTAINS
          WRITE(numout,*) ' multiexchg: Njs0, Nje0, njmpp =', Njs0, Nje0, njmpp
       ENDIF
 
-      CALL oasis_def_partition ( id_part, paral, nerror, Ni0glo*Nj0glo )   ! global number of points, excluding halos
+
+      ! We still set up the new vn4.2 style box partition for reference, though it doesn't actually get used,
+      ! we can easily swap back to it if we ever manage to successfully generate vn4.2 compatible weights, or introduce 
+      ! RTL controls to distinguish between onl and new style weights.  
+
+      CALL oasis_def_partition ( id_part_2d, paral, nerror, Ni0glo*Nj0glo )   ! global number of points, excluding halos
+
+      ! RSRH Set up 2D box partition for compatibility with existing weights files
+      ! so we don't have to generate and manage multiple sets of weights purely because of 
+      ! the changes to nemo 4.2+ code!
+
+      ! This is just a hack for global cyclic models for the time being
+      Ni0glo_ext = jpiglo
+      Nj0glo_ext = Nj0glo +1 ! We can't use jpjglo here because for some reason at 4.2 this is bigger
+                             ! than at 4.0.... e.g. for ORCA1 it is 333 when it should only be 332!
+
+      ! RSRH extended shapes for old style dimensioning. Allows backwards compatibility with existing weights files, 
+      ! which the new code DOES NOT, causing headaches not only for users but also for management of weights files. 
+      ishape_ext(:) = ishape(:)
+      IF (mig(1) == 1 .OR. mig(jpi)==jpiglo) THEN
+         ! Extra columns in PEs dealing with wrap points
+         ishape_ext(2) = ishape_ext(2) + 1
+      ENDIF
+
+      ! Workout any extra offset in the i dimension
+      IF (mig(1) == 1 ) THEN
+         i_offset = mig0(nn_hls)
+      ELSE
+         i_offset = mig(nn_hls)
+      ENDIF
+       
+      ALLOCATE(exfld_ext(ishape_ext(2), ishape_ext(4)), stat = nerror)        ! allocate full domain (with wrap pts)
+      IF( nerror > 0 ) THEN
+         CALL oasis_abort ( ncomp_id, 'cpl_define', 'Failure in allocating exfld_ext')   ;   RETURN
+      ENDIF
+
+
+      ! Now we have the appropriate dimensions, we can set up the partition array for the old-style extended grid
+      paral_ext(1) = 2                                      ! box partitioning
+      paral_ext(2) = (Ni0glo_ext * mjg0(nn_hls)) + i_offset ! NEMO lower left corner global offset, with wrap pts
+      paral_ext(3) = Ni_0_ext                               ! local extent in i, including halos
+      paral_ext(4) = Nj_0_ext                               ! local extent in j, including halos
+      paral_ext(5) = Ni0glo_ext                             ! global extent in x, including halos
+
+      IF( sn_cfctl%l_oasout ) THEN
+         WRITE(numout,*) ' multiexchg: paral_ext (1:5)', paral_ext, jpiglo, jpjglo, Ni0glo_ext, Nj0glo_ext
+         WRITE(numout,*) ' multiexchg: Ni_0_ext, Nj_0_ext i_offset =', Ni_0_ext, Nj_0_ext, i_offset
+         WRITE(numout,*) ' multiexchg: Nis0_ext, Nie0_ext =', Nis0_ext, Nie0_ext
+         WRITE(numout,*) ' multiexchg: Njs0_ext, Nje0_ext =', Njs0_ext, Nje0_ext
+      ENDIF
+
+      ! Define our extended grid
+      CALL oasis_def_partition ( id_part_2d_ext, paral_ext, nerror, Ni0glo_ext*Nj0glo_ext ) 
+  
+      ! OK so now we should have a usable 2d partition for fields defined WITH redundant points. 
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      ! A special partition is needed for 0D fields
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     
+      paral(1) = 0                                       ! serial partitioning
+      paral(2) = 0   
+      IF ( nproc == 0) THEN
+         paral(3) = 1                   ! Size of array to couple (scalar)
+      ELSE
+         paral(3) = 0                   ! Dummy size for PE's not involved
+      END IF
+      paral(4) = 0
+      paral(5) = 0
+             
+      CALL oasis_def_partition ( id_part_0d, paral, nerror, 1 )
+
+      ! Another partition is needed for 1D river routing fields
+     
+      paral(1) = 0                                       ! serial partitioning
+      paral(2) = 0   
+      IF ( nproc == 0) THEN
+         paral(3) = nn_cpl_river                   ! Size of array to couple (vector)
+      ELSE
+         paral(3) = 0                   ! Dummy size for PE's not involved
+      END IF
+      paral(4) = 0
+      paral(5) = 0
+
+
+      CALL oasis_def_partition ( id_part_rnf_1d, paral, nerror, nn_cpl_river )
+
       !
       ! ... Announce send variables.
       !
@@ -267,8 +386,44 @@ CONTAINS
                   ENDIF
 #endif
                   IF( sn_cfctl%l_oasout ) WRITE(numout,*) "Define", ji, jc, jm, " "//TRIM(zclname), " for ", OASIS_In
-                  CALL oasis_def_var (srcv(ji)%nid(jc,jm), zclname, id_part   , (/ 2, 1 /),   &
-                     &                OASIS_In           , ishape , OASIS_REAL, nerror )
+                  flush(numout)
+
+                  ! Define 0D (Greenland or Antarctic ice mass) or 1D (river outflow) coupling fields
+                  IF (srcv(ji)%dimensions <= 1) THEN
+                    var_nodims(1) = 1
+                    var_nodims(2) = 1 ! Modify this value to cater for bundled fields.
+                    IF (nproc == 0) THEN
+
+                       IF (srcv(ji)%dimensions == 0) THEN
+
+                          ! If 0D then set temporary variables to 0D components
+                          id_part_temp = id_part_0d
+                          ishape0d1d(2) = 1
+                       ELSE
+
+                          ! If 1D then set temporary variables to river outflow components
+                          id_part_temp = id_part_rnf_1d
+                          ishape0d1d(2)= nn_cpl_river
+
+                       END IF
+
+                       CALL oasis_def_var (srcv(ji)%nid(jc,jm), zclname, id_part_temp   , var_nodims,   &
+                                        OASIS_In           , ishape0d1d(1:2) , OASIS_REAL, nerror )
+                    ELSE
+                       ! Dummy call to keep OASIS3-MCT happy.
+                       CALL oasis_def_var (srcv(ji)%nid(jc,jm), zclname, id_part_0d   , var_nodims,   &
+                                        OASIS_In           , ishape0d1d(1:2) , OASIS_REAL, nerror )
+                    END IF
+                  ELSE
+                    ! It's a "normal" 2D (or pseudo 3D) coupling field.
+                    ! ... Set the field dimension and bundle count
+                    var_nodims(1) = 2
+                    var_nodims(2) = 1 ! Modify this value to cater for bundled fields.
+
+                    CALL oasis_def_var (srcv(ji)%nid(jc,jm), zclname, id_part   , var_nodims,   &
+                       &                OASIS_In           , ishape , OASIS_REAL, nerror )
+                  ENDIF
+
                   IF( nerror /= OASIS_Ok ) THEN
                      WRITE(numout,*) 'Failed to define transient ', ji, jc, jm, " "//TRIM(zclname)
                      CALL oasis_abort ( srcv(ji)%nid(jc,jm), 'cpl_define', 'Failure in oasis_def_var' )
@@ -342,6 +497,7 @@ CONTAINS
                      WRITE(numout,*) '     - Maximum value is ', MAXVAL(pdata(1:Ni_0,1:Nj_0,jc))
                      WRITE(numout,*) '     -     Sum value is ',    SUM(pdata(1:Ni_0,1:Nj_0,jc))
                      WRITE(numout,*) '****************'
+                     CALL FLUSH(numout)
                   ENDIF
                ENDIF
 
@@ -410,6 +566,7 @@ CONTAINS
                      WRITE(numout,*) '     - Maximum value is ', MAXVAL(pdata(1:Ni_0,1:Nj_0,jc))
                      WRITE(numout,*) '     -     Sum value is ',    SUM(pdata(1:Ni_0,1:Nj_0,jc))
                      WRITE(numout,*) '****************'
+                     CALL FLUSH(numout)
                   ENDIF
 
                ENDIF
@@ -418,18 +575,126 @@ CONTAINS
 
          ENDDO
 
-         !--- WARNING: here we have no halos
-         !    BUT in some cases of the North Fold, we need to update the last line or half of the last line of the inner domain.
-         !    We need to call lbc_lnk (with ldfull = .TRUE.) that is working without halos
-         IF( .NOT. ll_1st ) THEN
-            CALL lbc_lnk( 'cpl_oasis3', pdata(:,:,jc), srcv(kid)%clgrid, srcv(kid)%nsgn, ldfull = .TRUE. )
-         ENDIF
-         !!clem: mettre T instead of clgrid
-
       ENDDO
+
+      ! RSRH I've changed this since:
+      ! 1) it seems multi cat fields may not be properly updated in halos when called on a per 
+      !    category basis(?) 
+      ! 2) it's more efficient to have a single call (and simpler to understand) to update ALL 
+      !    categories at the same time!
+      !--- Call lbc_lnk to populate halos of received fields.
+      IF (lrcv) then
+         CALL lbc_lnk( 'cpl_oasis3', pdata(:,:,:), srcv(kid)%clgrid, srcv(kid)%nsgn )
+      endif
       !
    END SUBROUTINE cpl_rcv
 
+   SUBROUTINE cpl_rcv_1d( kid, kstep, pdata, nitems, kinfo )
+      !!---------------------------------------------------------------------
+      !!              ***  ROUTINE cpl_rcv_1d  ***
+      !!
+      !! ** Purpose : - A special version of cpl_rcv to deal exclusively with
+      !! receipt of 0D or 1D fields. 
+      !! The fields are recieved into a 1D array buffer which is simply a 
+      !! dynamically sized sized array (which may be of size 1)
+      !! of 0 dimensional fields. This allows us to pass miltiple 0D 
+      !! fields via a single put/get operation.  
+      !!----------------------------------------------------------------------
+      INTEGER , INTENT(in   ) ::   nitems      ! Number of 0D items to recieve 
+                                               ! during this get operation. i.e.
+                                               ! The size of the 1D array in which
+                                               ! 0D items are passed.   
+      INTEGER , INTENT(in   ) ::   kid         ! ID index of the incoming
+                                               ! data.  
+      INTEGER , INTENT(in   ) ::   kstep       ! ocean time-step in seconds
+      REAL(wp), INTENT(inout) ::   pdata(1:nitems) ! The original value(s),  
+                                                   ! unchanged if nothing is 
+                                                   ! received
+      INTEGER , INTENT(  out) ::   kinfo       ! OASIS3 info argument
+      !! 
+      REAL(wp) ::   recvfld(1:nitems)          ! Local receive field buffer
+      INTEGER  ::   jc,jm     ! local loop index
+      INTEGER  ::   ierr
+      LOGICAL  ::   llaction
+      INTEGER  ::   MPI_WORKING_PRECISION
+      INTEGER  ::   number_to_print 
+      !!--------------------------------------------------------------------
+      !
+      ! receive local data from OASIS3 on every process
+      !
+      kinfo = OASIS_idle
+      !
+      ! 0D and 1D fields won't have categories or any other form of "pseudo level" 
+      ! so we only cater for a single set of values and thus don't bother 
+      ! with a loop over the jc index 
+      jc = 1
+
+      DO jm = 1, srcv(kid)%ncplmodel
+
+         IF( srcv(kid)%nid(jc,jm) /= -1 ) THEN
+
+            IF ( ( srcv(kid)%dimensions <= 1) .AND. (nproc == 0) ) THEN
+               ! Since there is no concept of data decomposition for zero 
+               ! dimension fields, they must only be exchanged through the master PE, 
+               ! unlike "normal" 2D field cases where every PE is involved. 
+
+               CALL oasis_get ( srcv(kid)%nid(jc,jm), kstep, recvfld, kinfo )   
+               
+               llaction =  kinfo == OASIS_Recvd   .OR. kinfo == OASIS_FromRest .OR.   &
+                           kinfo == OASIS_RecvOut .OR. kinfo == OASIS_FromRestOut
+               
+               IF ( sn_cfctl%l_oasout ) WRITE(numout,*) "llaction, kinfo, kstep, ivarid: " , &
+                                     llaction, kinfo, kstep, srcv(kid)%nid(jc,jm)
+               
+               IF ( llaction ) THEN
+                  
+                  kinfo = OASIS_Rcv
+                  pdata(1:nitems) = recvfld(1:nitems) 
+                  
+                  IF ( sn_cfctl%l_oasout ) THEN        
+                     number_to_print = 10
+                     IF ( nitems < number_to_print ) number_to_print = nitems
+                     WRITE(numout,*) '****************'
+                     WRITE(numout,*) 'oasis_get: Incoming ', srcv(kid)%clname
+                     WRITE(numout,*) 'oasis_get: ivarid '  , srcv(kid)%nid(jc,jm)
+                     WRITE(numout,*) 'oasis_get:   kstep', kstep
+                     WRITE(numout,*) 'oasis_get:   info ', kinfo
+                     WRITE(numout,*) '     - Minimum Value is ', MINVAL(pdata(:))
+                     WRITE(numout,*) '     - Maximum value is ', MAXVAL(pdata(:))
+                     WRITE(numout,*) '     - Start of data is ', pdata(1:number_to_print)
+                     WRITE(numout,*) '****************'
+                     CALL FLUSH(numout)
+                  ENDIF
+                  
+               ENDIF
+            ENDIF   
+          ENDIF
+            
+       ENDDO
+
+#if defined key_mpp_mpi
+       ! Set the precision that we want to broadcast using MPI_BCAST
+       SELECT CASE( wp )
+       CASE( sp ) 
+         MPI_WORKING_PRECISION = MPI_REAL                ! Single precision
+       CASE( dp )
+         MPI_WORKING_PRECISION = MPI_DOUBLE_PRECISION    ! Double precision
+       CASE default
+         CALL oasis_abort( ncomp_id, "cpl_rcv_1d", "Could not find precision for coupling 0d or 1d field" )
+       END SELECT
+
+       ! We have to broadcast (potentially) received values from PE 0 to all 
+       ! the others. If no new data has been received we're just 
+       ! broadcasting the existing values but there's no more efficient way 
+       ! to deal with that w/o NEMO adopting a UM-style test mechanism
+       ! to determine active put/get timesteps. 
+       CALL mpi_bcast( pdata, nitems, MPI_WORKING_PRECISION, localRoot, mpi_comm_oce, ierr )
+#else
+       CALL oasis_abort( ncomp_id, "cpl_rcv_1d", "Unable to use mpi_bcast without key_mpp_mpi present. Please add key_mpp_mpi to your list of NEMO keys." )
+#endif
+
+      !
+   END SUBROUTINE cpl_rcv_1d
 
    INTEGER FUNCTION cpl_freq( cdfieldname )
       !!---------------------------------------------------------------------
@@ -495,6 +760,7 @@ CONTAINS
       !!----------------------------------------------------------------------
       !
       DEALLOCATE( exfld )
+      DEALLOCATE( exfld_ext )
       IF(nstop == 0) THEN
          CALL oasis_terminate( nerror )
       ELSE
@@ -538,7 +804,7 @@ CONTAINS
 
    SUBROUTINE oasis_def_var(k1,cd1,k2,k3,k4,k5,k6,k7)
       CHARACTER(*), INTENT(in   ) ::  cd1
-      INTEGER     , INTENT(in   ) ::  k2,k3(2),k4,k5(2,2),k6
+      INTEGER     , INTENT(in   ) ::  k2,k3(2),k4,k5(*),k6
       INTEGER     , INTENT(  out) ::  k1,k7
       k1 = -1 ; k7 = -1
       WRITE(numout,*) 'oasis_def_var: Error you sould not be there...', cd1
@@ -558,13 +824,21 @@ CONTAINS
       WRITE(numout,*) 'oasis_put: Error you sould not be there...'
    END SUBROUTINE oasis_put
 
-   SUBROUTINE oasis_get(k1,k2,p1,k3)
+   SUBROUTINE oasis_get_1d(k1,k2,p1,k3)
+      REAL(wp), DIMENSION(:)  , INTENT(  out) ::  p1
+      INTEGER                 , INTENT(in   ) ::  k1,k2
+      INTEGER                 , INTENT(  out) ::  k3
+      p1(1) = -1. ; k3 = -1
+      WRITE(numout,*) 'oasis_get_1d: Error you sould not be there...'
+   END SUBROUTINE oasis_get_1d
+
+   SUBROUTINE oasis_get_2d(k1,k2,p1,k3)
       REAL(wp), DIMENSION(:,:), INTENT(  out) ::  p1
       INTEGER                 , INTENT(in   ) ::  k1,k2
       INTEGER                 , INTENT(  out) ::  k3
       p1(1,1) = -1. ; k3 = -1
-      WRITE(numout,*) 'oasis_get: Error you sould not be there...'
-   END SUBROUTINE oasis_get
+      WRITE(numout,*) 'oasis_get_2d: Error you sould not be there...'
+   END SUBROUTINE oasis_get_2d
 
    SUBROUTINE oasis_get_freqs(k1,k5,k2,k3,k4)
       INTEGER              , INTENT(in   ) ::  k1,k2

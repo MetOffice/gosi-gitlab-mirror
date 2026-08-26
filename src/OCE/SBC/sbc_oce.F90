@@ -138,6 +138,7 @@ MODULE sbc_oce
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   cloud_fra          !: cloud cover (fraction of cloud in a gridcell) [-]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   greenland_icesheet_mask
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   antarctica_icesheet_mask 
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   sea_fraction_last_couple   !: Ocean fraction at the last coupling point
 
    !!---------------------------------------------------------------------
    !! ABL Vertical Domain size
@@ -243,6 +244,8 @@ CONTAINS
          &      atm_co2(A2D(0)) , tsk_m  (A2D(0)) , cloud_fra(A2D(0)), STAT=ierr(7) )
 
       ALLOCATE( greenland_icesheet_mask(A2D(0)) , antarctica_icesheet_mask(A2D(0)) ) 
+
+      ALLOCATE( sea_fraction_last_couple(A2D(0)) )
 
       ALLOCATE( rhoa(A2D(0)) , q_air_zt(A2D(0)) , theta_air_zt(A2D(0)) , STAT=ierr(8) )
       !

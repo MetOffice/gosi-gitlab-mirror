@@ -763,6 +763,11 @@ CONTAINS
 
 
    SUBROUTINE mppstop( ld_abort )
+
+#if defined key_oasis3
+      USE mod_oasis      ! coupling routines
+#endif
+
       !!----------------------------------------------------------------------
       !!                  ***  routine mppstop  ***
       !!
@@ -775,6 +780,17 @@ CONTAINS
       !!----------------------------------------------------------------------
       ll_abort = .FALSE.
       IF( PRESENT(ld_abort) ) ll_abort = ld_abort
+
+#if defined key_oasis3
+      ! If we're trying to shut down cleanly then we need to consider the fact
+      ! that this could be part of an MPMD configuration - we don't want to
+      ! leave other components deadlocked.
+
+      CALL oasis_abort(nproc,"mppstop","NEMO initiated abort")
+
+
+#else
+
       !
 #if ! defined key_mpi_off
       IF(ll_abort) THEN
@@ -786,6 +802,7 @@ CONTAINS
 #endif
       IF( ll_abort ) STOP 123
       !
+#endif
    END SUBROUTINE mppstop
 
 

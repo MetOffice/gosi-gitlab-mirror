@@ -25,6 +25,7 @@ MODULE geo2ocean
    IMPLICIT NONE
    PRIVATE
 
+   PUBLIC   repcmo    ! called in sbccpl
    PUBLIC   rot_rep   ! called in sbccpl, fldread, and cyclone
    PUBLIC   geo2oce   ! called in sbccpl
    PUBLIC   oce2geo   ! called in sbccpl
@@ -48,6 +49,48 @@ MODULE geo2ocean
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
+
+
+   SUBROUTINE repcmo ( pxu1, pyu1, pxv1, pyv1,   &
+                       px2 , py2 , kchoix  )
+      !!----------------------------------------------------------------------
+      !!                  ***  ROUTINE repcmo  ***
+      !!
+      !! ** Purpose :   Change vector componantes from a geographic grid to a
+      !!      stretched coordinates grid.
+      !!
+      !! ** Method  :   Initialization of arrays at the first call.
+      !!
+      !! ** Action  : - px2 : first  componante (defined at u point)
+      !!              - py2 : second componante (defined at v point)
+      !!----------------------------------------------------------------------
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   pxu1, pyu1   ! geographic vector componantes at u-point
+      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   pxv1, pyv1   ! geographic vector componantes at v-point
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   px2          ! i-componante (defined at u-point)
+      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   py2          ! j-componante (defined at v-point)
+      !!----------------------------------------------------------------------
+      INTEGER, INTENT( IN ) ::   &
+         kchoix   ! type of transformation
+                  ! = 1 change from geographic to model grid.
+                  ! =-1 change from model to geographic grid
+      !!----------------------------------------------------------------------
+ 
+      SELECT CASE (kchoix)
+      CASE ( 1)
+        ! Change from geographic to stretched coordinate
+        ! ----------------------------------------------
+     
+        CALL rot_rep( pxu1, pyu1, 'U', 'en->i',px2 )
+        CALL rot_rep( pxv1, pyv1, 'V', 'en->j',py2 )
+      CASE (-1)
+        ! Change from stretched to geographic coordinate
+        ! ----------------------------------------------
+     
+        CALL rot_rep( pxu1, pyu1, 'U', 'ij->e',px2 )
+        CALL rot_rep( pxv1, pyv1, 'V', 'ij->n',py2 )
+      END SELECT
+     
+   END SUBROUTINE repcmo	
 
    SUBROUTINE rot_rep ( pxin, pyin, cd_type, cdtodo, prot )
       !!----------------------------------------------------------------------

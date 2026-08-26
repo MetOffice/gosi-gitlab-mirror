@@ -207,6 +207,19 @@ CONTAINS
          CALL iom_rstput( kt, nitrst, numrow, 'tn'  , ts(:,:,:,jp_tem,Kmm) )
          CALL iom_rstput( kt, nitrst, numrow, 'sn'  , ts(:,:,:,jp_sal,Kmm) )
 #endif
+
+         IF( lk_oasis) THEN
+            ! nn_coupled_iceshelf_fluxes uninitialised unless lk_oasis=true
+            IF( nn_coupled_iceshelf_fluxes .eq. 1 ) THEN
+               CALL iom_rstput( kt, nitrst, numrow, 'greenland_icesheet_mass', greenland_icesheet_mass )
+               CALL iom_rstput( kt, nitrst, numrow, 'greenland_icesheet_timelapsed', greenland_icesheet_timelapsed )
+               CALL iom_rstput( kt, nitrst, numrow, 'greenland_icesheet_mass_roc', greenland_icesheet_mass_rate_of_change )
+               CALL iom_rstput( kt, nitrst, numrow, 'antarctica_icesheet_mass', antarctica_icesheet_mass )
+               CALL iom_rstput( kt, nitrst, numrow, 'antarctica_icesheet_timelapsed', antarctica_icesheet_timelapsed )
+               CALL iom_rstput( kt, nitrst, numrow, 'antarctica_icesheet_mass_roc', antarctica_icesheet_mass_rate_of_change )
+            ENDIF
+         ENDIF
+
       ENDIF
 
       CALL iom_rstput( kt, nitrst, numrow, 'neos'    , REAL(neos))   ! equation of state

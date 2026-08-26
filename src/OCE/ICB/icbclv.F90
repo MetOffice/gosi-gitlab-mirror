@@ -23,6 +23,10 @@ MODULE icbclv
    USE icbutl         ! iceberg utility routines
    USE icb_oce        ! iceberg parameters 
 
+   USE sbc_oce        ! for icesheet freshwater input variables
+   USE in_out_manager
+   USE iom
+
    IMPLICIT NONE
    PRIVATE
 
@@ -47,6 +51,8 @@ CONTAINS
       INTEGER, INTENT(in) ::   kt
       !
       REAL(wp)      ::   zcalving_used, zdist, zfact
+      REAL(wp), DIMENSION(1)      ::   zgreenland_calving_sum, zantarctica_calving_sum
+      LOGICAL       ::   ll_write
       INTEGER       ::   jn, ji, jj                    ! loop counters
       INTEGER       ::   imx                           ! temporary integer for max berg class
       LOGICAL, SAVE ::   ll_first_call = .TRUE.
@@ -61,6 +67,43 @@ CONTAINS
 
       ! Heat in units of W/m2, and mask (just in case)
       berg_grid%calving_hflx(:,:) = src_calving_hflx(:,:) * tmask_i(:,:) * tmask(:,:,1)
+
+      IF( lk_oasis) THEN
+        ! nn_coupled_iceshelf_fluxes uninitialised unless lk_oasis=true
+        IF( nn_coupled_iceshelf_fluxes .gt. 0 ) THEN
+          ll_write = ((MOD( kt, sn_cfctl%ptimincr ) == 0) .OR. ( kt == nitend )) .AND. lwp .AND. ((nn_print>0))
+          ! Adjust total calving rates so that sum of iceberg calving and iceshelf melting in the northern
+          ! and southern hemispheres equals rate of increase of mass of greenland and antarctic ice sheets
+          ! to preserve total freshwater conservation in coupled models without an active ice sheet model.
+
+           zgreenland_calving_sum(1) = SUM( berg_grid%calving(:,:) * greenland_icesheet_mask(:,:) )
+           IF( lk_mpp ) CALL mpp_sum( 'icbclv', zgreenland_calving_sum )
+           WHERE( greenland_icesheet_mask(:,:) == 1.0 )                                                                                 &
+          &    berg_grid%calving(:,:) = berg_grid%calving(:,:) * greenland_icesheet_mass_rate_of_change * rn_greenland_calving_fraction &
+          &                                     / ( zgreenland_calving_sum(1) + 1.0e-10_wp )
+
+           ! check
+           IF(ll_write) WRITE(numout, *) 'Greenland iceberg calving climatology (kg/s) : ',zgreenland_calving_sum(1)
+           zgreenland_calving_sum(1) = SUM( berg_grid%calving(:,:) * greenland_icesheet_mask(:,:) )
+           IF( lk_mpp ) CALL mpp_sum( 'icbclv', zgreenland_calving_sum )
+           IF(ll_write) WRITE(numout, *) 'Greenland iceberg calving adjusted value (kg/s) : ',zgreenland_calving_sum(1)
+
+           zantarctica_calving_sum(1) = SUM( berg_grid%calving(:,:) * antarctica_icesheet_mask(:,:) )
+           IF( lk_mpp ) CALL mpp_sum( 'icbclv', zantarctica_calving_sum )
+           WHERE( antarctica_icesheet_mask(:,:) == 1.0 )                                                                              &
+           berg_grid%calving(:,:) = berg_grid%calving(:,:) * antarctica_icesheet_mass_rate_of_change * rn_antarctica_calving_fraction &
+          &                           / ( zantarctica_calving_sum(1) + 1.0e-10_wp )
+
+           ! check
+           IF(ll_write) WRITE(numout, *) 'Antarctica iceberg calving climatology (kg/s) : ',zantarctica_calving_sum(1)
+           zantarctica_calving_sum(1) = SUM( berg_grid%calving(:,:) * antarctica_icesheet_mask(:,:) )
+           IF( lk_mpp ) CALL mpp_sum( 'icbclv', zantarctica_calving_sum )
+           IF(ll_write) WRITE(numout, *) 'Antarctica iceberg calving adjusted value (kg/s) : ',zantarctica_calving_sum(1)
+
+        ENDIF
+      ENDIF
+   
+      CALL iom_put( 'berg_calve', berg_grid%calving(:,:) )
 
       IF( ll_first_call .AND. .NOT. l_restarted_bergs ) THEN      ! This is a hack to simplify initialization
          ll_first_call = .FALSE.
