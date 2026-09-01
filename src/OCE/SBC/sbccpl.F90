@@ -71,15 +71,15 @@ MODULE sbccpl
    INTEGER, PARAMETER ::   jpr_otx1   =  1   ! 3 atmosphere-ocean stress components on grid 1
    INTEGER, PARAMETER ::   jpr_oty1   =  2   !
    INTEGER, PARAMETER ::   jpr_otz1   =  3   !
-!!$   INTEGER, PARAMETER ::   jpr_otx2   =  4   ! 3 atmosphere-ocean stress components on grid 2
-!!$   INTEGER, PARAMETER ::   jpr_oty2   =  5   !
-!!$   INTEGER, PARAMETER ::   jpr_otz2   =  6   !
+   INTEGER, PARAMETER ::   jpr_otx2   =  4   ! 3 atmosphere-ocean stress components on grid 2
+   INTEGER, PARAMETER ::   jpr_oty2   =  5   !
+   INTEGER, PARAMETER ::   jpr_otz2   =  6   !
    INTEGER, PARAMETER ::   jpr_itx1   =  7   ! 3 atmosphere-ice   stress components on grid 1
    INTEGER, PARAMETER ::   jpr_ity1   =  8   !
    INTEGER, PARAMETER ::   jpr_itz1   =  9   !
-!!$   INTEGER, PARAMETER ::   jpr_itx2   = 10   ! 3 atmosphere-ice   stress components on grid 2
-!!$   INTEGER, PARAMETER ::   jpr_ity2   = 11   !
-!!$   INTEGER, PARAMETER ::   jpr_itz2   = 12   !
+   INTEGER, PARAMETER ::   jpr_itx2   = 10   ! 3 atmosphere-ice   stress components on grid 2
+   INTEGER, PARAMETER ::   jpr_ity2   = 11   !
+   INTEGER, PARAMETER ::   jpr_itz2   = 12   !
    INTEGER, PARAMETER ::   jpr_qsroce = 13   ! Qsr above the ocean
    INTEGER, PARAMETER ::   jpr_qsrice = 14   ! Qsr above the ice
    INTEGER, PARAMETER ::   jpr_qsrmix = 15
@@ -1269,7 +1269,7 @@ CONTAINS
       REAL(wp), DIMENSION(A2D(0)) ::   zqns, zqsr, zcloud_fra
       !!----------------------------------------------------------------------
       !
-      ll_wrtstp  = (( MOD( kt, sn_cfctl%ptimincr ) == 0 ) .OR. ( kt == nitend )) .AND. (nn_print>0)
+      ll_wrtstp  = (( MOD( kt, sn_cfctl%ptimincr ) == 0 ) .OR. ( kt == nitend ))
       !
       IF( kt == nit000 ) THEN
       !   cannot be done in the init phase when we use agrif as cpl_freq requires that oasis_enddef is done
@@ -2588,6 +2588,8 @@ CONTAINS
       REAL(wp), DIMENSION(A2D(0))     ::   zotx1_in, zoty1_in  ! Temporary arrays to avoid buggy INTENT specs
       REAL(wp), DIMENSION(A2D(0),1)   ::   ze3t_i
       REAL(wp), DIMENSION(A2D(0),jpl) ::   ztmp3, ztmp4
+      REAL(wp), DIMENSION(jpi,jpj)     ::   ztmp5, ztmp6 ! RSRH temporary work arrays 
+                                                         ! to avoid intent conflicts in repcmo calls
       !!----------------------------------------------------------------------
       !
       isec = ( kt - nit000 ) * NINT( rn_Dt )        ! date of exchanges
@@ -2963,8 +2965,8 @@ CONTAINS
                ! call for both input and output fields since it creates INTENT
                ! conflicts. 
                CALL repcmo (zotx1,ztmp2,ztmp1,zoty1,ztmp5,ztmp6,ikchoix)
-               zotx1(A2D(0)=ztmp5(A2D(0)
-               zoty1(A2D(0)=ztmp6(A2D(0)
+               zotx1(A2D(0))=ztmp5(A2D(0))
+               zoty1(A2D(0))=ztmp6(A2D(0))
 
                ! Ensure any N fold and wrap columns are updated. 
                CALL lbc_lnk( 'sbccpl', zotx1, ssnd(jps_ocx1)%clgrid, -1.0_wp,  zoty1, ssnd(jps_ocy1)%clgrid, -1.0_wp )

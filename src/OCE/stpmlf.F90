@@ -108,7 +108,7 @@ CONTAINS
       IF( ln_timing )   CALL timing_start('stp_MLF')
       !
       IF (lk_oasis) THEN
-         CALL sbc_cpl_snd( istp )  ! Coupling to atmos
+         CALL sbc_cpl_snd( kstp, Nbb, Nnn )  ! Coupling to atmos
       ENDIF
       !
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

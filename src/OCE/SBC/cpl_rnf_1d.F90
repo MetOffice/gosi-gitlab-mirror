@@ -20,7 +20,6 @@ MODULE cpl_rnf_1d
    USE iom
    USE dom_oce         ! Domain sizes (for grid box area e1e2t)
    USE sbc_oce         ! Surface boundary condition: ocean fields
-   USE lib_fortran,    ONLY: DDPDD
    
    IMPLICIT NONE
    PRIVATE

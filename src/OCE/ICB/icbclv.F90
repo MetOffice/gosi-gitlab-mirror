@@ -71,7 +71,7 @@ CONTAINS
       IF( lk_oasis) THEN
         ! nn_coupled_iceshelf_fluxes uninitialised unless lk_oasis=true
         IF( nn_coupled_iceshelf_fluxes .gt. 0 ) THEN
-          ll_write = ((MOD( kt, sn_cfctl%ptimincr ) == 0) .OR. ( kt == nitend )) .AND. lwp .AND. ((nn_print>0))
+          ll_write = ((MOD( kt, sn_cfctl%ptimincr ) == 0) .OR. ( kt == nitend )) .AND. lwp
           ! Adjust total calving rates so that sum of iceberg calving and iceshelf melting in the northern
           ! and southern hemispheres equals rate of increase of mass of greenland and antarctic ice sheets
           ! to preserve total freshwater conservation in coupled models without an active ice sheet model.

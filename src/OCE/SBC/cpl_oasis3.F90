@@ -57,14 +57,10 @@ MODULE cpl_oasis3
    PUBLIC   cpl_freq
    PUBLIC   cpl_finalize
 
-#if defined key_mpp_mpi
-   INCLUDE 'mpif.h'
-#endif
-
    INTEGER, PARAMETER         ::   localRoot  = 0
    INTEGER, PUBLIC            ::   OASIS_Rcv  = 1    !: return code if received field
    INTEGER, PUBLIC            ::   OASIS_idle = 0    !: return code if nothing done by oasis
-   INTEGER                    ::   ncomp_id          ! id returned by oasis_init_comp
+   INTEGER, PUBLIC            ::   ncomp_id          ! id returned by oasis_init_comp
    INTEGER                    ::   nerror            ! return error code
 #if ! defined key_oasis3
    ! OASIS Variables not used. defined only for compilation purpose
@@ -104,6 +100,7 @@ MODULE cpl_oasis3
    TYPE(FLD_CPL), DIMENSION(:), ALLOCATABLE, PUBLIC ::   srcv, ssnd   !: Coupling fields
 
    REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   exfld   ! Temporary buffer for receiving
+   REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   exfld_ext  ! Temporary buffer for receiving with wrap points
 
    !!----------------------------------------------------------------------
    !! NEMO/OCE 5.0, NEMO Consortium (2024)
@@ -167,6 +164,7 @@ CONTAINS
 
       INTEGER :: paral_ext(5)       ! OASIS3 box partition extended
       INTEGER :: ishape(4)      ! shape of arrays passed to PSMILe
+      INTEGER :: ishape_ext(4)  ! shape of 2D arrays passed to PSMILe extended for wrap points in weights data
       INTEGER :: ishape0d1d(2)  ! Shape of 0D or 1D arrays passed to PSMILe.
       INTEGER :: var_nodims(2)  ! Number of coupling field dimensions.
                                 ! var_nodims(1) is redundant from OASIS3-MCT vn4.0 onwards
@@ -244,16 +242,16 @@ CONTAINS
       ! RSRH extended shapes for old style dimensioning. Allows backwards compatibility with existing weights files, 
       ! which the new code DOES NOT, causing headaches not only for users but also for management of weights files. 
       ishape_ext(:) = ishape(:)
-      IF (mig(1) == 1 .OR. mig(jpi)==jpiglo) THEN
+      IF (mig(Nis0,0) == 1 .OR. mig(Nie0,0) == jpiglo) THEN
          ! Extra columns in PEs dealing with wrap points
          ishape_ext(2) = ishape_ext(2) + 1
       ENDIF
 
       ! Workout any extra offset in the i dimension
-      IF (mig(1) == 1 ) THEN
-         i_offset = mig0(nn_hls)
+      IF (mig(Nis0,0) == 1 ) THEN
+         i_offset = 1             ! Starts at 1 instead of 0 to avoid wrap points
       ELSE
-         i_offset = mig(nn_hls)
+         i_offset = mig(Nis0,0)   ! Note: without the -1 for paral above to avoid wrap points
       ENDIF
        
       ALLOCATE(exfld_ext(ishape_ext(2), ishape_ext(4)), stat = nerror)        ! allocate full domain (with wrap pts)
@@ -264,7 +262,7 @@ CONTAINS
 
       ! Now we have the appropriate dimensions, we can set up the partition array for the old-style extended grid
       paral_ext(1) = 2                                      ! box partitioning
-      paral_ext(2) = (Ni0glo_ext * mjg0(nn_hls)) + i_offset ! NEMO lower left corner global offset, with wrap pts
+      paral_ext(2) = (Ni0glo_ext * (mjg(Njs0,0)-1)) + i_offset ! NEMO lower left corner global offset, with wrap pts
       paral_ext(3) = Ni_0_ext                               ! local extent in i, including halos
       paral_ext(4) = Nj_0_ext                               ! local extent in j, including halos
       paral_ext(5) = Ni0glo_ext                             ! global extent in x, including halos
@@ -287,7 +285,7 @@ CONTAINS
      
       paral(1) = 0                                       ! serial partitioning
       paral(2) = 0   
-      IF ( nproc == 0) THEN
+      IF ( mpprank == 0) THEN
          paral(3) = 1                   ! Size of array to couple (scalar)
       ELSE
          paral(3) = 0                   ! Dummy size for PE's not involved
@@ -301,7 +299,7 @@ CONTAINS
      
       paral(1) = 0                                       ! serial partitioning
       paral(2) = 0   
-      IF ( nproc == 0) THEN
+      IF ( mpprank == 0) THEN
          paral(3) = nn_cpl_river                   ! Size of array to couple (vector)
       ELSE
          paral(3) = 0                   ! Dummy size for PE's not involved
@@ -343,8 +341,8 @@ CONTAINS
                   ENDIF
 #endif
                   IF( sn_cfctl%l_oasout ) WRITE(numout,*) "Define", ji, jc, jm, " "//TRIM(zclname), " for ", OASIS_Out
-                  CALL oasis_def_var (ssnd(ji)%nid(jc,jm), zclname, id_part   , (/ 2, 1 /),   &
-                     &                OASIS_Out          , ishape , OASIS_REAL, nerror )
+                     CALL oasis_def_var (ssnd(ji)%nid(jc,jm), zclname, id_part_2d_ext   , (/ 2, 1 /),   &
+                     &                OASIS_Out           , ishape_ext , OASIS_REAL, nerror )
                   IF( nerror /= OASIS_Ok ) THEN
                      WRITE(numout,*) 'Failed to define transient ', ji, jc, jm, " "//TRIM(zclname)
                      CALL oasis_abort ( ssnd(ji)%nid(jc,jm), 'cpl_define', 'Failure in oasis_def_var' )
@@ -392,7 +390,7 @@ CONTAINS
                   IF (srcv(ji)%dimensions <= 1) THEN
                     var_nodims(1) = 1
                     var_nodims(2) = 1 ! Modify this value to cater for bundled fields.
-                    IF (nproc == 0) THEN
+                    IF (mpprank == 0) THEN
 
                        IF (srcv(ji)%dimensions == 0) THEN
 
@@ -420,8 +418,8 @@ CONTAINS
                     var_nodims(1) = 2
                     var_nodims(2) = 1 ! Modify this value to cater for bundled fields.
 
-                    CALL oasis_def_var (srcv(ji)%nid(jc,jm), zclname, id_part   , var_nodims,   &
-                       &                OASIS_In           , ishape , OASIS_REAL, nerror )
+                    CALL oasis_def_var (srcv(ji)%nid(jc,jm), zclname, id_part_2d_ext   , var_nodims,   &
+                       &                OASIS_In           , ishape_ext , OASIS_REAL, nerror )
                   ENDIF
 
                   IF( nerror /= OASIS_Ok ) THEN
@@ -483,7 +481,10 @@ CONTAINS
          DO jm = 1, ssnd(kid)%ncplmodel
 
             IF( ssnd(kid)%nid(jc,jm) /= -1 ) THEN   ! exclude halos from data sent to oasis
-               CALL oasis_put ( ssnd(kid)%nid(jc,jm), kstep, pdata(1:Ni_0,1:Nj_0,jc), kinfo )
+
+               ! The field is "put" directly, using appropriate start/end indexing - i.e. we don't
+               ! copy it to an intermediate buffer. 
+               CALL oasis_put ( ssnd(kid)%nid(jc,jm), kstep, pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc), kinfo )
 
                IF ( sn_cfctl%l_oasout ) THEN
                   IF ( kinfo == OASIS_Sent     .OR. kinfo == OASIS_ToRest .OR.   &
@@ -493,9 +494,9 @@ CONTAINS
                      WRITE(numout,*) 'oasis_put: ivarid ', ssnd(kid)%nid(jc,jm)
                      WRITE(numout,*) 'oasis_put:  kstep ', kstep
                      WRITE(numout,*) 'oasis_put:   info ', kinfo
-                     WRITE(numout,*) '     - Minimum value is ', MINVAL(pdata(1:Ni_0,1:Nj_0,jc))
-                     WRITE(numout,*) '     - Maximum value is ', MAXVAL(pdata(1:Ni_0,1:Nj_0,jc))
-                     WRITE(numout,*) '     -     Sum value is ',    SUM(pdata(1:Ni_0,1:Nj_0,jc))
+                     WRITE(numout,*) '     - Minimum value is ', MINVAL(pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc))
+                     WRITE(numout,*) '     - Maximum value is ', MAXVAL(pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc))
+                     WRITE(numout,*) '     -     Sum value is ',    SUM(pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc))
                      WRITE(numout,*) '****************'
                      CALL FLUSH(numout)
                   ENDIF
@@ -523,7 +524,8 @@ CONTAINS
       INTEGER                   , INTENT(  out) ::   kinfo     ! OASIS3 info argument
       !!
       INTEGER                                   ::   jc,jm     ! local loop index
-      LOGICAL                                   ::   llaction, ll_1st
+      LOGICAL                                   ::   llaction, ll_1st, lrcv
+
       !!--------------------------------------------------------------------
       !
       ! receive local data from OASIS3 on every process
@@ -537,7 +539,7 @@ CONTAINS
 
             IF( srcv(kid)%nid(jc,jm) /= -1 ) THEN
 
-               CALL oasis_get ( srcv(kid)%nid(jc,jm), kstep, exfld, kinfo )
+               CALL oasis_get ( srcv(kid)%nid(jc,jm), kstep, exfld_ext, kinfo )
 
                llaction =  kinfo == OASIS_Recvd   .OR. kinfo == OASIS_FromRest .OR.   &
                   &        kinfo == OASIS_RecvOut .OR. kinfo == OASIS_FromRestOut .OR. kinfo == OASIS_Input
@@ -546,14 +548,17 @@ CONTAINS
                   &  WRITE(numout,*) "llaction, kinfo, kstep, ivarid: " , llaction, kinfo, kstep, srcv(kid)%nid(jc,jm)
 
                IF( llaction ) THEN   ! data received from oasis do not include halos
+                                     ! but DO still cater for wrap columns when using pre vn4.2 compatible remapping weights. 
 
                   kinfo = OASIS_Rcv
                   IF( ll_1st ) THEN
-                     pdata(1:Ni_0,1:Nj_0,jc) =    exfld(:,:) * pmask(1:Ni_0,1:Nj_0,jm)
+                     pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc) =   exfld_ext(:,:) * pmask(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jm)
+
                      ll_1st = .FALSE.
                   ELSE
-                     pdata(1:Ni_0,1:Nj_0,jc) = pdata(1:Ni_0,1:Nj_0,jc)   &
-                        &                       + exfld(:,:) * pmask(1:Ni_0,1:Nj_0,jm)
+
+                     pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc) = pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc)   &
+                        &                                + exfld_ext(:,:) * pmask(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jm)
                   ENDIF
 
                   IF ( sn_cfctl%l_oasout ) THEN
@@ -562,9 +567,9 @@ CONTAINS
                      WRITE(numout,*) 'oasis_get: ivarid '  , srcv(kid)%nid(jc,jm)
                      WRITE(numout,*) 'oasis_get:   kstep', kstep
                      WRITE(numout,*) 'oasis_get:   info ', kinfo
-                     WRITE(numout,*) '     - Minimum value is ', MINVAL(pdata(1:Ni_0,1:Nj_0,jc))
-                     WRITE(numout,*) '     - Maximum value is ', MAXVAL(pdata(1:Ni_0,1:Nj_0,jc))
-                     WRITE(numout,*) '     -     Sum value is ',    SUM(pdata(1:Ni_0,1:Nj_0,jc))
+                     WRITE(numout,*) '     - Minimum value is ', MINVAL(pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc))
+                     WRITE(numout,*) '     - Maximum value is ', MAXVAL(pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc))
+                     WRITE(numout,*) '     -     Sum value is ',    SUM(pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc))
                      WRITE(numout,*) '****************'
                      CALL FLUSH(numout)
                   ENDIF
@@ -633,7 +638,7 @@ CONTAINS
 
          IF( srcv(kid)%nid(jc,jm) /= -1 ) THEN
 
-            IF ( ( srcv(kid)%dimensions <= 1) .AND. (nproc == 0) ) THEN
+            IF ( ( srcv(kid)%dimensions <= 1) .AND. (mpprank == 0) ) THEN
                ! Since there is no concept of data decomposition for zero 
                ! dimension fields, they must only be exchanged through the master PE, 
                ! unlike "normal" 2D field cases where every PE is involved. 
@@ -672,7 +677,7 @@ CONTAINS
             
        ENDDO
 
-#if defined key_mpp_mpi
+#if ! defined key_mpi_off
        ! Set the precision that we want to broadcast using MPI_BCAST
        SELECT CASE( wp )
        CASE( sp ) 
@@ -690,7 +695,7 @@ CONTAINS
        ! to determine active put/get timesteps. 
        CALL mpi_bcast( pdata, nitems, MPI_WORKING_PRECISION, localRoot, mpi_comm_oce, ierr )
 #else
-       CALL oasis_abort( ncomp_id, "cpl_rcv_1d", "Unable to use mpi_bcast without key_mpp_mpi present. Please add key_mpp_mpi to your list of NEMO keys." )
+       CALL oasis_abort( ncomp_id, "cpl_rcv_1d", "Unable to use mpi_bcast with key_mpi_off present. Please remove key_mpi_off from your list of NEMO keys." )
 #endif
 
       !

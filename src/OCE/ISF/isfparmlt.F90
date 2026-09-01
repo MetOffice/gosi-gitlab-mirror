@@ -14,6 +14,7 @@ MODULE isfparmlt
    USE dom_oce                  ! ocean space and time domain
    USE oce    , ONLY: ts        ! ocean dynamics and tracers
    USE phycst , ONLY: rcp, rho0 ! physical constants
+   USE sbc_oce                  ! surface boundary condition: ocean fields
 
    USE in_out_manager              ! I/O manager
    USE fldread    , ONLY: fld_read, FLD, FLD_N !
@@ -93,7 +94,7 @@ CONTAINS
       LOGICAL :: ll_wrtstp
       !!--------------------------------------------------------------------
 
-      ll_wrtstp  = (( MOD( kt, sn_cfctl%ptimincr ) == 0 ) .OR. ( kt == nitend )) .AND. (nn_print>0)
+      ll_wrtstp  = (( MOD( kt, sn_cfctl%ptimincr ) == 0 ) .OR. ( kt == nitend ))
       !
       ! Read specified fwf from isf to oce
       CALL fld_read ( kt, 1, sf_isfpar_fwf )
@@ -111,31 +112,31 @@ CONTAINS
             ! to preserve total freshwater conservation in coupled models without an active ice sheet model.
 
             ! All related global sums must be done bit reproducibly
-            zgreenland_fwfisf_sum = glob_sum( 'sbcisf', fwfisf(:,:) * e1t(:,:) * e2t(:,:) * greenland_icesheet_mask(:,:) )
+            zgreenland_fwfisf_sum = glob_2Dsum( 'sbcisf', pfwf(A2D(0)) * e1t(A2D(0)) * e2t(A2D(0)) * greenland_icesheet_mask(A2D(0)) )
 
-            ! use ABS function because we need to preserve the sign of fwfisf
-            WHERE( greenland_icesheet_mask(:,:) == 1.0 )                                                                  &
-            &    fwfisf(:,:) = fwfisf(:,:)  * ABS( greenland_icesheet_mass_rate_of_change * (1.0-rn_greenland_calving_fraction) &
+            ! use ABS function because we need to preserve the sign of pfwf
+            WHERE( greenland_icesheet_mask(A2D(0)) == 1.0 )                                                                  &
+            &    pfwf(A2D(0)) = pfwf(A2D(0))  * ABS( greenland_icesheet_mass_rate_of_change * (1.0-rn_greenland_calving_fraction) &
             &                           / ( zgreenland_fwfisf_sum + 1.0e-10_wp ) )
 
             ! check
             IF(lwp .AND. ll_wrtstp) WRITE(numout, *) 'Greenland iceshelf melting climatology (kg/s) : ',zgreenland_fwfisf_sum
 
-            zgreenland_fwfisf_sum = glob_sum( 'sbcisf', fwfisf(:,:) * e1t(:,:) * e2t(:,:) * greenland_icesheet_mask(:,:) )
+            zgreenland_fwfisf_sum = glob_2Dsum( 'sbcisf', pfwf(A2D(0)) * e1t(A2D(0)) * e2t(A2D(0)) * greenland_icesheet_mask(A2D(0)) )
 
             IF(lwp .AND. ll_wrtstp) WRITE(numout, *) 'Greenland iceshelf melting adjusted value (kg/s) : ',zgreenland_fwfisf_sum
 
-            zantarctica_fwfisf_sum = glob_sum( 'sbcisf', fwfisf(:,:) * e1t(:,:) * e2t(:,:) * antarctica_icesheet_mask(:,:) )
+            zantarctica_fwfisf_sum = glob_2Dsum( 'sbcisf', pfwf(A2D(0)) * e1t(A2D(0)) * e2t(A2D(0)) * antarctica_icesheet_mask(A2D(0)) )
 
             ! use ABS function because we need to preserve the sign of fwfisf
-            WHERE( antarctica_icesheet_mask(:,:) == 1.0 ) &
-            &    fwfisf(:,:) = fwfisf(:,:)  * ABS( antarctica_icesheet_mass_rate_of_change * (1.0-rn_antarctica_calving_fraction) &
+            WHERE( antarctica_icesheet_mask(A2D(0)) == 1.0 ) &
+            &    pfwf(A2D(0)) = pfwf(A2D(0))  * ABS( antarctica_icesheet_mass_rate_of_change * (1.0-rn_antarctica_calving_fraction) &
             &                           / ( zantarctica_fwfisf_sum + 1.0e-10_wp ) )
 
             ! check
             IF(lwp .AND. ll_wrtstp) WRITE(numout, *) 'Antarctica iceshelf melting climatology (kg/s) : ',zantarctica_fwfisf_sum
 
-            zantarctica_fwfisf_sum = glob_sum( 'sbcisf', fwfisf(:,:) * e1t(:,:) * e2t(:,:) * antarctica_icesheet_mask(:,:) )
+            zantarctica_fwfisf_sum = glob_2Dsum( 'sbcisf', pfwf(A2D(0)) * e1t(A2D(0)) * e2t(A2D(0)) * antarctica_icesheet_mask(A2D(0)) )
 
             IF(lwp .AND. ll_wrtstp) WRITE(numout, *) 'Antarctica iceshelf melting adjusted value (kg/s) : ',zantarctica_fwfisf_sum
 

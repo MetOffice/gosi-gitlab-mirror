@@ -41,6 +41,7 @@ MODULE restart
    USE iom            ! I/O module
    USE ioipsl, ONLY : ju2ymds    ! for calendar
    USE lib_mpp        ! distribued memory computing library
+   USE sbc_oce        ! for icesheet freshwater input variables
 
    IMPLICIT NONE
    PRIVATE

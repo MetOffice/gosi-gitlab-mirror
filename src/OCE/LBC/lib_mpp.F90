@@ -786,7 +786,7 @@ CONTAINS
       ! that this could be part of an MPMD configuration - we don't want to
       ! leave other components deadlocked.
 
-      CALL oasis_abort(nproc,"mppstop","NEMO initiated abort")
+      CALL oasis_abort(mpprank,"mppstop","NEMO initiated abort")
 
 
 #else
