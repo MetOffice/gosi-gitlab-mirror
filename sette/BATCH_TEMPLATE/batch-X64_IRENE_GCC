@@ -4,8 +4,8 @@
 #MSUB -o sette.jobid_%I.txt  # standard output
 #MSUB -e sette.jobid_%I.txt  # standard error
 #MSUB -n NPROCS              # Total number of mpi task to use
-#MSUB -A   gen7451          # project name
-#MSUB -q   skylake          # (queue name) only for thin nodes
+#MSUB -A   gen7451           # project name
+#MSUB -q   rome              # (queue name) only for thin nodes
 #MSUB -m store,work,scratch
 ##########################################################################
 #
