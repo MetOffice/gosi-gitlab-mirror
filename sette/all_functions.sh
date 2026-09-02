@@ -183,9 +183,13 @@ prepare_job() {
 
         # ROT specificities
         if [[ "$TEST_NAME" == ROT* ]]; then
-            if [[ "${TEST_NAME#ROT-}" == "000" ]]; then set_namelist ${NAMELISTFILE}_cfg nn_rot 0; fi
-            if [[ "${TEST_NAME#ROT-}" == "090" ]]; then set_namelist ${NAMELISTFILE}_cfg nn_rot 1; fi
-            if [[ "${TEST_NAME#ROT-}" == "180" ]]; then set_namelist ${NAMELISTFILE}_cfg nn_rot 2; fi
+            if [ "${LVL}" -eq 0 ] && [ -f ${EXE_DIR}/AGRIF_FixedGrids.in ]; then
+                sed -i "1s/.*/0/" ${EXE_DIR}/AGRIF_FixedGrids.in
+            fi
+            if [[ "${TEST_NAME#ROT_}" == "000" ]]; then set_namelist ${NAMELISTFILE}_cfg nn_rot 0; fi
+            if [[ "${TEST_NAME#ROT_}" == "090" ]]; then set_namelist ${NAMELISTFILE}_cfg nn_rot 1; fi
+            if [[ "${TEST_NAME#ROT_}" == "180" ]]; then set_namelist ${NAMELISTFILE}_cfg nn_rot 2; fi
+            set_rot_namelist
         fi
  
         # RST specificities
