@@ -1,0 +1,36 @@
+!-----------------------------------------------------------------------
+&nam_def    !  Definition of transformations
+!-----------------------------------------------------------------------
+!
+!  Source grid (parent)
+!     - must be have the lowest resolution
+!
+    sn_msk_fname_s =   'mesh_mask.nc'     ! meshmask file name
+!
+!  Target grid (child)
+!     - must be have the highest resolution
+!
+    sn_msk_fname_t =   'mesh_mask_sab.nc' ! meshmask file name
+!
+!  Zoom (T) or same grid transform (F)
+!     - in the first case, the target grid have a smaller extend than the parent
+!     - in the second case, source and target grid have the same extend
+!
+    ln_zoom        =   .FALSE.
+!
+!  Lower-left indexes of lower-left child grid point on parent grid
+!   - e.g. AGRIF_FixedGrids.in parameter
+!
+    nn_lli         =   1
+    nn_llj         =   1
+!
+!  Factor of coarsening or Zoom
+!   - can be = 1
+!
+    nn_factor      =   3
+!
+!  U,V grid transformation for transport (T) or current (F)
+!   - if transport, coarsening only involves the corresponding "nn_factor" side grid points
+!
+    ln_transport   =   .FALSE.
+/
