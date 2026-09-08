@@ -2,7 +2,7 @@ import numpy as np
 import sys
 from netCDF4 import Dataset
 
-def create_netcdf(lat, lon, z, fnc_name):
+def create_netcdf(lon, lat, fnc_name):
     # Créer un fichier NetCDF
     dataset = Dataset(fnc_name, 'w', format='NETCDF4')
     
@@ -10,21 +10,11 @@ def create_netcdf(lat, lon, z, fnc_name):
     dataset.createDimension('lon', lon)
     dataset.createDimension('lat', lat)
     
-    # Créer la ou les variable 2D Bberg_fx, Bberg_fx.001, Bberg_fx.00z  (lon, lat) avec des valeurs initiales de 0
-    if (z == 1): 
-        Bberg_fx = dataset.createVariable('Bberg_fx', np.float64, ('lat', 'lon'))
-        Bberg_fx[:] = np.zeros((lat, lon), dtype=np.float64)
-    
-    elif (z == 2):     
-       Bberg_fx_001 = dataset.createVariable('Bberg_fx.001', np.float64, ('lat', 'lon'))
-       Bberg_fx_001[:] = np.zeros((lat, lon), dtype=np.float64)
-       Bberg_fx_002 = dataset.createVariable('Bberg_fx.002', np.float64, ('lat', 'lon'))
-       Bberg_fx_002[:] = np.zeros((lat, lon), dtype=np.float64)
-
-            
-    else : 
-        print("z must = either 1 or 2 (if purely 2D or no bundle file, set z=1 ")
-        sys.exit(1)
+    # Créer les variable 2D sab_berg_wfx:sab_berg_hcfx (lon, lat) avec des valeurs initiales de 0
+    Bberg_wx = dataset.createVariable('sab_berg_wfx', np.float64, ('lat', 'lon'))
+    Bberg_wx[:] = np.zeros((lat, lon), dtype=np.float64)
+    Bberg_hx = dataset.createVariable('sab_berg_hcfx', np.float64, ('lat', 'lon'))
+    Bberg_hx[:] = np.zeros((lat, lon), dtype=np.float64)
     
     # Fermer le fichier NetCDF
     dataset.close()
@@ -32,20 +22,19 @@ def create_netcdf(lat, lon, z, fnc_name):
 
 if __name__ == '__main__':
     # Vérifier si les bons arguments sont passés
-    if len(sys.argv) != 5:
-        print("Usage: python script.py <lat> <lon> <z> <file_name.nc>")
+    if len(sys.argv) != 4:
+        print("Usage: python script.py <lat> <lon> <file_name.nc>")
         sys.exit(1)
     
     # Récupérer les arguments depuis la ligne de commande
     try:
-        lat = int(sys.argv[1])
-        lon = int(sys.argv[2])
-        z = int(sys.argv[3])
-        fname = sys.argv[4]  
+        lon = int(sys.argv[1])
+        lat = int(sys.argv[2])
+        fname = sys.argv[3]  
     except ValueError:
-        print("Erreur : Les arguments lon, lat, et z doivent être des entiers.")
+        print("Erreur : Les arguments lon et lat doivent être des entiers.")
         sys.exit(1)
     
     # Appeler la fonction avec les arguments passés
-    create_netcdf(lat, lon, z, fname)
+    create_netcdf(lon, lat, fname)
 

@@ -56,12 +56,18 @@ MODULE cpl_oasis3
    INTERFACE oasis_put
       MODULE PROCEDURE oasis_put_2D, oasis_put_3D
    END INTERFACE
+
+   ! Made necessary to ensure compatibility with outdated OASIS version
+   INTERFACE oasis_def_var ; MODULE PROCEDURE &
+     oasis_def_var_v1, &
+     oasis_def_var_v2
+   END INTERFACE
+
 #endif
 
    INTEGER, PUBLIC            ::   OASIS_Rcv  = 1    !: return code if received field
    INTEGER, PUBLIC            ::   OASIS_idle = 0    !: return code if nothing done by oasis
    INTEGER                    ::   ncomp_id          ! id returned by oasis_init_comp
-   INTEGER                    ::   nid_part          ! id returned by oasis_def_partition
    INTEGER                    ::   nishape(4)        ! shape of arrays passed to PSMILe
    INTEGER                    ::   nerror            ! return error code
 #if ! defined key_oasis3
@@ -91,9 +97,13 @@ MODULE cpl_oasis3
    INTEGER, PUBLIC, PARAMETER ::   midcpl=1    ! module ID #1 : surface boundary condition
    INTEGER, PUBLIC, PARAMETER ::   midicb=2    ! module ID #2 : ocean iceberg exchanges (sends ocean surface state to icebergs,  receives water and heat fluxes from icebergs 
    INTEGER, PUBLIC, PARAMETER ::   midsab=3    ! module ID #3 : standalone iceberg module (computes icebergs offline and sends   water + heat flux to nemo)
+
+   INTEGER                    ::   nid_part_2D            ! id returned by oasis_def_partition for 2D case
+   INTEGER                    ::   nid_part_cube_icb = 0  ! id returned by oasis_def_partition for cube case, ICB module
+
    TYPE, PUBLIC ::   FLD_CPL               !: Type for coupling field information
       LOGICAL               ::   laction   ! To be coupled or not
-      CHARACTER(len = 8)    ::   clname    ! Name of the coupling field
+      CHARACTER(len = 30)    ::   clname    ! Name of the coupling field
       CHARACTER(len = 1)    ::   clgrid    ! Grid type
       REAL(wp)              ::   nsgn      ! Control of the sign change
       INTEGER               ::   nct       ! Number of categories in field
@@ -151,17 +161,23 @@ CONTAINS
    END SUBROUTINE cpl_init
 
 
-   SUBROUTINE cpl_domdef
+   SUBROUTINE cpl_domdef( klevel )
       !!-------------------------------------------------------------------
       !!             ***  ROUTINE cpl_domdef  ***
       !!
-      !! ** Purpose :   Define grid information for ocean
-      !!    exchange between AGCM, OGCM and COUPLER. (OASIS3 software)
+      !! ** Purpose :   Define grid information for exchanges
+      !!                between coupled modules (via OASIS software)
       !!
       !! ** Method  :   OASIS3 MPI communication
       !!--------------------------------------------------------------------
-      INTEGER :: paral(5)       ! OASIS3 box partition
+      INTEGER, INTENT(in), OPTIONAL   ::   klevel           !  If defined, level depth of coupling
+      ! local  
+      INTEGER :: paral(7)       ! OASIS3 box partition (7 since CUBE coupling)
+      INTEGER :: icplv          ! Vertical levels coupled with CUBE partitionning (not available before OASIS v6)
       !!--------------------------------------------------------------------
+      !
+      icplv = 1
+      IF( PRESENT( klevel ) ) icplv = klevel
       !
       ! ... Define the shape for the area that excludes the halo as we don't want them to be "seen" by oasis
       !
@@ -179,7 +195,7 @@ CONTAINS
 
       !
       ! -----------------------------------------------------------------
-      ! ... Define the partition, excluding halos as we don't want them to be "seen" by oasis
+      ! ... Define the partition(s), excluding halos as we don't want them to be "seen" by oasis
       ! -----------------------------------------------------------------
 
       paral(1) = 2                                          ! box partitioning
@@ -187,15 +203,25 @@ CONTAINS
       paral(3) = Ni_0                                       ! local extent in i, excluding halos
       paral(4) = Nj_0                                       ! local extent in j, excluding halos
       paral(5) = Ni0glo                                     ! global extent in x, excluding halos
-
+      !
+      CALL oasis_def_partition ( nid_part_2D, paral, nerror, Ni0glo*Nj0glo )   ! global number of points, excluding halos
+      IF ( icplv > 1 ) THEN
+         ! Rather define CUBE partition
+         paral(1) = 5
+         ! Additional information for CUBE partition
+         paral(6) = Nj0glo
+         paral(7) = icplv
+         ! Additional partition for CUBE exchanges in ICB
+         CALL oasis_def_partition ( nid_part_cube_icb, paral, nerror, Ni0glo*Nj0glo*icplv)
+      ENDIF
+      !
       IF( sn_cfctl%l_oasout ) THEN
          WRITE(numout,*) ' multiexchg: paral (1:5)', paral
          WRITE(numout,*) ' multiexchg: Ni_0, Nj_0 =', Ni_0, Nj_0
          WRITE(numout,*) ' multiexchg: Nis0, Nie0, nimpp =', Nis0, Nie0, nimpp
          WRITE(numout,*) ' multiexchg: Njs0, Nje0, njmpp =', Njs0, Nje0, njmpp
+         IF ( icplv > 1 ) WRITE(numout,*) ' multiexchg: on levels =', icplv
       ENDIF
-      !
-      CALL oasis_def_partition ( nid_part, paral, nerror, Ni0glo*Nj0glo )   ! global number of points, excluding halos
       !
    END SUBROUTINE cpl_domdef
 
@@ -215,6 +241,7 @@ CONTAINS
       INTEGER :: isnd, ircv
       CHARACTER(LEN=64) :: zclname
       CHARACTER(LEN=2) :: cli2
+      LOGICAL :: lcubemode = .FALSE.
       !!--------------------------------------------------------------------
       !
       IF ( kmod == midcpl ) THEN ; lp_sbccpl = .TRUE. ; ELSE ; lp_sbccpl = .FALSE. ; ENDIF
@@ -222,12 +249,17 @@ CONTAINS
       IF(lwp) THEN
          WRITE(numout,*)
          SELECT CASE( kmod )
-         CASE( midcpl ) ; WRITE(numout,*) 'cpl_vardef : initialization in coupled ocean/atmosphere case' 
+         CASE( midcpl ) ; WRITE(numout,*) 'cpl_vardef : initialization in coupled ocean/atmosphere case'
          CASE( midicb ) ; WRITE(numout,*) 'cpl_vardef : initialization in coupled ocean/icebergs case'
          CASE( midsab ) ; WRITE(numout,*) 'cpl_vardef : initialization in coupled sab(icebergs)/ocean case'
          END SELECT
          WRITE(numout,*)
       ENDIF
+      !
+      ! For iceberg coupling (NEMO ICB module and SAB), 
+      ! send / receive any cpl variable in CUBE mode (if requested)
+      IF( nid_part_cube_icb /= 0 ) &
+         lcubemode = .TRUE.
       !
       ! ... Announce send variables.
       !
@@ -258,8 +290,13 @@ CONTAINS
                      ENDIF
 #endif
                      IF( sn_cfctl%l_oasout ) WRITE(numout,*) "Define", ji, jc, jm, " "//TRIM(zclname), " for ", OASIS_Out
-                     CALL oasis_def_var (ssnd(kmod)%fld(ji)%nid(jc,jm), zclname, nid_part, (/ 2, ssnd(kmod)%fld(ji)%nlvl /),   &
-                        &                OASIS_Out, nishape, OASIS_REAL, nerror )
+                     IF ( lcubemode .AND. ssnd(kmod)%fld(ji)%nlvl > 1 ) THEN
+                        CALL oasis_def_var (ssnd(kmod)%fld(ji)%nid(jc,jm), zclname, nid_part_cube_icb, &
+                          &                 (/ 2, 1 /),                       OASIS_Out,          OASIS_REAL, nerror )
+                     ELSE
+                        CALL oasis_def_var (ssnd(kmod)%fld(ji)%nid(jc,jm), zclname, nid_part_2D      , &
+                          &                 (/ 2, ssnd(kmod)%fld(ji)%nlvl /), OASIS_Out, nishape, OASIS_REAL, nerror )
+                     ENDIF
                      IF( nerror /= OASIS_Ok ) THEN
                         WRITE(numout,*) 'Failed to define transient ', ji, jc, jm, " "//TRIM(zclname)
                         CALL oasis_abort ( ssnd(kmod)%fld(ji)%nid(jc,jm), 'cpl_vardef', 'Failure in oasis_def_var' )
@@ -309,8 +346,13 @@ CONTAINS
                      ENDIF
 #endif
                      IF( sn_cfctl%l_oasout ) WRITE(numout,*) "Define", ji, jc, jm, " "//TRIM(zclname), " for ", OASIS_In
-                     CALL oasis_def_var (srcv(kmod)%fld(ji)%nid(jc,jm), zclname, nid_part, (/ 2, srcv(kmod)%fld(ji)%nlvl /),   &
-                        &                OASIS_In, nishape, OASIS_REAL, nerror )
+                     IF ( lcubemode .AND. srcv(kmod)%fld(ji)%nlvl > 1 ) THEN
+                        CALL oasis_def_var (srcv(kmod)%fld(ji)%nid(jc,jm), zclname, nid_part_cube_icb, &
+                          &                 (/ 2, 1 /),                       OASIS_In,          OASIS_REAL, nerror )
+                     ELSE
+                        CALL oasis_def_var (srcv(kmod)%fld(ji)%nid(jc,jm), zclname, nid_part_2D      , &
+                          &                 (/ 2, srcv(kmod)%fld(ji)%nlvl /), OASIS_In, nishape, OASIS_REAL, nerror )
+                     ENDIF
                      IF( nerror /= OASIS_Ok ) THEN
                         WRITE(numout,*) 'Failed to define transient ', ji, jc, jm, " "//TRIM(zclname)
                         CALL oasis_abort ( srcv(kmod)%fld(ji)%nid(jc,jm), 'cpl_vardef', 'Failure in oasis_def_var' )
@@ -322,6 +364,8 @@ CONTAINS
                         ircv = ircv + 1
                       ELSE
                         IF( sn_cfctl%l_oasout ) WRITE(numout,*) "--> variable NOT defined in the namcouple"
+                        ! EM: variable to be received but not defined in the namcouple = big troubles
+                        !     I would stop here
                       ENDIF
                          !
                   END DO
@@ -391,12 +435,20 @@ CONTAINS
       REAL(wp), DIMENSION(:,:,:), INTENT(in   ) ::   pdata
       !!
       INTEGER                                   ::   jc,jm     ! local loop index
-      LOGICAL                                   ::   ll3D      ! flag for 3D coupling
+      INTEGER                                   ::   izmode    ! Coupling along z dimension :
+                                                               !   0: 2D coupling
+                                                               !   1: level by level 3D coupling
+                                                               !   2: cube style 3D coupling
       !!--------------------------------------------------------------------
       !
       ! Default values
-      ll3D = .FALSE.
-      IF( ssnd(kmod)%fld(kid)%nlvl > 1 ) ll3D = .TRUE.
+         izmode = 0  ! standard 2D coupling 
+
+      IF( ssnd(kmod)%fld(kid)%nlvl > 1 ) &
+         izmode = 1  ! level by level 3D coupling
+
+      IF( nid_part_cube_icb /= 0 ) &
+         izmode = 2  ! cube style 3D coupling - warning: available with OASIS-6 only
 
       ! check size
       IF( COUNT( SHAPE(pdata(:,:,1)) /= (/Ni_0,Nj_0/) ) > 0 )   &
@@ -410,7 +462,7 @@ CONTAINS
 
             IF( ssnd(kmod)%fld(kid)%nid(jc,jm) /= -1 ) THEN   ! exclude halos from data sent to oasis
 
-               IF( .NOT. ll3D ) THEN   ! send 2D or 3D fields
+               IF( izmode == 0 ) THEN   ! send 2D fields
                   CALL oasis_put ( ssnd(kmod)%fld(kid)%nid(jc,jm), kstep, pdata(1:Ni_0, 1:Nj_0,jc), kinfo )
                ELSE 
                   CALL oasis_put ( ssnd(kmod)%fld(kid)%nid(jc,jm), kstep, pdata(1:Ni_0, 1:Nj_0,1:ssnd(kmod)%fld(kid)%nlvl), kinfo )
@@ -453,17 +505,27 @@ CONTAINS
       REAL(wp), DIMENSION(:,:,:)  , INTENT(inout)           ::   pdata     ! IN to keep the value if nothing is done
       REAL(wp), DIMENSION(:,:,:,:), INTENT(in   ), OPTIONAL ::   pmask     ! coupling mask
       !!
-      INTEGER                                             ::   jc,jm,jl  ! local loop index
-      INTEGER                                             ::   ib, iu(2) ! depth level indexes
-      LOGICAL                                             ::   llaction, ll_1st, ll_mask, ll3D
+      INTEGER                                   ::   jc,jm,jl  ! local loop index
+      INTEGER                                   ::   ib, iu(2) ! depth level indexes
+      LOGICAL                                   ::   llaction, ll_1st, ll_mask
+      INTEGER                                   ::   izmode    ! Coupling along z dimension :
+                                                               !   0: 2D coupling
+                                                               !   1: level by level 3D coupling
+                                                               !   2: cube style 3D coupling
       !!--------------------------------------------------------------------
       !
       ! Default values
       ll_mask = .FALSE.
       IF( PRESENT( pmask ) ) ll_mask = .TRUE.
       !
-      ll3D = .FALSE.
-      IF( srcv(kmod)%fld(kid)%nlvl > 1 ) ll3D = .TRUE.
+         izmode = 0  ! standard 2D coupling 
+
+      IF( srcv(kmod)%fld(kid)%nlvl > 1 ) &
+         izmode = 1  ! level by level 3D coupling
+
+      IF( nid_part_cube_icb /= 0 ) &
+         izmode = 2  ! cube style 3D coupling - warning: available with OASIS-6 only
+
       !
       ! receive local data from OASIS3 on every process
       !
@@ -476,7 +538,7 @@ CONTAINS
 
             IF( srcv(kmod)%fld(kid)%nid(jc,jm) /= -1 ) THEN
 
-               IF( .NOT. ll3D ) THEN   ! Receive 2D or 3D field
+               IF( izmode == 0 ) THEN   ! Receive 2D or 3D field
                   CALL oasis_get ( srcv(kmod)%fld(kid)%nid(jc,jm), kstep, exfld(:,:,1), kinfo )
                   ib = jc
                   iu(1) = 1
@@ -515,9 +577,9 @@ CONTAINS
                      WRITE(numout,*) 'oasis_get: ivarid '  , srcv(kmod)%fld(kid)%nid(jc,jm)
                      WRITE(numout,*) 'oasis_get:   kstep', kstep
                      WRITE(numout,*) 'oasis_get:   info ', kinfo
-                     WRITE(numout,*) '     - Minimum value is ', MINVAL(pdata(1:Ni_0,1:Nj_0,jc))
-                     WRITE(numout,*) '     - Maximum value is ', MAXVAL(pdata(1:Ni_0,1:Nj_0,jc))
-                     WRITE(numout,*) '     -     Sum value is ',    SUM(pdata(1:Ni_0,1:Nj_0,jc))
+                     WRITE(numout,*) '     - Minimum value is ', MINVAL(pdata(1:Ni_0,1:Nj_0,ib:iu(2)))
+                     WRITE(numout,*) '     - Maximum value is ', MAXVAL(pdata(1:Ni_0,1:Nj_0,ib:iu(2)))
+                     WRITE(numout,*) '     -     Sum value is ',    SUM(pdata(1:Ni_0,1:Nj_0,ib:iu(2)))
                      WRITE(numout,*) '****************'
                   ENDIF
 
@@ -650,13 +712,22 @@ CONTAINS
       WRITE(numout,*) 'oasis_def_partition: Error you sould not be there...'
    END SUBROUTINE oasis_def_partition
 
-   SUBROUTINE oasis_def_var(k1,cd1,k2,k3,k4,k5,k6,k7)
+   SUBROUTINE oasis_def_var_v1(k1,cd1,k2,k3,k4,k5,k6,k7)
       CHARACTER(*), INTENT(in   ) ::  cd1
-      INTEGER     , INTENT(in   ) ::  k2,k3(2),k4,k5(2,2),k6
+      INTEGER     , INTENT(in   ) ::  k2,k3(2),k4,k6
+      INTEGER     , INTENT(in   ) ::  k5(4)
       INTEGER     , INTENT(  out) ::  k1,k7
       k1 = -1 ; k7 = -1
       WRITE(numout,*) 'oasis_def_var: Error you sould not be there...', cd1
-   END SUBROUTINE oasis_def_var
+   END SUBROUTINE oasis_def_var_v1
+
+   SUBROUTINE oasis_def_var_v2(k1,cd1,k2,k3,k4,k5,k6)
+      CHARACTER(*), INTENT(in   ) ::  cd1
+      INTEGER     , INTENT(in   ) ::  k2,k3(2),k4,k5
+      INTEGER     , INTENT(  out) ::  k1,k6
+      k1 = -1 ; k6 = -1
+      WRITE(numout,*) 'oasis_def_var: Error you sould not be there...', cd1
+   END SUBROUTINE oasis_def_var_v2
 
    SUBROUTINE oasis_enddef(k1)
       INTEGER     , INTENT(  out) ::  k1
