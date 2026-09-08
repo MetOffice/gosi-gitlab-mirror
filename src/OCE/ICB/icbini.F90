@@ -443,19 +443,28 @@ CONTAINS
          &              cn_icbrst_indir, cn_icbrst_in   , cn_icbrst_outdir    , cn_icbrst_out        ,   &
          &              ln_icb_grd     , ln_use_test    , ln_icb_bas          , ln_rst_test_bas      ,   &
          &              cn_icbbasins_file, cn_icbbasins_var2d  , cn_icbbasins_var1d   , nn_icb_basins,   &
-         &              ln_berg_cpl, ln_cpl_asynchrone, ln_cpl_nlvlcut, nn_lvlcut_cpl 
+         &              ln_berg_cpl    , ln_cpl_asynchrone, ln_cpl_nlvlcut    , nn_lvlcut_cpl        ,   &
+         &              nn_cplmodel
       !!----------------------------------------------------------------------
 
 #if defined key_agrif
-      IF(lwp) THEN
-         WRITE(numout,*)
-         WRITE(numout,*) 'icb_nam : AGRIF is not compatible with namelist namberg :  '
-         WRITE(numout,*) '~~~~~~~   definition of rn_initial_mass(nclasses) with nclasses as PARAMETER '
-         WRITE(numout,*)
-         WRITE(numout,*) '   ==>>>   force  NO icebergs used. The namelist namberg is not read'
+      IF ( .not. ln_berg_cpl ) THEN
+         IF(lwp) THEN
+            WRITE(numout,*)
+            WRITE(numout,*) 'icb_nam : AGRIF is not compatible with namelist namberg :  '
+            WRITE(numout,*) '~~~~~~~   definition of rn_initial_mass(nclasses) with nclasses as PARAMETER '
+            WRITE(numout,*)
+            WRITE(numout,*) '   ==>>>   force  NO icebergs used. The namelist namberg is not read'
+         ENDIF
+         IF( ln_icebergs ) &
+            CALL ctl_stop('AGRIF required ln_iceberg = .FALSE. or ln_iceberg = .TRUE. and ln_berg_cpl = .TRUE.')
+      ELSE
+         IF(lwp) THEN
+            WRITE(numout,*)
+            WRITE(numout,*) 'icb_nam : iceberg initialization through namberg namelist read'
+            WRITE(numout,*) '~~~~~~~~ '
+         ENDIF
       ENDIF
-      ln_icebergs = .false.      
-      RETURN
 #else
       IF(lwp) THEN
          WRITE(numout,*)

@@ -71,6 +71,7 @@ MODULE sbc_oce
    !
    !                                   !!* namsbc_cpl namelist *
    INTEGER , PUBLIC ::   nn_cats_cpl    !: Number of sea ice categories over which the coupling is carried out
+   INTEGER , PUBLIC ::   nn_cplmodel    !: Maximum number of models to/from which NEMO is potentialy sending/receiving data
    !
    !                                   !!* namsbc_wave namelist *
    LOGICAL , PUBLIC ::   ln_sdw         !: =T 3d stokes drift from wave model
@@ -115,6 +116,7 @@ MODULE sbc_oce
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   utau_icb, vtau_icb !: sea surface (i,j)-stress used by icebergs     [N/m2]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   emp    , qns     !: freshwater budget: volume flux                [Kg/m2/s]
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:) ::   fr_i               !: ice fraction = 1 - lead fraction       (between 0 to 1)
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:,:) :: xcplmask         !: coupling mask for ln_mixcpl (warning: allocated in icbcpl)
    !
    !!---------------------------------------------------------------------
    !! ABL Vertical Domain size

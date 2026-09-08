@@ -56,24 +56,34 @@ MODULE icbcpl
    !! fields RECEIVED by NEMO (ocean)
    !! are only in the interior (without halos)
    
-   INTEGER, PARAMETER ::   jpr_berg_fx   =  1   ! surface fresh water flux and heat flux sent (to be added to emp,qns)
+   INTEGER, PARAMETER ::   jpr_bgwf   =  1   ! iceberg fresh water flux (to be added to emp)
+   INTEGER, PARAMETER ::   jpr_bghf   =  2   ! iceberg fresh heat flux  (to be added to qns)
 
-   INTEGER, PARAMETER ::   jprcv_icb = 1 ! total number of received fields
+   INTEGER, PARAMETER ::   jprcv_icb   =  2   ! total number of received fields
   
    !! fields SENT by NEMO (ocean)
    !! are only in the interior (without halos)
   
    !! 2D sea surface fields
-   INTEGER, PARAMETER ::   jps_ss_T   =  1   ! sea surface state grid T fields (ssh, sst, sss_fr_i) 
-   INTEGER, PARAMETER ::   jps_ss_U   =  2   ! sea surface state grid U fields(ssu_m, utau_icb)
-   INTEGER, PARAMETER ::   jps_ss_V   =  3   ! sea surface state grid V fields (ssv_m, vtau_icb)
-
+   INTEGER, PARAMETER ::   jps_ssh   =  1   ! sea surface height
+   INTEGER, PARAMETER ::   jps_sst   =  2   ! sea surface temperature
+   INTEGER, PARAMETER ::   jps_sss   =  3   ! sea surface salinity
+   INTEGER, PARAMETER ::   jps_fri   =  4   ! ice fraction 
+   INTEGER, PARAMETER ::   jps_ati   =  5   ! ice total fractional area
+   INTEGER, PARAMETER ::   jps_vti   =  6   ! ice volume per unit area
+   INTEGER, PARAMETER ::   jps_r3t   =  7   ! ssh/h_0 ratio
+   INTEGER, PARAMETER ::   jps_ssu   =  8   ! sea surface x velocity
+   INTEGER, PARAMETER ::   jps_utau  =  9   ! x wind stress
+   INTEGER, PARAMETER ::   jps_uice  =  10  ! ice x velocity
+   INTEGER, PARAMETER ::   jps_ssv   =  11  ! sea surface y velocity
+   INTEGER, PARAMETER ::   jps_vtau  =  12  ! y wind stress
+   INTEGER, PARAMETER ::   jps_vice  =  13  ! ice y velocity
    ! ocean 3D files (needed in icb_utl)
-   INTEGER, PARAMETER ::   jps_Uu_oce  =  4   ! oce Uu velocity
-   INTEGER, PARAMETER ::   jps_Vv_oce  =  5   ! oce Vv velocity
-   INTEGER, PARAMETER ::   jps_Tt_oce  =  6   ! oce Ts
+   INTEGER, PARAMETER ::   jps_uu    =  15  ! 3D x velocity
+   INTEGER, PARAMETER ::   jps_vv    =  16  ! 3D y velocity
+   INTEGER, PARAMETER ::   jps_tt    =  17  ! 3D temperature
 
-   INTEGER, PARAMETER ::   jpsnd_icb = 6 ! total number of sent fields
+   INTEGER, PARAMETER ::   jpsnd_icb =  17  ! total number of sent fields
    
    !! * Substitutions
 #  include "do_loop_substitute.h90"
@@ -127,7 +137,10 @@ CONTAINS
     !!              * define the send    interface
     !!              * initialise the OASIS coupler
     !!----------------------------------------------------------------------
-      INTEGER  ::   ios     ! Local integer output status for namelist read
+      INTEGER           ::   ios     ! Local integer output status for namelist read
+      INTEGER           ::   jn
+      CHARACTER(LEN=64) ::   zclname
+
       NAMELIST/namberg/ ln_icebergs    , ln_bergdia     , rn_sample_rate_days , rn_initial_mass      ,   &
          &              rn_distribution, rn_mass_scaling, rn_initial_thickness, rn_verbose_write_days,   &
          &              rn_rho_bergs   , rn_LoW_ratio   , nn_verbose_level    , ln_operator_splitting,   &
@@ -172,107 +185,113 @@ CONTAINS
       ! default definitions of ssnd
       
       ALLOCATE( icbsnd(jpsnd_icb) )
-      icbsnd(:)%laction = .FALSE.   ;   icbsnd(:)%clgrid = 'T'   ;   icbsnd(:)%nsgn = 1.
-      icbsnd(:)%nct = 1   ;   icbsnd(:)%nlvl = 1 ; ; icbsnd(:)%ncplmodel = 1
+      icbsnd(:)%laction = .FALSE. ; icbsnd(:)%clgrid = 'T' ; icbsnd(:)%nsgn = 1.
+      icbsnd(:)%nct     = 1       ; icbsnd(:)%nlvl   = 1   ; icbsnd(:)%ncplmodel = 1
 
-#if defined key_si3 
-      ! 1) Sea- surface fields + sea-ice fields inside the same bundles 
+      ! 1) Sea- surface fields + sea-ice fields
       
       ! a) with sea-ice T-grid Bundle
-      icbsnd(jps_ss_T)%clname = 'O_ss_T'
-      icbsnd(jps_ss_T)%laction = .TRUE.
-      icbsnd(jps_ss_T)%nlvl = 6    !  ssh,sst,sss,fr_i,at_i,vt_i 
+      icbsnd(jps_ssh)%clname = 'ssh'
+      icbsnd(jps_sst)%clname = 'sst'
+      icbsnd(jps_sss)%clname = 'sss'
+      icbsnd(jps_fri)%clname = 'fr_i'
+      icbsnd(jps_ssh:jps_fri)%laction = .TRUE.
+
+      icbsnd(jps_ati)%clname = 'at_i'
+      icbsnd(jps_vti)%clname = 'vt_i'
 
       ! b) with sea-ice U-grid Bundle
-      icbsnd(jps_ss_U)%clname = 'O_ss_U'
-      icbsnd(jps_ss_U)%laction = .TRUE.
-      icbsnd(jps_ss_U)%clgrid = 'U'
-      icbsnd(jps_ss_U)%nsgn   = -1 !change of sign at north fold !
-      icbsnd(jps_ss_U)%nlvl   = 3 !ssu_m, utau_icb, u_Ice
+      icbsnd(jps_ssu)%clname  = 'ssu'
+      icbsnd(jps_utau)%clname = 'utau'
+      icbsnd(jps_ssu:jps_utau)%laction = .TRUE.
+
+      icbsnd(jps_uice)%clname = 'u_ice'
+      icbsnd(jps_ssu:jps_uice)%clgrid  = 'U'
+      icbsnd(jps_ssu:jps_uice)%nsgn    = -1 !change of sign at north fold !
 
       ! c) with sea-ice V-grid Bundle
-      icbsnd(jps_ss_V)%clname = 'O_ss_V'
-      icbsnd(jps_ss_V)%laction = .TRUE.
-      icbsnd(jps_ss_V)%clgrid = 'V'
-      icbsnd(jps_ss_V)%nsgn   = -1 !change of sign at north fold !
-      icbsnd(jps_ss_V)%nlvl   = 3  !ssv_m, vtau_icb, v_Ice
+      icbsnd(jps_ssv)%clname  = 'ssv'
+      icbsnd(jps_vtau)%clname = 'vtau'
+      icbsnd(jps_ssv:jps_vtau)%laction = .TRUE.
 
-#else      
-      ! 1 bis) only sea surf fields
+      icbsnd(jps_vice)%clname = 'v_ice'
+      icbsnd(jps_ssv:jps_vice)%clgrid  = 'V'
+      icbsnd(jps_ssv:jps_vice)%nsgn    = -1 !change of sign at north fold !
 
-      ! a) no sea-ice T-grid Bundle
-      icbsnd(jps_ss_T)%clname = 'O_ss_T' 
-      icbsnd(jps_ss_T)%laction = .TRUE.
-      icbsnd(jps_ss_T)%nlvl = 4    ! ssh,sst,sss,fr_i 
-       
-      ! b) no sea-ice U-grid Bundle
-      icbsnd(jps_ss_U)%clname = 'O_ss_U'
-      icbsnd(jps_ss_U)%laction = .TRUE.
-      icbsnd(jps_ss_U)%clgrid = 'U'
-      icbsnd(jps_ss_U)%nsgn   = -1 !change of sign at north fold !
-      icbsnd(jps_ss_U)%nlvl   = 2 !ssu_m, utau_icb
-
-      ! c) no sea-ice V-grid Bundle
-      icbsnd(jps_ss_V)%clname = 'O_ss_V'
-      icbsnd(jps_ss_V)%laction = .TRUE.
-      icbsnd(jps_ss_V)%clgrid = 'V'
-      icbsnd(jps_ss_V)%nsgn   = -1 !change of sign at north fold !
-      icbsnd(jps_ss_V)%nlvl   = 2  !ssv_m, vtau_icb
-
+#if defined key_si3 
+      ! Additional coupling fields if ice
+      icbsnd(jps_ati:jps_vti)%laction = .TRUE.
+      icbsnd(jps_uice)%laction = .TRUE.
+      icbsnd(jps_vice)%laction = .TRUE.
+      IF (lwp) THEN
+          WRITE(numout,*) ""
+          WRITE(numout,*) " icb_cpl_init : including SI3 "
+          WRITE(numout,*) " W A R N I N G : icb_at_i, icb_vt_i, icb_u_ice, icb_v_ice must be defined in namcouple, otherwise coupling will crash"
+      ENDIF
 #endif
 
       !2) 3D ocean fields for Merino 2016's option (+ grounding) 
+
+      ! 3D field uu
+      icbsnd(jps_uu)%clname = 'uu_3D'
+      icbsnd(jps_uu)%clgrid = 'U'
+      icbsnd(jps_uu)%nsgn   = -1 !change of sign at north fold !
+      icbsnd(jps_uu)%nlvl   = nlvlsab_cpl 
+
+      ! 3D field vv
+      icbsnd(jps_vv)%clname = 'vv_3D'
+      icbsnd(jps_vv)%clgrid = 'V'
+      icbsnd(jps_vv)%nsgn   = -1 !change of sign at north fold !
+      icbsnd(jps_vv)%nlvl   = nlvlsab_cpl 
+
+      ! 3D field ts( only temp)
+      icbsnd(jps_tt)%clname = 'tt_3D'
+      icbsnd(jps_tt)%clgrid = 'T'
+      icbsnd(jps_tt)%nlvl   = nlvlsab_cpl 
+
+      ! 2D field r3t (e3t ~ r3t * e3t_0, so only r3t is sent, see domzgr_substitute.h90)    
+      icbsnd(jps_r3t)%clname = 'r3t'
+
       IF( ln_M2016 ) THEN
-      IF (lwp) THEN
-          WRITE(numout,*) " icb_cpl_init : ln_M2016 = ",  ln_M2016
-          WRITE(numout,*) " W A R N I N G : O_Uu_3D, O_VV_3D and O_Tt_3D must be defined in namcouple, otherwise oasis will crash"
-      ENDIF
-      !
-              ! 3D field uu
-              icbsnd(jps_Uu_oce)%clname = 'O_Uu_3D'
-              icbsnd(jps_Uu_oce)%laction = .TRUE.
-              icbsnd(jps_Uu_oce)%clgrid = 'U'
-              icbsnd(jps_Uu_oce)%nsgn   = -1 !change of sign at north fold !
-              icbsnd(jps_Uu_oce)%nlvl   = nlvlsab_cpl 
-             
-              ! 3D field vv
-              icbsnd(jps_Vv_oce)%clname = 'O_Vv_3D'
-              icbsnd(jps_Vv_oce)%laction = .TRUE.
-              icbsnd(jps_Vv_oce)%clgrid = 'V'
-              icbsnd(jps_Vv_oce)%nsgn   = -1 !change of sign at north fold !
-              icbsnd(jps_Vv_oce)%nlvl   = nlvlsab_cpl 
- 
-              ! 3D field ts( only temp)
-              icbsnd(jps_Tt_oce)%clname = 'O_Tt_3D'
-              icbsnd(jps_Tt_oce)%laction = .TRUE.
-              icbsnd(jps_Tt_oce)%clgrid = 'T'
-              icbsnd(jps_Tt_oce)%nlvl   = nlvlsab_cpl 
-              !
-              ! 2D field r3t (e3t ~ r3t * e3t_0, so only r3t is sent, see domzgr_substitute.h90)    
-               icbsnd(jps_ss_T)%nlvl = 7    ! T-grid bundle: ssh,sst,sss,fr_i,at_i,vt_i AND r3t
-
-               ! WARNING : there might be a problem if there is no sea-ice (cf icb_cpl_snd routine) !! 
-      ELSE
-              icbsnd(jps_Uu_oce)%clname = 'O_Uu_3D'
-              icbsnd(jps_Vv_oce)%clname = 'O_Vv_3D'
-              icbsnd(jps_Tt_oce)%clname = 'O_Tt_3D'
+         IF (lwp) THEN
+            WRITE(numout,*) ""
+            WRITE(numout,*) " icb_cpl_init : ln_M2016 = ",  ln_M2016
+            WRITE(numout,*) " W A R N I N G : icb_r3t, icb_uu, icb_vv and icb_tt must be defined in namcouple, otherwise coupling will crash"
+         ENDIF
+         !
+         icbsnd(jps_uu)%laction  = .TRUE.
+         icbsnd(jps_vv)%laction  = .TRUE.
+         icbsnd(jps_tt)%laction  = .TRUE.
+         icbsnd(jps_r3t)%laction = .TRUE.
 
       ENDIF
+
+      ! index OASIS namcouple variable name with icb ID
+      DO jn = 1, jpsnd_icb
+         zclname           = 'icb_'//TRIM(icbsnd(jn)%clname)
+         icbsnd(jn)%clname = TRIM(zclname)
+      ENDDO
 
       ! --------------------------------
       ! DEFINING receiving interface
       ! default definitions of srcv
 
       ALLOCATE( icbrcv(jprcv_icb) )
-      icbrcv(:)%laction = .FALSE.   ;   icbrcv(:)%clgrid = 'T'   ;   icbrcv(:)%nsgn = 1. 
-      icbrcv(:)%nct = 1   ;   icbrcv(:)%nlvl = 1   ; icbrcv(:)%ncplmodel = 1
+      icbrcv(:)%laction = .FALSE. ; icbrcv(:)%clgrid = 'T' ; icbrcv(:)%nsgn      = 1. 
+      icbrcv(:)%nct     = 1       ; icbrcv(:)%nlvl   = 1   ; icbrcv(:)%ncplmodel = 1
 
       !a) berg fresh water flux, heat flux 
-      icbrcv(jpr_berg_fx)%clname = 'Oberg_fx'
-      IF (.NOT. ln_passive_mode) THEN
-          icbrcv(jpr_berg_fx)%laction = .TRUE.
-          icbrcv(jpr_berg_fx)%nlvl = 2 
-      ENDIF
+      icbrcv(jpr_bgwf)%clname = 'berg_wfx'   ! iceberg water flux
+      icbrcv(jpr_bghf)%clname = 'berg_hcfx'  ! iceberg heat flux
+      ! index OASIS namcouple variable name with icb ID
+      DO jn = 1, jprcv_icb
+         zclname           = 'icb_'//TRIM(icbrcv(jn)%clname)
+         icbrcv(jn)%clname = TRIM(zclname)
+      ENDDO
+
+      IF (.NOT. ln_passive_mode) &
+          icbrcv(jpr_bgwf:jpr_bghf)%laction = .TRUE.
+
       ! =================================== !
       !   define variables for the coupler  !
       ! =================================== !
@@ -307,26 +326,26 @@ CONTAINS
       ! WARNING : it might be too restrictive for high resolution configurations
       !
       IF( MOD( kt-1, nn_fsbc ) == 0 ) THEN
-      !
-      isec = ( kt - nit000 ) * NINT( rn_Dt )       ! Date of exchange 
-      info = OASIS_idle
-      !
-      ! ==========================
-      !   Proceed all activated receptions
-      ! ==========================
-      !
-        DO jn = 1, jprcv_icb
-         IF( icbrcv(jn)%laction ) THEN
-            CALL cpl_rcv( midicb, jn, isec, icbrcv(jn)%z3(A2D(0),1:icbrcv(jn)%nlvl), info)
-         ENDIF
-        END DO
+         !
+         isec = ( kt - nit000 ) * NINT( rn_Dt )       ! Date of exchange 
+         info = OASIS_idle
+         !
+         ! ==========================
+         !   Proceed all activated receptions
+         ! ==========================
+         !
+         DO jn = 1, jprcv_icb
+            IF( icbrcv(jn)%laction ) THEN
+               CALL cpl_rcv( midicb, jn, isec, icbrcv(jn)%z3(A2D(0),1:icbrcv(jn)%nlvl), info)
+            ENDIF
+         END DO
      
-        ! storing icbrcv(jpr_berg_fx)%z3 fluxes into buffer to add them later to emp and qns (cf icbstp.F90)
-        ! this works, regardless of the value of ln_cpl_asynchrone (cf icbstp.F90) 
-        IF (.NOT. ln_passive_mode) THEN
-           icb_wflx(A2D(0)) =  icbrcv(jpr_berg_fx)%z3(A2D(0),1)
-           icb_hcflx(A2D(0)) =  icbrcv(jpr_berg_fx)%z3(A2D(0),2)
-        ENDIF
+         ! storing icbrcv(jpr_berg_fx)%z3 fluxes into buffer to add them later to emp and qns (cf icbstp.F90)
+         ! this works, regardless of the value of ln_cpl_asynchrone (cf icbstp.F90) 
+         IF (.NOT. ln_passive_mode) THEN
+            icb_wflx(A2D(0))  =  icbrcv(jpr_bgwf)%z3(A2D(0),1)
+            icb_hcflx(A2D(0)) =  icbrcv(jpr_bghf)%z3(A2D(0),1)
+         ENDIF
       !
       ENDIF ! ENDIF( MOD( kt-1, nn_fsbc ) == 0 )
 
@@ -354,60 +373,57 @@ CONTAINS
       ! it might be too restrictive for high resolution configurations
       !
       IF( MOD( kt-1, nn_fsbc ) == 0 ) THEN
-      !
-      isec = ( kt - nit000 ) * NINT( rn_Dt )       ! Date of exchange 
-      info = OASIS_idle
-      !
+         !
+         isec = ( kt - nit000 ) * NINT( rn_Dt )       ! Date of exchange 
+         info = OASIS_idle
+         !
+         ! =============
+         ! fill sendings buffer with :  
 
-      ! =============
-      ! fill sendings buffer with :  
+         !1) sea surface 2D fields :  
+         icbsnd(jps_ssh)%z3(A2D(0),1)  = ssh_m(A2D(0))
+         icbsnd(jps_sst)%z3(A2D(0),1)  = sst_m(A2D(0))
+         icbsnd(jps_sss)%z3(A2D(0),1)  = sss_m(A2D(0))
+         icbsnd(jps_fri)%z3(A2D(0),1)  = fr_i(A2D(0))
 
-       !1) sea surface 2D fields :  
-       icbsnd(jps_ss_T)%z3(A2D(0),1) = ssh_m(A2D(0))
-       icbsnd(jps_ss_T)%z3(A2D(0),2) = sst_m(A2D(0))
-       icbsnd(jps_ss_T)%z3(A2D(0),3) = sss_m(A2D(0))
-       icbsnd(jps_ss_T)%z3(A2D(0),4) = fr_i(A2D(0))
+         icbsnd(jps_ssu)%z3(A2D(0),1)  = ssu_m(A2D(0))
+         icbsnd(jps_utau)%z3(A2D(0),1) = utau_icb(A2D(0))
 
-       icbsnd(jps_ss_U)%z3(A2D(0),1) = ssu_m(A2D(0))
-       icbsnd(jps_ss_U)%z3(A2D(0),2) = utau_icb(A2D(0))
+         icbsnd(jps_ssv)%z3(A2D(0),1)  = ssv_m(A2D(0))
+         icbsnd(jps_vtau)%z3(A2D(0),1) = vtau_icb(A2D(0))
 
-       icbsnd(jps_ss_V)%z3(A2D(0),1) = ssv_m(A2D(0))
-       icbsnd(jps_ss_V)%z3(A2D(0),2) = vtau_icb(A2D(0))
-
-       !2) sea-ice related fields
+          !2) sea-ice related fields
 #if defined key_si3
-       icbsnd(jps_ss_U)%z3(A2D(0),3) = u_ice(A2D(0))
-       icbsnd(jps_ss_V)%z3(A2D(0),3) = v_ice(A2D(0))
-       icbsnd(jps_ss_T)%z3(A2D(0),5) =  at_i(A2D(0))
-       icbsnd(jps_ss_T)%z3(A2D(0),6) =  vt_i(A2D(0))
+         icbsnd(jps_uice)%z3(A2D(0),1) = u_ice(A2D(0))
+         icbsnd(jps_vice)%z3(A2D(0),1) = v_ice(A2D(0))
+         icbsnd(jps_ati)%z3(A2D(0),1)  = at_i(A2D(0))
+         icbsnd(jps_vti)%z3(A2D(0),1)  = vt_i(A2D(0))
 #endif
 
-       !3) IF ln_M2016 : send uu, vv and ts(only temp) and r3t
-       
-       IF( ln_M2016 ) THEN
-       !
-       ! important to fill uu (resp vv + ts) only from z = 1 to z = uu%nlvl (critical if ln_cut_z700M
-            icbsnd(jps_Uu_oce)%z3(A2D(0),1:icbsnd(jps_Uu_oce)%nlvl) = uu(A2D(0),1:icbsnd(jps_Uu_oce)%nlvl, Nbb)
-            icbsnd(jps_Vv_oce)%z3(A2D(0),1:icbsnd(jps_Vv_oce)%nlvl) = vv(A2D(0),1:icbsnd(jps_Vv_oce)%nlvl, Nbb)
-            icbsnd(jps_Tt_oce)%z3(A2D(0),1:icbsnd(jps_Tt_oce)%nlvl) = ts(A2D(0),1:icbsnd(jps_Tt_oce)%nlvl, jp_tem,Nbb)
+         IF( ln_M2016 ) THEN
+         !
+         ! important to fill uu (resp vv + ts) only from z = 1 to z = uu%nlvl (critical if ln_cut_z700M
+            icbsnd(jps_uu)%z3(A2D(0),1:icbsnd(jps_uu)%nlvl) = uu(A2D(0),1:icbsnd(jps_uu)%nlvl, Nbb)
+            icbsnd(jps_vv)%z3(A2D(0),1:icbsnd(jps_vv)%nlvl) = vv(A2D(0),1:icbsnd(jps_vv)%nlvl, Nbb)
+            icbsnd(jps_tt)%z3(A2D(0),1:icbsnd(jps_tt)%nlvl) = ts(A2D(0),1:icbsnd(jps_tt)%nlvl, jp_tem, Nbb)
             ! adding r3t to T-grid surface state bundle
-            icbsnd(jps_ss_T)%z3(A2D(0),7) = r3t(A2D(0),Nbb)
+            icbsnd(jps_r3t)%z3(A2D(0),1) = r3t(A2D(0),Nbb)
             ! WARNING : add a case if there is no key_si3 : r3t must be stored on 5th level of grid-T bundle and not the 7th one
-       ENDIF 
+         ENDIF 
 
-      ! ==========================
-      !   Proceed sendings
-      ! ==========================
-      !
-      DO jn = 1, jpsnd_icb
-         IF ( icbsnd(jn)%laction ) THEN
-            CALL cpl_snd( midicb, jn, isec, icbsnd(jn)%z3(A2D(0),1:icbsnd(jn)%nlvl), info)
-         ENDIF
-      END DO
+         ! ==========================
+         !   Proceed sendings
+         ! ==========================
+         !
+         DO jn = 1, jpsnd_icb
+            IF ( icbsnd(jn)%laction ) THEN
+               CALL cpl_snd( midicb, jn, isec, icbsnd(jn)%z3(A2D(0),1:icbsnd(jn)%nlvl), info)
+            ENDIF
+         END DO
     
-    ENDIF ! ENDIF( MOD( kt-1, nn_fsbc ) == 0 )
-    !
-    IF( ln_timing )   CALL timing_stop('icb_cpl_snd')
+      ENDIF ! ENDIF( MOD( kt-1, nn_fsbc ) == 0 )
+      !
+      IF( ln_timing )   CALL timing_stop('icb_cpl_snd')
 
     END SUBROUTINE icb_cpl_snd
 

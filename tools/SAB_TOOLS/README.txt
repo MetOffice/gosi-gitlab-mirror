@@ -3,7 +3,7 @@
 1) write_OASIS_OCE-zeros-rst.py:
 
 	run 'python write_OASIS_OCE-zeros-rst.py', the script will tell you what arguments it needs to run
-        aim : generate sea-surface state and 3D uu, vv ts, oasis restart/input files filled with zeros (named rst_ss_2D.nc and rst_UuVvTs.nc)
+        aim : generate sea-surface state and 3D uu, vv, ts, oasis restart/input files filled with zeros (named rst_ss_2D_t.nc and rst_3d.nc)
         
         ++ : it can be used for any ORCA configuration 
         Warning : the fields are already regrouped in bundles, to match the structure of the namcouple file located in cfgs/SABO2/EXPREF

@@ -208,7 +208,6 @@ MODULE sbccpl
    TYPE(FLD_C) ::   sn_rcv_hsig, sn_rcv_phioc, sn_rcv_sdrf, sn_rcv_wper, sn_rcv_wnum, &
       &             sn_rcv_wstrf, sn_rcv_wdrag, sn_rcv_charn, sn_rcv_taw, sn_rcv_bhd, sn_rcv_tsd
    !                                   ! Other namelist parameters
-   INTEGER     ::   nn_cplmodel           ! Maximum number of models to/from which NEMO is potentialy sending/receiving data
    LOGICAL     ::   ln_usecplmask         !  use a coupling mask file to merge data received from several models
                                           !   -> file cplmask.nc with the float variable called cplmask (jpi,jpj,nn_cplmodel)
    LOGICAL     ::   ln_scale_ice_flux     !  use ice fluxes that are already "ice weighted" ( i.e. multiplied ice concentration)
