@@ -100,7 +100,6 @@ MODULE cpl_oasis3
    TYPE(FLD_CPL), DIMENSION(:), ALLOCATABLE, PUBLIC ::   srcv, ssnd   !: Coupling fields
 
    REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   exfld   ! Temporary buffer for receiving
-   REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   exfld_ext  ! Temporary buffer for receiving with wrap points
 
    !!----------------------------------------------------------------------
    !! NEMO/OCE 5.0, NEMO Consortium (2024)
@@ -158,13 +157,9 @@ CONTAINS
       INTEGER :: id_part_0d     ! Partition for 0d fields
       INTEGER :: id_part_rnf_1d ! Partition for 1d river outflow fields
       INTEGER :: id_part_2d     ! Partition for 2d fields
-      INTEGER :: id_part_2d_ext ! Partition for 2d fields extended for old (pre vn4.2) style remapping weights!
       INTEGER :: id_part_temp   ! Temperary partition used to choose either 0d or 1d partitions
       INTEGER :: paral(5)       ! OASIS3 box partition
-
-      INTEGER :: paral_ext(5)       ! OASIS3 box partition extended
       INTEGER :: ishape(4)      ! shape of arrays passed to PSMILe
-      INTEGER :: ishape_ext(4)  ! shape of 2D arrays passed to PSMILe extended for wrap points in weights data
       INTEGER :: ishape0d1d(2)  ! Shape of 0D or 1D arrays passed to PSMILe.
       INTEGER :: var_nodims(2)  ! Number of coupling field dimensions.
                                 ! var_nodims(1) is redundant from OASIS3-MCT vn4.0 onwards
@@ -176,7 +171,6 @@ CONTAINS
       LOGICAL :: llenddef       ! should we call xios_oasis_enddef and oasis_enddef?
       CHARACTER(LEN=64) :: zclname
       CHARACTER(LEN=2) :: cli2
-      INTEGER :: i_offset       ! Used in calculating offset for extended partition.
       !!--------------------------------------------------------------------
 
       IF(lwp) WRITE(numout,*)
@@ -223,61 +217,7 @@ CONTAINS
          WRITE(numout,*) ' multiexchg: Njs0, Nje0, njmpp =', Njs0, Nje0, njmpp
       ENDIF
 
-
-      ! We still set up the new vn4.2 style box partition for reference, though it doesn't actually get used,
-      ! we can easily swap back to it if we ever manage to successfully generate vn4.2 compatible weights, or introduce 
-      ! RTL controls to distinguish between onl and new style weights.  
-
-      CALL oasis_def_partition ( id_part_2d, paral, nerror, Ni0glo*Nj0glo )   ! global number of points, excluding halos
-
-      ! RSRH Set up 2D box partition for compatibility with existing weights files
-      ! so we don't have to generate and manage multiple sets of weights purely because of 
-      ! the changes to nemo 4.2+ code!
-
-      ! This is just a hack for global cyclic models for the time being
-      Ni0glo_ext = jpiglo
-      Nj0glo_ext = Nj0glo +1 ! We can't use jpjglo here because for some reason at 4.2 this is bigger
-                             ! than at 4.0.... e.g. for ORCA1 it is 333 when it should only be 332!
-
-      ! RSRH extended shapes for old style dimensioning. Allows backwards compatibility with existing weights files, 
-      ! which the new code DOES NOT, causing headaches not only for users but also for management of weights files. 
-      ishape_ext(:) = ishape(:)
-      IF (mig(Nis0,0) == 1 .OR. mig(Nie0,0) == jpiglo) THEN
-         ! Extra columns in PEs dealing with wrap points
-         ishape_ext(2) = ishape_ext(2) + 1
-      ENDIF
-
-      ! Workout any extra offset in the i dimension
-      IF (mig(Nis0,0) == 1 ) THEN
-         i_offset = 1             ! Starts at 1 instead of 0 to avoid wrap points
-      ELSE
-         i_offset = mig(Nis0,0)   ! Note: without the -1 for paral above to avoid wrap points
-      ENDIF
-       
-      ALLOCATE(exfld_ext(ishape_ext(2), ishape_ext(4)), stat = nerror)        ! allocate full domain (with wrap pts)
-      IF( nerror > 0 ) THEN
-         CALL oasis_abort ( ncomp_id, 'cpl_define', 'Failure in allocating exfld_ext')   ;   RETURN
-      ENDIF
-
-
-      ! Now we have the appropriate dimensions, we can set up the partition array for the old-style extended grid
-      paral_ext(1) = 2                                      ! box partitioning
-      paral_ext(2) = (Ni0glo_ext * (mjg(Njs0,0)-1)) + i_offset ! NEMO lower left corner global offset, with wrap pts
-      paral_ext(3) = Ni_0_ext                               ! local extent in i, including halos
-      paral_ext(4) = Nj_0_ext                               ! local extent in j, including halos
-      paral_ext(5) = Ni0glo_ext                             ! global extent in x, including halos
-
-      IF( sn_cfctl%l_oasout ) THEN
-         WRITE(numout,*) ' multiexchg: paral_ext (1:5)', paral_ext, jpiglo, jpjglo, Ni0glo_ext, Nj0glo_ext
-         WRITE(numout,*) ' multiexchg: Ni_0_ext, Nj_0_ext i_offset =', Ni_0_ext, Nj_0_ext, i_offset
-         WRITE(numout,*) ' multiexchg: Nis0_ext, Nie0_ext =', Nis0_ext, Nie0_ext
-         WRITE(numout,*) ' multiexchg: Njs0_ext, Nje0_ext =', Njs0_ext, Nje0_ext
-      ENDIF
-
-      ! Define our extended grid
-      CALL oasis_def_partition ( id_part_2d_ext, paral_ext, nerror, Ni0glo_ext*Nj0glo_ext ) 
-  
-      ! OK so now we should have a usable 2d partition for fields defined WITH redundant points. 
+      CALL oasis_def_partition ( id_part, paral, nerror, Ni0glo*Nj0glo )   ! global number of points, excluding halos
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! A special partition is needed for 0D fields
@@ -341,8 +281,8 @@ CONTAINS
                   ENDIF
 #endif
                   IF( sn_cfctl%l_oasout ) WRITE(numout,*) "Define", ji, jc, jm, " "//TRIM(zclname), " for ", OASIS_Out
-                     CALL oasis_def_var (ssnd(ji)%nid(jc,jm), zclname, id_part_2d_ext   , (/ 2, 1 /),   &
-                     &                OASIS_Out           , ishape_ext , OASIS_REAL, nerror )
+                  CALL oasis_def_var (ssnd(ji)%nid(jc,jm), zclname, id_part   , (/ 2, 1 /),   &
+                     &                OASIS_Out          , ishape , OASIS_REAL, nerror )
                   IF( nerror /= OASIS_Ok ) THEN
                      WRITE(numout,*) 'Failed to define transient ', ji, jc, jm, " "//TRIM(zclname)
                      CALL oasis_abort ( ssnd(ji)%nid(jc,jm), 'cpl_define', 'Failure in oasis_def_var' )
@@ -418,8 +358,8 @@ CONTAINS
                     var_nodims(1) = 2
                     var_nodims(2) = 1 ! Modify this value to cater for bundled fields.
 
-                    CALL oasis_def_var (srcv(ji)%nid(jc,jm), zclname, id_part_2d_ext   , var_nodims,   &
-                       &                OASIS_In           , ishape_ext , OASIS_REAL, nerror )
+                    CALL oasis_def_var (srcv(ji)%nid(jc,jm), zclname, id_part_2d   , var_nodims,   &
+                       &                OASIS_In           , ishape , OASIS_REAL, nerror )
                   ENDIF
 
                   IF( nerror /= OASIS_Ok ) THEN
@@ -481,10 +421,7 @@ CONTAINS
          DO jm = 1, ssnd(kid)%ncplmodel
 
             IF( ssnd(kid)%nid(jc,jm) /= -1 ) THEN   ! exclude halos from data sent to oasis
-
-               ! The field is "put" directly, using appropriate start/end indexing - i.e. we don't
-               ! copy it to an intermediate buffer. 
-               CALL oasis_put ( ssnd(kid)%nid(jc,jm), kstep, pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc), kinfo )
+               CALL oasis_put ( ssnd(kid)%nid(jc,jm), kstep, pdata(1:Ni_0,1:Nj_0,jc), kinfo )
 
                IF ( sn_cfctl%l_oasout ) THEN
                   IF ( kinfo == OASIS_Sent     .OR. kinfo == OASIS_ToRest .OR.   &
@@ -494,9 +431,9 @@ CONTAINS
                      WRITE(numout,*) 'oasis_put: ivarid ', ssnd(kid)%nid(jc,jm)
                      WRITE(numout,*) 'oasis_put:  kstep ', kstep
                      WRITE(numout,*) 'oasis_put:   info ', kinfo
-                     WRITE(numout,*) '     - Minimum value is ', MINVAL(pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc))
-                     WRITE(numout,*) '     - Maximum value is ', MAXVAL(pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc))
-                     WRITE(numout,*) '     -     Sum value is ',    SUM(pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc))
+                     WRITE(numout,*) '     - Minimum value is ', MINVAL(pdata(1:Ni_0,1:Nj_0,jc))
+                     WRITE(numout,*) '     - Maximum value is ', MAXVAL(pdata(1:Ni_0,1:Nj_0,jc))
+                     WRITE(numout,*) '     -     Sum value is ',    SUM(pdata(1:Ni_0,1:Nj_0,jc))
                      WRITE(numout,*) '****************'
                      CALL FLUSH(numout)
                   ENDIF
@@ -531,6 +468,7 @@ CONTAINS
       ! receive local data from OASIS3 on every process
       !
       kinfo = OASIS_idle
+      lrcv=.FALSE.
       !
       DO jc = 1, srcv(kid)%nct
          ll_1st = .TRUE.
@@ -539,7 +477,7 @@ CONTAINS
 
             IF( srcv(kid)%nid(jc,jm) /= -1 ) THEN
 
-               CALL oasis_get ( srcv(kid)%nid(jc,jm), kstep, exfld_ext, kinfo )
+               CALL oasis_get ( srcv(kid)%nid(jc,jm), kstep, exfld, kinfo )
 
                llaction =  kinfo == OASIS_Recvd   .OR. kinfo == OASIS_FromRest .OR.   &
                   &        kinfo == OASIS_RecvOut .OR. kinfo == OASIS_FromRestOut .OR. kinfo == OASIS_Input
@@ -548,17 +486,16 @@ CONTAINS
                   &  WRITE(numout,*) "llaction, kinfo, kstep, ivarid: " , llaction, kinfo, kstep, srcv(kid)%nid(jc,jm)
 
                IF( llaction ) THEN   ! data received from oasis do not include halos
-                                     ! but DO still cater for wrap columns when using pre vn4.2 compatible remapping weights. 
 
                   kinfo = OASIS_Rcv
+                  lrcv=.TRUE. 
+                  
                   IF( ll_1st ) THEN
-                     pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc) =   exfld_ext(:,:) * pmask(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jm)
-
+                     pdata(1:Ni_0,1:Nj_0,jc) =    exfld(:,:) * pmask(1:Ni_0,1:Nj_0,jm)
                      ll_1st = .FALSE.
                   ELSE
-
-                     pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc) = pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc)   &
-                        &                                + exfld_ext(:,:) * pmask(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jm)
+                     pdata(1:Ni_0,1:Nj_0,jc) = pdata(1:Ni_0,1:Nj_0,jc)   &
+                        &                       + exfld(:,:) * pmask(1:Ni_0,1:Nj_0,jm)
                   ENDIF
 
                   IF ( sn_cfctl%l_oasout ) THEN
@@ -567,9 +504,9 @@ CONTAINS
                      WRITE(numout,*) 'oasis_get: ivarid '  , srcv(kid)%nid(jc,jm)
                      WRITE(numout,*) 'oasis_get:   kstep', kstep
                      WRITE(numout,*) 'oasis_get:   info ', kinfo
-                     WRITE(numout,*) '     - Minimum value is ', MINVAL(pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc))
-                     WRITE(numout,*) '     - Maximum value is ', MAXVAL(pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc))
-                     WRITE(numout,*) '     -     Sum value is ',    SUM(pdata(Nis0_ext:Nie0_ext,Njs0_ext:Nje0_ext,jc))
+                     WRITE(numout,*) '     - Minimum value is ', MINVAL(pdata(1:Ni_0,1:Nj_0,jc))
+                     WRITE(numout,*) '     - Maximum value is ', MAXVAL(pdata(1:Ni_0,1:Nj_0,jc))
+                     WRITE(numout,*) '     -     Sum value is ',    SUM(pdata(1:Ni_0,1:Nj_0,jc))
                      WRITE(numout,*) '****************'
                      CALL FLUSH(numout)
                   ENDIF
@@ -765,7 +702,6 @@ CONTAINS
       !!----------------------------------------------------------------------
       !
       DEALLOCATE( exfld )
-      DEALLOCATE( exfld_ext )
       IF(nstop == 0) THEN
          CALL oasis_terminate( nerror )
       ELSE
