@@ -710,6 +710,7 @@ fi
 if [[ ! -z $1 ]] ; then rev=$1 ; fi
 
 # Define sette variables from local .git repository (default) or .env file ("-d" option)
+export VALID_REV=""
 if [ -z "${DOTENV_FILE}" ]; then
   set_git_var
 else
@@ -742,12 +743,12 @@ NEMO_VALID_REF=${NEMO_VALIDATION_REF}
 [ ! -d "${NEMO_VALID_REF}" ] && NEMO_VALID_REF=/path/to/reference/sette/results
 
 # The source-code-revision identifier
-if [ -z "${VALID_REV}" ]; then
-  if [ -n "${rev}" ]; then     # -r option
-    VALID_REV=${rev}
-  elif [ -n "${sha}" ]; then   # -s option
-    VALID_REV=${sha}
-  fi
+if [ -n "${rev}" ]; then     # -r option
+  VALID_REV="${rev}"
+  localchanges=0
+elif [ -n "${sha}" ]; then   # -s option
+  VALID_REV="${sha}"
+  localchanges=0
 fi
 VALID_REV=$(echo ${VALID_REV} | tr '[:upper:]' '[:lower:]' | tr -d -c '[:xdigit:]+')
 if [[ ${#VALID_REV} -lt 8 ]] || [[ ${#VALID_REV} -gt 41 ]]; then
