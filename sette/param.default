@@ -89,38 +89,55 @@ if [[ ${TEST_TYPES[*]} =~ .*STANDALONE.* ]] ; then export DO_VARIANTS=1 ; TEST_T
 # TEST PHASES
 # ###########
 #
+#  The default selection
+#    "COMPILE_BASELINE COMPILE_VARIANTS RUN_REFERENCE RUN_TESTS"
+#  (or "COMPILE RUN") executes all subphases.
+#
 #  'COMPILE' selects two subphases, one for the compilation of the baseline
 #  configuration and another for the compilation of configuration variants;
 #  the subphases can be selected individually ('COMPILE_BASELINE' and
 #  'COMPILE_VARIANTS', respectively).
 #
-#  'RUN' selects the test-run execution phase.
+#  'RUN' also selects two subphases, one for the execution of a reference run
+#  and another for the execution of test-type specific test runs; these two
+#  subphases can be selected individually ('RUN_REFERENCE' and 'RUN_TESTS',
+#  respectively).
 #
-#  For each SETTE configuration, the selected phases are executed in sequence:
+#  For each SETTE configuration, the selected phases are executed according to
+#  the sequence:
 #
-#   COMPILE_BASELINE ----> COMPILE_VARIANTS ----> RUN
+#   COMPILE_BASELINE ----> COMPILE_VARIANTS ----> RUN_REFERENCE ----> RUN_TESTS
 #
 #  The two subphases of the compilation phase are independent of each other and
 #  can be executed in parallel:
 #
 #   COMPILE_BASELINE \
-#                     >--> RUN
+#                     >--> RUN_REFERENCE ----> RUN_TESTS
 #   COMPILE_VARIANTS /
 #
-#  This can be achieved by scheduling three separate SETTE runs accordingly.
+#  This can be achieved by scheduling separate compilation and run phases. The
+#  two 'RUN' subphases have to be run in sequence, but separate 'RUN_TESTS'
+#  phases for individual test types can be run in parallel.
 #
-TEST_PHASES_AVAILABLE=(COMPILE_BASELINE COMPILE_VARIANTS RUN)
-if [ -z "${TEST_PHASES}" ]; then
-  export TEST_PHASES=(${SETTE_TEST_PHASES[@]:-${TEST_PHASES_AVAILABLE[@]}})
-fi
+#  The SETTE phases mechanism is provided to facilitate the scheduling of
+#  separate SETTE actions (e.g., for integration with continuous-integration
+#  testing workflows); it does not, however, verify the state of build and
+#  experiment directories (for example the availability of builds or output
+#  files a subphase depends on).
+#
+TEST_PHASES_AVAILABLE=(COMPILE_BASELINE COMPILE_VARIANTS RUN_REFERENCE RUN_TESTS)
+TEST_PHASES=(${SETTE_TEST_PHASES[@]:-${TEST_PHASES_AVAILABLE[@]}})
+TEST_PHASES_="${TEST_PHASES[@]}" ; TEST_PHASES_="-${TEST_PHASES_// /-}-"
 export DO_COMPILE_BASELINE=0
 export DO_COMPILE_VARIANTS=0
-export DO_RUN=0
-if [[ ${TEST_PHASES[*]} =~ .*COMPILE$           ]] ; then export DO_COMPILE_BASELINE=1 ; export DO_COMPILE_VARIANTS=1 ; fi
-if [[ ${TEST_PHASES[*]} =~ .*COMPILE[:space:].* ]] ; then export DO_COMPILE_BASELINE=1 ; export DO_COMPILE_VARIANTS=1 ; fi
-if [[ ${TEST_PHASES[*]} =~ .*COMPILE_BASELINE.* ]] ; then export DO_COMPILE_BASELINE=1 ; fi
-if [[ ${TEST_PHASES[*]} =~ .*COMPILE_VARIANTS.* ]] ; then export DO_COMPILE_VARIANTS=1 ; fi
-if [[ ${TEST_PHASES[*]} =~ .*RUN.* ]]              ; then export DO_RUN=1              ; fi
+export DO_RUN_REFERENCE=0
+export DO_RUN_TESTS=0
+if [[ ${TEST_PHASES_} =~ -COMPILE-          ]] ; then export DO_COMPILE_BASELINE=1 ; export DO_COMPILE_VARIANTS=1 ; fi
+if [[ ${TEST_PHASES_} =~ -COMPILE_BASELINE- ]] ; then export DO_COMPILE_BASELINE=1 ; fi
+if [[ ${TEST_PHASES_} =~ -COMPILE_VARIANTS- ]] ; then export DO_COMPILE_VARIANTS=1 ; fi
+if [[ ${TEST_PHASES_} =~ -RUN-              ]] ; then export DO_RUN_REFERENCE=1    ; export DO_RUN_TESTS=1 ; fi
+if [[ ${TEST_PHASES_} =~ -RUN_REFERENCE-    ]] ; then export DO_RUN_REFERENCE=1    ; fi
+if [[ ${TEST_PHASES_} =~ -RUN_TESTS-        ]] ; then export DO_RUN_TESTS=1        ; fi
 
 # ------------------------------------------------------------------------------------------
 #

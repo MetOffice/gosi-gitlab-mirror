@@ -174,7 +174,10 @@ for config in ${TEST_CONFIGS[@]} ; do
         [[ ! -d ${OASIS_DIR} ]] && echo "WARNING: OASIS directory \"${OASIS_DIR}\" in arch-${CMP_NAM_A}.fcm file does not exist -> CPL_OASIS testcase skipped !" && break
     fi
 
-    # Compilation of the baseline configuration
+    # Test phase COMPILE
+    # ==================
+    # Subphase COMPILE_BASELINE
+    # -------------------------
     if [ ${DO_COMPILE_BASELINE} -eq 1 ] ; then
 
         cd ${MAIN_DIR}
@@ -207,8 +210,8 @@ for config in ${TEST_CONFIGS[@]} ; do
         fi
     fi
 
-
-    # Compilation of a configuration variant (if any)
+    # Subphase COMPILE_VARIANTS
+    # -------------------------
     if [ ${DO_COMPILE_VARIANTS} -eq 1 ] ; then
 
         cd ${MAIN_DIR}
@@ -235,163 +238,186 @@ for config in ${TEST_CONFIGS[@]} ; do
 
     fi
 
-    # Continue to next configuration unless the RUN test phase has been requested
-    [[ ${DO_RUN} -eq 0 ]] && break
+    # Test phase RUN
+    # ==============
+    if [[ ${DO_RUN_REFERENCE} -eq 1 ]] || [[ ${DO_RUN_TESTS} -eq 1 ]] ; then
 
-    cd ${SETTE_DIR}
+        cd ${SETTE_DIR}
 
-    EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
-    set_xio_using_server iodef.xml ${USING_MPMD}
-
-    if [[ ${DO_VARIANTS} -eq 1 ]] ; then
-        EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG_VAR}/EXP00
+        EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
         set_xio_using_server iodef.xml ${USING_MPMD}
-    fi
 
-    # Select the REF test run if either the RST or the SAO test run has been
-    # requested
-    if [ "${DO_RST}" == "1" ] ; then DO_REF=1 ; fi
-    if [ "${DO_SAO}" == "1" ] && [ "${SAO_FLAG}" == "1" ] ; then DO_REF=1 ; fi
-
-    # *_FLAGS are overwritten by config cards when needed.
-    if [ "${DO_COUPLING}" == "1" ] && [ ${CPL_FLAG} == "1" ] ; then DO_REF=0 ; fi
-
-# ------------------------------------------------------
-    
-    # Prepare the reference test run (REF) as well as the test runs that depend
-    # on it (RST or SAO)
-    if [ ${DO_REF} == "1" ] ; then 
-
-        SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" REF "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
-        prepare_job "${SETTINGS[@]}"
-        JOB_FILE_REF=${JOB_FILE}
-
-        # Prepare the restartability test run (RST), dependent on the reference
-        # test run (REF)
-        if [ ${DO_RST} == "1" ] && [ ${RST_FLAG} == "1" ] ; then
-            SETTINGS=("${RST_NIT000}" "${RST_NITEND}" "${RST_JPNI}" "${RST_JPNJ}" "${RST_NPROC}" RST "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "${JOB_FILE_REF}")
-            prepare_job "${SETTINGS[@]}"
+        if [[ ${DO_VARIANTS} -eq 1 ]] ; then
+            EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG_VAR}/EXP00
+            set_xio_using_server iodef.xml ${USING_MPMD}
         fi
 
-        # Prepare the SAO test run (SAO), dependent on the reference test run
-        # (REF)
-        if [ ${DO_SAO} == "1" ] && [ ${SAO_FLAG} == "1" ] ; then
-            SETTE_CONFIG=${SETTE_CONFIG_VAR}
-            SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" SAO "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "${JOB_FILE_REF}")
-            prepare_job "${SETTINGS[@]}"
-            SETTE_CONFIG=${SETTE_CONFIG_REF}
+        # Select the REF test run if either the RST or the SAO test run has been
+        # requested
+        if [ "${DO_RST}" == "1" ] ; then DO_REF=1 ; fi
+        if [ "${DO_SAO}" == "1" ] && [ "${SAO_FLAG}" == "1" ] ; then DO_REF=1 ; fi
+
+        # *_FLAGS are overwritten by config cards when needed.
+        if [ "${DO_COUPLING}" == "1" ] && [ ${CPL_FLAG} == "1" ] ; then DO_REF=0 ; fi
+
+        JOB_FILE_REF=""
+
+        # Subphase RUN_REFERENCE
+        # ----------------------
+        if [ ${DO_RUN_REFERENCE} -eq 1 ] ; then
+
+            if [ ${DO_REF} == "1" ] ; then 
+
+                SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" REF "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
+                prepare_job "${SETTINGS[@]}"
+                JOB_FILE_REF=${JOB_FILE}
+
+            fi
+
         fi
 
-        # Submit reference and dependent jobs (if any)
-        if [ ${DO_REF} == "1" ] ; then . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE_REF} ${INTERACT_FLAG} ${MPIRUN_FLAG} ; fi
+        # Subphase RUN_TESTS (runs that depend on the reference run)
+        # ----------------------------------------------------------
+        if [ ${DO_RUN_TESTS} -eq 1 ] ; then
 
-    fi
+            if [ ${DO_RST} == "1" ] && [ ${RST_FLAG} == "1" ] ; then
+                SETTINGS=("${RST_NIT000}" "${RST_NITEND}" "${RST_JPNI}" "${RST_JPNJ}" "${RST_NPROC}" RST "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "${JOB_FILE_REF}")
+                prepare_job "${SETTINGS[@]}"
+                JOB_FILE_REF=${JOB_FILE}
+            fi
 
-# ------------------------------------------------------
-    # manage coupling run
-    if [ ${DO_COUPLING} == "1" ] && [ ${CPL_FLAG} == "1" ] ; then
+            # Prepare the SAO test run (SAO), dependent on the reference test run
+            # (REF)
+            if [ ${DO_SAO} == "1" ] && [ ${SAO_FLAG} == "1" ] ; then
+                SETTE_CONFIG=${SETTE_CONFIG_VAR}
+                SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" SAO "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "${JOB_FILE_REF}")
+                prepare_job "${SETTINGS[@]}"
+                SETTE_CONFIG=${SETTE_CONFIG_REF}
+                JOB_FILE_REF=${JOB_FILE}
+            fi
 
-        echo ''
-        echo "Process $config CPL"
-        echo ''
+        fi
 
-        # prepare reproducibility run
-        SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" CPL "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
-        prepare_job "${SETTINGS[@]}"
+        # Submit pending test runs
+        if [ ! -z "${JOB_FILE_REF}" ] ; then
 
-        # submit reproducibility job
-        . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
-    fi
+            if [ ${DO_REF} == "1" ] ; then . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE_REF} ${INTERACT_FLAG} ${MPIRUN_FLAG} ; fi
 
-# ------------------------------------------------------
-    # manage reproducibility run
-    if [ ${DO_MPP} == "1" ] && [ ${MPP_FLAG} == "1" ]; then 
+        fi
 
-        echo ''
-        echo "Process $config MPP"
-        echo ''
+        # Subphase RUN_TESTS (independent runs)
+        # -------------------------------------
+        if [[ ${DO_RUN_TESTS} -eq 1 ]] ; then
 
-        # prepare reproducibility reference run (to be removed later as = REF)
-        SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" MPPREF "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
-        prepare_job "${SETTINGS[@]}"
+            # ------------------------------------------------------
+            # manage coupling run
+            if [ ${DO_COUPLING} == "1" ] && [ ${CPL_FLAG} == "1" ] ; then
 
-        # submit reproducibility reference job
-        . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
+                echo ''
+                echo "Process $config CPL"
+                echo ''
 
-        # prepare reproducibility run
-        SETTINGS=("${MPP_NIT000}" "${MPP_NITEND}" "${MPP_JPNI}" "${MPP_JPNJ}" "${MPP_NPROC}" MPP "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
-        prepare_job "${SETTINGS[@]}"
+                # prepare reproducibility run
+                SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" CPL "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
+                prepare_job "${SETTINGS[@]}"
 
-        # submit reproducibility job
-        . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
-    fi
-# ------------------------------------------------------
-    # manage physical option variants
-    # reset EXE_DIR to find various namelist experiements
-    # PHY_FLAG overwrite by config card if not 0
-    EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
-    if [ ${PHY_FLAG} == "1" ] && [ ${DO_PHYOPTS} == "1" ]; then
+                # submit reproducibility job
+                . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
+            fi
 
-        # manage debug
-        [[ "${USING_DEBUG}" == "yes" ]] && PHY_NITEND=${PHYDBG_NITEND}
+            # ------------------------------------------------------
+            # manage reproducibility run
+            if [ ${DO_MPP} == "1" ] && [ ${MPP_FLAG} == "1" ]; then 
 
-        for file in $(echo `ls ${EXE_DIR}/namelist_*_cfg `) ; do
-            # get test name
-            TEST_NAME=`echo $file | sed -e "s/.*namelist_//" | sed -e "s/_cfg//"`
-            TEST_NAME="EXP-${TEST_NAME}"
+                echo ''
+                echo "Process $config MPP"
+                echo ''
 
-            echo ''
-            echo "Process $config $TEST_NAME phyical option"
-            echo ''
+                # prepare reproducibility reference run (to be removed later as = REF)
+                SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" MPPREF "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
+                prepare_job "${SETTINGS[@]}"
 
-            # prepare physical variant run
-            SETTINGS=("${REF_NIT000}" "${PHY_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" "${TEST_NAME}" "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
-            prepare_job "${SETTINGS[@]}"
+                # submit reproducibility reference job
+                . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
 
-            # submit physical variant job
-            . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
-        done
-    fi
+                # prepare reproducibility run
+                SETTINGS=("${MPP_NIT000}" "${MPP_NITEND}" "${MPP_JPNI}" "${MPP_JPNJ}" "${MPP_NPROC}" MPP "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
+                prepare_job "${SETTINGS[@]}"
 
-# ------------------------------------------------------
-    # manage rotational tests
-    if [ ${ROT_FLAG} == "1" ] && [ ${DO_ROTSYM} == "1" ] ; then
-        for TEST_NAME in "ROT_000" "ROT_090" "ROT_180" ; do
+                # submit reproducibility job
+                . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
+            fi
 
-            echo ''
-            echo "process $config $TEST_NAME test"
-            echo ''
+            # ------------------------------------------------------
+            # manage physical option variants
+            # reset EXE_DIR to find various namelist experiements
+            # PHY_FLAG overwrite by config card if not 0
+            EXE_DIR=${CMP_DIR:-${CONFIG_DIR0}}/${SETTE_CONFIG}/EXP00
+            if [ ${PHY_FLAG} == "1" ] && [ ${DO_PHYOPTS} == "1" ]; then
 
-            # prepare physical variant run
-            SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" "${TEST_NAME}" "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
-            prepare_job "${SETTINGS[@]}"
+                # manage debug
+                [[ "${USING_DEBUG}" == "yes" ]] && PHY_NITEND=${PHYDBG_NITEND}
+
+                for file in $(echo `ls ${EXE_DIR}/namelist_*_cfg `) ; do
+                    # get test name
+                    TEST_NAME=`echo $file | sed -e "s/.*namelist_//" | sed -e "s/_cfg//"`
+                    TEST_NAME="EXP-${TEST_NAME}"
+
+                    echo ''
+                    echo "Process $config $TEST_NAME phyical option"
+                    echo ''
+
+                    # prepare physical variant run
+                    SETTINGS=("${REF_NIT000}" "${PHY_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" "${TEST_NAME}" "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
+                    prepare_job "${SETTINGS[@]}"
+
+                    # submit physical variant job
+                    . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
+                done
+            fi
+
+            # ------------------------------------------------------
+            # manage rotational tests
+            if [ ${ROT_FLAG} == "1" ] && [ ${DO_ROTSYM} == "1" ] ; then
+                for TEST_NAME in "ROT_000" "ROT_090" "ROT_180" ; do
+
+                    echo ''
+                    echo "process $config $TEST_NAME test"
+                    echo ''
+
+                    # prepare physical variant run
+                    SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" "${TEST_NAME}" "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
+                    prepare_job "${SETTINGS[@]}"
             
-            # submit physical variant job
-            . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
-        done
+                    # submit physical variant job
+                    . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
+                done
+            fi
+
+            # ------------------------------------------------------
+            # manage agrif tests
+            # NOAGRIF_FLAG overwrite by config card if not 0
+            if [ ${DO_VARIANTS} -eq 1 ] && [ ${NOAGRIF_FLAG} == "1" ] ; then
+                for VARIANT_NAME in "AGRIF_DEMO_NOAGRIF" "AGRIF_DEMO"; do
+
+                    echo ''
+                    echo "process $config $VARIANT_TEST test"
+                    echo ''
+
+                    # test code corruption with AGRIF_DEMO (phase 2) ==> Compile without key_agrif (to be compared with AGRIF_DEMO_ST/ORCA2)
+                    SETTE_CONFIG="${VARIANT_NAME}"${CONFIG_SUFFIX}
+
+                    # prepare physical variant run
+                    SETTINGS=("${NOAGRIF_NIT000}" "${NOAGRIF_NITEND}" "${NOAGRIF_JPNI}" "${NOAGRIF_JPNJ}" "${NOAGRIF_NPROC}" "NOAGRIF" "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
+                    prepare_job "${SETTINGS[@]}"
+
+                    # submit noagrif variant job 
+                    . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
+                done
+            fi
+
+        fi
+
     fi
 
-# ------------------------------------------------------
-    # manage agrif tests
-    # NOAGRIF_FLAG overwrite by config card if not 0
-    if [ ${DO_VARIANTS} -eq 1 ] && [ ${NOAGRIF_FLAG} == "1" ] ; then
-        for VARIANT_NAME in "AGRIF_DEMO_NOAGRIF" "AGRIF_DEMO"; do
-        
-            echo ''
-            echo "process $config $VARIANT_TEST test"
-            echo ''
-
-            # test code corruption with AGRIF_DEMO (phase 2) ==> Compile without key_agrif (to be compared with AGRIF_DEMO_ST/ORCA2)
-            SETTE_CONFIG="${VARIANT_NAME}"${CONFIG_SUFFIX}
-            
-            # prepare physical variant run
-            SETTINGS=("${NOAGRIF_NIT000}" "${NOAGRIF_NITEND}" "${NOAGRIF_JPNI}" "${NOAGRIF_JPNJ}" "${NOAGRIF_NPROC}" "NOAGRIF" "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
-            prepare_job "${SETTINGS[@]}"
-
-            # submit noagrif variant job 
-            . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
-        done
-    fi
-
-# ------------------------------------------------------
 done

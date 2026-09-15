@@ -64,7 +64,7 @@ if [ $# -gt 0 ]; then
 
      case $option in
         p) export SETTE_TEST_PHASES=($OPTARG)
-           echo "-p: SETTE phase(s) ${SETTE_TEST_PHASES[@]} selected"
+           echo "-p: SETTE (sub)phase(s) ${SETTE_TEST_PHASES[@]} selected"
            echo "";;
         x) export SETTE_TEST_TYPES=(${OPTARG})
            echo "-x: SETTE test types ${SETTE_TEST_TYPES[@]} selected"
@@ -147,8 +147,14 @@ if [ $# -gt 0 ]; then
            echo "";;
         # Usage message
         h | *) echo 'sette.sh with no arguments (in this case all configuration will be tested with default options)'
-               echo '-p space-separated list of SETTE test phases (if omitted, all available phases,'
-               echo '   COMPILE and RUN, are selected)'
+               echo '-p space-separated list of SETTE test phases (if omitted, the available'
+               echo '   phases, COMPILE and RUN, are selected); each phase comprises two'
+               echo '   subphases which can be selected explicitly (COMPILE_BASELINE,'
+               echo '   COMPILE_VARIANTS, RUN_REFERENCE, and RUN_TESTS for the compilation of'
+               echo '   baseline test configurations, the compilation of test-configuration'
+               echo '   variants, the execution of reference test runs, and the execution of'
+               echo '   additional test runs as required for the selected test types,'
+               echo '   respectively'
                echo '-x space-separated list of SETTE test types (if omitted, all available types,'
                echo '   RESTART, REPRO, PHYOPTS, ROTSYM, COUPLING, and VARIANTS, are selected)'
                echo '-T to set ln_timing false for configurations (default: true)'
