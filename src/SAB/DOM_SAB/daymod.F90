@@ -32,6 +32,7 @@ MODULE daymod
    USE iom            !
    USE timing         ! Timing
    USE restart_sab        !prepare writting of restart (actual rst is done in icbrst)
+   USE icbrst
 
    IMPLICIT NONE
    PRIVATE
@@ -274,7 +275,9 @@ CONTAINS
          CALL prt_ctl_info( charout )
       ENDIF
 
-      CALL sab_rst( kt )      ! initializes and/or check if kt == nitrst. it updates lrst_oce if needed
+      CALL sab_rst_open( kt )      ! open restart file and/or check if kt == nitrst. it updates lrst_oce and open restart file if needed
+      IF(lwp) WRITE(numout,*) 'Write restart date variable :', lrst_oce, kt
+      IF( lrst_oce  )   CALL day_rst( kt, 'WRITE' )      ! write day restart information
       !
       IF( ln_timing )   CALL timing_stop('day')
       !
@@ -311,12 +314,13 @@ CONTAINS
       !
       REAL(wp) ::   zkt, zndastp, zdayfrac, ksecs, ktime
       INTEGER  ::   ihour, iminute, isecond
+      INTEGER  ::   nret
       !!----------------------------------------------------------------------
 
       IF( TRIM(cdrw) == 'READ' ) THEN
-         IF( iom_varid( numror, 'kt', ldstop = .FALSE. ) > 0 ) THEN
+         IF( iom_varid( numrbr, 'kt', ldstop = .FALSE. ) > 0 ) THEN
             ! Get Calendar informations
-            CALL iom_get( numror, 'kt', zkt )   ! last time-step of previous run
+            CALL iom_get( numrbr, 'kt', zkt )   ! last time-step of previous run
             IF(lwp) THEN
                WRITE(numout,*) ' *** Info read in restart : '
                WRITE(numout,*) '   previous time-step                               : ', NINT( zkt )
@@ -335,10 +339,10 @@ CONTAINS
             ! define ndastp and adatrj
             IF ( nrstdt == 2 ) THEN
                ! read the parameters corresponding to nit000 - 1 (last time step of previous run)
-               CALL iom_get( numror, 'ndastp', zndastp )
+               CALL iom_get( numrbr, 'ndastp', zndastp )
                ndastp = NINT( zndastp )
-               CALL iom_get( numror, 'adatrj', adatrj  )
-	       CALL iom_get( numror, 'ntime' , ktime   )
+               CALL iom_get( numrbr, 'adatrj', adatrj  )
+	       CALL iom_get( numrbr, 'ntime' , ktime   )
                nn_time0 = NINT(ktime)
                ! calculate start time in hours and minutes
                zdayfrac = adatrj - REAL(INT(adatrj), wp)
@@ -399,11 +403,10 @@ CONTAINS
             IF(lwp) WRITE(numout,*) '~~~~~~~'
          ENDIF
          ! calendar control
-         CALL iom_rstput( kt, nitrst, numrow, 'kt'     , REAL( kt    , wp)   )   ! time-step
-         CALL iom_rstput( kt, nitrst, numrow, 'ndastp' , REAL( ndastp, wp)   )   ! date
-         CALL iom_rstput( kt, nitrst, numrow, 'adatrj' , adatrj              )   ! number of elapsed days since
-         !                                                                                                   ! the begining of the run [s]
-         CALL iom_rstput( kt, nitrst, numrow, 'ntime'  , REAL( nn_time0, wp) ) ! time
+         nret = NF90_PUT_VAR(numrbw, nicbktid    , REAL( kt      , wp) )  ! time-step
+         nret = NF90_PUT_VAR(numrbw, nicbndastpid, REAL( ndastp  , wp) )  ! date
+         nret = NF90_PUT_VAR(numrbw, nicbadatrjid, REAL( adatrj  , wp) )  ! number of elapsed days since the begining of the run [s]
+         nret = NF90_PUT_VAR(numrbw, nicbntimeid , REAL( nn_time0, wp) )  ! time
       ENDIF
       !
    END SUBROUTINE day_rst

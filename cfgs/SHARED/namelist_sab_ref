@@ -160,6 +160,36 @@
    !           !                         !  (if <0  months)  !   name    !   (logical) !  (T/F) ! 'monthly' !                  ! pairing  !    filename   !
    sn_icb     =  'calving'              ,         -1.        ,'calvingmask',  .true.   , .true. , 'yearly'  , ''               , ''       , ''
 /
+
+&namsab
+   ln_sabread = .false.   ! read forcings
+   cn_dir = './'
+   !
+   ! ln_use_calving = .true. required an input file (sn_icb). The unit of the variable 'calvingmask' is kg/s.
+   !___________!_________________________!___________________!___________!_____________!________!___________!__________________!__________!_______________!
+   !           !  file name              ! frequency (hours) ! variable  ! time interp.!  clim  ! 'yearly'/ ! weights filename ! rotation ! land/sea mask !
+   !           !                         !  (if <0  months)  !   name    !   (logical) !  (T/F) ! 'monthly' !                  ! pairing  !    filename   !
+   sn_sst      =  'NOT USED'             ,         -1.       , 'dummy'   ,  .true.     , .true. , 'yearly'  , ''               , ''       , ''
+   sn_sss      =  'NOT USED'             ,         -1.       , 'dummy'   ,  .true.     , .true. , 'yearly'  , ''               , ''       , ''
+   sn_ssh      =  'NOT USED'             ,         -1.       , 'dummy'   ,  .true.     , .true. , 'yearly'  , ''               , ''       , ''
+   sn_ssu      =  'NOT USED'             ,         -1.       , 'dummy'   ,  .true.     , .true. , 'yearly'  , ''               , ''       , ''
+   sn_ssv      =  'NOT USED'             ,         -1.       , 'dummy'   ,  .true.     , .true. , 'yearly'  , ''               , ''       , ''
+   sn_utau     =  'NOT USED'             ,         -1.       , 'dummy'   ,  .true.     , .true. , 'yearly'  , ''               , ''       , ''
+   sn_vtau     =  'NOT USED'             ,         -1.       , 'dummy'   ,  .true.     , .true. , 'yearly'  , ''               , ''       , ''
+   sn_fr_i     =  'NOT USED'             ,         -1.       , 'dummy'   ,  .true.     , .true. , 'yearly'  , ''               , ''       , ''
+
+   ! if ln_M2016
+   sn_uu       =  'NOT USED'             ,         -1.       , 'dummy'   ,  .true.     , .true. , 'yearly'  , ''               , ''       , ''
+   sn_vv       =  'NOT USED'             ,         -1.       , 'dummy'   ,  .true.     , .true. , 'yearly'  , ''               , ''       , ''
+   sn_t3D      =  'NOT USED'             ,         -1.       , 'dummy'   ,  .true.     , .true. , 'yearly'  , ''               , ''       , ''
+
+   ! if key_si3
+   sn_uice     =  'NOT USED'             ,         -1.       , 'dummy'   ,  .true.     , .true. , 'yearly'  , ''               , ''       , ''
+   sn_vice     =  'NOT USED'             ,         -1.       , 'dummy'   ,  .true.     , .true. , 'yearly'  , ''               , ''       , ''
+   sn_at_i     =  'NOT USED'             ,         -1.       , 'dummy'   ,  .true.     , .true. , 'yearly'  , ''               , ''       , ''
+   sn_vt_i     =  'NOT USED'             ,         -1.       , 'dummy'   ,  .true.     , .true. , 'yearly'  , ''               , ''       , ''
+/
+
 !!======================================================================
 !!               ***  Lateral boundary condition  ***                 !!
 !!                                                                    !!
@@ -265,7 +295,7 @@
 !-----------------------------------------------------------------------
 &namctl        !   Control prints                                       (default: OFF)
 !-----------------------------------------------------------------------
-   sn_cfctl%l_runstat = .FALSE.    ! switches and which areas produce reports with the proc integer settings.
+   sn_cfctl%l_runstat = .FALSE.   ! switches and which areas produce reports with the proc integer settings.
    sn_cfctl%l_trcstat = .FALSE.   ! The default settings for the proc integers should ensure
    sn_cfctl%l_oceout  = .FALSE.   ! that  all areas report.
    sn_cfctl%l_layout  = .FALSE.   !

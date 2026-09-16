@@ -1,4 +1,5 @@
 MODULE sabcpl
+#if defined key_oasis3
    !!=============================================================================
    !!                       ***  MODULE  icbcpl  ***
    !! Initialisation of all fields needed for ICB to run in OASIS, outside of NEMO
@@ -421,5 +422,7 @@ CONTAINS
       IF( ln_timing )   CALL timing_stop('sab_cpl_snd')
 
     END SUBROUTINE sab_cpl_snd
+!#else do not compile  anything
+#endif 
 
 END MODULE sabcpl

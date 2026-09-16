@@ -29,6 +29,10 @@ MODULE icbdia
    !!   report_ibudget: 
    !!----------------------------------------------------------------------
    USE par_oce        ! ocean parameters
+   USE sbc_oce        ! surface module: variables
+#if defined key_si3
+   USE ice            ! ice module: variables
+#endif
    USE dom_oce        ! ocean domain
    USE in_out_manager ! nemo IO
    USE lib_mpp        ! MPP library
@@ -48,6 +52,7 @@ MODULE icbdia
    PUBLIC   icb_dia_speed     ! routine called in icbdyn.F90 module
    PUBLIC   icb_dia_calve     ! routine called in icbclv.F90 module
    PUBLIC   icb_dia_income    ! routine called in icbclv.F90 module
+   PUBLIC   icb_dia_wri_state ! routine called in icbctl.F90 module
 
    REAL(wp), DIMENSION(:,:)  , ALLOCATABLE, PUBLIC  ::   berg_melt       ! Melting+erosion rate of icebergs     [kg/s/m2]
    REAL(wp), DIMENSION(:,:)  , ALLOCATABLE, PUBLIC  ::   berg_melt_hcflx ! Heat flux to ocean due to heat content of melting icebergs [J/s/m2]
@@ -177,6 +182,51 @@ CONTAINS
       !
    END SUBROUTINE icb_dia_init
 
+   SUBROUTINE icb_dia_wri_state( cdfile_name )
+      !!---------------------------------------------------------------------
+      !!                 ***  ROUTINE dia_wri_state  ***
+      !!
+      !! ** Purpose :   create a NetCDF file named cdfile_name which contains
+      !!      the instantaneous ocean state and forcing fields.
+      !!        Used to find errors in the initial state or save the last
+      !!      ocean state in case of abnormal end of a simulation
+      !!
+      !! ** Method  :   NetCDF files using ioipsl
+      !!      File 'output.init.nc'  is created if ninist = 1 (namelist)
+      !!      File 'output.abort.nc' is created in case of abnormal job end
+      !!----------------------------------------------------------------------
+      CHARACTER (len=* ), INTENT( in ) ::   cdfile_name      ! name of the file created
+      !!
+      INTEGER ::   inum
+      !!----------------------------------------------------------------------
+      !
+      IF(lwp) THEN
+         WRITE(numout,*)
+         WRITE(numout,*) 'dia_wri_state : single instantaneous ocean state'
+         WRITE(numout,*) '~~~~~~~~~~~~~   and forcing fields file created '
+         WRITE(numout,*) '                and named :', cdfile_name, '...nc'
+      ENDIF
+      !
+      CALL iom_open( TRIM(cdfile_name), inum, ldwrt = .TRUE. )
+      !
+      CALL iom_rstput( 0, 0, inum, 'icbhflx'  , berg_grid%calving_hflx (:,:) ) ! calving_hflx
+      CALL iom_rstput( 0, 0, inum, 'icbmelt'  , berg_grid%floating_melt(:,:) ) ! floating_melt
+      CALL iom_rstput( 0, 0, inum, 'sst'      , sst_m(:,:) )                   ! sea surface temperature
+      CALL iom_rstput( 0, 0, inum, 'sss'      , sss_m(:,:) )                   ! sea surface salinity
+      CALL iom_rstput( 0, 0, inum, 'ssh'      , ssh_m(:,:) )                   ! sea surface height
+      CALL iom_rstput( 0, 0, inum, 'ssu'      , ssu_m(:,:) )                   ! sea surface u-velocity
+      CALL iom_rstput( 0, 0, inum, 'ssv'      , ssv_m(:,:) )                   ! sea surface v-velocity
+      CALL iom_rstput( 0, 0, inum, 'ice_cover', fr_i(:,:)  )                   ! ice fraction
+      !
+#if defined key_si3
+      CALL iom_rstput( 0, 0, inum, 'ice_thic' , vt_i(:,:)  )                   ! ice thickness
+      CALL iom_rstput( 0, 0, inum, 'ice_velu' , u_ice(:,:) )                   ! ice u-velocity
+      CALL iom_rstput( 0, 0, inum, 'ice_velv' , v_ice(:,:) )                   ! ice v-velocity
+#endif
+      !
+      CALL iom_close( inum )
+      !
+   END SUBROUTINE icb_dia_wri_state
 
    SUBROUTINE icb_dia( ld_budge )
       !!----------------------------------------------------------------------

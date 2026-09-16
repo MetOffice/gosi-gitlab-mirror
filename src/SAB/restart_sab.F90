@@ -9,18 +9,19 @@ MODULE restart_sab
    USE in_out_manager   ! I/O manager
    USE prtctl           ! Print control                    (prt_ctl routine)
    USE iom              !
+   USE icbrst
    !
    IMPLICIT NONE
    PRIVATE
 
-   PUBLIC   sab_rst ! called by daymod.F90
+   PUBLIC   sab_rst_open ! called by daymod.F90
    !!----------------------------------------------------------------------
    !! NEMO 5.0 , NEMO Consortium (2024)
    !! Software governed by the CeCILL license (see ./LICENSE)
    !!----------------------------------------------------------------------
 CONTAINS
 
-   SUBROUTINE sab_rst( kt )
+   SUBROUTINE sab_rst_open( kt )
       !!---------------------------------------------------------------------
       !!                   ***  ROUTINE sab_rst  ***
       !!
@@ -43,7 +44,10 @@ CONTAINS
          ENDIF
       ENDIF
       !
-      IF (kt == nitrst ) lrst_oce = .true.  ! activating restart flag for icb 
+      IF (kt == nitrst ) THEN
+         lrst_oce = .true.  ! activating restart flag for icb 
+         CALL icb_rst_create(kt)
+      ENDIF
 
       ! frequency-based restart dumping (nn_stock)
       IF( .NOT. ln_rst_list ) THEN
@@ -56,6 +60,6 @@ CONTAINS
          ENDIF
       ENDIF
       !
-   END SUBROUTINE sab_rst
+   END SUBROUTINE sab_rst_open
 !================================================
 END MODULE restart_sab

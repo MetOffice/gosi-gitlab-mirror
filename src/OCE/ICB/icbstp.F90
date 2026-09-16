@@ -31,10 +31,13 @@ MODULE icbstp
    USE icblbc         ! iceberg: lateral boundary routines (including mpp)
    USE icbtrj         ! iceberg: trajectory I/O routines
    USE icbdia         ! iceberg: budget
-#if ! defined key_sab
+   USE icbctl         ! iceberg: run statisitics
+#if defined key_sab
+   USE sabssm
+#else
    USE icbcpl        ! ocean to iceberg coupling interface (on NEMO' side) 
 #endif
-   !
+!
    USE in_out_manager ! nemo IO
    USE lib_mpp        ! massively parallel library 
    USE iom            ! I/O manager
@@ -94,13 +97,19 @@ CONTAINS
                      END_2D
                  ENDIF 
 #endif 
-                 !
-         ELSE IF ( .NOT. ln_berg_cpl .AND. ( nn_components == jp_iam_icb ) ) THEN
-                ! FOLLOWING BLOCK is read only if component is SAB
-                ! future STAND ALONE mode ... to be coded 
-                CALL ctl_stop( ' ln_berg_cpl = .false. x SAB in full stand alone mode does not exist yet !!!' )
          !
          ELSE ! either if component is SAB or Nemo, in all other cases, icbstp can be read. 
+              ! ---------------------------------------------------------        
+                         !  STAND ALONE mode 
+                 IF ( .NOT. ln_berg_cpl .AND. ( nn_components == jp_iam_icb ) ) THEN
+#if defined key_sab
+                     CALL sab_ssm(kt)
+#else
+                     CALL ctl_stop( ' SAB full stand alone mode requires key_sab, you shoud not be here !' )
+
+#endif
+                 !
+                 ENDIF
 
          !                       !==  start of timestep housekeeping  ==!
             IF ( kt == nit000 ) THEN
@@ -176,6 +185,7 @@ CONTAINS
          !
             CALL icb_dia_put()                  !* store mean budgets
          !
+            CALL icb_ctl( kt )               !*  ice_run.stat output
          !                                   !*  Dump icebergs to screen
             IF( nn_verbose_level >= 2 )   CALL icb_utl_print( 'icb_stp, status', kt )
          !

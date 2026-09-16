@@ -28,6 +28,9 @@ MODULE icbini
    USE icbrst         ! iceberg restart routines
    USE icbtrj         ! iceberg trajectory I/O routines
    USE icbdia         ! iceberg budget routines
+#if defined key_sab   
+   USE sabssm
+#endif
 
    IMPLICIT NONE
    PRIVATE
@@ -86,7 +89,11 @@ CONTAINS
       !                          ! predict where icebergs will be ahead of time
          ! initializing ICB inside only if computing ICB inside NEMO or in coupled mode, if ICB is computed by SAB
       IF ( ( .NOT. ln_berg_cpl) .OR. ( nn_components == jp_iam_icb ) ) THEN
-      !
+      !  
+#if defined key_sab
+         IF ( (.NOT. ln_berg_cpl ) .AND. ( nn_components == jp_iam_icb ) ) CALL sab_ssm_init(0,1) ! if standalone mode !
+#endif
+
          IF( nn_verbose_level > 0) THEN
             CALL ctl_opn( numicb, 'icebergs.stat', 'REPLACE', 'FORMATTED', 'SEQUENTIAL', -1, numout, lwp, narea )
          ENDIF
@@ -318,6 +325,9 @@ CONTAINS
          ENDIF 
          !
          IF( ln_rstart ) THEN
+            IF(lwp) WRITE(numout,*) '   open the icb restart file'
+            CALL icb_rst_open 
+            IF(lwp) WRITE(numout,*) '   read the icb restart file'
             CALL icb_rst_read()
             l_restarted_bergs = .TRUE.
          END IF
