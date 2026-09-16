@@ -131,6 +131,7 @@ MODULE icb_oce
    ! restart
    CHARACTER(len=256), PUBLIC :: cn_icbrst_indir , cn_icbrst_in  !:  in: restart directory, restart name
    CHARACTER(len=256), PUBLIC :: cn_icbrst_outdir, cn_icbrst_out !: out: restart directory, restart name
+   CHARACTER(len=512), PUBLIC :: cfile_icb_rst                   !: out: restart file path/name.nc
    !
    ! integers for verbose messages and trajectories
    INTEGER,  PUBLIC ::   nsample_rate                    !: Number of time steps between sampling of position for trajectory storage 

@@ -3,10 +3,7 @@ MODULE sabgcm
    !!                       ***  MODULE sabgcm   ***
    !! StandAlone iceBergs module : deals only with iceberg float. it can run offline
    !!======================================================================
-   !! History :  3.6  ! 2011-11  (S. Alderson, G. Madec) original code
-   !!             -   ! 2013-06  (I. Epicoco, S. Mocavero, CMCC) nemo_northcomms: setup avoiding MPI communication
-   !!             -   ! 2014-12  (G. Madec) remove KPP scheme and cross-land advection (cla)
-   !!            4.0  ! 2016-10  (G. Madec, S. Flavoni)  domain configuration / user defined interface
+   !! History :  5.1  ! 2026-10  (J. Petit, P. Mathiot)  Original code
    !!----------------------------------------------------------------------
 
    !!----------------------------------------------------------------------
@@ -27,11 +24,10 @@ MODULE sabgcm
    USE ice
    USE sbc_ice
 # endif 
-   USE sbc_oce, ONLY: Nbb, Nnn, Naa, Nrhs
+   USE sbc_oce, ONLY: Nbb, Nnn, Naa, Nrhs, ln_icebergs
    USE icbini
    USE icbstp, ONLY : icb_end
    USE prtctl         ! Print control
-   USE in_out_manager ! I/O manager
    USE in_out_manager ! I/O manager
    USE iom            !
    USE lib_mpp        ! distributed memory computing
@@ -87,8 +83,8 @@ CONTAINS
       REAL(wp)::   zstptiming   ! elapsed time for 1 time step
       !!----------------------------------------------------------------------
       !
-      CALL timing_start( 'full code' )     ! do it as soon as possible, no need to test ln_timing (that is not yet defined)
-      CALL timing_start( 'before step_sab' )
+      IF( ln_timing ) CALL timing_start( 'full code' )     ! do it as soon as possible, no need to test ln_timing (that is not yet defined)
+      IF( ln_timing ) CALL timing_start( 'before step_sab' )
       !
 
       !                            !-----------------------!
@@ -100,7 +96,7 @@ CONTAINS
       CALL mpp_max( 'sabgcm', nstop )
 
       IF(lwp) WRITE(numout,cform_aaa)   ! Flag AAAAAAA
-      CALL timing_stop( 'before step_sab' )
+      IF( ln_timing ) CALL timing_stop( 'before step_sab' )
       !                            !-----------------------!
       !                            !==   time stepping   ==!
       !                            !-----------------------!
@@ -112,9 +108,12 @@ CONTAINS
       !
       DO WHILE( istp <= nitend .AND. nstop == 0 )
 
-         CALL timing_start( 'step_sab', istp, nit000, nitend, 1000 )
+         IF( ln_timing ) CALL timing_start( 'step_sab', istp, nit000, nitend, 1000 )
+
          CALL stp( istp )
-         CALL timing_stop( 'step_sab', istp )
+
+         IF( ln_timing ) CALL timing_stop( 'step_sab', istp )
+
          istp = istp + 1
 
       END DO
@@ -131,15 +130,15 @@ CONTAINS
          IF( ngrdstop > 0 ) THEN
             WRITE(ctmp9,'(i2)') ngrdstop
             WRITE(ctmp2,*) '           E R R O R detected in grid '//TRIM(ctmp9)
-            WRITE(ctmp3,*) '           Look for "E R R O R" messages in all existing '//TRIM(ctmp9)//'_ocean_output* files'
+            WRITE(ctmp3,*) '           Look for "E R R O R" messages in all existing '//TRIM(ctmp9)//'_sab_output* files'
             CALL ctl_stop( ' ', ctmp1, ' ', ctmp2, ' ', ctmp3 )
          ELSE
-            WRITE(ctmp2,*) '           Look for "E R R O R" messages in all existing ocean_output* files'
+            WRITE(ctmp2,*) '           Look for "E R R O R" messages in all existing sab_output* files'
             CALL ctl_stop( ' ', ctmp1, ' ', ctmp2 )
          ENDIF
       ENDIF
       !
-      CALL timing_stop( 'full code', ld_finalize = .TRUE. )
+      IF( ln_timing ) CALL timing_stop( 'full code', ld_finalize = .TRUE. )
       !
       CALL sab_closefile
       !
@@ -238,7 +237,10 @@ CONTAINS
       !
       lwp = (narea == 1) .OR. sn_cfctl%l_oceout    ! control of all listing output print
       !
-      IF(lwm) THEN                      ! open listing units
+      IF(lwp) THEN                      ! open listing units
+         !
+         IF( .NOT. lwm )   &            ! alreay opened for narea == 1
+            &            CALL ctl_opn( numout, 'sab.output', 'REPLACE', 'FORMATTED', 'SEQUENTIAL', -1, -1, .FALSE., narea )
          !
          WRITE(numout,*)
          WRITE(numout,*) '                        SAB '
@@ -285,19 +287,20 @@ CONTAINS
       CALL sab_ctl                          ! Control prints
       !
       !                                      ! General initialization
-                           CALL timing_open( lwp, mpi_comm_oce, "timing_sab.output" )   ! open timing report file
+      IF( ln_timing )      CALL timing_open( lwp, mpi_comm_oce, "timing_sab.output" )   ! open timing report file
 
-      IF( ln_timing    )   CALL timing_start( 'sab_init')
+      IF( ln_timing )      CALL timing_start( 'sab_init')
 
                            CALL phy_cst         ! Physical constants
 
                            CALL eos_init        ! Equation of seawater
+
                            CALL dom_init( Nbb, Nnn, Naa ) ! Domain
 
                            CALL icb_init( rn_Dt, nit000, Nnn)   ! initialise icebergs instance
-
+#if key_oasis3
       IF( lk_oasis     )   CALL sab_cpl_init()                  ! initialise icebergs-NEMO coupling
-
+#endif
       IF( lk_oasis     )   CALL cpl_enddef                       ! terminate coupling initialization
 
 
@@ -306,6 +309,9 @@ CONTAINS
            
 
                            CALL day_init        ! model calendar (using both namelist and restart infos)
+                           
+      !                                         ! open time.step    ascii file, done only by 1st subdomain
+      IF( lwm )            CALL ctl_opn( numsab_stp, 'icb_time.step', 'REPLACE', 'FORMATTED', 'SEQUENTIAL', -1, numout, lwp, narea )
       
       !
       IF(lwp) WRITE(numout,cform_aaa)           ! Flag AAAAAAA
@@ -372,6 +378,7 @@ CONTAINS
       !
       CALL iom_close                                 ! close all input/output files managed by iom_*
       !
+      IF( numsab_stp      /= -1 )   CLOSE( numsab_stp      )   ! time-step file
       IF( numstp          /= -1 )   CLOSE( numstp          )   ! time-step file
       IF( numrun          /= -1 )   CLOSE( numrun          )   ! run statistics file
       IF( lwm.AND.numond  /= -1 )   CLOSE( numond          )   ! oce output namelist

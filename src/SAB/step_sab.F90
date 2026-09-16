@@ -26,6 +26,7 @@ MODULE step_sab
    USE timing           ! Timing
    !
    USE xios
+   USE netcdf
    USE icbstp
 
    IMPLICIT NONE
@@ -41,6 +42,7 @@ CONTAINS
 
    SUBROUTINE stp( kstp )
       INTEGER, INTENT(in) ::   kstp   ! ocean time-step index
+      INTEGER :: nret
       !!----------------------------------------------------------------------
       !!                     ***  ROUTINE stp  ***
       !!
@@ -57,17 +59,32 @@ CONTAINS
                                                           ! "day" calls sab_rst : checks if rstart must be done at current time -step
       Nbb = 1      ! forcing Nbb to 1 to match the structure of uu, vv, ts ::  (:,:,:,Nbb)  
       !
-
+      !
+      !                                   !==              write current time step              ==!
+      !                                   !==  done only by 1st subdomain at writting timestep  ==!
+      IF( lwm ) THEN
+         WRITE ( numsab_stp, '(1x, i8)' )   kstp
+         REWIND( numsab_stp )
+      ENDIF
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       ! Coupled mode
       !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<     
-
+#if defined key_oasis3
       IF ( lk_oasis ) CALL sab_cpl_rcv(kstp) ! receives sea-surface state + sea-ice infos from NEMO 
+#endif
       !   
       CALL icb_stp(kstp,Nbb)                 ! runs icebergs time-step (cf ICB) 
-       
+#if defined key_oasis3
       IF ( lk_oasis ) CALL sab_cpl_snd(kstp) ! sends fresh water + heat flux at the surface to NEMO 
-       
+#endif
+
+      !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+      ! File manipulation at the end of the first time step
+      !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+      IF( kstp == nit000   ) THEN
+            CALL iom_close( numrbr )                          ! close input  sab restart file
+      ENDIF
+
       !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
       ! Control
       !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -75,6 +92,11 @@ CONTAINS
       
       ! updating nitrst if a rstart has just been written (by icb_rst_wri, cf icbrst.F90)
       IF ( lrst_oce ) THEN
+
+         ! Close iceberg restart
+         nret = NF90_CLOSE(numrbw)
+         IF (nret /= NF90_NOERR) CALL ctl_stop('icebergs, write_restart: nf_close failed')
+
          lrst_oce = .FALSE.             !otherwise a rstart will be written at each following time-step 
          IF( ln_rst_list ) THEN
             nrst_lst = MIN(nrst_lst + 1, SIZE(nn_stocklist,1))

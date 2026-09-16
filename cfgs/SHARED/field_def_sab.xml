@@ -1,0 +1,111 @@
+<?xml version="1.0"?>
+<!-- $id$ -->
+
+<field_definition level="1" prec="4" operation="average" enabled=".TRUE." default_value="1.e20" > <!-- time step automaticaly defined -->
+
+  <!--
+      =====================================================================================================
+      =                                   Configurable diagnostics                                        =
+      =====================================================================================================
+  -->
+
+  <!--
+      ============================================================================================================
+      Physical ocean forcing variables
+      ============================================================================================================
+  -->
+
+  <!-- T grid -->
+  <field_group id="grid_T" grid_ref="grid_T_2D" >
+    <field id="e3t"          long_name="T-cell thickness"                    standard_name="cell_thickness"        unit="m"   grid_ref="grid_T_3D_inner" />
+
+    <field id="masscello"    long_name="Sea Water Mass per unit area"        standard_name="sea_water_mass_per_unit_area"    unit="kg/m2" grid_ref="grid_T_3D_inner"/>
+    <field id="volcello"     long_name="Ocean Volume"                        standard_name="ocean_volume"                    unit="m3"    grid_ref="grid_T_3D_inner"/>
+    <field id="toce"         long_name="temperature"                         standard_name="sea_water_potential_temperature" unit="degC"  grid_ref="grid_T_3D"/>
+    <field id="soce"         long_name="salinity"                            standard_name="sea_water_practical_salinity"    unit="1e-3"  grid_ref="grid_T_3D"/>
+
+    <field id="sst"          long_name="Bulk sea surface temperature"                       standard_name="bulk_sea_surface_temperature"        unit="degC"     />
+    <field id="sss"          long_name="sea surface salinity"                               standard_name="sea_surface_salinity"                unit="1e-3"     />
+    <field id="sstmax"       long_name="max of sea surface temperature"   field_ref="sst"   operation="maximum"                                                 />
+    <field id="sssmax"       long_name="max of sea surface salinity"      field_ref="sss"   operation="maximum"                                                 />
+    <field id="sstmin"       long_name="min of sea surface temperature"   field_ref="sst"   operation="minimum"                                                 />
+    <field id="sssmin"       long_name="min of sea surface salinity"      field_ref="sss"   operation="minimum"                                                 />
+
+    <field id="ssh"          long_name="sea surface height"                                 standard_name="sea_surface_height_above_geoid"             unit="m" />
+  </field_group> <!-- grid_T -->
+
+  <!-- SBC -->
+  <field_group id="SBC_2D" grid_ref="grid_T_2D_inner" >
+
+    <field id="utau_oce"     long_name="Wind Stress along i-axis over open ocean (T-points)"  standard_name="surf_down_x_stress_open_oce_Tpoints"        unit="N/m2" grid_ref="grid_T_2D"   />
+    <field id="vtau_oce"     long_name="Wind Stress along j-axis over open ocean (T-points)"  standard_name="surf_down_y_stress_open_oce_Tpoints"        unit="N/m2" grid_ref="grid_T_2D"   />
+
+    <!-- sbcssm variables -->
+    <field id="sst_m"    unit="degC" grid_ref="grid_T_2D" />
+    <field id="sss_m"    unit="psu"  grid_ref="grid_T_2D" />
+    <field id="ssu_m"    unit="m/s"  grid_ref="grid_T_2D" />
+    <field id="ssv_m"    unit="m/s"  grid_ref="grid_T_2D" />
+    <field id="ssh_m"    unit="m"    grid_ref="grid_T_2D" />
+    <field id="e3t_m"    unit="m"    grid_ref="grid_T_2D" />
+    <field id="frq_m"    unit="-"    grid_ref="grid_T_2D" />
+  </field_group>
+
+  <!-- U grid -->
+  <field_group id="grid_U"   grid_ref="grid_U_2D">
+    <field id="e2u"           long_name="U-cell width in meridional direction"                   standard_name="cell_width"                  unit="m"                                       />
+    <field id="e3u"           long_name="U-cell thickness"                                       standard_name="cell_thickness"              unit="m"          grid_ref="grid_U_3D_inner"   />
+    <field id="uoce"          long_name="ocean current along i-axis"                             standard_name="sea_water_x_velocity"        unit="m/s"        grid_ref="grid_U_3D"         />
+    <field id="uoce_e3u"      long_name="ocean current along i-axis  (thickness weighted)"                                                   unit="m/s"        grid_ref="grid_U_3D"    > uoce * e3u </field>
+    <field id="ssu"           long_name="ocean surface current along i-axis"                                                                  unit="m/s"                                    />
+  </field_group>
+
+  <!-- V grid -->
+  <field_group id="grid_V"   grid_ref="grid_V_2D">
+    <field id="e1v"          long_name="V-cell width in longitudinal direction"                 standard_name="cell_width"                  unit="m"                               />
+    <field id="e3v"          long_name="V-cell thickness"                                       standard_name="cell_thickness"              unit="m"          grid_ref="grid_V_3D_inner" />
+    <field id="voce"         long_name="ocean current along j-axis"                             standard_name="sea_water_y_velocity"        unit="m/s"        grid_ref="grid_V_3D" />
+    <field id="voce_e3v"     long_name="ocean current along j-axis  (thickness weighted)"                                                   unit="m/s"        grid_ref="grid_V_3D"  > voce * e3v </field>
+    <field id="ssv"          long_name="ocean surface current along j-axis"                                                                 unit="m/s"                             />
+  </field_group>
+
+  <!-- variables available with iceberg trajectories -->
+  <field_group id="icbvar_bas" grid_ref="grid_T_icbbas" >
+    <field id="berg_melt_basins"    long_name="icb melt rate of icebergs per basin"             unit="kg/m2/s" />
+    <field id="berg_sumthic_basins" long_name="sum of icb thickness per cell and  per basin"    unit="m"       operation="accumulate" prec="8" />
+    <field id="berg_numb_basins"    long_name="sum of icb number per cell and  per basin"       unit=""        operation="accumulate" prec="8" />
+  </field_group>
+
+  <field_group id="icbvar" domain_ref="grid_T"  >
+    <field id="berg_melt"          long_name="icb melt rate of icebergs"                       unit="kg/m2/s"                    />
+    <field id="berg_melt_hcflx"    long_name="icb heat flux to ocean due to melting heat content"   unit="J/m2/s"                />
+    <field id="berg_melt_qlat"     long_name="icb heat flux to ocean due to melting latent heat"    unit="J/m2/s"                />
+    <field id="berg_buoy_melt"     long_name="icb buoyancy component of iceberg melt rate"     unit="kg/m2/s"                    />
+    <field id="berg_eros_melt"     long_name="icb erosion component of iceberg melt rate"      unit="kg/m2/s"                    />
+    <field id="berg_conv_melt"     long_name="icb convective component of iceberg melt rate"   unit="kg/m2/s"                    />
+    <field id="berg_virtual_area"  long_name="icb virtual coverage by icebergs"                unit="m2"                         />
+    <field id="bits_src"           long_name="icb mass source of bergy bits"                   unit="kg/m2/s"                    />
+    <field id="bits_melt"          long_name="icb melt rate of bergy bits"                     unit="kg/m2/s"                    />
+    <field id="bits_mass"          long_name="icb bergy bit density field"                     unit="kg/m2"                      />
+    <field id="berg_mass"          long_name="icb iceberg density field"                       unit="kg/m2"                      />
+    <field id="calving"            long_name="icb calving mass input"                          unit="kg/s"                       />
+    <field id="berg_floating_melt" long_name="icb melt rate of icebergs + bits"                unit="kg/m2/s"                    />
+    <field id="berg_real_calving"  long_name="icb calving into iceberg class"                  unit="kg/s"     axis_ref="icbcla" />
+    <field id="berg_stored_ice"    long_name="icb accumulated ice mass by class"               unit="kg"       axis_ref="icbcla" />
+  </field_group>
+
+  <field_group id="constant_fields"  grid_ref="grid_T_2D"  operation="once" >
+    <field id="bathy"       long_name="Sea floor depth below geoid"               standard_name="sea_floor_depth_below_geoid"               unit="m"/>
+    <field id="areacello"   long_name="Horizontal area of ocean grid cells"       standard_name="cell_area"                                 unit="m2" />
+    <field id="basins"      long_name="ocean tracer region masks"                 standard_name="ocean_tracer_region_masks"   unit="none" grid_ref="grid_basin"  />
+  </field_group>
+
+  <field_group id="ICE_2D" grid_ref="grid_T_sfc_inner" >
+      <field id="uice"         long_name="X-component of sea ice velocity"                         standard_name="sea_ice_x_velocity"                        unit="m/s" grid_ref="grid_T_sfc" />
+      <field id="vice"         long_name="Y-component of sea ice velocity"                         standard_name="sea_ice_y_velocity"                        unit="m/s" grid_ref="grid_T_sfc" />
+      <field id="iceconc"      long_name="Sea-ice area fraction"                                   standard_name="sea_ice_area_fraction"                     unit=""     />
+      <field id="icevolu"      long_name="Sea-ice volume per area"                                 standard_name="sea_ice_thickness"                         unit="m"    />
+      <field id="ice_cover"    long_name="Ice fraction"  standard_name="sea_ice_area_fraction"  unit="1" />
+  </field_group>
+
+  
+</field_definition>

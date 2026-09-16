@@ -89,9 +89,11 @@ MODULE in_out_manager
    INTEGER ::   numror = 0            !: logical unit for ocean restart (read). Init to 0 is needed for SAS (in daymod.F90)
    INTEGER ::   numrir = 0            !: logical unit for ice   restart (read)
    INTEGER ::   numrar = 0            !: logical unit for abl   restart (read)
+   INTEGER ::   numrbr = 0            !: logical unit for sab   restart (read)
    INTEGER ::   numrow = 0            !: logical unit for ocean restart (write)
    INTEGER ::   numriw = 0            !: logical unit for ice   restart (write)
    INTEGER ::   numraw = 0            !: logical unit for abl   restart (write)
+   INTEGER ::   numrbw = 0            !: logical unit for sab   restart (write)
    INTEGER ::   numrtr = 0            !: trc restart (read )
    INTEGER ::   numrtw = 0            !: trc restart (write )
    INTEGER ::   numrsr = 0            !: logical unit for sed restart (read)
@@ -148,6 +150,8 @@ MODULE in_out_manager
    INTEGER ::   numdct_vol      =   -1      !: logical unit for volume transports output
    INTEGER ::   numdct_heat     =   -1      !: logical unit for heat   transports output
    INTEGER ::   numdct_salt     =   -1      !: logical unit for salt   transports output
+   INTEGER ::   numicb_run      =   -1      !: logical unit for icb statistics
+   INTEGER ::   numsab_stp      =   -1      !: logical unit for sab time step
    !
    CHARACTER(LEN=:), ALLOCATABLE :: numnam_ref      !: character buffer for reference namelist
    CHARACTER(LEN=:), ALLOCATABLE :: numnam_cfg      !: character buffer for configuration specific namelist
