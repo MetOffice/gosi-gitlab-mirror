@@ -134,10 +134,9 @@ MODULE sbccpl
    INTEGER, PARAMETER ::   jpr_qtrice = 63   ! Transmitted solar thru sea-ice
    INTEGER, PARAMETER ::   jpr_grnm   = 64   ! Greenland ice mass
    INTEGER, PARAMETER ::   jpr_antm   = 65   ! Antarctic ice mass
-   INTEGER, PARAMETER ::   jpr_qtr    = 66   ! Transmitted solar
-   INTEGER, PARAMETER ::   jpr_rnf_1d = 67   ! 1D river runoff
+   INTEGER, PARAMETER ::   jpr_rnf_1d = 66   ! 1D river runoff
 
-   INTEGER, PARAMETER ::   jprcv      = 67   ! total number of fields received
+   INTEGER, PARAMETER ::   jprcv      = 66   ! total number of fields received
    
    !! sent fields are only in the interior (without halos)
    INTEGER, PARAMETER ::   jps_fice   =  1   ! ice fraction sent to the atmosphere
@@ -204,7 +203,7 @@ MODULE sbccpl
    TYPE(FLD_C) ::   sn_rcv_w10m, sn_rcv_taumod, sn_rcv_tau, sn_rcv_dqnsdt, sn_rcv_qsr,  &
       &             sn_rcv_qns , sn_rcv_emp   , sn_rcv_rnf, sn_rcv_ts_ice, sn_rcv_qtrice
    TYPE(FLD_C) ::   sn_rcv_cal, sn_rcv_iceflx, sn_rcv_co2, sn_rcv_mslp, sn_rcv_icb, sn_rcv_isf,       &
-                    sn_rcv_grnm, sn_rcv_antm, sn_rcv_qtr
+                    sn_rcv_grnm, sn_rcv_antm
    !                                   ! Send to waves
    TYPE(FLD_C) ::   sn_snd_ifrac, sn_snd_crtw, sn_snd_wlev
    !                                   ! Received from waves
@@ -294,7 +293,7 @@ CONTAINS
          &                  sn_rcv_charn , sn_rcv_taw   , sn_rcv_bhd  , sn_rcv_tusd  , sn_rcv_tvsd,    &
          &                  sn_rcv_wdrag , sn_rcv_qns   , sn_rcv_emp  , sn_rcv_rnf   , sn_rcv_cal  ,   &
          &                  sn_rcv_iceflx, sn_rcv_co2   , sn_rcv_icb  , sn_rcv_isf   , sn_rcv_ts_ice, sn_rcv_qtrice, &
-         &                  sn_rcv_mslp  , sn_rcv_qtr   , sn_rcv_grnm , sn_rcv_antm  ,                 &
+         &                  sn_rcv_mslp  , sn_rcv_grnm , sn_rcv_antm  ,                                &
          &                  nn_coupled_iceshelf_fluxes  , ln_iceshelf_init_atmos ,                     &
          &                  rn_greenland_total_fw_flux  , rn_greenland_calving_fraction  ,             &
          &                  rn_antarctica_total_fw_flux , rn_antarctica_calving_fraction ,             &
@@ -339,7 +338,6 @@ CONTAINS
          WRITE(numout,*)'      iceberg                         = ', TRIM(sn_rcv_icb%cldes   ), ' (', TRIM(sn_rcv_icb%clcat   ), ')'
          WRITE(numout,*)'      ice shelf                       = ', TRIM(sn_rcv_isf%cldes   ), ' (', TRIM(sn_rcv_isf%clcat   ), ')'
          WRITE(numout,*)'      sea ice heat fluxes             = ', TRIM(sn_rcv_iceflx%cldes), ' (', TRIM(sn_rcv_iceflx%clcat), ')'
-         WRITE(numout,*)'      transmitted solar               = ', TRIM(sn_rcv_qtr%cldes   ), ' (', TRIM(sn_rcv_qtr%clcat   ), ')'
          WRITE(numout,*)'      transmitted solar thru sea-ice  = ', TRIM(sn_rcv_qtrice%cldes), ' (', TRIM(sn_rcv_qtrice%clcat), ')'
          WRITE(numout,*)'      atm co2                         = ', TRIM(sn_rcv_co2%cldes   ), ' (', TRIM(sn_rcv_co2%clcat   ), ')'
          WRITE(numout,*)'      Sea ice surface skin temperature= ', TRIM(sn_rcv_ts_ice%cldes), ' (', TRIM(sn_rcv_ts_ice%clcat), ')'
@@ -600,19 +598,6 @@ CONTAINS
          ENDIF
          srcv(jpr_topm:jpr_botm)%laction = .TRUE.
       ENDIF
-      !                                                      ! ------------------------- !
-      !                                                      !    transmitted solar      !   
-      !                                                      ! ------------------------- !
-      srcv(jpr_qtr )%clname = 'OQtr'
-      IF( TRIM(sn_rcv_qtr%cldes) == 'coupled' ) THEN
-         IF ( TRIM( sn_rcv_qtr%clcat ) == 'yes' ) THEN
-            srcv(jpr_qtr)%nct = nn_cats_cpl
-         ELSE
-            CALL ctl_stop( 'sbc_cpl_init: sn_rcv_qtr%clcat should always be set to yes currently' )
-         ENDIF
-         srcv(jpr_qtr)%laction = .TRUE.
-      ENDIF
-
       !                                                      ! --------------------------- !
       !                                                      ! transmitted solar thru ice  !   
       !                                                      ! --------------------------- !
