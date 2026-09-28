@@ -870,8 +870,8 @@ CONTAINS
          END SELECT
          CALL zdf_osm_iomput( "zwth0",           tmask(T2D(0),1) * swth0(T2D(0))     )      ! <Tw_0>
          CALL zdf_osm_iomput( "zws0",            tmask(T2D(0),1) * sws0(T2D(0))      )      ! <Sw_0>
-         CALL zdf_osm_iomput( "zwb0",            tmask(T2D(0),1) * swb0(T2D(0))      )      ! <Sw_0>
-         CALL zdf_osm_iomput( "zwbav",           tmask(T2D(0),1) * swth0(T2D(0))     )      ! Upward BL-avged turb buoyancy flux
+         CALL zdf_osm_iomput( "zwb0",            tmask(T2D(0),1) * swb0(T2D(0))      )      ! <bw_0>
+         CALL zdf_osm_iomput( "zwbav",           tmask(T2D(0),1) * swbav(T2D(0))     )      ! Upward BL-avged turb buoyancy flux
          CALL zdf_osm_iomput( "ibld",            tmask(T2D(0),1) * nbld(T2D(0))      )      ! Boundary-layer max k
          CALL zdf_osm_iomput( "zdt_bl",          tmask(T2D(0),1) * av_dt_bl(T2D(0))  )      ! dt at ml base
          CALL zdf_osm_iomput( "zds_bl",          tmask(T2D(0),1) * av_ds_bl(T2D(0))  )      ! ds at ml base
