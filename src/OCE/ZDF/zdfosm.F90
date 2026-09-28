@@ -1960,6 +1960,7 @@ CONTAINS
             IF ( l_conv(ji,jj) ) THEN
                IF ( jk <= nmld(ji,jj) ) THEN
                   zznd_d = gdepw(ji,jj,jk,Kmm) / hdstokes(ji,jj)
+                  zznd_ml = gdepw(ji,jj,jk,Kmm) / phbl(ji,jj)
                   ghamu(ji,jj,jk) = ghamu(ji,jj,jk) + 0.3_wp * 0.5_wp *   &
                      &                                ( zsc_uw_1(ji,jj) + 0.125_wp * EXP( -0.5_wp * zznd_d ) *     &
                      &                                ( 1.0_wp - EXP( -0.5_wp * zznd_d ) ) * zsc_uw_2(ji,jj) ) *   &
