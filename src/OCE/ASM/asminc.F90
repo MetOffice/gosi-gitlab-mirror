@@ -675,7 +675,7 @@ CONTAINS
                   !
                   WHERE(t_bkginc(T2D(0),jk) > 0.0_wp .OR. &
                      &   pts(T2D(0),jk,jp_tem,Kmm) + pts(T2D(0),jk,jp_tem,Krhs) + t_bkginc(T2D(0),jk) * wgtiau(it) > zfzptnz(:,:) )
-                     pts(T2D(0),jk,jp_tem,Krhs) = pts(T2D(0),jk,jp_tem,Krhs) + t_bkginc(T2D(0),jk) * zvalid_bv(ji,jj,jk) * zincwgt
+                     pts(T2D(0),jk,jp_tem,Krhs) = pts(T2D(0),jk,jp_tem,Krhs) + t_bkginc(T2D(0),jk) * zvalid_bv(T2D(0),jk) * zincwgt
                   END WHERE
                ELSE
                   DO_2D( 0, 0, 0, 0 )
@@ -687,7 +687,7 @@ CONTAINS
                   ! minimum value rn_salfixmin
                   WHERE(s_bkginc(T2D(0),jk) > 0.0_wp .OR. &
                      &   pts(T2D(0),jk,jp_sal,Kmm) + pts(T2D(0),jk,jp_sal,Krhs) + s_bkginc(T2D(0),jk) * wgtiau(it) > rn_salfixmin )
-                     pts(T2D(0),jk,jp_sal,Krhs) = pts(T2D(0),jk,jp_sal,Krhs) + s_bkginc(T2D(0),jk) * zvalid_bv(ji,jj,jk) * zincwgt
+                     pts(T2D(0),jk,jp_sal,Krhs) = pts(T2D(0),jk,jp_sal,Krhs) + s_bkginc(T2D(0),jk) * zvalid_bv(T2D(0),jk) * zincwgt
                   END WHERE
                ELSE
                   DO_2D( 0, 0, 0, 0 )
