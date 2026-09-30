@@ -2307,8 +2307,8 @@ CONTAINS
       zmld_midv(:,:)   =  0.0_wp
       ztsm_midv(:,:,:) = 10.0_wp
       DO_2D( nn_hls-1, nn_hls-1, nn_hls, nn_hls-1 )
-         pdtdy(ji,jj)            = ( ztm(ji,jj+1) - ztm(ji,jj) ) * vmask(ji,jj,1) / e1v(ji,jj)
-         pdsdy(ji,jj)            = ( zsm(ji,jj+1) - zsm(ji,jj) ) * vmask(ji,jj,1) / e1v(ji,jj)
+         pdtdy(ji,jj)            = ( ztm(ji,jj+1) - ztm(ji,jj) ) * vmask(ji,jj,1) / e2v(ji,jj)
+         pdsdy(ji,jj)            = ( zsm(ji,jj+1) - zsm(ji,jj) ) * vmask(ji,jj,1) / e2v(ji,jj)
          zmld_midv(ji,jj)        = 0.25_wp * ( pmld(ji,jj+1) + pmld( ji,jj) )
          ztsm_midv(ji,jj,jp_tem) =  0.5_wp * ( ztm( ji,jj+1)  + ztm( ji,jj) )
          ztsm_midv(ji,jj,jp_sal) =  0.5_wp * ( zsm( ji,jj+1)  + zsm( ji,jj) )
