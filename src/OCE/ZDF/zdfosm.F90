@@ -1015,7 +1015,7 @@ CONTAINS
       ! Select components, set auxiliary arrays (if required), etc.
       llrotation = .FALSE.
       IF( PRESENT(ldrotation) ) llrotation = ldrotation
-      llt = .FALSE.; lldt = .FALSE.; lls  = .FALSE.; lldt  = .FALSE.
+      llt = .FALSE.; lldt = .FALSE.; lls  = .FALSE.; llds  = .FALSE.
       llb = .FALSE.; lldb = .FALSE.; lluv = .FALSE.; llduv = .FALSE.
       IF( PRESENT(pdt) ) THEN
          ppt => pdt
