@@ -243,7 +243,7 @@ CONTAINS
       ALLOCATE( tprecip(A2D(0)) , sprecip(A2D(0)) ,    &
          &      atm_co2(A2D(0)) , tsk_m  (A2D(0)) , cloud_fra(A2D(0)), STAT=ierr(7) )
 
-      ALLOCATE( greenland_icesheet_mask(A2D(0)) , antarctica_icesheet_mask(A2D(0)) ) 
+      ALLOCATE( greenland_icesheet_mask(jpi,jpj) , antarctica_icesheet_mask(jpi,jpj) ) 
 
       ALLOCATE( sea_fraction_last_couple(A2D(0)) )
 

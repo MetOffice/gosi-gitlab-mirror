@@ -30,7 +30,8 @@ MODULE sbccpl
    USE isf_oce , ONLY : l_isfoasis, fwfisf_oasis ! ice shelf boundary condition
 #if defined key_si3
    USE par_ice        ! SI3 parameters
-   USE ice     , ONLY : a_i, h_i, h_s, h_ip, a_ip_frac, a_ip_eff, cnd_ice, t1_ice, u_ice, v_ice
+   USE ice     , ONLY : a_i, h_i, h_s, h_ip, a_ip_frac, a_ip_eff, cnd_ice, t1_ice,    &
+                        u_ice, v_ice, a_i_last_couple
 #endif
    USE cpl_oasis3     ! OASIS3 coupling
    USE geo2ocean      !
@@ -225,9 +226,6 @@ MODULE sbccpl
    TYPE( DYNARR ), SAVE, DIMENSION(jprcv) ::   frcv                ! all fields recieved from the atmosphere
 
    REAL(wp), ALLOCATABLE, SAVE, DIMENSION(:,:) ::   alb_oce_mix    ! ocean albedo sent to atmosphere (mix clear/overcast sky)
-#if defined key_si3 || defined key_cice
-   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) ::   a_i_last_couple !: Ice fractional area at last coupling time
-#endif
 
    INTEGER , ALLOCATABLE, SAVE, DIMENSION(:) ::   nrcvinfo           ! OASIS info argument
 
@@ -1933,9 +1931,7 @@ CONTAINS
 #if defined key_si3 || defined key_cice
       !
       IF( kt == nit000 ) THEN
-         ! allocate ice fractions from last coupling time here and not in sbc_cpl_init because of jpl
-         IF( .NOT.ALLOCATED(a_i_last_couple) )   ALLOCATE( a_i_last_couple(jpi,jpj,jpl) )
-         ! initialize to a_i for the 1st time step
+         ! initialize a_i_last_couple to a_i for the 1st time step only
          a_i_last_couple(A2D(0),:) = a_i(A2D(0),:)
       ENDIF
       !
@@ -2725,7 +2721,7 @@ CONTAINS
       IF(  info == OASIS_Sent    .OR. info == OASIS_ToRest .OR. &
          & info == OASIS_SentOut .OR. info == OASIS_ToRestOut ) THEN
          IF ( sn_snd_thick%clcat == 'yes' ) THEN
-           a_i_last_couple(A2D(0),1:jpl) = a_i(A2D(0),1:jpl)
+           a_i_last_couple(A2D(0),:) = a_i(A2D(0),:)
            sea_fraction_last_couple(A2D(0)) = 1.0 - SUM(a_i(A2D(0),1:jpl), dim=3)
          ENDIF
       ENDIF

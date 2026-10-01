@@ -153,7 +153,6 @@ CONTAINS
       INTEGER, INTENT(in) ::   krcv, ksnd     ! Number of received and sent coupling fields
       INTEGER, INTENT(in) ::   kcplmodel      ! Maximum number of models to/from which NEMO is potentialy sending/receiving data
       !
-      INTEGER :: id_part
       INTEGER :: id_part_0d     ! Partition for 0d fields
       INTEGER :: id_part_rnf_1d ! Partition for 1d river outflow fields
       INTEGER :: id_part_2d     ! Partition for 2d fields
@@ -217,7 +216,7 @@ CONTAINS
          WRITE(numout,*) ' multiexchg: Njs0, Nje0, njmpp =', Njs0, Nje0, njmpp
       ENDIF
 
-      CALL oasis_def_partition ( id_part, paral, nerror, Ni0glo*Nj0glo )   ! global number of points, excluding halos
+      CALL oasis_def_partition ( id_part_2d, paral, nerror, Ni0glo*Nj0glo )   ! global number of points, excluding halos
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! A special partition is needed for 0D fields
@@ -281,7 +280,7 @@ CONTAINS
                   ENDIF
 #endif
                   IF( sn_cfctl%l_oasout ) WRITE(numout,*) "Define", ji, jc, jm, " "//TRIM(zclname), " for ", OASIS_Out
-                  CALL oasis_def_var (ssnd(ji)%nid(jc,jm), zclname, id_part   , (/ 2, 1 /),   &
+                  CALL oasis_def_var (ssnd(ji)%nid(jc,jm), zclname, id_part_2d   , (/ 2, 1 /),   &
                      &                OASIS_Out          , ishape , OASIS_REAL, nerror )
                   IF( nerror /= OASIS_Ok ) THEN
                      WRITE(numout,*) 'Failed to define transient ', ji, jc, jm, " "//TRIM(zclname)

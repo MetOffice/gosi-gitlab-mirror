@@ -67,8 +67,6 @@ CONTAINS
       NAMELIST/nam_cpl_rnf_1d/file_riv_number, ln_print_river_info
       !!----------------------------------------------------------------------
 
-      IF( ln_timing ) CALL timing_start('cpl_rnf_1d_init')
-      
       IF(lwp) WRITE(numout,*)
       IF(lwp) WRITE(numout,*) 'cpl_rnf_1d_init : initialization of river runoff coupling'
       IF(lwp) WRITE(numout,*) '~~~~~~~~~~~~'

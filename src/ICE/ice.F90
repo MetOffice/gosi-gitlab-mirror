@@ -457,7 +457,7 @@ CONTAINS
       
       ! * For atmospheric coupling
       ii = ii + 1
-      ALLOCATE( a_i_last_couple(jpi,jpj,jpl) , STAT=ierr(ii) )
+      ALLOCATE( a_i_last_couple(A2D(0),jpl) , STAT=ierr(ii) )
 
       ice_alloc = MAXVAL( ierr(:) )
       IF( ice_alloc /= 0 )   CALL ctl_stop( 'STOP', 'ice_alloc: failed to allocate arrays.' )
