@@ -64,10 +64,10 @@ CONTAINS
       !! ** Action  : - px2 : first  componante (defined at u point)
       !!              - py2 : second componante (defined at v point)
       !!----------------------------------------------------------------------
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   pxu1, pyu1   ! geographic vector componantes at u-point
-      REAL(wp), INTENT(in   ), DIMENSION(jpi,jpj) ::   pxv1, pyv1   ! geographic vector componantes at v-point
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   px2          ! i-componante (defined at u-point)
-      REAL(wp), INTENT(  out), DIMENSION(jpi,jpj) ::   py2          ! j-componante (defined at v-point)
+      REAL(wp), INTENT(in   ), DIMENSION(A2D(0)) ::   pxu1, pyu1   ! geographic vector componantes at u-point
+      REAL(wp), INTENT(in   ), DIMENSION(A2D(0)) ::   pxv1, pyv1   ! geographic vector componantes at v-point
+      REAL(wp), INTENT(  out), DIMENSION(A2D(0)) ::   px2          ! i-componante (defined at u-point)
+      REAL(wp), INTENT(  out), DIMENSION(A2D(0)) ::   py2          ! j-componante (defined at v-point)
       !!----------------------------------------------------------------------
       INTEGER, INTENT( IN ) ::   &
          kchoix   ! type of transformation

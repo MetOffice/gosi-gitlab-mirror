@@ -2569,8 +2569,9 @@ CONTAINS
       REAL(wp), DIMENSION(A2D(0))     ::   zotx1_in, zoty1_in  ! Temporary arrays to avoid buggy INTENT specs
       REAL(wp), DIMENSION(A2D(0),1)   ::   ze3t_i
       REAL(wp), DIMENSION(A2D(0),jpl) ::   ztmp3, ztmp4
-      REAL(wp), DIMENSION(jpi,jpj)     ::   ztmp5, ztmp6 ! RSRH temporary work arrays 
+      REAL(wp), DIMENSION(A2D(0))     ::   ztmp5, ztmp6 ! RSRH temporary work arrays 
                                                          ! to avoid intent conflicts in repcmo calls
+      REAL(wp), DIMENSION(jpi,jpj)     ::   ztmp1_h, ztmp2_h, zotx1_h, zoty1_h   ! Full halo versions of some of the above variables
       !!----------------------------------------------------------------------
       !
       isec = ( kt - nit000 ) * NINT( rn_Dt )        ! date of exchanges
@@ -2879,7 +2880,7 @@ CONTAINS
                         zotx1(ji,jj) = 0.5 * ( uu(ji,jj,1,Kmm) + uu(ji-1,jj  ,1,Kmm) )
                         zoty1(ji,jj) = 0.5 * ( vv(ji,jj,1,Kmm) + vv(ji  ,jj-1,1,Kmm) )
                   END_2D
-               ELSE
+               ELSE                             ! C-grid ==> U,V
                   ! Temporarily Changed for UKV
                   DO_2D( 0, 0, 0, 0 )
                         zotx1(ji,jj) = uu(ji,jj,1,Kmm)
@@ -2900,14 +2901,28 @@ CONTAINS
                   zitx1(ji,jj) = 0.5 * ( u_ice(ji,jj  )     + u_ice(ji-1,jj    )     ) *  fr_i(ji,jj)
                   zity1(ji,jj) = 0.5 * ( v_ice(ji,jj  )     + v_ice(ji  ,jj-1  )     ) *  fr_i(ji,jj)
                END_2D
-            CASE( 'mixed oce-ice'        )      ! Ocean and Ice on C-grid ==> T
-               DO_2D( 0, 0, 0, 0 )
-                  zotx1(ji,jj) = 0.5 * ( uu   (ji,jj,1,Kmm) + uu   (ji-1,jj  ,1,Kmm) ) * zfr_l(ji,jj)   &
-                     &         + 0.5 * ( u_ice(ji,jj  )     + u_ice(ji-1,jj    )     ) *  fr_i(ji,jj)
-                  zoty1(ji,jj) = 0.5 * ( vv   (ji,jj,1,Kmm) + vv   (ji  ,jj-1,1,Kmm) ) * zfr_l(ji,jj)   &
-                     &         + 0.5 * ( v_ice(ji,jj  )     + v_ice(ji  ,jj-1  )     ) *  fr_i(ji,jj)
-               END_2D
+            CASE( 'mixed oce-ice'        ) 
+               IF ( TRIM( sn_snd_crt%clvgrd ) == 'T' ) THEN ! Ocean and Ice on C-grid ==> T
+
+                  DO_2D( 0, 0, 0, 0 )
+                     zotx1_h(ji,jj) = 0.5 * ( uu   (ji,jj,1,Kmm) + uu   (ji-1,jj  ,1,Kmm) ) * zfr_l(ji,jj)   &
+                        &         + 0.5 * ( u_ice(ji,jj  )     + u_ice(ji-1,jj    )     ) *  fr_i(ji,jj)
+                     zoty1_h(ji,jj) = 0.5 * ( vv   (ji,jj,1,Kmm) + vv   (ji  ,jj-1,1,Kmm) ) * zfr_l(ji,jj)   &
+                        &         + 0.5 * ( v_ice(ji,jj  )     + v_ice(ji  ,jj-1  )     ) *  fr_i(ji,jj)
+                  END_2D
+
+               ELSE                             ! Ocean and Ice on C-grid ==> U,V (i.e. stay at the same points)
+
+                 DO_2D( 0, 0, 0, 0 )        
+                     zotx1_h(ji,jj) = uu(ji,jj,1,Kmm) * zfr_l(ji,jj)  + u_ice(ji,jj)  *  fr_i(ji,jj)
+                     zoty1_h(ji,jj) = vv(ji,jj,1,Kmm) * zfr_l(ji,jj)  + v_ice(ji,jj)  *  fr_i(ji,jj)
+                  END_2D
+
+               ENDIF
             END SELECT
+               
+            CALL lbc_lnk( 'sbccpl', zotx1_h, 'T', -1.0_wp, zoty1_h,  'T', -1.0_wp )
+
             !
          ENDIF
          !
@@ -2930,13 +2945,22 @@ CONTAINS
                ! Only applies when we want uvel on U grid and vvel on V grid
                ! Rotate U and V onto geographic grid before sending.
 	
-              DO_2D( 0, 0, 0, 0 )
+               ! Regrid to the other U and V points so that:
+               ! ztmp1 is the U current at the V point
+               ! ztmp2 is the V current at the U point
+               ! This is needed so that:
+               ! zotx1,ztmp2 is the U,V at the U point
+               ! ztmp1,zoty1 is the U,V at the V point
+               ! All halos are removed at this stage too.
+               DO_2D( 0, 0, 0, 0 )
                      ztmp1(ji,jj)=0.25*vmask(ji,jj,1)                  &
-                          *(zotx1(ji,jj)+zotx1(ji-1,jj)    &
-                          +zotx1(ji,jj+1)+zotx1(ji-1,jj+1))
+                          *(zotx1_h(ji,jj)+zotx1_h(ji-1,jj)    &
+                          +zotx1_h(ji,jj+1)+zotx1_h(ji-1,jj+1))
                      ztmp2(ji,jj)=0.25*umask(ji,jj,1)                  &
-                          *(zoty1(ji,jj)+zoty1(ji+1,jj)    &
-                          +zoty1(ji,jj-1)+zoty1(ji+1,jj-1))
+                          *(zoty1_h(ji,jj)+zoty1_h(ji+1,jj)    &
+                          +zoty1_h(ji,jj-1)+zoty1_h(ji+1,jj-1))
+                     zotx1(ji,jj) = zotx1_h(ji,jj)
+                     zoty1(ji,jj) = zoty1_h(ji,jj)
                END_2D
               	               
                ikchoix = -1
@@ -2949,8 +2973,6 @@ CONTAINS
                zotx1(A2D(0))=ztmp5(A2D(0))
                zoty1(A2D(0))=ztmp6(A2D(0))
 
-               ! Ensure any N fold and wrap columns are updated. 
-               CALL lbc_lnk( 'sbccpl', zotx1, ssnd(jps_ocx1)%clgrid, -1.0_wp,  zoty1, ssnd(jps_ocy1)%clgrid, -1.0_wp )
 
             ENDIF
          ENDIF
