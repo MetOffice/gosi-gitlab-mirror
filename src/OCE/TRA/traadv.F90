@@ -158,12 +158,12 @@ CONTAINS
                &             -  z_stfp * (  vv_b(ji,jj,Kaa) + vv_b(ji,jj,Kbb)  ) ) * e1v(ji,jj)
 #else
             zFu_cor(ji,jj) = ( z_2stfp * un_adv(ji,jj) * r1_hu_0(ji,jj)   &
-               &             -  z_stfp * (  ( 1._wp + r3u(ji,jj,Kaa) ) / ( 1._wp + r3u(ji,jj,Kmm) ) * uu_b(ji,jj,Kaa)   &
-               &                          + ( 1._wp + r3u(ji,jj,Kbb) ) / ( 1._wp + r3u(ji,jj,Kmm) ) * uu_b(ji,jj,Kbb)  ) &
+               &             -  z_stfp * (  ( 1._wp + r3u(ji,jj,Kaa) ) * uu_b(ji,jj,Kaa)   &
+               &                          + ( 1._wp + r3u(ji,jj,Kbb) ) * uu_b(ji,jj,Kbb)  ) &
                &             ) * e2u(ji,jj)
             zFv_cor(ji,jj) = ( z_2stfp * vn_adv(ji,jj) * r1_hv_0(ji,jj)   &
-               &             -  z_stfp * (  ( 1._wp + r3v(ji,jj,Kaa) ) / ( 1._wp + r3v(ji,jj,Kmm) ) * vv_b(ji,jj,Kaa)   &
-               &                          + ( 1._wp + r3v(ji,jj,Kbb) ) / ( 1._wp + r3v(ji,jj,Kmm) ) * vv_b(ji,jj,Kbb)  )&
+               &             -  z_stfp * (  ( 1._wp + r3v(ji,jj,Kaa) ) * vv_b(ji,jj,Kaa)   &
+               &                          + ( 1._wp + r3v(ji,jj,Kbb) ) * vv_b(ji,jj,Kbb)  )&
                &             ) * e1v(ji,jj)
 #endif
          END_2D
