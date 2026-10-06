@@ -2051,7 +2051,7 @@ CONTAINS
          rnf(A2D(0)) = frcv(jpr_rnf)%z3(A2D(0),1)
       ENDIF
       IF( srcv(jpr_rnf_1d)%laction ) THEN ! 1D runoff
-         CALL cpl_rnf_1d_to_2d(frcv(jpr_rnf_1d)%z3(A2D(0),:))
+         CALL cpl_rnf_1d_to_2d(frcv(jpr_rnf_1d)%z3(:,:,:))
       ENDIF
       IF( srcv(jpr_cal)%laction ) THEN   ! calving (put in emp_tot and emp_oce)
          zemp_tot(A2D(0)) = zemp_tot(A2D(0)) - frcv(jpr_cal)%z3(A2D(0),1)
@@ -2127,7 +2127,7 @@ CONTAINS
       IF( iom_use('rain_ao_cea') )   CALL iom_put( 'rain_ao_cea' , ( tprecip(A2D(0)) - sprecip(A2D(0)) ) * ziceld(A2D(0))         )  ! liquid precipitation over ocean (cell average)
       IF( iom_use('subl_ai_cea') )   CALL iom_put( 'subl_ai_cea' , zevap_ice_total(A2D(0)) * picefr(A2D(0)) * smask0(A2D(0))      )  ! Sublimation over sea-ice (cell average)
       IF( iom_use('evap_ao_cea') )   CALL iom_put( 'evap_ao_cea' , zevap_oce(A2D(0))                                           )  ! ice-free oce evap (cell average)
-      IF( iom_use('total_evap') )    CALL iom_put( 'total_evap'  , zevap_oce(A2D(0)) + zevap_ice_total(A2D(0)) * picefr(A2D(0)) * tmask(A2D(0),1) )
+      ! IF( iom_use('total_evap') )    CALL iom_put( 'total_evap'  , zevap_oce(A2D(0)) + zevap_ice_total(A2D(0)) * picefr(A2D(0)) * tmask(A2D(0),1) )
       ! note: runoff output is done in sbcrnf (which includes icebergs too) and iceshelf output is done in sbcisf
 !!      IF( srcv(jpr_rnf)%laction )   CALL iom_put( 'runoffs' , rnf(A2D(0)) * tmask(A2D(0),1)                                 )  ! runoff
       IF( srcv(jpr_isf)%laction )    CALL iom_put( 'iceshelf_cea', frcv(jpr_isf)%z3(A2D(0),1) * smask0(A2D(0))                 )  ! iceshelf
@@ -2913,18 +2913,18 @@ CONTAINS
 
                ELSE                             ! Ocean and Ice on C-grid ==> U,V (i.e. stay at the same points)
 
-                 DO_2D( 0, 0, 0, 0 )        
+                  DO_2D( 0, 0, 0, 0 )        
                      zotx1_h(ji,jj) = uu(ji,jj,1,Kmm) * zfr_l(ji,jj)  + u_ice(ji,jj)  *  fr_i(ji,jj)
                      zoty1_h(ji,jj) = vv(ji,jj,1,Kmm) * zfr_l(ji,jj)  + v_ice(ji,jj)  *  fr_i(ji,jj)
                   END_2D
 
                ENDIF
-            END SELECT
-               
-            CALL lbc_lnk( 'sbccpl', zotx1_h, 'T', -1.0_wp, zoty1_h,  'T', -1.0_wp )
-
+            END SELECT                      
             !
          ENDIF
+
+         ! Make sure the halos are updated
+         CALL lbc_lnk( 'sbccpl', zotx1_h, sn_snd_crt%clvgrd, -1.0_wp, zoty1_h,  sn_snd_crt%clvgrd, -1.0_wp )
          !
          !
          IF( TRIM( sn_snd_crt%clvor ) == 'eastward-northward' ) THEN             ! Rotation of the components
