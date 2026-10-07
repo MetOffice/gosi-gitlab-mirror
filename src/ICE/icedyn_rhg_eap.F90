@@ -492,7 +492,7 @@ CONTAINS
             ENDIF
 
             ! stress at F points (zkt/=0 if landfast)
-            zs12(ji,jj) = ( zs12(ji,jj) * zalph1 + zstress12tmpF ) * z1_alph1
+            zs12(ji,jj) = ( zs12(ji,jj) * zalph2 + zstress12tmpF ) * z1_alph2
 
          END_2D
          CALL lbc_lnk( 'icedyn_rhg_eap', zs1, 'T', 1.0_wp, zs2, 'T', 1.0_wp, zs12, 'F', 1.0_wp )
