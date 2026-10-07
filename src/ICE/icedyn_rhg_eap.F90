@@ -519,7 +519,7 @@ CONTAINS
             ENDIF
 
             ! stress at F points (zkt/=0 if landfast)
-            zs12(ji,jj) = ( zs12(ji,jj) * zalph1 + zstress12tmpF ) * z1_alph1
+            zs12(ji,jj) = ( zs12(ji,jj) * zalph2 + zstress12tmpF ) * z1_alph2
 
          END_2D
 
