@@ -353,7 +353,7 @@ CONTAINS
             CALL UPDATE_QNSOL_TAU( zu, T_s, q_s, t_zu, q_zu, u_star, t_star, q_star, U_zu, Ubzu, slp, rad_lw, zrhoa, &
                &                   ztmp1, zeta_u)  ! Qnsol -> ztmp1 / Tau -> zeta_u
             !! In WL_COARE or , Tau_ac and Qnt_ac must be updated at the final itteration step => add a flag to do this!
-            CALL WL_COARE( Qsw, ztmp1, zeta_u, zsst, MOD(nbit,jit) )
+            CALL WL_COARE( Qsw, ztmp1, zeta_u, zsst, MOD(jit,nbit) )
 
             !! Updating T_s and q_s !!!
             T_s(:,:) = zsst(:,:) + dT_wl(:,:)*smask0(:,:)
