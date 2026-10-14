@@ -421,3 +421,6 @@ for config in ${TEST_CONFIGS[@]} ; do
     fi
 
 done
+
+# Set the working-directory path to point to the SETTE-scripts directory
+cd ${SETTE_DIR}
