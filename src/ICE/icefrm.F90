@@ -305,8 +305,10 @@ CONTAINS
     !!----------------------------------------------------------------------
     !!   Default option         Empty Module                No sea-ice model
     !!----------------------------------------------------------------------
+   IMPLICIT NONE
 CONTAINS
     SUBROUTINE ice_frm( kt )         ! Empty routine
+       INTEGER, INTENT(in) ::   kt   ! ocean time-step index
        WRITE(*,*) 'ice_frm: You should not have seen this print! error?', kt
     END SUBROUTINE ice_frm
 #endif
