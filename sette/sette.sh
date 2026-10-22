@@ -400,7 +400,7 @@ if [ ${SETTE_REPORT} -eq 1 ]; then
    echo "./sette_rpt.sh"
    echo "-------------------------------------------------------------"
    echo ""
-   ./sette_rpt.sh ${NEMO_DEBUG} -n "${TEST_CONFIGS[*]}"
+   ./sette_rpt.sh -v "${VALID_VAR}" -n "${TEST_CONFIGS[*]}"
    if [[ $? != 0 ]]; then
       echo ""
       echo "-----------------------------------------------------------------"
