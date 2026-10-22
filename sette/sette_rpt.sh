@@ -719,15 +719,18 @@ fi
 
 # Identifier to select the build and run-time-configuration variant
 # (hash-function value)
-var="${USING_QCO};${USING_SI3_1D};${USING_XIOS};${USING_DEBUG}"
+var="\"COMPILER\",\"${COMPILER}\";\"TRANSFORM\",\"${TRANSFORM}\""
+var="${var};${USING_QCO};${USING_SI3_1D};${USING_XIOS};${USING_DEBUG}"
 var="${var};${USING_TIMING};${USING_ICEBERGS};${USING_ABL};${USING_EXTRA_HALO}"
 var="${var};${USING_COLLECTIVES};${USING_NOGATHER};${USING_TILING};${USING_MPMD}"
 if [[ "${VALID_VAR}" == "AUTOMATIC" ]]; then
-  VALID_VAR=$(echo "\"COMPILER\",\"${COMPILER}\";\"TRANSFORM\",\"${TRANSFORM}\";${var}" | md5sum | cut -f 1 -d ' ')
+  VALID_VAR=$(echo "${var}" | md5sum | cut -f 1 -d ' ')
+else
+  var="${VALID_VAR}.lookup"
 fi
 #   and the corresponding comparison-reference identifier
 if [[ "${VALID_VAR_REF}" == "AUTOMATIC" ]]; then
-  VALID_VAR_REF=$(echo "\"COMPILER\",\"${COMPILER_REF}\";\"TRANSFORM\",\"${TRANSFORM_REF}\";${var}" | md5sum | cut -f 1 -d ' ')
+  VALID_VAR_REF=$(echo "${var}" | md5sum | cut -f 1 -d ' ')
 fi
 VALID_VAR=$(echo "${VALID_VAR}" | tr '[:upper:]' '[:lower:]' | tr -d -c '[:xdigit:]')
 VALID_VAR_REF=$(echo "${VALID_VAR_REF}" | tr '[:upper:]' '[:lower:]' | tr -d -c '[:xdigit:]')
@@ -773,20 +776,40 @@ if [ -n "${refsha}" ]; then
     VALID_REV_REF=00000000 && NEMO_VALID_REF="/path/to/reference/sette/results"
   fi
 fi
+# Indicate local modifications
+if [[ $localchanges -gt 0 ]] ; then
+  VALID_REV="${VALID_REV}+"
+fi
+
+# Look up the details of the build and run-time-configuration variant (if required)
+if [[ "${var}" == "${VALID_VAR}.lookup" ]]; then
+  get_dorv
+  if [[ -f "${NEMO_VALID}/${dorv}/${var}" ]] && [[ -d "${NEMO_VALID}/${dorv}/${VALID_VAR}" ]]; then
+    identifier=$( md5sum "${NEMO_VALID}/${dorv}/${var}" | cut -f 1 -d ' ' )
+    if [[ "${identifier}" == "${VALID_VAR}" ]]; then
+      # Extract the variant lookup data from the first line of the metadata file
+      var_pattern="\"COMPILER\",\"[[:alnum:].+_\-]{1,64}\";\"TRANSFORM\",\"[[:alnum:]]{0,64}\"(;\"USING_(QCO)?(SI3_1D)?(XIOS)?"
+      var_pattern="${var_pattern}(DEBUG)?(TIMING)?(ICEBERGS)?(ABL)?(EXTRA_HALO)?(COLLECTIVES)?(NOGATHER)?(TILING)?(MPMD)?\","
+      var_pattern="${var_pattern}\"(yes)?(no)?\"){12}"
+      var=$( head -n 1 ${NEMO_VALID}/${dorv}/${var} | grep -o -E "${var_pattern}" )
+      if [[ -z "${var}" ]]; then
+        echo "Error: incompatible format of the variant lookup data for variant identifier \"${VALID_VAR}\"" && exit 1
+      fi
+    else
+      echo "Error: variant lookup data is inconsistent with variant identifier \"${VALID_VAR}\"" && exit 1
+    fi
+  else
+    echo "Error: variant \"${VALID_VAR}\" is not available" && exit 1
+  fi
+fi
+
 echo ""
 echo "SETTE validation report generated for : "
 echo ""
-if [[ $localchanges -gt 0 ]] ; then
-  echo "       source-code revision ${VALID_REV} (with local changes)"
-  VALID_REV="${VALID_REV}+"
-else
-  echo "       source-code revision ${VALID_REV}"
-fi
+echo "       source-code revision ${VALID_REV/%+/ (with local changes)}"
 echo ""
 echo "       build and run-time-configuration variant ${VALID_VAR}:"
 echo ""
-echo "           COMPILER                 : ${COMPILER}"
-echo "           TRANSFORM                : ${TRANSFORM}"
 var2="${var#\"}"
 var2="${var2%\"}"
 for v in ${var2//\";\"/ }; do printf "           %-24s : %s\n" ${v/\",\"/ }; done
