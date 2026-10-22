@@ -174,7 +174,7 @@ function reprotest(){
     runtest $vdir $nam REPRO
     #
     # check reproducibility
-    rep1=MPPREF
+    rep1=REF
     rep2=MPP
     if [ $rep1 == $rep2 ]; then
        rep2=''

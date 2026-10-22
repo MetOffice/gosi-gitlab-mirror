@@ -63,14 +63,18 @@ for config in ${TEST_CONFIGS[@]} ; do
     echo "Process $config"
     echo ''
 
-    # default settings
-    SAO_FLAG="0"     # overwritten by input_CONFIG.cfg if needed
-    NOAGRIF_FLAG="0" # overwritten by input_CONFIG.cfg if needed
-    MPP_FLAG="1"     # overwritten by input_CONFIG.cfg if needed
-    RST_FLAG="1"     # overwritten by input_CONFIG.cfg if needed
-    PHY_FLAG="0"     # overwritten by input_CONFIG.cfg if needed
-    ROT_FLAG="0"     # overwritten by input_CONFIG.cfg if needed
-    CPL_FLAG="0"     # overwritten by input_CONFIG.cfg if needed
+    # Default test-run(-group) selection; these settings may be overwritten
+    # when sourcing the relevant input_<CONFIG>.cfg files
+    MPP_FLAG="1"
+    RST_FLAG="1"
+    SAO_FLAG="0"
+    NOAGRIF_FLAG="0"
+    PHY_FLAG="0"
+    ROT_FLAG="0"
+    CPL_FLAG="0"
+    # Default reference-run selection; this setting may be updated according to
+    # the test-type and test-run selection
+    REF_FLAG="0"
     
     # some configs do not support tiling
     TILE_FLAG="1"    # overwritten by input_CONFIG.cfg if needed
@@ -133,18 +137,9 @@ for config in ${TEST_CONFIGS[@]} ; do
     [[ -n "${TRANSFORM}" ]] && TRANSFORM_OPT="-p ${TRANSFORM}"
 
     CONFIG_SUFFIX=${SETTE_STG}
-    DO_REF=0
-    DO_RST=${DO_RESTART}
-    DO_MPP=${DO_REPRO}
-    DO_SAO=${DO_VARIANTS}
     DO_VARIANTS_0=${DO_VARIANTS}
     # Name of the reference run for the VARIANTS test type
     VARIANTS_REF="ORCA2"
-    # One of the REPRO test runs can be utilised as a reference run for the VARIANTS test of configuration ORCA2_ICE_OBS
-    #[[ ${config} == "ORCA2_ICE_OBS" ]] && [[ ${DO_VARIANTS} == "1" ]] && VARIANTS_REF="" && DO_REPRO_2="1"   # This
-    #   adjustment has been disabled as a workaround for integration testing, in order to avoid the running of the same test
-    #   run twice in parallel by the current integration-testing implementation when both the REPRO and VARIANTS test types
-    #   have been selected
 
     # The actual names of the NEMO builds that are associated with the
     # currently processed SETTE configuration
@@ -252,13 +247,11 @@ for config in ${TEST_CONFIGS[@]} ; do
             set_xio_using_server iodef.xml ${USING_MPMD}
         fi
 
-        # Select the REF test run if either the RST or the SAO test run has been
-        # requested
-        if [ "${DO_RST}" == "1" ] ; then DO_REF=1 ; fi
-        if [ "${DO_SAO}" == "1" ] && [ "${SAO_FLAG}" == "1" ] ; then DO_REF=1 ; fi
-
-        # *_FLAGS are overwritten by config cards when needed.
-        if [ "${DO_COUPLING}" == "1" ] && [ ${CPL_FLAG} == "1" ] ; then DO_REF=0 ; fi
+        # Select the reference test run according to the test-type and test-run
+        # selection
+        if [ "${DO_RESTART}"  == "1" ] && [ "${RST_FLAG}" == "1" ] ; then REF_FLAG="1" ; fi
+        if [ "${DO_REPRO}"    == "1" ] && [ "${MPP_FLAG}" == "1" ] ; then REF_FLAG="1" ; fi
+        if [ "${DO_VARIANTS}" == "1" ] && [ "${SAO_FLAG}" == "1" ] ; then REF_FLAG="1" ; fi
 
         JOB_FILE_REF=""
 
@@ -266,7 +259,7 @@ for config in ${TEST_CONFIGS[@]} ; do
         # ----------------------
         if [ ${DO_RUN_REFERENCE} -eq 1 ] ; then
 
-            if [ ${DO_REF} == "1" ] ; then 
+            if [ ${REF_FLAG} == "1" ] ; then 
 
                 SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" REF "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
                 prepare_job "${SETTINGS[@]}"
@@ -280,7 +273,7 @@ for config in ${TEST_CONFIGS[@]} ; do
         # ----------------------------------------------------------
         if [ ${DO_RUN_TESTS} -eq 1 ] ; then
 
-            if [ ${DO_RST} == "1" ] && [ ${RST_FLAG} == "1" ] ; then
+            if [ ${DO_RESTART} == "1" ] && [ ${RST_FLAG} == "1" ] ; then
                 SETTINGS=("${RST_NIT000}" "${RST_NITEND}" "${RST_JPNI}" "${RST_JPNJ}" "${RST_NPROC}" RST "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "${JOB_FILE_REF}")
                 prepare_job "${SETTINGS[@]}"
                 JOB_FILE_REF=${JOB_FILE}
@@ -288,7 +281,7 @@ for config in ${TEST_CONFIGS[@]} ; do
 
             # Prepare the SAO test run (SAO), dependent on the reference test run
             # (REF)
-            if [ ${DO_SAO} == "1" ] && [ ${SAO_FLAG} == "1" ] ; then
+            if [ ${DO_VARIANTS} == "1" ] && [ ${SAO_FLAG} == "1" ] ; then
                 SETTE_CONFIG=${SETTE_CONFIG_VAR}
                 SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" SAO "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "${JOB_FILE_REF}")
                 prepare_job "${SETTINGS[@]}"
@@ -301,7 +294,7 @@ for config in ${TEST_CONFIGS[@]} ; do
         # Submit pending test runs
         if [ ! -z "${JOB_FILE_REF}" ] ; then
 
-            if [ ${DO_REF} == "1" ] ; then . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE_REF} ${INTERACT_FLAG} ${MPIRUN_FLAG} ; fi
+            if [ ${REF_FLAG} == "1" ] ; then . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE_REF} ${INTERACT_FLAG} ${MPIRUN_FLAG} ; fi
 
         fi
 
@@ -327,18 +320,11 @@ for config in ${TEST_CONFIGS[@]} ; do
 
             # ------------------------------------------------------
             # manage reproducibility run
-            if [ ${DO_MPP} == "1" ] && [ ${MPP_FLAG} == "1" ]; then 
+            if [ ${DO_REPRO} == "1" ] && [ ${MPP_FLAG} == "1" ]; then 
 
                 echo ''
                 echo "Process $config MPP"
                 echo ''
-
-                # prepare reproducibility reference run (to be removed later as = REF)
-                SETTINGS=("${REF_NIT000}" "${REF_NITEND}" "${REF_JPNI}" "${REF_JPNJ}" "${REF_NPROC}" MPPREF "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
-                prepare_job "${SETTINGS[@]}"
-
-                # submit reproducibility reference job
-                . ${SETTE_DIR}/fcm_job.sh ${TOTAL_NPROCS} ${JOB_FILE} ${INTERACT_FLAG} ${MPIRUN_FLAG}
 
                 # prepare reproducibility run
                 SETTINGS=("${MPP_NIT000}" "${MPP_NITEND}" "${MPP_JPNI}" "${MPP_JPNJ}" "${MPP_NPROC}" MPP "${INPUT_FILES}" "${RST_COMP}" "${ATM_NPROC}" "")
