@@ -250,7 +250,7 @@ CONTAINS
       !
       
       ! Vertically-interpolated mixed-layer depth diagnostic
-      CALL zdf_mxl_zint( kt, Kmm )
+      !CALL zdf_mxl_zint( kt, Kmm )
       
       IF( ln_timing )   CALL timing_stop('dia_hth')
       !
