@@ -15,7 +15,7 @@ MODULE diahth
    USE oce             ! ocean dynamics and tracers
    USE dom_oce         ! ocean space and time domain
    USE phycst          ! physical constants
-   USE zdfmxl, ONLY: zdf_mxl_zint
+   !!USE zdfmxl, ONLY: zdf_mxl_zint
    !
    USE in_out_manager  ! I/O manager
    USE lib_mpp         ! MPP library

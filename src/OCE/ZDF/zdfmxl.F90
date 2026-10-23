@@ -136,182 +136,7 @@ CONTAINS
       !
    END SUBROUTINE zdf_mxl
 
-   SUBROUTINE zdf_mxl_zint_mld( sf , Kmm) 
-      !!---------------------------------------------------------------------------------- 
-      !!                    ***  ROUTINE zdf_mxl_zint_mld  *** 
-      !                                                                        
-      !   Calculate vertically-interpolated mixed layer depth diagnostic. 
-      !            
-      !   This routine can calculate the mixed layer depth diagnostic suggested by
-      !   Kara et al, 2000, JGR, 105, 16803, but is more general and can calculate
-      !   vertically-interpolated mixed-layer depth diagnostics with other parameter
-      !   settings set in the namzdf_mldzint namelist.  
-      ! 
-      !   If mld_type=1 the mixed layer depth is calculated as the depth at which the  
-      !   density has increased by an amount equivalent to a temperature difference of  
-      !   0.8C at the surface. 
-      ! 
-      !   For other values of mld_type the mixed layer is calculated as the depth at  
-      !   which the temperature differs by 0.8C from the surface temperature.  
-      !                                                                        
-      !   David Acreman, Daley Calvert                                      
-      ! 
-      !!----------------------------------------------------------------------------------- 
-
-      TYPE(MXL_ZINT), INTENT(in)  :: sf
-      INTEGER, INTENT(in) ::   Kmm  ! ocean time level index
-
-      ! Diagnostic criteria
-      INTEGER   :: nn_mld_type   ! mixed layer type     
-      REAL(wp)  :: rn_zref       ! depth of initial T_ref
-      REAL(wp)  :: rn_dT_crit    ! Critical temp diff
-      REAL(wp)  :: rn_iso_frac   ! Fraction of rn_dT_crit used
-
-      ! Local variables
-      REAL(wp), PARAMETER :: zepsilon = 1.e-30          ! local small value
-      INTEGER, DIMENSION(jpi,jpj) :: ikmt          ! number of active tracer levels 
-      INTEGER, DIMENSION(jpi,jpj) :: ik_ref        ! index of reference level 
-      INTEGER, DIMENSION(jpi,jpj) :: ik_iso        ! index of last uniform temp level 
-      REAL, DIMENSION(jpi,jpj,jpk)  :: zT            ! Temperature or density 
-      REAL, DIMENSION(jpi,jpj)    :: ppzdep        ! depth for use in calculating d(rho) 
-      REAL, DIMENSION(jpi,jpj)    :: zT_ref        ! reference temperature 
-      REAL    :: zT_b                                   ! base temperature 
-      REAL, DIMENSION(jpi,jpj,jpk)  :: zdTdz         ! gradient of zT 
-      REAL, DIMENSION(jpi,jpj,jpk)  :: zmoddT        ! Absolute temperature difference 
-      REAL    :: zdz                                    ! depth difference 
-      REAL    :: zdT                                    ! temperature difference 
-      REAL, DIMENSION(jpi,jpj)    :: zdelta_T      ! difference critereon 
-      REAL, DIMENSION(jpi,jpj)    :: zRHO1, zRHO2  ! Densities 
-      INTEGER :: ji, jj, jk                             ! loop counter 
-
-      !!------------------------------------------------------------------------------------- 
-      !  
-      ! Unpack structure
-      nn_mld_type = sf%mld_type
-      rn_zref     = sf%zref
-      rn_dT_crit  = sf%dT_crit
-      rn_iso_frac = sf%iso_frac
-
-      ! Set the mixed layer depth criterion at each grid point 
-      IF( nn_mld_type == 0 ) THEN
-         zdelta_T(:,:) = rn_dT_crit
-         zT(:,:,:) = rhop(:,:,:)
-      ELSE IF( nn_mld_type == 1 ) THEN
-         ppzdep(:,:)=0.0 
-         call eos ( ts(:,:,1,:,Kmm), ppzdep(:,:), zRHO1(:,:) ) 
-! Use zT temporarily as a copy of tsn with rn_dT_crit added to SST 
-! [assumes number of tracers less than number of vertical levels] 
-         zT(:,:,1:jpts)=ts(:,:,1,1:jpts,Kmm) 
-         zT(:,:,jp_tem)=zT(:,:,1)+rn_dT_crit 
-         CALL eos( zT(:,:,1:jpts), ppzdep(:,:), zRHO2(:,:) ) 
-         zdelta_T(:,:) = abs( zRHO1(:,:) - zRHO2(:,:) ) * rho0 
-         ! RHO from eos (2d version) doesn't calculate north or east halo: 
-         CALL lbc_lnk( 'zdfmxl', zdelta_T, 'T', 1. ) 
-         zT(:,:,:) = rhop(:,:,:) 
-      ELSE 
-         zdelta_T(:,:) = rn_dT_crit                      
-         zT(:,:,:) = ts(:,:,:,jp_tem,Kmm)                           
-      END IF 
-
-      ! Calculate the gradient of zT and absolute difference for use later 
-      DO jk = 1 ,jpk-2 
-         zdTdz(:,:,jk)  =    ( zT(:,:,jk+1) - zT(:,:,jk) ) / e3w(:,:,jk+1,Kmm) 
-         zmoddT(:,:,jk) = abs( zT(:,:,jk+1) - zT(:,:,jk) ) 
-      END DO 
-
-      ! Find density/temperature at the reference level (Kara et al use 10m).          
-      ! ik_ref is the index of the box centre immediately above or at the reference level 
-      ! Find rn_zref in the array of model level depths and find the ref    
-      ! density/temperature by linear interpolation.                                   
-      DO jk = jpkm1, 2, -1 
-         WHERE ( gdept(:,:,jk,Kmm) > rn_zref ) 
-           ik_ref(:,:) = jk - 1 
-           zT_ref(:,:) = zT(:,:,jk-1) + zdTdz(:,:,jk-1) * ( rn_zref - gdept(:,:,jk-1,Kmm) ) 
-         END WHERE 
-      END DO 
-
-      ! If the first grid box centre is below the reference level then use the 
-      ! top model level to get zT_ref 
-      WHERE ( gdept(:,:,1,Kmm) > rn_zref )  
-         zT_ref = zT(:,:,1) 
-         ik_ref = 1 
-      END WHERE 
-
-      ! The number of active tracer levels is 1 less than the number of active w levels 
-      ikmt(:,:) = mbkt(:,:) - 1 
-
-      ! Initialize / reset
-      ll_found(:,:) = .false.
-
-      IF ( rn_iso_frac - zepsilon > 0. ) THEN
-         ! Search for a uniform density/temperature region where adjacent levels          
-         ! differ by less than rn_iso_frac * deltaT.                                      
-         ! ik_iso is the index of the last level in the uniform layer  
-         ! ll_found indicates whether the mixed layer depth can be found by interpolation 
-         ik_iso(:,:)   = ik_ref(:,:) 
-         DO jj = 1, jpj      ! Changed from nlcj
-            DO ji = 1, jpi   ! Changed from nlci
-!CDIR NOVECTOR 
-               DO jk = ik_ref(ji,jj), ikmt(ji,jj)-1 
-                  IF ( zmoddT(ji,jj,jk) > ( rn_iso_frac * zdelta_T(ji,jj) ) ) THEN 
-                     ik_iso(ji,jj)   = jk 
-                     ll_found(ji,jj) = ( zmoddT(ji,jj,jk) > zdelta_T(ji,jj) ) 
-                     EXIT 
-                  END IF 
-               END DO 
-            END DO 
-         END DO 
-
-         ! Use linear interpolation to find depth of mixed layer base where possible 
-         hmld_zint(:,:) = rn_zref 
-         DO jj = 1, jpj 
-            DO ji = 1, jpi 
-               IF (ll_found(ji,jj) .and. tmask(ji,jj,1) == 1.0) THEN 
-                  zdz =  abs( zdelta_T(ji,jj) / zdTdz(ji,jj,ik_iso(ji,jj)) ) 
-                  hmld_zint(ji,jj) = gdept(ji,jj,ik_iso(ji,jj),Kmm) + zdz 
-               END IF 
-            END DO 
-         END DO 
-      END IF
-
-      ! If ll_found = .false. then calculate MLD using difference of zdelta_T    
-      ! from the reference density/temperature 
- 
-! Prevent this section from working on land points 
-      WHERE ( tmask(:,:,1) /= 1.0 ) 
-         ll_found = .true. 
-      END WHERE 
- 
-      DO jk=1, jpk 
-         ll_belowml(:,:,jk) = abs( zT(:,:,jk) - zT_ref(:,:) ) >= zdelta_T(:,:)  
-      END DO 
- 
-! Set default value where interpolation cannot be used (ll_found=false)  
-      DO jj = 1, jpj 
-         DO ji = 1, jpi 
-            IF ( .not. ll_found(ji,jj) )  hmld_zint(ji,jj) = gdept(ji,jj,ikmt(ji,jj),Kmm) 
-         END DO 
-      END DO 
-
-      DO jj = 1, jpj 
-         DO ji = 1, jpi 
-!CDIR NOVECTOR 
-            DO jk = ik_ref(ji,jj)+1, ikmt(ji,jj) 
-               IF ( ll_found(ji,jj) ) EXIT 
-               IF ( ll_belowml(ji,jj,jk) ) THEN                
-                  zT_b = zT_ref(ji,jj) + zdelta_T(ji,jj) * SIGN(1.0, zdTdz(ji,jj,jk-1) ) 
-                  zdT  = zT_b - zT(ji,jj,jk-1)                                      
-                  zdz  = zdT / zdTdz(ji,jj,jk-1)                                       
-                  hmld_zint(ji,jj) = gdept(ji,jj,jk-1,Kmm) + zdz 
-                  EXIT                                                   
-               END IF 
-            END DO 
-         END DO 
-      END DO 
-
-      hmld_zint(:,:) = hmld_zint(:,:)*tmask(:,:,1) 
-      !  
-   END SUBROUTINE zdf_mxl_zint_mld
+   
 
    SUBROUTINE zdf_mxl_zint_htc( kt , Kmm)
       !!----------------------------------------------------------------------
@@ -466,16 +291,16 @@ CONTAINS
          DO jn = 1, nn_mld_diag
             WRITE(cmld,'(I1)') jn
 
-            IF( l_mld(jn) .OR. l_htc(jn) ) THEN
-               CALL zdf_mxl_zint_mld( mld_diags(jn), Kmm)
+         !   IF( l_mld(jn) .OR. l_htc(jn) ) THEN
+         !      CALL zdf_mxl_zint_mld( mld_diags(jn), Kmm)
 
-               IF( l_mld(jn) ) CALL iom_put( "mldzint_"//cmld, hmld_zint(:,:) )
+          !     IF( l_mld(jn) ) CALL iom_put( "mldzint_"//cmld, hmld_zint(:,:) )
 
-               IF( l_htc(jn) ) THEN
-                  CALL zdf_mxl_zint_htc( kt, Kmm )
-                  CALL iom_put( "mldhtc_"//cmld, htc_mld(:,:) )
-               ENDIF
-            ENDIF
+           !    IF( l_htc(jn) ) THEN
+           !       CALL zdf_mxl_zint_htc( kt, Kmm )
+           !       CALL iom_put( "mldhtc_"//cmld, htc_mld(:,:) )
+           !    ENDIF
+          !  ENDIF
          END DO
       ENDIF
 
