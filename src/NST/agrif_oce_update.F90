@@ -31,12 +31,14 @@ MODULE agrif_oce_update
 #if defined key_qco
    USE domqco
 #endif
+   USE sbc_oce  , ONLY: ln_rnf
    IMPLICIT NONE
    PRIVATE
 
    PUBLIC   Agrif_Update_Tra, Agrif_Update_Dyn, Agrif_Update_vvl, Agrif_Update_ssh
    PUBLIC   Agrif_Check_parent_bat
    PUBLIC   update_tmask_agrif
+   PUBLIC   Agrif_Update_rnf_wet ! called by nemogcm.F90
 
    !! * Substitutions
 #  include "domzgr_substitute.h90"
@@ -187,9 +189,21 @@ CONTAINS
       
    END SUBROUTINE Agrif_Update_Tke
 
+   SUBROUTINE Agrif_Update_rnf_wet
+      !!----------------------------------------------------------------------
+      !!  *** ROUTINE Agrif_Update_rnf_wet *** 
+      !!
+      !!       W_P on the parent grid, once before 
+      !!       the time loop
+      !!----------------------------------------------------------------------
+      IF( Agrif_Root() )   RETURN
+      IF( .NOT.( ln_rnf .AND. ln_agrif_rnf ) )   RETURN
+      Agrif_UseSpecialValue = .FALSE.
+      CALL Agrif_Update_Variable( rnfw_id, locupdate=(/0,0/), procname=updaternfwet )
+   END SUBROUTINE Agrif_Update_rnf_wet
+
    SUBROUTINE Agrif_Update_vvl( )
-      !!---------------------------------------------
-      !!   *** ROUTINE Agrif_Update_vvl ***
+      !!---------------------------------------------      !!   *** ROUTINE Agrif_Update_vvl ***
       !!---------------------------------------------
       !
       IF (Agrif_Root()) RETURN
@@ -1188,6 +1202,32 @@ CONTAINS
       ENDIF
       !
    END SUBROUTINE updateAVM
+
+   SUBROUTINE updaternfwet( ptab, i1, i2, j1, j2, before )
+      !!----------------------------------------------------------------------
+      !! ** Purpose :   compute the wet child area W_P under each parent T-cell P 
+      !!                (ln_agrif_rnf)
+      !!
+      !! ** Method  :   W_P = SUM over the child cells c of P of tmask(c) * e1e2t(c)
+      !!                AGRIF has no sum update: AGRIF_Update_Average returns the
+      !!                arithmetic mean over the r_x * r_y child cells of P.
+      !!                The child therefore sends r_x * r_y * tmask * e1e2t, so that
+      !!                this mean equals the sum W_P (same trick as e1e2t_frac).
+      !!
+      !! ** Action  :   rnf_wagr = W_P on the parent grid
+      !!----------------------------------------------------------------------
+      INTEGER                         , INTENT(in   ) ::   i1, i2, j1, j2
+      REAL(wp), DIMENSION(i1:i2,j1:j2), INTENT(inout) ::   ptab
+      LOGICAL                         , INTENT(in   ) ::   before
+      !!----------------------------------------------------------------------
+      IF( before ) THEN                                  ! child
+         ptab(i1:i2,j1:j2) = REAL( Agrif_irhox() * Agrif_irhoy(), wp ) * &
+                 &                 tmask(i1:i2,j1:j2,1) * e1e2t(i1:i2,j1:j2)
+      ELSE                                               ! parent
+         rnf_wagr(i1:i2,j1:j2) = ptab(i1:i2,j1:j2)
+      ENDIF
+   END SUBROUTINE updaternfwet
+
 
 #if ! defined key_qco   &&   ! defined key_linssh
    SUBROUTINE update_e3t(tabres, i1, i2, j1, j2, k1, k2, before )

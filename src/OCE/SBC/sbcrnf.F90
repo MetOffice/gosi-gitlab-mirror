@@ -26,6 +26,10 @@ MODULE sbcrnf
    USE fldread        ! read input field at current time step
    USE iom            ! I/O module
    USE lib_mpp        ! MPP library
+#if defined key_agrif
+   USE agrif_oce       , ONLY : ln_agrif_rnf, rnf_wagr, rnf_ts_agr, rnf_ini_agr
+   USE agrif_oce_interp, ONLY : Agrif_rnf, Agrif_rnf_ini
+#endif
 
    IMPLICIT NONE
    PRIVATE
@@ -58,9 +62,13 @@ MODULE sbcrnf
    REAL(wp)          , PUBLIC ::   rn_avt_rnf        !: runoffs, value of the additional vertical mixing coef. [m2/s]
    REAL(wp)          , PUBLIC ::   rn_rfact          !: multiplicative factor for runoff
 
-   LOGICAL , PUBLIC ::   l_rnfcpl = .false.   !: runoffs recieved from oasis
+   LOGICAL , PUBLIC ::   l_rnfcpl = .false.   !: runoffs received from oasis
    INTEGER , PUBLIC ::   nkrnf = 0            !: nb of levels over which Kz is increased at river mouths
-
+#if defined key_agrif
+   LOGICAL , PUBLIC            ::   l_rnfagr = .FALSE.    !: runoff received from the parent grid (AGRIF child, ln_agrif_rnf)
+#else
+   LOGICAL , PUBLIC, PARAMETER ::   l_rnfagr = .FALSE.    !: no AGRIF: never true
+#endif
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:)   ::   rnfmsk              !: river mouth mask (hori.)
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:)     ::   rnfmsk_z            !: river mouth mask (vert.)
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:)   ::   h_rnf               !: depth of runoff in m
@@ -120,16 +128,30 @@ CONTAINS
       !                                            !-------------------!
       !
       !
-      IF( .NOT. l_rnfcpl )  THEN
+#if defined key_agrif
+      IF( kt == nit000 )   CALL lbc_lnk( 'sbcrnf', rnf_wagr, 'T', 1.0_wp )   ! W_P set by children before the time loop
+#endif
+      IF( .NOT.( l_rnfcpl .OR. l_rnfagr ) )  THEN
                             CALL fld_read ( kt, nn_fsbc, sf_rnf   )    ! Read Runoffs data and provide it at kt ( runoffs + iceberg )
       ENDIF
-      IF(   ln_rnf_icb   )   CALL fld_read ( kt, nn_fsbc, sf_i_rnf )    ! idem for iceberg flux        if required
-      IF(   ln_rnf_tem   )   CALL fld_read ( kt, nn_fsbc, sf_t_rnf )    ! idem for runoffs temperature if required
-      IF(   ln_rnf_sal   )   CALL fld_read ( kt, nn_fsbc, sf_s_rnf )    ! idem for runoffs salinity    if required
+      IF( .NOT. l_rnfagr ) THEN    ! runoff read from file
+         IF(   ln_rnf_icb   )   CALL fld_read ( kt, nn_fsbc, sf_i_rnf )    ! idem for iceberg flux        if required
+         IF(   ln_rnf_tem   )   CALL fld_read ( kt, nn_fsbc, sf_t_rnf )    ! idem for runoffs temperature if required
+         IF(   ln_rnf_sal   )   CALL fld_read ( kt, nn_fsbc, sf_s_rnf )    ! idem for runoffs salinity    if required
+      ENDIF
       !
       IF( MOD( kt - 1, nn_fsbc ) == 0 ) THEN
          !
-         IF( .NOT. l_rnfcpl ) THEN
+#if defined key_agrif
+         IF( l_rnfagr ) THEN                    ! child: rnf (rivers), fwficb, rnf_ts_agr <- parent
+            CALL Agrif_rnf
+            IF( ln_rnf_tem )   sf_t_rnf(1)%fnow(:,:,1) = rnf_ts_agr(:,:,1)
+            IF( ln_rnf_sal )   sf_s_rnf(1)%fnow(:,:,1) = rnf_ts_agr(:,:,2)
+         ENDIF
+         IF( ln_rnf_tem )   rnf_ts_agr(:,:,1) = sf_t_rnf(1)%fnow(:,:,1)   ! any grid: T/S visible to its children
+         IF( ln_rnf_sal )   rnf_ts_agr(:,:,2) = sf_s_rnf(1)%fnow(:,:,1)
+#endif
+         IF( .NOT.( l_rnfcpl .OR. l_rnfagr ) ) THEN
              rnf(:,:) = rn_rfact * ( sf_rnf(1)%fnow(:,:,1) ) * tmask(:,:,1)  ! updated runoff value at time step kt
              IF( ln_rnf_icb ) THEN
                 fwficb(:,:) = rn_rfact * ( sf_i_rnf(1)%fnow(:,:,1) ) * tmask(:,:,1)  ! updated runoff value at time step kt
@@ -143,8 +165,9 @@ CONTAINS
          ENDIF
 
          IF( ln_rnf_icb ) THEN
-            fwficb(:,:) = rn_rfact * ( sf_i_rnf(1)%fnow(:,:,1) ) * tmask(:,:,1)  ! updated runoff value at time step kt
-            IF( ln_icb_mass ) THEN
+            IF( .NOT. l_rnfagr ) fwficb(:,:) = rn_rfact * ( sf_i_rnf(1)%fnow(:,:,1) ) * tmask(:,:,1) ! iceberg flux read from file
+                                                                                                     ! and updated at time step kt
+            IF( ln_icb_mass .AND. .NOT. l_rnfagr ) THEN     ! rescale only the flux read from input file
                 ! Modify the Iceberg FW flux to be consistent with the change in
                 ! mass of the Antarctic/Greenland ice sheet for FW conservation in
                 ! coupled model. This isn't perfect as FW flux will go into ocean at
@@ -330,6 +353,9 @@ CONTAINS
       IF(lwm) WRITE ( numond, namsbc_rnf )
       !
       IF( .NOT. ln_rnf ) THEN                      ! no specific treatment in vicinity of river mouths
+#if defined key_agrif
+         IF( ln_agrif_rnf .AND. .NOT. Agrif_Root() )   CALL ctl_stop( 'sbc_rnf_init: ln_agrif_rnf = T requires ln_rnf = T' )
+#endif
          ln_rnf_mouth  = .FALSE.                   ! default definition needed for example by sbc_ssr or by tra_adv_muscl
          ln_rnf_tem    = .FALSE.
          ln_rnf_sal    = .FALSE.
@@ -342,6 +368,22 @@ CONTAINS
          RETURN
       ENDIF
       !
+#if defined key_agrif
+      ALLOCATE( rnf_wagr(jpi,jpj), rnf_ts_agr(jpi,jpj,2), rnf_ini_agr(jpi,jpj,2) )
+      rnf_wagr   (:,:)   = 0._wp                             ! set by Agrif_Update_rnf_wet; 0 = no runoff sent
+      rnf_ts_agr (:,:,:) = 0._wp
+      rnf_ini_agr(:,:,:) = 0._wp
+      IF( .NOT. Agrif_Root() )   l_rnfagr = ln_agrif_rnf
+      IF( l_rnfagr ) THEN                                    ! parent and child must apply the same runoff options
+         IF( .NOT. Agrif_Parent(ln_rnf) )   CALL ctl_stop( 'sbc_rnf_init: ln_agrif_rnf = T requires ln_rnf = T on the parent' )
+         IF( l_rnfcpl )                     CALL ctl_stop( 'sbc_rnf_init: ln_agrif_rnf = T incompatible with runoff from the coupler' )
+         IF( ( ln_rnf_icb   .NEQV. Agrif_Parent(ln_rnf_icb)   ) .OR. ( ln_rnf_tem       .NEQV. Agrif_Parent(ln_rnf_tem)       ) .OR. &
+           & ( ln_rnf_sal   .NEQV. Agrif_Parent(ln_rnf_sal)   ) .OR. ( ln_rnf_mouth     .NEQV. Agrif_Parent(ln_rnf_mouth)     ) .OR. &
+           & ( ln_rnf_depth .NEQV. Agrif_Parent(ln_rnf_depth) ) .OR. ( ln_rnf_depth_ini .NEQV. Agrif_Parent(ln_rnf_depth_ini) ) )  &
+           &   CALL ctl_stop( 'sbc_rnf_init: namsbc_rnf options must match the parent grid when ln_agrif_rnf = T' )
+         IF( ln_rnf_icb )   CALL ctl_stop( 'sbc_rnf_init: ln_rnf_icb with ln_agrif_rnf needs a single iceberg block in sbc_rnf' )   ! temporary
+      ENDIF
+#endif
       !                                         ! Control print
       IF(lwp) THEN
          WRITE(numout,*)
@@ -352,12 +394,15 @@ CONTAINS
          WRITE(numout,*) '      river mouth additional Kz                  rn_avt_rnf   = ', rn_avt_rnf
          WRITE(numout,*) '      depth of river mouth additional mixing     rn_hrnf      = ', rn_hrnf
          WRITE(numout,*) '      multiplicative factor for runoff           rn_rfact     = ', rn_rfact
+#if defined key_agrif
+         WRITE(numout,*) '      runoff received from the parent grid       l_rnfagr     = ', l_rnfagr
+#endif
       ENDIF
       !                                   ! ==================
       !                                   !   Type of runoff
       !                                   ! ==================
       !
-      IF( .NOT. l_rnfcpl ) THEN
+      IF( .NOT.( l_rnfcpl .OR. l_rnfagr ) ) THEN
          ALLOCATE( sf_rnf(1), STAT=ierror )         ! Create sf_rnf structure (runoff inflow)
          IF(lwp) WRITE(numout,*)
          IF(lwp) WRITE(numout,*) '   ==>>>   runoffs inflow read in a file'
@@ -371,7 +416,7 @@ CONTAINS
 
       ENDIF
 
-      IF( ln_rnf_icb ) THEN                      ! Create (if required) sf_i_rnf structure
+      IF( ln_rnf_icb .AND. .NOT. l_rnfagr ) THEN ! Create (if required) sf_i_rnf structure (not in a child)
          IF(lwp) WRITE(numout,*)
          IF(lwp) WRITE(numout,*) '          iceberg flux read in a file'
          ALLOCATE( sf_i_rnf(1), STAT=ierror  )
@@ -381,7 +426,7 @@ CONTAINS
          ALLOCATE( sf_i_rnf(1)%fnow(jpi,jpj,1)   )
          IF( sn_i_rnf%ln_tint ) ALLOCATE( sf_i_rnf(1)%fdta(jpi,jpj,1,2) )
          CALL fld_fill (sf_i_rnf, (/ sn_i_rnf /), cn_dir, 'sbc_rnf_init', 'read iceberg flux data', 'namsbc_rnf' )
-      ELSE
+      ELSEIF( .NOT. ln_rnf_icb ) THEN
          fwficb(:,:) = 0._wp
       ENDIF
       !
@@ -394,7 +439,8 @@ CONTAINS
          ENDIF
          ALLOCATE( sf_t_rnf(1)%fnow(jpi,jpj,1)   )
          IF( sn_t_rnf%ln_tint ) ALLOCATE( sf_t_rnf(1)%fdta(jpi,jpj,1,2) )
-         CALL fld_fill (sf_t_rnf, (/ sn_t_rnf /), cn_dir, 'sbc_rnf_init', 'read runoff temperature data', 'namsbc_rnf', no_print )
+         IF( .NOT. l_rnfagr ) CALL fld_fill (sf_t_rnf, (/ sn_t_rnf /), cn_dir, 'sbc_rnf_init',         &
+                 &                           'read runoff temperature data', 'namsbc_rnf', no_print )
       ENDIF
       !
       IF( ln_rnf_sal  ) THEN                     ! Create (if required) sf_s_rnf and sf_t_rnf structures
@@ -406,9 +452,13 @@ CONTAINS
          ENDIF
          ALLOCATE( sf_s_rnf(1)%fnow(jpi,jpj,1)   )
          IF( sn_s_rnf%ln_tint ) ALLOCATE( sf_s_rnf(1)%fdta(jpi,jpj,1,2) )
-         CALL fld_fill (sf_s_rnf, (/ sn_s_rnf /), cn_dir, 'sbc_rnf_init', 'read runoff salinity data', 'namsbc_rnf', no_print )
+         IF( .NOT. l_rnfagr ) CALL fld_fill (sf_s_rnf, (/ sn_s_rnf /), cn_dir, 'sbc_rnf_init',         &
+                                             'read runoff salinity data', 'namsbc_rnf', no_print )
       ENDIF
       !
+#if defined key_agrif
+      IF( l_rnfagr )   CALL Agrif_rnf_ini                    ! child: rnf_ini_agr (mouth mask, depth input) <- parent
+#endif
       IF( ln_rnf_depth ) THEN                    ! depth of runoffs set from a file
          IF(lwp) WRITE(numout,*)
          IF(lwp) WRITE(numout,*) '   ==>>>   runoffs depth read in a file'
@@ -416,9 +466,17 @@ CONTAINS
          IF( .NOT. sn_dep_rnf%ln_clim ) THEN   ;   WRITE(rn_dep_file, '(a,"_y",i4)' ) TRIM( rn_dep_file ), nyear    ! add year
             IF( sn_dep_rnf%clftyp == 'monthly' )   WRITE(rn_dep_file, '(a,"m",i2)'  ) TRIM( rn_dep_file ), nmonth   ! add month
          ENDIF
+#if defined key_agrif
+         IF( l_rnfagr ) THEN   ;   h_rnf(:,:) = rnf_ini_agr(:,:,2)
+         ELSE
+#endif
          CALL iom_open ( rn_dep_file, inum )                                                 ! open file
          CALL iom_get  ( inum, jpdom_global, sn_dep_rnf%clvar, h_rnf, kfill = jpfillcopy )   ! read the river mouth. no 0 on halos!
-         CALL iom_close( inum )                                                              ! close file
+         CALL iom_close( inum )
+#if defined key_agrif
+            rnf_ini_agr(:,:,2) = h_rnf(:,:)                   ! kept for children
+         ENDIF
+#endif                                                              ! close file
          !
          nk_rnf(:,:) = 0                               ! set the number of level over which river runoffs are applied
          DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
@@ -449,6 +507,10 @@ CONTAINS
          IF(lwp) WRITE(numout,*) '        depth over which runoffs is spread                        rn_dep_max = ', rn_dep_max
          IF(lwp) WRITE(numout,*) '        create (=1) a runoff depth file or not (=0)      nn_rnf_depth_file  = ', nn_rnf_depth_file
 
+#if defined key_agrif
+         IF( l_rnfagr ) THEN   ;   zrnfcl(:,:,1) = rnf_ini_agr(:,:,2)
+         ELSE
+#endif
          CALL iom_open( TRIM( sn_rnf%clname ), inum )    !  open runoff file
          nbrec = iom_getszuld( inum )
          zrnfcl(:,:,1) = 0._wp                                                            ! init the max to 0. in 1
@@ -457,6 +519,10 @@ CONTAINS
             zrnfcl(:,:,1) = MAXVAL( zrnfcl(:,:,:), DIM=3 )                                ! store the maximum value in time in 1
          END DO
          CALL iom_close( inum )
+#if defined key_agrif
+            rnf_ini_agr(:,:,2) = zrnfcl(:,:,1)                ! kept for children
+         ENDIF
+#endif
          !
          h_rnf(:,:) = 1.
          !
@@ -539,6 +605,9 @@ CONTAINS
          rnfmsk_z(:)   = 0._wp
          nkrnf = 0
       ENDIF
+#if defined key_agrif
+      rnf_ini_agr(:,:,1) = rnfmsk(:,:)                       ! river-mouth mask kept for children
+#endif
       !
    END SUBROUTINE sbc_rnf_init
 
@@ -577,9 +646,15 @@ CONTAINS
       ENDIF
       !
       ! horizontal mask (read in NetCDF file)
-      CALL iom_open ( cl_rnfile, inum )                             ! open file
-      CALL iom_get  ( inum, jpdom_global, sn_cnf%clvar, rnfmsk )    ! read the river mouth array
-      CALL iom_close( inum )                                        ! close file
+      IF( l_rnfagr ) THEN
+#if defined key_agrif
+         rnfmsk(:,:) = rnf_ini_agr(:,:,1) * tmask(:,:,1)    ! child: parent's mouth mask
+#endif
+      ELSE
+         CALL iom_open ( cl_rnfile, inum )
+         CALL iom_get  ( inum, jpdom_global, sn_cnf%clvar, rnfmsk )
+         CALL iom_close( inum )
+      ENDIF
       !
       IF( l_clo_rnf )   CALL clo_rnf( rnfmsk )   ! closed sea inflow set as river mouth
       !

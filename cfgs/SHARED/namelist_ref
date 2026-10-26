@@ -700,10 +700,11 @@
    ln_vert_remap   = .false., !  use vertical remapping
    ln_spc_dyn      = .false., !  use 0 as special value for dynamics
    ln_chk_bathy    = .true.,  !  =T  check the parent bathymetry
-   rn_sponge_tra   = 0.002   !  coefficient for tracer   sponge layer []
-   rn_sponge_dyn   = 0.002   !  coefficient for dynamics sponge layer []
-   rn_trelax_tra   = 0.01    !  inverse of relaxation time (in steps) for tracers []
-   rn_trelax_dyn   = 0.01    !  inverse of relaxation time (in steps) for dynamics []
+   ln_agrif_rnf    = .false.  !  =T child takes river runoff, iceberg melt and runoff T/S from the parent grid
+   rn_sponge_tra   = 0.002    !  coefficient for tracer   sponge layer []
+   rn_sponge_dyn   = 0.002    !  coefficient for dynamics sponge layer []
+   rn_trelax_tra   = 0.01     !  inverse of relaxation time (in steps) for tracers []
+   rn_trelax_dyn   = 0.01     !  inverse of relaxation time (in steps) for dynamics []
 /
 !-----------------------------------------------------------------------
 &nam_tide      !   tide parameters                                      (default: OFF)

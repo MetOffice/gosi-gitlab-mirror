@@ -30,6 +30,7 @@ MODULE agrif_oce
    REAL(wp), PUBLIC ::   rn_hcri       = 0.05      !: minimum thickness (m) for flux blocking 
 
    LOGICAL , PUBLIC ::   ln_chk_bathy  = .FALSE.   !: check of parent bathymetry 
+   LOGICAL , PUBLIC ::   ln_agrif_rnf  = .FALSE.   !: child takes runoff (rivers, icebergs, T/S) from parent
    !
    LOGICAL , PUBLIC ::   l_spc_tra    = .TRUE.     !: turn on extrapolation for active tracers
    LOGICAL , PUBLIC ::   l_spc_ssh    = .TRUE.     !: turn on extrapolation for ssh
@@ -66,7 +67,9 @@ MODULE agrif_oce
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:)   :: e1e2t_frac, e2u_frac, e1v_frac 
    REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) :: e3t0_parent, e3u0_parent, e3v0_parent
    INTEGER,  PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:)   :: mbkt_parent, mbku_parent, mbkv_parent
-
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:)   :: rnf_wagr      !: W_P, wet child area under each parent T-cell [m2]
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) :: rnf_ts_agr    !: runoff T, S as read from file
+   REAL(wp), PUBLIC, ALLOCATABLE, SAVE, DIMENSION(:,:,:) :: rnf_ini_agr   !: river-mouth mask, runoff-depth input
 
    INTEGER, PUBLIC :: ts_interp_id, ts_update_id                              ! AGRIF profile for tracers interpolation and update
    INTEGER, PUBLIC :: un_interp_id, vn_interp_id                              ! AGRIF profiles for interpolations
@@ -88,6 +91,7 @@ MODULE agrif_oce
    INTEGER, PUBLIC :: mbkt_id, ht0_id, e3t0_interp_id
    INTEGER, PUBLIC :: e1e2t_frac_id, e2u_frac_id, e1v_frac_id 
    INTEGER, PUBLIC :: glamt_id, gphit_id
+   INTEGER, PUBLIC :: rnf_id, rnfini_id, rnfw_id      ! runoff from parent: each timestep, at init, wet area W_P
    INTEGER, PUBLIC :: kindic_agr
 
 ! Variables shared among grids:

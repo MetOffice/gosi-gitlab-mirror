@@ -35,6 +35,7 @@ MODULE agrif_oce_interp
    USE lib_mpp
    USE vremap
    USE lbclnk
+   USE sbc_oce  , ONLY: rnf, fwficb ! runoff fields exchanged with the parent
 #if defined key_si3
    USE iceistate, ONLY: rsshadj, nn_iceini_file
    USE sbc_oce  , ONLY: ln_ice_embd
@@ -54,6 +55,7 @@ MODULE agrif_oce_interp
    PUBLIC   agrif_istate_oce, agrif_istate_ssh   ! called by icestate.F90 and domvvl.F90
    PUBLIC   agrif_check_bat
    PUBlIC   interp_tmask_agrif
+   PUBLIC   Agrif_rnf, Agrif_rnf_ini ! called by sbcrnf.F90
 
    INTEGER ::   bdy_tinterp = 0
 
@@ -901,6 +903,29 @@ CONTAINS
       l_vremap              = .FALSE.
       !
    END SUBROUTINE Agrif_avm
+
+   
+
+   SUBROUTINE Agrif_rnf
+      !!----------------------------------------------------------------------
+      !!                  *** ROUTINE Agrif_rnf ***  
+      !!       child: rivers, icebergs and runoff T/S from parent
+      !!----------------------------------------------------------------------
+      IF( Agrif_Root() )   RETURN
+      Agrif_UseSpecialValue = .FALSE.
+      CALL Agrif_Init_Variable( rnf_id, procname=interprnf )
+   END SUBROUTINE Agrif_rnf
+
+
+   SUBROUTINE Agrif_rnf_ini
+      !!----------------------------------------------------------------------
+      !!                  *** ROUTINE Agrif_rnf_ini ***  
+      !!       child: river-mouth mask and depth input from parent
+      !!----------------------------------------------------------------------
+      IF( Agrif_Root() )   RETURN
+      Agrif_UseSpecialValue = .FALSE.
+      CALL Agrif_Init_Variable( rnfini_id, procname=interprnfini )
+   END SUBROUTINE Agrif_rnf_ini
 
 
    SUBROUTINE interptsn( ptab, i1, i2, j1, j2, k1, k2, n1, n2, before )
@@ -1828,6 +1853,54 @@ CONTAINS
       !
    END SUBROUTINE interpavm
 
+   SUBROUTINE interprnf( ptab, i1, i2, j1, j2, k1, k2, before )
+      !!----------------------------------------------------------------------
+      !!  ptab(:,:,1)_ = rivers   -> fluxes renormalised by W_P 
+      !!  ptab(:,:,2)  = icebergs ->    "        "         " 
+      !!  ptab(:,:,3)  =  T       -> intensive, copied
+      !!  ptab(:,:,4)  =  S       ->    "         "
+      !!----------------------------------------------------------------------
+      INTEGER                               , INTENT(in   ) ::   i1, i2, j1, j2, k1, k2
+      REAL(wp), DIMENSION(i1:i2,j1:j2,k1:k2), INTENT(inout) ::   ptab
+      LOGICAL                               , INTENT(in   ) ::   before
+      INTEGER  ::   ji, jj
+      REAL(wp) ::   zfac
+      !!----------------------------------------------------------------------
+      IF( before ) THEN                                  ! parent: G_P = F_P A_P / W_P
+         ptab(i1:i2,j1:j2,k1:k2) = 0._wp
+         DO jj = j1, j2
+            DO ji = i1, i2
+               IF( rnf_wagr(ji,jj) > 0._wp ) THEN
+                  zfac = e1e2t(ji,jj) / rnf_wagr(ji,jj)
+                  ptab(ji,jj,1) = ( rnf(ji,jj) - fwficb(ji,jj) ) * zfac   ! rivers (single iceberg block assumed)
+                  ptab(ji,jj,2) =                fwficb(ji,jj)   * zfac   ! icebergs (0 if not used)
+               ENDIF
+            END DO
+         END DO
+         ptab(i1:i2,j1:j2,3:4) = rnf_ts_agr(i1:i2,j1:j2,1:2)            ! 0 if not used; file flags kept
+      ELSE                                               ! child: F_c = m_c G_P
+         rnf       (i1:i2,j1:j2)     = ptab(i1:i2,j1:j2,1) * tmask(i1:i2,j1:j2,1)
+         fwficb    (i1:i2,j1:j2)     = ptab(i1:i2,j1:j2,2) * tmask(i1:i2,j1:j2,1)
+         rnf_ts_agr(i1:i2,j1:j2,1:2) = ptab(i1:i2,j1:j2,3:4)
+      ENDIF
+   END SUBROUTINE interprnf
+
+
+   SUBROUTINE interprnfini( ptab, i1, i2, j1, j2, k1, k2, before )
+      !!----------------------------------------------------------------------
+      !!  ptab(:,:,1) = river-mouth mask   -> constant interpolation
+      !!  ptab(:,:,2) = runoff-depth input ->     "        "
+      !!----------------------------------------------------------------------
+      INTEGER                               , INTENT(in   ) ::   i1, i2, j1, j2, k1, k2
+      REAL(wp), DIMENSION(i1:i2,j1:j2,k1:k2), INTENT(inout) ::   ptab
+      LOGICAL                               , INTENT(in   ) ::   before
+      !!----------------------------------------------------------------------
+      IF( before ) THEN 
+        ptab(i1:i2,j1:j2,k1:k2) = rnf_ini_agr(i1:i2,j1:j2,k1:k2)   ! parent
+      ELSE         
+        rnf_ini_agr(i1:i2,j1:j2,k1:k2) = ptab(i1:i2,j1:j2,k1:k2)   ! child
+      ENDIF
+   END SUBROUTINE interprnfini
    
    SUBROUTINE interpmbkt( ptab, i1, i2, j1, j2, before )
       !!----------------------------------------------------------------------

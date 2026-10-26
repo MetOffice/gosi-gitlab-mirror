@@ -150,6 +150,7 @@ CONTAINS
       Kbb_a = Nbb; Kmm_a = Nnn; Krhs_a = Nrhs   ! agrif_oce module copies of time level indices
       CALL Agrif_step_child_adj(Agrif_Update_All)
       CALL Agrif_step_child_adj(Agrif_Check_parent_bat)
+      CALL Agrif_step_child_adj(Agrif_Update_rnf_wet)   ! W_P on each parent, before the first step
       !
       DO WHILE( istp <= nitend .AND. nstop == 0 )
          !

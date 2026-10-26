@@ -112,6 +112,7 @@
       CALL agrif_declare_variable((/1,2,0,0/),(/ind2-1,ind3  ,0,0/),(/'x','y','N','N'/),(/1,1,1,1/),(/jpi,jpj,jpk,2  /),  uini_id) 
       CALL agrif_declare_variable((/2,1,0,0/),(/ind2  ,ind3-1,0,0/),(/'x','y','N','N'/),(/1,1,1,1/),(/jpi,jpj,jpk,2  /),  vini_id)
       CALL agrif_declare_variable((/2,2    /),(/ind2  ,ind3      /),(/'x','y'        /),(/1,1    /),(/jpi,jpj        /),sshini_id)
+      CALL agrif_declare_variable((/2,2,0  /),(/ind2  ,ind3  ,0  /),(/'x','y','N'    /),(/1,1,1  /),(/jpi,jpj,2      /),rnfini_id)
       ! 
      
       ! 2. Type of interpolation
@@ -154,6 +155,7 @@
          CALL Agrif_Set_bcinterp(sshini_id,interp =AGRIF_linear  )
       ENDIF
       CALL Agrif_Set_interp  (sshini_id,interp =AGRIF_linear  )
+      CALL Agrif_Set_interp  (rnfini_id,interp =AGRIF_constant)   ! mask and depth flags preserved
 
        ! 3. Location of interpolation
       !-----------------------------
@@ -511,6 +513,8 @@
       CALL agrif_declare_variable((/2,1/),(/ind2,ind3-1/),(/'x','y'/),(/1,1/),(/jpi,jpj/), vnb_update_id)
       CALL agrif_declare_variable((/2,2/),(/ind2,ind3/),(/'x','y'/),(/1,1/),(/jpi,jpj/)  ,ub2b_cor_id)
       CALL agrif_declare_variable((/2,2/),(/ind2,ind3/),(/'x','y'/),(/1,1/),(/jpi,jpj/)  ,vb2b_cor_id)
+      CALL agrif_declare_variable((/2,2,0/),(/ind2,ind3,0/),(/'x','y','N'/),(/1,1,1/),(/jpi,jpj,4/), rnf_id )
+      CALL agrif_declare_variable((/2,2/)  ,(/ind2,ind3/)  ,(/'x','y'/)    ,(/1,1/)  ,(/jpi,jpj/)  , rnfw_id)
 !      CALL agrif_declare_variable((/2,2/),(/ind2,ind3/),(/'x','y'/),(/1,1/),(/jpi,jpj/),glamt_id)
 !      CALL agrif_declare_variable((/2,2/),(/ind2,ind3/),(/'x','y'/),(/1,1/),(/jpi,jpj/),gphit_id)
 
@@ -574,7 +578,7 @@
 !      CALL Agrif_Set_bcinterp(vn_sponge_id,interp1=AGRIF_constant   ,interp2=Agrif_linear)
 
       IF( ln_zdftke.OR.ln_zdfgls )  CALL Agrif_Set_bcinterp( avm_id, interp=AGRIF_linear )
-    
+      CALL Agrif_Set_interp( rnf_id, interp=AGRIF_constant )    ! renormalisation done in interprnf 
 
 !      CALL Agrif_Set_bcinterp(gphit_id,interp=AGRIF_constant)
 !      CALL Agrif_Set_bcinterp(glamt_id,interp=AGRIF_constant)
@@ -651,6 +655,7 @@
  !     ENDIF
 
 #endif
+      CALL Agrif_Set_Updatetype( rnfw_id, update = AGRIF_Update_Average )  ! child r_x r_y m_c a_c averaged -> W_P
       !
    END SUBROUTINE agrif_declare_var
 
@@ -923,8 +928,9 @@
       !
       INTEGER  ::   ios                 ! Local integer output status for namelist read
       INTEGER  ::   imin, imax, jmin, jmax
-      NAMELIST/namagrif/ ln_agrif_2way, ln_init_chfrpar, rn_sponge_tra, rn_sponge_dyn, rn_trelax_tra, rn_trelax_dyn, &
-                       & ln_spc_dyn, ln_vert_remap, ln_chk_bathy
+      NAMELIST/namagrif/ ln_agrif_2way, ln_init_chfrpar, rn_sponge_tra, rn_sponge_dyn, &
+                  &      rn_trelax_tra, rn_trelax_dyn  , ln_spc_dyn   , ln_vert_remap, &
+                  &      ln_chk_bathy , ln_agrif_rnf
       !!--------------------------------------------------------------------------------------
       !
       IF ( .NOT.Agrif_Root() ) THEN
@@ -949,6 +955,7 @@
             WRITE(numout,*) '      use special values for dynamics   ln_spc_dyn    = ', ln_spc_dyn
             WRITE(numout,*) '      vertical remapping                ln_vert_remap = ', ln_vert_remap
             WRITE(numout,*) '      check bathymetry                  ln_chk_bathy  = ', ln_chk_bathy
+            WRITE(numout,*) '      runoff from parent grid           ln_agrif_rnf  = ', ln_agrif_rnf
          ENDIF
 
          imin = Agrif_Ix()
