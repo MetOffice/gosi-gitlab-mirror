@@ -403,7 +403,7 @@ CONTAINS
          IF ( ln_obsbias ) THEN
             sdobsgroup%nbiasvar = -1
             DO jtype = 1, sdobsgroup%nobstypes
-               IF ( TRIM(sdobsgroup%cobstypes(itype)) == TRIM(cn_type_to_biascorrect) ) THEN
+               IF ( TRIM(sdobsgroup%cobstypes(jtype)) == TRIM(cn_type_to_biascorrect) ) THEN
                   sdobsgroup%nbiasvar = jtype
                   EXIT
                ENDIF
