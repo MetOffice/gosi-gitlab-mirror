@@ -26,6 +26,6 @@
       REAL(KIND=wp) :: pb   !  lat1 - lat2
       REAL(KIND=wp) :: pc   !  cos(lat2)
 
-      grt_cir_dis_saa = SQRT( pa * pa + ( pb * pc )**2 )
+      grt_cir_dis_saa = SQRT( pb * pb + ( pa * pc )**2 )
 
    END FUNCTION grt_cir_dis_saa
