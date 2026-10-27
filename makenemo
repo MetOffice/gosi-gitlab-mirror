@@ -510,7 +510,7 @@ if [ "${NBR_PRC}" -gt 0 ]; then
         fi
         if [[ ${NEMO_BLD_STAGE} == 'BLD_AGRIFLIB' ]]; then
             cp ${COMPIL_DIR}/conv.cfg ${NEMO_TDIR}/${CUR_CONF}/${NEMO_BLD_STAGE}/bld.cfg
-            NEMO_BLD_OPT="-v ${x_v}"
+            NEMO_BLD_OPT="-v ${x_v} -j ${NBR_PRC}"
         fi
         if [[ ${NEMO_BLD_STAGE} == 'BLD_SCT_AGRIF'    ]]; then
             NEMO_FC="${COMPIL_DIR}/agrifpp.sh"
