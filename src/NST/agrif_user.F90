@@ -156,6 +156,7 @@
       ENDIF
       CALL Agrif_Set_interp  (sshini_id,interp =AGRIF_linear  )
       CALL Agrif_Set_interp  (rnfini_id,interp =AGRIF_constant)   ! mask and depth flags preserved
+      CALL Agrif_Set_bcinterp(rnfini_id, interp=AGRIF_constant)
 
        ! 3. Location of interpolation
       !-----------------------------
@@ -183,6 +184,7 @@
       CALL Agrif_Set_bc(        uini_id, (/0,ind1-1/) ) 
       CALL Agrif_Set_bc(        vini_id, (/0,ind1-1/) )
       CALL Agrif_Set_bc(      sshini_id, (/-imaxrho*nn_shift_bar,ind1-1/) )
+      CALL Agrif_Set_bc      (rnfini_id, (/0,ind1-1/) )    
 
       ! 4. Update type
       !--------------- 
@@ -621,6 +623,7 @@
 
       IF( ln_zdftke.OR.ln_zdfgls )  CALL Agrif_Set_bcinterp( avm_id, interp=AGRIF_linear )
       CALL Agrif_Set_interp( rnf_id, interp=AGRIF_constant )    ! renormalisation done in interprnf 
+      CALL Agrif_Set_bcinterp(rnf_id, interp=AGRIF_constant)
 
 !      CALL Agrif_Set_bcinterp(gphit_id,interp=AGRIF_constant)
 !      CALL Agrif_Set_bcinterp(glamt_id,interp=AGRIF_constant)
@@ -646,6 +649,7 @@
       CALL Agrif_Set_bc(   ub2b_cor_id, (/-imaxrho*nn_shift_bar,ind1/) )
       CALL Agrif_Set_bc(   vb2b_cor_id, (/-imaxrho*nn_shift_bar,ind1/) )
       IF( ln_zdftke.OR.ln_zdfgls ) CALL Agrif_Set_bc( avm_id, (/0,ind1-1/) )
+      CALL Agrif_Set_bc      (rnf_id, (/0,ind1-1/) )        
 !!$      CALL Agrif_Set_bc(glamt_id, (/0,ind1-1/) )  
 !!$      CALL Agrif_Set_bc(gphit_id, (/0,ind1-1/) )  
 
