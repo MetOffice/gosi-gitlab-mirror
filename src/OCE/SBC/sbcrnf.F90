@@ -28,7 +28,7 @@ MODULE sbcrnf
    USE lib_mpp        ! MPP library
 #if defined key_agrif
    USE agrif_oce       , ONLY : ln_agrif_rnf, rnf_wagr, rnf_ts_agr, rnf_ini_agr
-   USE agrif_oce_interp, ONLY : Agrif_rnf, Agrif_rnf_ini
+   !                                  ! Agrif_rnf, Agrif_rnf_ini: external routines in agrif_user.F90
 #endif
 
    IMPLICIT NONE
@@ -119,6 +119,9 @@ CONTAINS
       !
       INTEGER  ::   ji, jj    ! dummy loop indices
       INTEGER  ::   z_err = 0 ! dummy integer for error handling
+#if defined key_agrif
+      EXTERNAL   Agrif_rnf         ! child: runoff fields from the parent grid (agrif_user.F90)
+#endif
       !!----------------------------------------------------------------------
       REAL(wp), DIMENSION(jpi,jpj) ::   ztfrz   ! freezing point used for temperature correction
       !
@@ -331,6 +334,9 @@ CONTAINS
       INTEGER           ::   nbrec         ! temporary integer
       REAL(wp)          ::   zacoef
       REAL(wp), DIMENSION(jpi,jpj,2) :: zrnfcl
+#if defined key_agrif
+      EXTERNAL   Agrif_rnf_ini     ! child: river-mouth mask and runoff-depth input from the parent grid (agrif_user.F90)
+#endif
       !!
       NAMELIST/namsbc_rnf/ cn_dir            , ln_rnf_depth, ln_rnf_tem, ln_rnf_sal, ln_rnf_icb, ln_icb_mass, &
          &                 sn_rnf, sn_cnf    , sn_i_rnf, sn_s_rnf    , sn_t_rnf  , sn_dep_rnf,   &

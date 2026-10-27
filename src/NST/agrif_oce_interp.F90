@@ -55,7 +55,7 @@ MODULE agrif_oce_interp
    PUBLIC   agrif_istate_oce, agrif_istate_ssh   ! called by icestate.F90 and domvvl.F90
    PUBLIC   agrif_check_bat
    PUBlIC   interp_tmask_agrif
-   PUBLIC   Agrif_rnf, Agrif_rnf_ini ! called by sbcrnf.F90
+   PUBLIC   interprnf, interprnfini  ! called by Agrif_rnf, Agrif_rnf_ini (agrif_user.F90)
 
    INTEGER ::   bdy_tinterp = 0
 
@@ -903,29 +903,6 @@ CONTAINS
       l_vremap              = .FALSE.
       !
    END SUBROUTINE Agrif_avm
-
-   
-
-   SUBROUTINE Agrif_rnf
-      !!----------------------------------------------------------------------
-      !!                  *** ROUTINE Agrif_rnf ***  
-      !!       child: rivers, icebergs and runoff T/S from parent
-      !!----------------------------------------------------------------------
-      IF( Agrif_Root() )   RETURN
-      Agrif_UseSpecialValue = .FALSE.
-      CALL Agrif_Init_Variable( rnf_id, procname=interprnf )
-   END SUBROUTINE Agrif_rnf
-
-
-   SUBROUTINE Agrif_rnf_ini
-      !!----------------------------------------------------------------------
-      !!                  *** ROUTINE Agrif_rnf_ini ***  
-      !!       child: river-mouth mask and depth input from parent
-      !!----------------------------------------------------------------------
-      IF( Agrif_Root() )   RETURN
-      Agrif_UseSpecialValue = .FALSE.
-      CALL Agrif_Init_Variable( rnfini_id, procname=interprnfini )
-   END SUBROUTINE Agrif_rnf_ini
 
 
    SUBROUTINE interptsn( ptab, i1, i2, j1, j2, k1, k2, n1, n2, before )

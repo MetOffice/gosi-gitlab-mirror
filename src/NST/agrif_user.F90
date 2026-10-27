@@ -209,6 +209,48 @@
       !
    END SUBROUTINE agrif_declare_var_ini
 
+   
+   SUBROUTINE Agrif_rnf
+      !!----------------------------------------------------------------------
+      !!                 *** ROUTINE Agrif_rnf ***
+      !!
+      !! ** Purpose :   child: rivers, icebergs and runoff T/S from the parent grid
+      !!
+      !! ** Method  :   external routine (not a module procedure), so that sbcrnf
+      !!                does not USE agrif_oce_interp: that would close the cycle
+      !!                agrif_oce_interp -> iceistate -> domvvl -> wet_dry -> sbcrnf
+      !!----------------------------------------------------------------------
+      USE Agrif_Util
+      USE agrif_oce       , ONLY : rnf_id
+      USE agrif_oce_interp, ONLY : interprnf
+      !
+      IMPLICIT NONE
+      !!----------------------------------------------------------------------
+      IF( Agrif_Root() )   RETURN
+      Agrif_UseSpecialValue = .FALSE.
+      CALL Agrif_Init_Variable( rnf_id, procname=interprnf )
+   END SUBROUTINE Agrif_rnf
+
+
+   SUBROUTINE Agrif_rnf_ini
+      !!----------------------------------------------------------------------
+      !!                 *** ROUTINE Agrif_rnf_ini ***
+      !!
+      !! ** Purpose :   child: river-mouth mask and runoff-depth input from the parent grid
+      !!
+      !! ** Method  :   external routine, see Agrif_rnf
+      !!----------------------------------------------------------------------
+      USE Agrif_Util
+      USE agrif_oce       , ONLY : rnfini_id
+      USE agrif_oce_interp, ONLY : interprnfini
+      !
+      IMPLICIT NONE
+      !!----------------------------------------------------------------------
+      IF( Agrif_Root() )   RETURN
+      Agrif_UseSpecialValue = .FALSE.
+      CALL Agrif_Init_Variable( rnfini_id, procname=interprnfini )
+   END SUBROUTINE Agrif_rnf_ini
+
 
    SUBROUTINE Agrif_Init_Domain
       !!----------------------------------------------------------------------
