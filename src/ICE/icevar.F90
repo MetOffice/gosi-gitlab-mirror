@@ -268,6 +268,7 @@ CONTAINS
       REAL(wp) ::   zlay_i, zlay_s                  !   -      -
       REAL(wp) ::   z1_hl, z1_a_i, z1_a_ip
       REAL(wp), ALLOCATABLE, DIMENSION(:,:,:) ::   za_s_fra
+      REAL(wp) ::   available_fraction              ! Fraction that is left for the final category
       !!-------------------------------------------------------------------
 
 !!gm Question 2:  It is possible to define existence of sea-ice in a common way between
@@ -284,7 +285,14 @@ CONTAINS
       zhmax   =          hi_max(jpl)
       z1_hmax =  1._wp / hi_max(jpl)
       DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
-         IF( v_i(ji,jj,jpl) > ( zhmax*a_i(ji,jj,jpl) ) )   a_i(ji,jj,jpl) = MIN( 1._wp, v_i(ji,jj,jpl) * z1_hmax )
+         IF( v_i(ji,jj,jpl) > ( zhmax*a_i(ji,jj,jpl) ) ) THEN
+           IF ( jpl > 1 ) THEN
+             available_fraction = 1.0_wp - SUM(a_i(ji,jj,1:jpl-1))
+           ELSE
+             available_fraction = 1.0_wp
+           ENDIF
+           a_i(ji,jj,jpl) = MIN( available_fraction, v_i(ji,jj,jpl) * z1_hmax )
+         ENDIF
       END_2D
       
       DO jl = 1, jpl
@@ -1183,7 +1191,7 @@ CONTAINS
       !! ** Output    : jpl-cat
       !!
       !!  Abraham, C., Steiner, N., Monahan, A. and Michel, C., 2015.
-      !!               Effects of subgrid‐scale snow thickness variability on radiative transfer in sea ice.
+      !!               Effects of subgrid?scale snow thickness variability on radiative transfer in sea ice.
       !!               Journal of Geophysical Research: Oceans, 120(8), pp.5597-5614
       !!-------------------------------------------------------------------
       REAL(wp), DIMENSION(:),   INTENT(in)    ::   phti, phts, pati    ! input  ice/snow variables

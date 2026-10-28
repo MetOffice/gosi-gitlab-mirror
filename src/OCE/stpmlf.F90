@@ -125,9 +125,9 @@ CONTAINS
       !<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
       !
       IF( kstp == nit000 ) THEN                       ! initialize IOM context (must be done after nemo_init for AGRIF+XIOS+OASIS)
-                             CALL iom_init( cxios_context, ld_closedef=.FALSE. )   ! for model grid (including possible AGRIF zoom)
+      !                       CALL iom_init( cxios_context, ld_closedef=.FALSE. )   ! for model grid (including possible AGRIF zoom)
          IF( l_diamlr   )    CALL dia_mlr_iom_init    ! with additional setup for multiple-linear-regression analysis
-                             CALL iom_init_closedef
+      !                        CALL iom_init_closedef
                              CALL dia_hth_init        ! called here since it uses iom_use
                              CALL dia_ptr_init        ! called here since it uses iom_use
                              CALL dia_ar5_init        ! called here since it uses iom_use

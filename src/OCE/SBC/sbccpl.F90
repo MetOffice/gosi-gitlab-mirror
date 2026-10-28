@@ -229,6 +229,8 @@ MODULE sbccpl
 
    INTEGER , ALLOCATABLE, SAVE, DIMENSION(:) ::   nrcvinfo           ! OASIS info argument
 
+   REAL(wp), PARAMETER :: ziceld_tol = -0.001   ! Tolerance for ziceld. If it goes below this value then fail the model
+
    !! Substitution
 #  include "do_loop_substitute.h90"
 #  include "read_nml_substitute.h90"
@@ -433,18 +435,27 @@ CONTAINS
       IF(       TRIM( sn_rcv_tau%cldes ) == 'oce only' .OR. TRIM( sn_rcv_tau%cldes ) == 'oce and ice'  &
            .OR. TRIM( sn_rcv_tau%cldes ) == 'mixed oce-ice' ) THEN ! avoid working with the atmospheric fields if they are not coupled
       !
-      IF( TRIM( sn_rcv_tau%clvor ) == 'local grid' )   srcv(jpr_otx1:jpr_itz1)%nsgn = -1.
+         IF( TRIM( sn_rcv_tau%clvor ) == 'local grid' )   srcv(jpr_otx1:jpr_itz1)%nsgn = -1.
 
-      !                                                            ! Set grid and action
-      srcv(jpr_otx1:jpr_otz1)%laction = .TRUE.     ! receive oce components on grid 1
-      srcv(jpr_itx1:jpr_itz1)%laction = .TRUE.     ! receive ice components on grid 1
-      !
-      IF( TRIM( sn_rcv_tau%clvref ) == 'spherical' )   &           ! spherical: 3rd component not received
-         &     srcv( (/jpr_otz1, jpr_itz1/) )%laction = .FALSE.
-      !
-      IF( TRIM( sn_rcv_tau%cldes ) /= 'oce and ice' ) THEN         ! 'oce and ice' case ocean stress on ocean mesh used
-         srcv(jpr_itx1:jpr_itz1)%laction = .FALSE.    ! ice components not received
-      ENDIF
+         !                                                            ! Set grid and action
+         srcv(jpr_otx1:jpr_otz1)%laction = .TRUE.     ! receive oce components on grid 1
+         srcv(jpr_itx1:jpr_itz1)%laction = .TRUE.     ! receive ice components on grid 1
+         !
+         IF( TRIM( sn_rcv_tau%clvref ) == 'spherical' )   &           ! spherical: 3rd component not received
+            &     srcv( (/jpr_otz1, jpr_itz1/) )%laction = .FALSE.
+         !
+         IF( TRIM( sn_rcv_tau%cldes ) /= 'oce and ice' ) THEN         ! 'oce and ice' case ocean stress on ocean mesh used
+            srcv(jpr_itx1:jpr_itz1)%laction = .FALSE.    ! ice components not received
+         ENDIF
+
+         ! Setup clgrid which we will use to determine what grid the data is on
+         IF ( sn_rcv_tau%clvgrd(1:3) == 'U,V' ) THEN    ! Is the data at the U and V points
+            srcv(jpr_otx1)%clgrid = 'U'        ! oce components given at U and V points
+            srcv(jpr_oty1)%clgrid = 'V'   
+         ELSE
+            srcv(jpr_otx1)%clgrid = 'T'        ! oce components given at T-point
+            srcv(jpr_oty1)%clgrid = 'T'        
+         ENDIF
       ENDIF
 
       !                                                      ! ------------------------- !
@@ -709,8 +720,13 @@ CONTAINS
          srcv(:)%clgrid  = 'T'       ! force default definition in case of opa <-> sas coupling
          srcv(:)%nsgn    = 1.        ! force default definition in case of opa <-> sas coupling
          srcv( (/jpr_qsroce, jpr_qnsoce, jpr_oemp, jpr_sflx, jpr_fice, jpr_otx1, jpr_oty1, jpr_taum/) )%laction = .TRUE.
-         srcv(jpr_otx1)%clgrid = 'T'        ! oce components given at T-point
-         srcv(jpr_oty1)%clgrid = 'T'        
+         IF ( sn_rcv_tau%clvgrd(1:1) == 'U' ) THEN    ! Is the first character of clvgrd a 'U'
+            srcv(jpr_otx1)%clgrid = 'U'        ! oce components given at U and V points
+            srcv(jpr_oty1)%clgrid = 'U'   
+         ELSE
+            srcv(jpr_otx1)%clgrid = 'T'        ! oce components given at T-point
+            srcv(jpr_oty1)%clgrid = 'T'        
+         ENDIF
          ! Vectors: change of sign at north fold ONLY if on the local grid
          srcv( (/jpr_otx1,jpr_oty1/) )%nsgn = -1.
          sn_rcv_tau%clvor = 'local grid'
@@ -1277,7 +1293,7 @@ CONTAINS
             IF ( srcv(jn)%dimensions <= 1 ) THEN
                CALL cpl_rcv_1d( jn, isec, frcv(jn)%z3, SIZE(frcv(jn)%z3), nrcvinfo(jn) )
             ELSE
-               CALL cpl_rcv( jn, isec, frcv(jn)%z3, xcplmask(A2D(0),1:nn_cplmodel), nrcvinfo(jn) )
+               CALL cpl_rcv( jn, isec, frcv(jn)%z3, xcplmask, nrcvinfo(jn) )
             END IF
          END IF
       END DO
@@ -1308,8 +1324,8 @@ CONTAINS
                   ! but they're passed to repcmo and used directly in calculations, so if 
                   ! they point at junk in memory then bad things will happen!
                   ! (You can prove this by running with preset NaNs). 
-                  ztx(A2D(0))=0.0
-                  zty(A2D(0))=0.0
+                  ztx(:,:)=0.0
+                  zty(:,:)=0.0
 
                   DO_2D( 0, 0, 0, 0 )                                       
                           ztx(ji,jj)=0.25*vmask(ji,jj,1)                &
@@ -1321,11 +1337,12 @@ CONTAINS
                   END_2D
 	                       
                   ikchoix = 1
-                  CALL repcmo (frcv(jpr_otx1)%z3(A2D(0),1),zty,ztx,frcv(jpr_oty1)%z3(A2D(0),1),ztx2,zty2,ikchoix)
+                  CALL repcmo (frcv(jpr_otx1)%z3(A2D(0),1),zty,ztx,frcv(jpr_oty1)%z3(A2D(0),1),ztx2(A2D(0)),zty2(A2D(0)),ikchoix)
+
                   CALL lbc_lnk ('jpr_otx1', ztx2,'U', -1. )
                   CALL lbc_lnk ('jpr_oty1', zty2,'V', -1. )
-                  frcv(jpr_otx1)%z3(A2D(0),1)=ztx2(A2D(0))
-                  frcv(jpr_oty1)%z3(A2D(0),1)=zty2(A2D(0))
+                  frcv(jpr_otx1)%z3(:,:,1)=ztx2(:,:)
+                  frcv(jpr_oty1)%z3(:,:,1)=zty2(:,:)
                ELSE
                   CALL rot_rep( frcv(jpr_otx1)%z3(A2D(0),1), frcv(jpr_oty1)%z3(A2D(0),1), srcv(jpr_otx1)%clgrid, 'en->i', ztx )   
                   frcv(jpr_otx1)%z3(A2D(0),1) = ztx(A2D(0))      ! overwrite 1st component on the 1st grid
@@ -1846,6 +1863,10 @@ CONTAINS
 
       ENDIF
       !
+      ! DC: We need to fill the halos or else junk gets passed to ice dynamics and it uses the haloes
+      CALL lbc_lnk( 'sbccpl', p_taui, 'T', 1.0_wp, ldfull = .TRUE. )
+      CALL lbc_lnk( 'sbccpl', p_tauj, 'T', 1.0_wp, ldfull = .TRUE. )
+      !
 #endif
       !
    END SUBROUTINE sbc_cpl_ice_tau
@@ -1926,6 +1947,11 @@ CONTAINS
       REAL(wp), DIMENSION(A2D(0),jpl) ::   zqns_ice, zqsr_ice, zdqns_ice, zqevap_ice, zevap_ice, zqtr_ice_top
       REAL(wp), DIMENSION(A2D(0),jpl) ::   ztsu
       REAL(wp) :: ztmp
+      !
+      ! Variables for error checking
+      REAL(wp) :: most_neg_value
+      INTEGER  :: most_neg_ji, most_neg_jj
+      CHARACTER(len = 150) :: main_msg, msg1, msg2, msg3, msg4
       !!----------------------------------------------------------------------
       !
 #if defined key_si3 || defined key_cice
@@ -2023,6 +2049,31 @@ CONTAINS
       IF( TRIM( sn_rcv_emp%cldes ) == 'conservative' ) THEN
          ! For conservative case zemp_ice has not been defined yet. Do it now.
          zemp_ice(A2D(0)) = zevap_ice_total(A2D(0)) * picefr(A2D(0)) - frcv(jpr_snow)%z3(A2D(0),1) * picefr(A2D(0))
+      ENDIF
+
+      ! Check that we do not have negative values of ziceld. If we do then ice_var_snwblow will
+      ! generate NaNs (due to the square root of negative number). Small negative numbers might
+      ! just be due to rounding errors so just convert to zero. For large negative numbers then
+      ! something has gone badly wrong and we should stop the model here with a useful error
+      ! message.
+      most_neg_value = ziceld_tol
+      DO_2D( 0, 0, 0, 0 )
+         IF ( ziceld(ji,jj) < 0._wp .AND. ziceld(ji,jj) >= ziceld_tol ) THEN
+            ziceld(ji,jj) = 0._wp
+         ENDIF
+         IF ( ziceld(ji,jj) < most_neg_value ) THEN
+            most_neg_value = ziceld(ji,jj)
+            most_neg_ji = ji
+            most_neg_jj = jj
+         ENDIF
+      END_2D
+      IF ( most_neg_value < ziceld_tol ) THEN
+         WRITE(main_msg,*) 'Negative value of ziceld detected in sbc_cpl_ice_flx. This will generate a NaN in ice_var_snwblow unless corrected so stopping here.'
+         WRITE(msg1,*) ' Processor reporting failure = ',mpprank
+         WRITE(msg2,*) ' The most negative value of ziceld = ',most_neg_value
+         WRITE(msg3,*) ' occurs at ji = ',most_neg_ji
+         WRITE(msg4,*) ' occurs at jj = ',most_neg_jj
+         CALL ctl_stop( 'STOP', main_msg, msg1, msg2, msg3, msg4 )
       ENDIF
 
       ! zsnw = snow fraction over ice after wind blowing (=picefr if no blowing)

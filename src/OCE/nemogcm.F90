@@ -134,6 +134,8 @@ CONTAINS
       ! they will never enter in step and other processes will wait until the end of the cpu time!
       CALL mpp_max( 'nemogcm', nstop )
 
+      CALL iom_init( cxios_context, ld_closedef=.TRUE. )
+
       IF(lwp) WRITE(numout,cform_aaa)   ! Flag AAAAAAA
       CALL timing_stop( 'before step' )
 

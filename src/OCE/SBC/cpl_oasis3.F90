@@ -101,6 +101,8 @@ MODULE cpl_oasis3
 
    REAL(wp), DIMENSION(:,:), ALLOCATABLE ::   exfld   ! Temporary buffer for receiving
 
+   !! Substitution
+#  include "do_loop_substitute.h90"
    !!----------------------------------------------------------------------
    !! NEMO/OCE 5.0, NEMO Consortium (2024)
    !! Software governed by the CeCILL license (see ./LICENSE)
@@ -490,11 +492,11 @@ CONTAINS
                   lrcv=.TRUE. 
                   
                   IF( ll_1st ) THEN
-                     pdata(1:Ni_0,1:Nj_0,jc) =    exfld(:,:) * pmask(1:Ni_0,1:Nj_0,jm)
+                     pdata(A2D(0),jc) =    exfld(:,:) * pmask(A2D(0),jm)
                      ll_1st = .FALSE.
                   ELSE
-                     pdata(1:Ni_0,1:Nj_0,jc) = pdata(1:Ni_0,1:Nj_0,jc)   &
-                        &                       + exfld(:,:) * pmask(1:Ni_0,1:Nj_0,jm)
+                     pdata(A2D(0),jc) = pdata(A2D(0),jc)   &
+                        &                       + exfld(:,:) * pmask(A2D(0),jm)
                   ENDIF
 
                   IF ( sn_cfctl%l_oasout ) THEN
@@ -503,9 +505,9 @@ CONTAINS
                      WRITE(numout,*) 'oasis_get: ivarid '  , srcv(kid)%nid(jc,jm)
                      WRITE(numout,*) 'oasis_get:   kstep', kstep
                      WRITE(numout,*) 'oasis_get:   info ', kinfo
-                     WRITE(numout,*) '     - Minimum value is ', MINVAL(pdata(1:Ni_0,1:Nj_0,jc))
-                     WRITE(numout,*) '     - Maximum value is ', MAXVAL(pdata(1:Ni_0,1:Nj_0,jc))
-                     WRITE(numout,*) '     -     Sum value is ',    SUM(pdata(1:Ni_0,1:Nj_0,jc))
+                     WRITE(numout,*) '     - Minimum value is ', MINVAL(pdata(A2D(0),jc))
+                     WRITE(numout,*) '     - Maximum value is ', MAXVAL(pdata(A2D(0),jc))
+                     WRITE(numout,*) '     -     Sum value is ',    SUM(pdata(A2D(0),jc))
                      WRITE(numout,*) '****************'
                      CALL FLUSH(numout)
                   ENDIF
@@ -525,7 +527,7 @@ CONTAINS
       !    categories at the same time!
       !--- Call lbc_lnk to populate halos of received fields.
       IF (lrcv) then
-         CALL lbc_lnk( 'cpl_oasis3', pdata(:,:,:), srcv(kid)%clgrid, srcv(kid)%nsgn )
+         CALL lbc_lnk( 'cpl_oasis3', pdata, srcv(kid)%clgrid, srcv(kid)%nsgn )
       endif
       !
    END SUBROUTINE cpl_rcv

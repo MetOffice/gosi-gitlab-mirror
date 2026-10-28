@@ -21,7 +21,7 @@ MODULE lib_mpp
    !!            3.5  !  2012  (S.Mocavero, I. Epicoco) Add mpp_lnk_bdy_3d/2d routines to optimize the BDY comm.
    !!            3.5  !  2013  (C. Ethe, G. Madec)  message passing arrays as local variables
    !!            3.5  !  2013  (S.Mocavero, I.Epicoco - CMCC) north fold optimizations
-   !!            3.6  !  2015  (O. TintÃ³ and M. Castrillo - BSC) Added '_multiple' case for 2D lbc and max
+   !!            3.6  !  2015  (O. Tintó and M. Castrillo - BSC) Added '_multiple' case for 2D lbc and max
    !!            4.0  !  2017  (G. Madec) automatique allocation of array argument (use any 3rd dimension)
    !!             -   !  2017  (G. Madec) create generic.h90 files to generate all lbc and north fold routines
    !!----------------------------------------------------------------------

@@ -14,7 +14,7 @@ MODULE sbcmod
    !!            3.5  ! 2012-11  (A. Coward, G. Madec) Rethink of heat, mass and salt surface fluxes
    !!            3.6  ! 2014-11  (P. Mathiot, C. Harris) add ice shelves melting
    !!            4.0  ! 2016-06  (L. Brodeau) new general bulk formulation
-   !!            4.0  ! 2019-03  (F. LemariÃ© & G. Samson)  add ABL compatibility (ln_abl=TRUE)
+   !!            4.0  ! 2019-03  (F. Lemarié & G. Samson)  add ABL compatibility (ln_abl=TRUE)
    !!            4.2  ! 2020-12  (G. Madec, E. Clementi) modified wave forcing and coupling
    !!----------------------------------------------------------------------
 
