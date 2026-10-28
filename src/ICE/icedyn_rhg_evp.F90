@@ -555,7 +555,7 @@ CONTAINS
                   !
                   zbetav = MAX( zbeta(ji,jj), zbeta(ji,jj+1) )
                   !
-                  IF( ( zRHS + ztauy_base(ji,jj) ) < 0._wp .AND. zRHS >= 0._wp ) THEN ! static friction => slow decrease to v=0
+                  IF( ABS( zRHS ) < - ztauy_base(ji,jj) ) THEN ! static friction => slow decrease to v=0
                      v_ice(ji,jj) = ( v_ice_b(ji,jj) + v_ice(ji,jj) * MAX( 0._wp, zbetav - zdtevp*rn_lf_relax ) ) / (zbetav+1._wp)
                   ELSE
                      v_ice(ji,jj) = ( zmV_t(ji,jj) * ( zbetav * v_ice(ji,jj) + v_ice_b(ji,jj) ) + zRHS + zTauO * v_ice(ji,jj) ) &
@@ -564,7 +564,7 @@ CONTAINS
                   !
                ELSE                 !--- ice velocity using EVP implicit formulation (cf Madec doc & Bouillon 2009)
                   !
-                  IF( ( zRHS + ztauy_base(ji,jj) ) < 0._wp .AND. zRHS >= 0._wp ) THEN ! static friction => slow decrease to v=0
+                  IF( ABS( zRHS ) < - ztauy_base(ji,jj) ) THEN ! static friction => slow decrease to v=0
                      v_ice(ji,jj) = v_ice(ji,jj) * MAX( 0._wp, 1._wp - zdtevp * rn_lf_relax )
                   ELSE
                      v_ice(ji,jj) = ( zmV_t(ji,jj) * v_ice(ji,jj) + zRHS + zTauO * v_ice(ji,jj) ) &
@@ -606,7 +606,7 @@ CONTAINS
                   !
                   zbetau = MAX( zbeta(ji,jj), zbeta(ji+1,jj) )
                   !
-                  IF( ( zRHS + ztaux_base(ji,jj) ) < 0._wp .AND. zRHS >= 0._wp ) THEN ! static friction => slow decrease to v=0
+                  IF( ABS( zRHS ) < - ztaux_base(ji,jj) ) THEN ! static friction => slow decrease to v=0
                      u_ice(ji,jj) = ( u_ice_b(ji,jj) + u_ice(ji,jj) * MAX( 0._wp, zbetau - zdtevp*rn_lf_relax ) ) / (zbetau+1._wp)
                   ELSE
                      u_ice(ji,jj) = ( zmU_t(ji,jj) * ( zbetau * u_ice(ji,jj) + u_ice_b(ji,jj) ) + zRHS + zTauO * u_ice(ji,jj) ) &
@@ -615,7 +615,7 @@ CONTAINS
                   !
                ELSE               !--- ice velocity using EVP implicit formulation (cf Madec doc & Bouillon 2009)
                   !
-                  IF( ( zRHS + ztaux_base(ji,jj) ) < 0._wp .AND. zRHS >= 0._wp ) THEN ! static friction => slow decrease to v=0
+                  IF( ABS( zRHS ) < - ztaux_base(ji,jj) ) THEN ! static friction => slow decrease to v=0
                      u_ice(ji,jj) = u_ice(ji,jj) * MAX( 0._wp, 1._wp - zdtevp * rn_lf_relax )
                   ELSE
                      u_ice(ji,jj) = ( zmU_t(ji,jj) * u_ice(ji,jj) + zRHS + zTauO * u_ice(ji,jj) ) &
@@ -661,7 +661,7 @@ CONTAINS
                   !
                   zbetau = MAX( zbeta(ji,jj), zbeta(ji+1,jj) )
                   !
-                  IF( ( zRHS + ztaux_base(ji,jj) ) < 0._wp .AND. zRHS >= 0._wp ) THEN ! static friction => slow decrease to v=0
+                  IF( ABS( zRHS ) < - ztaux_base(ji,jj) ) THEN ! static friction => slow decrease to v=0
                      u_ice(ji,jj) = ( u_ice_b(ji,jj) + u_ice(ji,jj) * MAX( 0._wp, zbetau - zdtevp*rn_lf_relax ) ) / (zbetau+1._wp)
                   ELSE
                      u_ice(ji,jj) = ( zmU_t(ji,jj) * ( zbetau * u_ice(ji,jj) + u_ice_b(ji,jj) ) + zRHS + zTauO * u_ice(ji,jj) ) &
@@ -670,7 +670,7 @@ CONTAINS
                   !
                ELSE               !--- ice velocity using EVP implicit formulation (cf Madec doc & Bouillon 2009)
                   !
-                  IF( ( zRHS + ztaux_base(ji,jj) ) < 0._wp .AND. zRHS >= 0._wp ) THEN ! static friction => slow decrease to v=0
+                  IF( ABS( zRHS ) < - ztaux_base(ji,jj) ) THEN ! static friction => slow decrease to v=0
                      u_ice(ji,jj) = u_ice(ji,jj) * MAX( 0._wp, 1._wp - zdtevp * rn_lf_relax )
                   ELSE
                      u_ice(ji,jj) = ( zmU_t(ji,jj) * u_ice(ji,jj) + zRHS + zTauO * u_ice(ji,jj) ) &
@@ -713,7 +713,7 @@ CONTAINS
                   !
                   zbetav = MAX( zbeta(ji,jj), zbeta(ji,jj+1) )
                   !
-                  IF( ( zRHS + ztauy_base(ji,jj) ) < 0._wp .AND. zRHS >= 0._wp ) THEN ! static friction => slow decrease to v=0
+                  IF( ABS( zRHS ) < - ztauy_base(ji,jj) ) THEN ! static friction => slow decrease to v=0
                      v_ice(ji,jj) = ( v_ice_b(ji,jj) + v_ice(ji,jj) * MAX( 0._wp, zbetav - zdtevp*rn_lf_relax ) ) / (zbetav+1._wp)
                   ELSE
                      v_ice(ji,jj) = ( zmV_t(ji,jj) * ( zbetav * v_ice(ji,jj) + v_ice_b(ji,jj) ) + zRHS + zTauO * v_ice(ji,jj) ) &
@@ -722,7 +722,7 @@ CONTAINS
                   !
                ELSE               !--- ice velocity using EVP implicit formulation (cf Madec doc & Bouillon 2009)
                   !
-                  IF( ( zRHS + ztauy_base(ji,jj) ) < 0._wp .AND. zRHS >= 0._wp ) THEN ! static friction => slow decrease to v=0
+                  IF( ABS( zRHS ) < - ztauy_base(ji,jj) ) THEN ! static friction => slow decrease to v=0
                      v_ice(ji,jj) = v_ice(ji,jj) * MAX( 0._wp, 1._wp - zdtevp * rn_lf_relax )
                   ELSE
                      v_ice(ji,jj) = ( zmV_t(ji,jj) * v_ice(ji,jj) + zRHS + zTauO * v_ice(ji,jj) ) &
