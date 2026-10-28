@@ -682,7 +682,7 @@ EOF
 #
 # Additional module search command for Cray Fortran to enable successful parallel builds
 if [ $ftncomp == "cray" ] ; then
-    echo "bld::tool::fc_modsearch -J" >> ${archname:-"arch-auto.fcm"}
+    echo "bld::tool::fc_modsearch -J" >> $(realpath $(dirname ${0}))/${archname:-"arch-auto.fcm"}
 fi
 #
 echo
