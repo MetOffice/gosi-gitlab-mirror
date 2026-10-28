@@ -199,7 +199,7 @@ CONTAINS
       IF( Agrif_Root() )   RETURN
       IF( .NOT.( ln_rnf .AND. ln_agrif_rnf ) )   RETURN
       Agrif_UseSpecialValue = .FALSE.
-      CALL Agrif_Update_Variable( rnfw_id, locupdate=(/0,0/), procname=updaternfwet )
+      CALL Agrif_Update_Variable( rnfw_id, procname=updaternfwet )
    END SUBROUTINE Agrif_Update_rnf_wet
 
    SUBROUTINE Agrif_Update_vvl( )
