@@ -574,9 +574,12 @@ CONTAINS
                !                 !--- Sum of external forces (explicit solution) = F + tau_ia + Coriolis + spg + tau_io
                zRHS = zfV(ji,jj) + ztauy_ai(ji,jj) + zCorV(ji,jj) + zspgV(ji,jj) + ztauy_oi(ji,jj)
                !
-               !                 !--- landfast switch => 0 = static  friction : TauB > RHS & sign(TauB) /= sign(RHS)
-               !                                         1 = sliding friction : TauB < RHS
-               zswitch = 1._wp - MIN( 1._wp, ABS( SIGN( 1._wp, zRHS + ztauy_base(ji,jj) ) - SIGN( 1._wp, zRHS ) ) )
+               !                 !--- landfast switch => 0 = static  friction
+               !                                         1 = sliding friction
+               !!old formulation: zswitch = 1._wp - MIN( 1._wp, ABS( SIGN( 1._wp, zRHS + ztauy_base(ji,jj) ) - SIGN( 1._wp, zRHS ) ) )
+               IF( ABS( zRHS ) < - ztauy_base(ji,jj) ) THEN   ;   zswitch = 0._wp   ! static  : |RHS| < |tau_b|
+               ELSE                                           ;   zswitch = 1._wp   ! sliding
+               ENDIF 
                !
                IF( ln_aEVP ) THEN !--- ice velocity using aEVP (Kimmritz et al 2016 & 2017)
                   zbetav = MAX( zbeta(ji,jj), zbeta(ji,jj+1) )
@@ -623,9 +626,12 @@ CONTAINS
                !                 !--- Sum of external forces (explicit solution) = F + tau_ia + Coriolis + spg + tau_io
                zRHS = zfU(ji,jj) + ztaux_ai(ji,jj) + zCorU(ji,jj) + zspgU(ji,jj) + ztaux_oi(ji,jj)
                !
-               !                 !--- landfast switch => 0 = static  friction : TauB > RHS & sign(TauB) /= sign(RHS)
-               !                                         1 = sliding friction : TauB < RHS
-               zswitch = 1._wp - MIN( 1._wp, ABS( SIGN( 1._wp, zRHS + ztaux_base(ji,jj) ) - SIGN( 1._wp, zRHS ) ) )
+               !                 !--- landfast switch => 0 = static  friction
+               !                                         1 = sliding friction
+               !!old formulation: zswitch = 1._wp - MIN( 1._wp, ABS( SIGN( 1._wp, zRHS + ztaux_base(ji,jj) ) - SIGN( 1._wp, zRHS ) ) )
+               IF( ABS( zRHS ) < - ztaux_base(ji,jj) ) THEN   ;   zswitch = 0._wp   ! static  : |RHS| < |tau_b|
+               ELSE                                           ;   zswitch = 1._wp   ! sliding
+               ENDIF 
                !
                IF( ln_aEVP ) THEN !--- ice velocity using aEVP (Kimmritz et al 2016 & 2017)
                   zbetau = MAX( zbeta(ji,jj), zbeta(ji+1,jj) )
@@ -676,9 +682,12 @@ CONTAINS
                !                 !--- Sum of external forces (explicit solution) = F + tau_ia + Coriolis + spg + tau_io
                zRHS = zfU(ji,jj) + ztaux_ai(ji,jj) + zCorU(ji,jj) + zspgU(ji,jj) + ztaux_oi(ji,jj)
                !
-               !                 !--- landfast switch => 0 = static  friction : TauB > RHS & sign(TauB) /= sign(RHS)
-               !                                         1 = sliding friction : TauB < RHS
-               zswitch = 1._wp - MIN( 1._wp, ABS( SIGN( 1._wp, zRHS + ztaux_base(ji,jj) ) - SIGN( 1._wp, zRHS ) ) )
+               !                 !--- landfast switch => 0 = static  friction
+               !                                         1 = sliding friction
+               !!old formulation: zswitch = 1._wp - MIN( 1._wp, ABS( SIGN( 1._wp, zRHS + ztaux_base(ji,jj) ) - SIGN( 1._wp, zRHS ) ) )
+               IF( ABS( zRHS ) < - ztaux_base(ji,jj) ) THEN   ;   zswitch = 0._wp   ! static  : |RHS| < |tau_b|
+               ELSE                                           ;   zswitch = 1._wp   ! sliding
+               ENDIF 
                !
                IF( ln_aEVP ) THEN !--- ice velocity using aEVP (Kimmritz et al 2016 & 2017)
                   zbetau = MAX( zbeta(ji,jj), zbeta(ji+1,jj) )
@@ -725,9 +734,12 @@ CONTAINS
                !                 !--- Sum of external forces (explicit solution) = F + tau_ia + Coriolis + spg + tau_io
                zRHS = zfV(ji,jj) + ztauy_ai(ji,jj) + zCorV(ji,jj) + zspgV(ji,jj) + ztauy_oi(ji,jj)
                !
-               !                 !--- landfast switch => 0 = static  friction : TauB > RHS & sign(TauB) /= sign(RHS)
-               !                                         1 = sliding friction : TauB < RHS
-               zswitch = 1._wp - MIN( 1._wp, ABS( SIGN( 1._wp, zRHS + ztauy_base(ji,jj) ) - SIGN( 1._wp, zRHS ) ) )
+               !                 !--- landfast switch => 0 = static  friction
+               !                                         1 = sliding friction
+               !!old formulation: zswitch = 1._wp - MIN( 1._wp, ABS( SIGN( 1._wp, zRHS + ztauy_base(ji,jj) ) - SIGN( 1._wp, zRHS ) ) )
+               IF( ABS( zRHS ) < - ztauy_base(ji,jj) ) THEN   ;   zswitch = 0._wp   ! static  : |RHS| < |tau_b|
+               ELSE                                           ;   zswitch = 1._wp   ! sliding
+               ENDIF 
                !
                IF( ln_aEVP ) THEN !--- ice velocity using aEVP (Kimmritz et al 2016 & 2017)
                   zbetav = MAX( zbeta(ji,jj), zbeta(ji,jj+1) )
