@@ -78,9 +78,9 @@ MODULE traadv
    INTEGER, PARAMETER ::   np_UBS     = 4   ! 3rd order Upstream Biased Scheme
    INTEGER, PARAMETER ::   np_QCK     = 5   ! QUICK scheme
    !
-   REAL(wp), PUBLIC            ::   r_stb_thres_tra_v  ! starting Courant number threshold for adaptive implicit vertical advection
-   REAL(wp), PUBLIC            ::   r_stb_cstra_tra_v  ! stability constraint for tracer advection (vertical)
-   REAL(wp), PUBLIC            ::   r_stb_cstra_tra_h  ! stability constraint for tracer advection (horizontal)
+   REAL(wp)           ::   r_stb_thres_tra_v  ! starting Courant number threshold for adaptive implicit vertical advection
+   REAL(wp)           ::   r_stb_cstra_tra_v  ! stability constraint for tracer advection (vertical)
+   REAL(wp)           ::   r_stb_cstra_tra_h  ! stability constraint for tracer advection (horizontal)
 
    !! * Substitutions
 #  include "do_loop_substitute.h90"
@@ -429,22 +429,27 @@ CONTAINS
             & ln_traadv_fct .AND. nn_fct_v == 4   )   CALL ctl_stop( 'tra_adv_init: 4th order COMPACT scheme not allowed with ISF' )
       ENDIF
       !
-      IF( ln_traadv_cen .OR. ln_traadv_fct) THEN
+      IF(     ln_traadv_cen ) THEN
+         IF ( nn_cen_h==2 ) THEN ; r_stb_cstra_tra_h = pp_stb_cstra_tra_ce2 ; ELSE ; r_stb_cstra_tra_h = pp_stb_cstra_tra_ce4 ; ENDIF
+         IF ( nn_cen_v==2 ) THEN ; r_stb_cstra_tra_v = pp_stb_cstra_tra_ce2 ; ELSE ; r_stb_cstra_tra_v = pp_stb_cstra_tra_co4 ; ENDIF
+         IF ( nn_cen_v==2 ) THEN ; r_stb_thres_tra_v = pp_stb_thres_tra_ce2 ; ELSE ; r_stb_thres_tra_v = pp_stb_thres_tra_co4 ; ENDIF
+         !
+      ELSEIF( ln_traadv_fct ) THEN
          IF ( nn_fct_h==2 ) THEN ; r_stb_cstra_tra_h = pp_stb_cstra_tra_ce2 ; ELSE ; r_stb_cstra_tra_h = pp_stb_cstra_tra_ce4 ; ENDIF
          IF ( nn_fct_v==2 ) THEN ; r_stb_cstra_tra_v = pp_stb_cstra_tra_ce2 ; ELSE ; r_stb_cstra_tra_v = pp_stb_cstra_tra_co4 ; ENDIF
          IF ( nn_fct_v==2 ) THEN ; r_stb_thres_tra_v = pp_stb_thres_tra_ce2 ; ELSE ; r_stb_thres_tra_v = pp_stb_thres_tra_co4 ; ENDIF
          !
-      ELSEIF ( ln_traadv_mus ) THEN
+      ELSEIF( ln_traadv_mus ) THEN
          r_stb_cstra_tra_h = pp_stb_cstra_tra_mus
          r_stb_cstra_tra_v = pp_stb_cstra_tra_mus
          r_stb_thres_tra_v = pp_stb_thres_tra_mus
          !
-      ELSEIF ( ln_traadv_ubs ) THEN
+      ELSEIF( ln_traadv_ubs ) THEN
          r_stb_cstra_tra_h = pp_stb_cstra_tra_ubs
          IF ( nn_fct_v==2 ) THEN ; r_stb_cstra_tra_v = pp_stb_cstra_tra_ce2 ; ELSE ; r_stb_cstra_tra_v = pp_stb_cstra_tra_co4 ; ENDIF
          IF ( nn_fct_v==2 ) THEN ; r_stb_thres_tra_v = pp_stb_thres_tra_ce2 ; ELSE ; r_stb_thres_tra_v = pp_stb_thres_tra_co4 ; ENDIF
          !
-      ELSEIF ( ln_traadv_qck ) THEN
+      ELSEIF( ln_traadv_qck ) THEN
          r_stb_cstra_tra_h = pp_stb_cstra_tra_qck
          r_stb_cstra_tra_v = pp_stb_cstra_tra_qck
          r_stb_thres_tra_v = pp_stb_thres_tra_qck
