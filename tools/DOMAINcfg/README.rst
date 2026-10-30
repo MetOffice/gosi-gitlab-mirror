@@ -7,6 +7,7 @@ The DOMAINcfg tool can be compiled using the maketools script in the NEMOGCM/TOO
 :::::::::::::::::::::::::::::::::
 where $ARCH indicates the arch file to be used from the directory NEMOGCM/ARCH. 
 
+
 DOMAINcfg compiled will create "make_domain_cfg.exe" executable script (the main routine of this tool is make_domain_cfg.f90)
 
 ================================
