@@ -883,7 +883,7 @@ CONTAINS
         zw2d(:,:) = 0._wp
         zw3d(:,:,:) = 0._wp
         DO_3D( 0, 0, 0, 0, 1, jpkm1 )
-           zw3d(ji,jj,jk) = zw3d(ji,jj,jk) * ( psi_uw(ji,jj,jk+1)          - psi_uw(ji  ,jj,jk)            )   &
+           zw3d(ji,jj,jk) = zw3d(ji,jj,jk) + ( psi_uw(ji,jj,jk+1)          - psi_uw(ji  ,jj,jk)            )   &
               &                            * ( ts    (ji,jj,jk,jp_sal,Kmm) + ts    (ji+1,jj,jk,jp_sal,Kmm) )
            zw2d(ji,jj) = zw2d(ji,jj) + zw3d(ji,jj,jk)
         END_3D
