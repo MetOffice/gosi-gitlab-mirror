@@ -467,12 +467,13 @@ CONTAINS
       !
       IF( ioptio /= 1 )   CALL ctl_stop( 'tra_adv_init: Choose ONE advection option in namelist namtra_adv' )
       !
-      IF( ln_traadv_cen .AND. ( nn_cen_h /= 2 .AND. nn_cen_h /= 4 )   &          ! Centered
-                        .AND. ( nn_cen_v /= 2 .AND. nn_cen_v /= 4 )   ) THEN
+      IF( ln_traadv_cen .AND. ( ( nn_cen_h /= 2 .AND. nn_cen_h /= 4 ) .OR.   &          ! Centered
+                                ( nn_cen_v /= 2 .AND. nn_cen_v /= 4 ) ) ) THEN
         CALL ctl_stop( 'tra_adv_init: CEN scheme, choose 2nd or 4th order' )
       ENDIF
-      IF( ln_traadv_fct .AND. ( nn_fct_h /= 2 .AND. nn_fct_h /= 4 )   &          ! FCT
-         &              .AND. ( nn_fct_v /= 2 .AND. nn_fct_v /= 4 ) .AND. ( nn_fct_imp /= 1 .AND. nn_fct_imp /= 2 ) ) THEN
+      IF( ln_traadv_fct .AND. ( ( nn_fct_h   /= 2 .AND. nn_fct_h   /= 4 ) .OR.   &          ! FCT
+         &                      ( nn_fct_v   /= 2 .AND. nn_fct_v   /= 4 ) .OR.   &
+         &                      ( nn_fct_imp /= 1 .AND. nn_fct_imp /= 2 ) ) ) THEN
         CALL ctl_stop( 'tra_adv_init: FCT scheme, choose 2nd or 4th order, and optimized or accurate treatment of implicit' )
       ENDIF
       ! TEMP: [tiling] This change not necessary after all lbc_lnks removed in the nn_hls = 2 case in tra_adv_fct
