@@ -736,7 +736,7 @@
       CALL agrif_declare_variable((/1,2/)  ,(/ind2-1,ind3/),(/'x','y'    /),(/1,1  /),(/jpi,jpj    /),  u_ice_id)
       CALL agrif_declare_variable((/2,1/)  ,(/ind2,ind3-1/),(/'x','y'    /),(/1,1  /),(/jpi,jpj    /),  v_ice_id)
 
-      CALL agrif_declare_variable((/2,2,0/),(/ind3,ind3,0/),(/'x','y','N'/),(/1,1,1/),(/jpi,jpj,ipl/),tra_iceini_id)
+      CALL agrif_declare_variable((/2,2,0/),(/ind2,ind3,0/),(/'x','y','N'/),(/1,1,1/),(/jpi,jpj,ipl/),tra_iceini_id)
       CALL agrif_declare_variable((/1,2/)  ,(/ind2-1,ind3/),(/'x','y'    /),(/1,1  /),(/jpi,jpj    /),  u_iceini_id)
       CALL agrif_declare_variable((/2,1/)  ,(/ind2,ind3-1/),(/'x','y'    /),(/1,1  /),(/jpi,jpj    /),  v_iceini_id)
 
