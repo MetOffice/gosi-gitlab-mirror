@@ -207,7 +207,7 @@ CONTAINS
             END IF
             IF( flagu == -1. )   THEN
                IF( ji-1 < 1   )   CYCLE
-               IF( u_ice(ji-1,jj  ) < 0. )   jpbound = 1 ; ib = ji-1
+               IF( u_ice(ji-1,jj  ) > 0. )   jpbound = 1 ; ib = ji-1
             END IF
             IF( flagv ==  1. )   THEN
                IF( jj+1 > jpj )   CYCLE
@@ -215,7 +215,7 @@ CONTAINS
             END IF
             IF( flagv == -1. )   THEN
                IF( jj-1 < 1   )   CYCLE
-               IF( v_ice(ji  ,jj-1) < 0. )   jpbound = 1 ; jb = jj-1
+               IF( v_ice(ji  ,jj-1) > 0. )   jpbound = 1 ; jb = jj-1
             END IF
             !
             IF( nn_ice_dta(jbdy) == 0 )   jpbound = 0 ; ib = ji ; jb = jj   ! case ice boundaries = initial conditions
