@@ -64,8 +64,8 @@ CONTAINS
       !
       INTEGER  ::   ji, jj, jk, itt
       !
-      REAL(wp) ::  ztrfer, ztrpo4s, ztrdp, zwdust, zmudia
-      REAL(wp) ::  zlight, ztrpo4, ztrdop, zratpo4
+      REAL(wp) ::  ztrfer, zwdust, zmudia
+      REAL(wp) ::  zsoufer, zlight, ztrpo4, ztrdop, zratpo4
       REAL(wp) ::  zfact, ztemp, zdiano3, zdianh4
       !
       CHARACTER (len=25) :: charout
@@ -99,6 +99,8 @@ CONTAINS
             ztrpo4  = tr(ji,jj,jk,jppo4,Kbb) / ( 1E-6 + tr(ji,jj,jk,jppo4,Kbb) )
             nitrpot(ji,jj,jk) =  zmudia * r1_rday * zfact * MIN( ztrfer, ztrpo4 ) * zlight
          ENDIF
+         zsoufer = zlight * 1.5E-11**2 / ( 1.5E-11**2 + biron(ji,jj,jk)**2 )
+         tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) + 0.01 * 4E-10 * zsoufer * rfact2 / rday
       END_3D
       !
       ! Nitrogen change due to nitrogen fixation
@@ -112,6 +114,7 @@ CONTAINS
             tr(ji,jj,jk,jpdic,Krhs) = tr(ji,jj,jk,jpdic,Krhs) - zfact * 2.0 * xtemp13
             tr(ji,jj,jk,jpdoc,Krhs) = tr(ji,jj,jk,jpdoc,Krhs) + zfact * xtemp13
             tr(ji,jj,jk,jppoc,Krhs) = tr(ji,jj,jk,jppoc,Krhs) + zfact * xtemp13
+            prodpoc(ji,jj,jk) = prodpoc(ji,jj,jk) + zfact * xtemp13
             tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) - zfact * xtemp13 * feratz
             tr(ji,jj,jk,jpoxy,Krhs) = tr(ji,jj,jk,jpoxy,Krhs) + ( o2ut + o2nit ) * zfact
          END_3D
@@ -125,6 +128,8 @@ CONTAINS
             tr(ji,jj,jk,jpdoc,Krhs) = tr(ji,jj,jk,jpdoc,Krhs) + zfact * xtemp13
             tr(ji,jj,jk,jppoc,Krhs) = tr(ji,jj,jk,jppoc,Krhs) + zfact * 2.0 * xtemp23
             tr(ji,jj,jk,jpgoc,Krhs) = tr(ji,jj,jk,jpgoc,Krhs) + zfact * xtemp23
+            prodpoc(ji,jj,jk) = prodpoc(ji,jj,jk) + zfact * 2.0 * xtemp23
+            prodgoc(ji,jj,jk) = prodgoc(ji,jj,jk) + zfact * xtemp23
             tr(ji,jj,jk,jpoxy,Krhs) = tr(ji,jj,jk,jpoxy,Krhs) + ( ( o2ut + o2nit ) * 2.0 + o2nit ) * zfact * xtemp13
             tr(ji,jj,jk,jpfer,Krhs) = tr(ji,jj,jk,jpfer,Krhs) - 30E-6 * zfact * xtemp13
             tr(ji,jj,jk,jpsfe,Krhs) = tr(ji,jj,jk,jpsfe,Krhs) + 30E-6 * zfact * 2.0 * xtemp23

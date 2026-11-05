@@ -91,7 +91,7 @@ CONTAINS
                       CALL p4z_sink   ( kt, knt, Kbb, Kmm, Krhs )     ! vertical flux of particulate organic matter
       IF( ln_fechem ) CALL p4z_fechem ( kt, knt, Kbb, Kmm, Krhs )     ! Iron chemistry/scavenging
       !
-      IF( ln_p2z ) THEN  ! PISCES reduced
+      IF( ln_p2z ) THEN  ! PISCES simple
                         CALL p2z_lim  ( kt, knt, Kbb, Kmm       )     ! co-limitations by the various nutrients
          IF( ln_prod  ) CALL p2z_prod ( kt, knt, Kbb, Kmm, Krhs )     ! phytoplankton growth rate over the global ocean.
          IF( ln_mort  ) CALL p2z_mort ( kt,      Kbb,      Krhs )     ! phytoplankton mortality
@@ -122,12 +122,11 @@ CONTAINS
          IF( ln_agg ) CALL p4z_agg     ( kt, knt, Kbb,      Krhs )     ! Aggregation of particles
          IF( ln_rem ) CALL p4z_rem     ( kt, knt, Kbb, Kmm, Krhs )     ! remineralization terms of organic matter+scavenging of Fe
       ENDIF
+      IF( .NOT. ln_p6z .AND. ln_diaz ) CALL p4z_diaz( kt, knt, Kbb, Kmm, Krhs )     ! Diazotrophy
       IF( ln_poc )    CALL p4z_poc     ( kt, knt, Kbb, Kmm, Krhs )     ! Remineralization of organic particles
       !
       ! Ligand production. ln_ligand should be set .true. to activate
       IF( ln_ligand ) CALL p4z_ligand( kt, knt, Kbb,      Krhs )
-
-      IF( .NOT. ln_p6z .AND. ln_diaz )   CALL p4z_diaz( kt, knt, Kbb, Kmm, Krhs )     ! Diazotrophy
 
       ! Update of the size of the different phytoplankton groups
       sizen(:,:,:) = MAX( 1.0, sizena(:,:,:) )
