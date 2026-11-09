@@ -312,10 +312,6 @@ CONTAINS
                ! --- Ridging diagnostics --- !
                IF( ll_diag_rdg ) THEN
                   diag_opning(ii) = diag_opning(ii) + opning(ii)
-                  diag_airdg1(ii) = diag_airdg1(ii) + airdg1(ii) * r1_Dt_ice
-                  diag_airft1(ii) = diag_airft1(ii) + airft1(ii) * r1_Dt_ice
-                  diag_airdg2(ii) = diag_airdg2(ii) + airdg2(ii) * r1_Dt_ice
-                  diag_airft2(ii) = diag_airft2(ii) + airft2(ii) * r1_Dt_ice
                ENDIF
                !
                ! --- Check convergence --- !
@@ -792,7 +788,15 @@ CONTAINS
                IF( nn_icesal == 4 ) THEN   ;   szv_i_2d(ii,:,jl1) = szv_i_2d(ii,:,jl1) * ( 1._wp - afrdg - afrft ) 
                ELSE                        ;   sv_i_2d (ii,  jl1) = sv_i_2d (ii,  jl1) * ( 1._wp - afrdg - afrft ) 
                ENDIF
-               
+
+               ! --- Ridging diagnostics --- !
+               IF( ll_diag_rdg ) THEN
+                  diag_airdg1(ii) = diag_airdg1(ii) + airdg1(ii) * r1_Dt_ice
+                  diag_airft1(ii) = diag_airft1(ii) + airft1(ii) * r1_Dt_ice
+                  diag_airdg2(ii) = diag_airdg2(ii) + airdg2(ii) * r1_Dt_ice
+                  diag_airft2(ii) = diag_airft2(ii) + airft2(ii) * r1_Dt_ice
+               ENDIF
+
             ENDIF
             
          END DO ! ii
