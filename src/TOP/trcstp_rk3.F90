@@ -134,8 +134,8 @@ CONTAINS
          !                                         !==  advection of passive tracers  ==!
          rDt_trc = rDt
          !
-         IF( ln_trcbc .AND. lltrcbc ) CALL trc_bc ( kt, Kbb, Kmm, tr, Krhs )      ! tracers: surface and lateral Boundary Conditions
-         IF( ln_trcais )              CALL trc_ais( kt, Kbb, Kmm, tr, Krhs )      ! tracers from Antarctic Ice Sheet (icb, isf)
+         IF( ln_trcbc .AND. lltrcbc ) CALL trc_bc ( kt, Kbb, Kmm, tr, Krhs ) ! tracers: surface and lateral Boundary Conditions
+         IF( ln_trcais )              CALL trc_ais( kt,      Kmm, tr, Krhs ) ! tracers from Antarctic Ice Sheet (icb, isf)
          !
          CALL trc_sms    ( kt, Kbb, Kmm, Krhs      )       ! tracers: sinks and sources
          !

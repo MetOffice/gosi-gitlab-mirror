@@ -187,8 +187,6 @@
 !-----------------------------------------------------------------------
 &namtrc_ais      !  Representation of Antarctic Ice Sheet tracers supply
 !-----------------------------------------------------------------------
-   nn_ais_tr     =  1        !  tracer concentration in iceberg and ice shelf
-                             !    = 0 (null concentrations)
-                             !    = 1 prescribed concentrations
+   rn_trafac(14) = 4.47e-07  !  ( O.5e-3 / 55.85 * 0.05 ) ! 5% of Fe concentration in continental ice (g Fer / molar mass)
    rn_icbdep     =  120.     ! Mean underwater depth of iceberg (m)
 /
