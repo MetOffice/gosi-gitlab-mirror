@@ -158,6 +158,7 @@ CONTAINS
       REAL(wp), DIMENSION(jpi,jpj) ::   ztaux_bi, ztauy_bi              ! ice-OceanBottom stress at U-V points (landfast)
       REAL(wp), DIMENSION(jpi,jpj) ::   ztaux_base, ztauy_base          ! ice-bottom stress at U-V points (landfast)
       !
+      REAL(wp), DIMENSION(jpi,jpj) ::   zmskF                           ! dummy arrays
       REAL(wp), DIMENSION(jpi,jpj) ::   zmsk, zmsk00, zmsk15
       REAL(wp), DIMENSION(jpi,jpj) ::   zmsk01x, zmsk01y                ! dummy arrays
       REAL(wp), DIMENSION(jpi,jpj) ::   zmsk00x, zmsk00y                ! mask for ice presence
@@ -186,6 +187,10 @@ CONTAINS
 
       IF( kt == nit000 .AND. lwp )   WRITE(numout,*) '-- ice_dyn_rhg_evp: EVP sea-ice rheology'
       !
+      DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
+         IF( ff_t(ji,jj) < 0._wp  ) THEN   ;   zmskF(ji,jj) = 0._wp       ! no landfast grounding keels in southern hemisphere
+         ELSE                              ;   zmskF(ji,jj) = 1._wp   ;   ENDIF
+      END_2D
       ! for diagnostics and convergence tests
       DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
          zmsk00(ji,jj) = MAX( 0._wp , SIGN( 1._wp , at_i(ji,jj) - epsi06  ) ) ! 1 if ice    , 0 if no ice
@@ -320,13 +325,14 @@ CONTAINS
             zvV = 0.5_wp * ( vt_i(ji,jj) * e1e2t(ji,jj) + vt_i(ji,jj+1) * e1e2t(ji,jj+1) ) * r1_e1e2v(ji,jj) * vmask(ji,jj,1)
             ! ice-bottom stress at U points
             zvCr = zaU(ji,jj) * rn_lf_depfra * hu(ji,jj,Kmm) * ( 1._wp - icb_mask(ji,jj) ) ! if grounded icebergs are read: ocean depth = 0
-            ztaux_base(ji,jj) = - rn_lf_bfr * MAX( 0._wp, zvU - zvCr ) * EXP( -rn_crhg * ( 1._wp - zaU(ji,jj) ) )
+            ztaux_base(ji,jj) = - rn_lf_bfr * MAX( 0._wp, zvU - zvCr ) * EXP( -rn_crhg * ( 1._wp - zaU(ji,jj) ) ) * zmskF(ji,jj)
             ! ice-bottom stress at V points
             zvCr = zaV(ji,jj) * rn_lf_depfra * hv(ji,jj,Kmm) * ( 1._wp - icb_mask(ji,jj) ) ! if grounded icebergs are read: ocean depth = 0
-            ztauy_base(ji,jj) = - rn_lf_bfr * MAX( 0._wp, zvV - zvCr ) * EXP( -rn_crhg * ( 1._wp - zaV(ji,jj) ) )
+            ztauy_base(ji,jj) = - rn_lf_bfr * MAX( 0._wp, zvV - zvCr ) * EXP( -rn_crhg * ( 1._wp - zaV(ji,jj) ) ) * zmskF(ji,jj)
             ! ice_bottom stress at T points
             zvCr = at_i(ji,jj) * rn_lf_depfra * ht(ji,jj) * ( 1._wp - icb_mask(ji,jj) )    ! if grounded icebergs are read: ocean depth = 0
-            tau_icebfr(ji,jj) = - rn_lf_bfr * MAX( 0._wp, vt_i(ji,jj) - zvCr ) * EXP( -rn_crhg * ( 1._wp - at_i(ji,jj) ) )
+            tau_icebfr(ji,jj) = - rn_lf_bfr * MAX( 0._wp, vt_i(ji,jj) - zvCr ) * EXP( -rn_crhg * ( 1._wp - at_i(ji,jj) ) ) &
+               &                * zmskF(ji,jj)
          END_2D
          CALL lbc_lnk( 'icedyn_rhg_evp', tau_icebfr(:,:), 'T', 1.0_wp )
          !
