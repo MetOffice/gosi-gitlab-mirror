@@ -158,6 +158,7 @@ CONTAINS
       REAL(wp), DIMENSION(A2D(nn_hls-1)) ::   zdragx_oi, zdragy_oi            ! ice-ocean drags at U-V points
       !
       REAL(wp), DIMENSION(jpi,jpj)       ::   zmsk
+      REAL(wp), DIMENSION(jpi,jpj)       ::   zmskF                           ! dummy arrays
       REAL(wp), DIMENSION(A2D(nn_hls-1)) ::   zmsk01x, zmsk01y                ! dummy arrays
       REAL(wp), DIMENSION(A2D(nn_hls-1)) ::   zmsk00x, zmsk00y                ! mask for ice presence
 
@@ -187,8 +188,10 @@ CONTAINS
       IF( kt == nit000 .AND. lwp )   WRITE(numout,*) '-- ice_dyn_rhg_evp: EVP sea-ice rheology'
       !
       DO_2D( nn_hls, nn_hls, nn_hls, nn_hls )
-         IF( at_i(ji,jj) < epsi10 ) THEN   ;   zmsk(ji,jj) = 0._wp
-         ELSE                              ;   zmsk(ji,jj) = 1._wp   ;   ENDIF
+         IF( at_i(ji,jj) < epsi10 ) THEN   ;   zmsk (ji,jj) = 0._wp
+         ELSE                              ;   zmsk (ji,jj) = 1._wp   ;   ENDIF
+         IF( ff_t(ji,jj) < 0._wp  ) THEN   ;   zmskF(ji,jj) = 0._wp       ! no landfast grounding keels in southern hemisphere
+         ELSE                              ;   zmskF(ji,jj) = 1._wp   ;   ENDIF
       END_2D
       ! for diagnostics and convergence tests
       DO_2D( 0, 0, 0, 0 )
@@ -338,28 +341,17 @@ CONTAINS
             zvU = 0.5_wp * ( vt_i(ji,jj)*e1e2t(ji,jj) + vt_i(ji+1,jj  )*e1e2t(ji+1,jj  ) ) * r1_e1e2u(ji,jj) * umask(ji,jj,1)
             zvV = 0.5_wp * ( vt_i(ji,jj)*e1e2t(ji,jj) + vt_i(ji  ,jj+1)*e1e2t(ji  ,jj+1) ) * r1_e1e2v(ji,jj) * vmask(ji,jj,1)
             ! ice-bottom stress at U points
-            IF( icb_umask(ji,jj) == 0._wp ) THEN
-               zvCr = zaU(ji,jj) * rn_lf_depfra * hu(ji,jj,Kmm)
-               ztaux_base(ji,jj) = - rn_lf_bfr * MAX( 0._wp, zvU - zvCr ) * EXP( -rn_crhg * ( 1._wp - zaU(ji,jj) ) )
-            ELSE
-               ztaux_base(ji,jj) = - rn_lf_bfr * icb_umask(ji,jj)
-            ENDIF
+            zvCr = zaU(ji,jj) * rn_lf_depfra * hu(ji,jj,Kmm)
+            ztaux_base(ji,jj) = - rn_lf_bfr * MAX( 0._wp, zvU - zvCr ) * EXP( -rn_crhg * ( 1._wp - zaU(ji,jj) ) ) * zmskF(ji,jj)
             ! ice-bottom stress at V points
-            IF( icb_vmask(ji,jj) == 0._wp ) THEN
-               zvCr = zaV(ji,jj) * rn_lf_depfra * hv(ji,jj,Kmm)
-               ztauy_base(ji,jj) = - rn_lf_bfr * MAX( 0._wp, zvV - zvCr ) * EXP( -rn_crhg * ( 1._wp - zaV(ji,jj) ) )
-            ELSE
-               ztauy_base(ji,jj) = - rn_lf_bfr * icb_vmask(ji,jj)
-            ENDIF
+            zvCr = zaV(ji,jj) * rn_lf_depfra * hv(ji,jj,Kmm)
+            ztauy_base(ji,jj) = - rn_lf_bfr * MAX( 0._wp, zvV - zvCr ) * EXP( -rn_crhg * ( 1._wp - zaV(ji,jj) ) ) * zmskF(ji,jj)
          END_2D
          DO_2D( 0, 0, 0, 0 )
             ! ice_bottom stress at T points
-            IF( icb_tmask(ji,jj) == 0._wp ) THEN
-               zvCr = at_i(ji,jj) * rn_lf_depfra * ht(ji,jj,Kmm)
-               tau_icebfr(ji,jj) = - rn_lf_bfr * MAX( 0._wp, vt_i(ji,jj) - zvCr ) * EXP( -rn_crhg * ( 1._wp - at_i(ji,jj) ) )
-            ELSE
-               tau_icebfr(ji,jj) = - rn_lf_bfr * icb_tmask(ji,jj)
-            ENDIF
+            zvCr = at_i(ji,jj) * rn_lf_depfra * ht(ji,jj,Kmm)
+            tau_icebfr(ji,jj) = - rn_lf_bfr * MAX( 0._wp, vt_i(ji,jj) - zvCr ) * EXP( -rn_crhg * ( 1._wp - at_i(ji,jj) ) ) &
+               &                * zmskF(ji,jj)
          END_2D
       ELSE                               !-- no landfast or landfast read in a file
          DO_2D( nn_hls-1, nn_hls-1, nn_hls-1, nn_hls-1 )
@@ -576,7 +568,7 @@ CONTAINS
                v_ice(ji,jj) = ( v_ice(ji,jj)*zmsk01y(ji,jj) + v_oce(ji,jj) * 0.01_wp * (1._wp - zmsk01y(ji,jj)) ) * zmsk00y(ji,jj)
                ! Reduce value of v_ice drastically where masks for landfast or grounded icebergs are /=0
                ! In theory one could set v_ice=0 but it may lead to instabilities (cf Noe Pirlet)
-               v_ice(ji,jj) = v_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_vmask(ji,jj) ) !!* ( 1._wp - 0.99_wp * icb_vmask(ji,jj) ) 
+               v_ice(ji,jj) = v_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_vmask(ji,jj) ) * ( 1._wp - 0.99_wp * icb_vmask(ji,jj) ) 
             END_2D
             !
             !
@@ -627,7 +619,7 @@ CONTAINS
                u_ice(ji,jj) = ( u_ice(ji,jj)*zmsk01x(ji,jj) + u_oce(ji,jj) * 0.01_wp * (1._wp - zmsk01x(ji,jj)) ) * zmsk00x(ji,jj)
                ! Reduce value of u_ice drastically where masks for landfast or grounded icebergs are /=0
                ! In theory one could set u_ice=0 but it may lead to instabilities (cf Noe Pirlet)
-               u_ice(ji,jj) = u_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_umask(ji,jj) ) !!* ( 1._wp - 0.99_wp * icb_umask(ji,jj) ) 
+               u_ice(ji,jj) = u_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_umask(ji,jj) ) * ( 1._wp - 0.99_wp * icb_umask(ji,jj) ) 
                !
             END_2D
             !
@@ -682,7 +674,7 @@ CONTAINS
                u_ice(ji,jj) = ( u_ice(ji,jj)*zmsk01x(ji,jj) + u_oce(ji,jj) * 0.01_wp * (1._wp - zmsk01x(ji,jj)) ) * zmsk00x(ji,jj)
                ! Reduce value of u_ice drastically where masks for landfast or grounded icebergs are /=0
                ! In theory one could set u_ice=0 but it may lead to instabilities (cf Noe Pirlet)
-               u_ice(ji,jj) = u_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_umask(ji,jj) ) !!* ( 1._wp - 0.99_wp * icb_umask(ji,jj) ) 
+               u_ice(ji,jj) = u_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_umask(ji,jj) ) * ( 1._wp - 0.99_wp * icb_umask(ji,jj) ) 
                !
             END_2D
             !
@@ -734,7 +726,7 @@ CONTAINS
                v_ice(ji,jj) = ( v_ice(ji,jj)*zmsk01y(ji,jj) + v_oce(ji,jj) * 0.01_wp * (1._wp - zmsk01y(ji,jj)) ) * zmsk00y(ji,jj)
                ! Reduce value of v_ice drastically where masks for landfast or grounded icebergs are /=0
                ! In theory one could set v_ice=0 but it may lead to instabilities (cf Noe Pirlet)
-               v_ice(ji,jj) = v_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_vmask(ji,jj) ) !!* ( 1._wp - 0.99_wp * icb_vmask(ji,jj) ) 
+               v_ice(ji,jj) = v_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_vmask(ji,jj) ) * ( 1._wp - 0.99_wp * icb_vmask(ji,jj) ) 
                !
             END_2D
             !
