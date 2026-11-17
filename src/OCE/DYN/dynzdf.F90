@@ -234,8 +234,9 @@ CONTAINS
             !
             IF( ln_dynadv_vec ) THEN            !  Vector Invariant Form  !   Wu * upstream dk[U]
                DO_2Dik( 0, 0,   2, jpkm1, 1 )
-                  zWu  = zDt_4 * (  ( e1e2t(ji,jj)*wi(ji,jj,jk  ) + e1e2t(ji+1,jj)*wi(ji+1,jj,jk  ) )  &
-                     &            + ( e1e2t(ji,jj)*wi(ji,jj,jk+1) + e1e2t(ji+1,jj)*wi(ji+1,jj,jk+1) )  ) * r1_e1e2u(ji,jj)
+                  zWu  = zDt_4 * (  ( e1e2t(ji,jj)*wi(ji,jj,jk  ) + e1e2t(ji+1,jj)*wi(ji+1,jj,jk  ) )   &
+                     &            + ( e1e2t(ji,jj)*wi(ji,jj,jk+1) + e1e2t(ji+1,jj)*wi(ji+1,jj,jk+1) )   & 
+                     &           ) * wumask(ji,jj,jk) * wumask(ji,jj,jk+1) * r1_e1e2u(ji,jj)
                   zzWn_e3 = MIN( zWu, 0._wp ) / e3uw(ji,jj,jk  ,Kaa)
                   zzWp_e3 = MAX( zWu, 0._wp ) / e3uw(ji,jj,jk+1,Kaa)
                   zwi(ji,jk) = zwi(ji,jk) + zzWn_e3
@@ -249,11 +250,21 @@ CONTAINS
                   zws(ji,1) = zws(ji,1)             - zzWp_e3
                   zwd(ji,1) = zwd(ji,1)             + zzWp_e3
                END_1D
+               DO_1Di( 0, 0 )
+                  iku = mbku(ji,jj)       ! ocean bottom level at u- and v-points
+                  zWu  = zDt_4 * (  ( e1e2t(ji,jj)*wi(ji,jj,iku  ) + e1e2t(ji+1,jj)*wi(ji+1,jj,iku  ) )  &
+                     &            + ( e1e2t(ji,jj)*wi(ji,jj,iku+1) + e1e2t(ji+1,jj)*wi(ji+1,jj,iku+1) )  )  * r1_e1e2u(ji,jj)
+                  zzWn_e3 = MIN( zWu, 0._wp ) / e3uw(ji,jj,iku  ,Kaa)
+                  zzWp_e3 = MAX( zWu, 0._wp ) / e3uw(ji,jj,iku+1,Kaa)
+                  zwi(ji,iku) = zwi(ji,iku) + zzWn_e3
+                  zws(ji,iku) = zws(ji,iku)           - zzWp_e3
+                  zwd(ji,iku) = zwd(ji,iku) - zzWn_e3 + zzWp_e3
+               END_1D
             ELSE                                !  Flux form  !   dk[ WI_uw * upstream u ] 
                DO_2Dik( 0, 0,   2, jpkm1, 1 )
                   zDt_2bua =  zDt_2 * r1_e1e2u(ji,jj) / e3u(ji,jj,jk,Kaa)
-                  zWui = ( e1e2t(ji,jj)*wi(ji,jj,jk  ) + e1e2t(ji+1,jj)*wi(ji+1,jj,jk  ) ) * zDt_2bua 
-                  zWus = ( e1e2t(ji,jj)*wi(ji,jj,jk+1) + e1e2t(ji+1,jj)*wi(ji+1,jj,jk+1) ) * zDt_2bua
+                  zWui = ( e1e2t(ji,jj)*wi(ji,jj,jk  ) + e1e2t(ji+1,jj)*wi(ji+1,jj,jk  ) ) * zDt_2bua * wumask(ji,jj,jk  ) 
+                  zWus = ( e1e2t(ji,jj)*wi(ji,jj,jk+1) + e1e2t(ji+1,jj)*wi(ji+1,jj,jk+1) ) * zDt_2bua * wumask(ji,jj,jk+1)
                   zwi(ji,jk) = zwi(ji,jk) + MIN( zWui, 0._wp )
                   zws(ji,jk) = zws(ji,jk)                      - MAX( zWus, 0._wp )
                   zwd(ji,jk) = zwd(ji,jk) + MAX( zWui, 0._wp ) - MIN( zWus, 0._wp )
@@ -264,6 +275,13 @@ CONTAINS
                   zWus = ( e1e2t(ji,jj)*wi(ji,jj,2) + e1e2t(ji+1,jj)*wi(ji+1,jj,2) ) * zDt_2bua
                   zws(ji,1) = zws(ji,1)                        - MAX( zWus, 0._wp )
                   zwd(ji,1) = zwd(ji,1)                        - MIN( zWus, 0._wp )
+               END_1D                  ! Bottom boundary conditions
+               DO_1Di( 0, 0 )
+                  iku = mbku(ji,jj)       ! ocean bottom level at u- and v-points
+                  zDt_2bua =  zDt_2 * r1_e1e2u(ji,jj) / e3u(ji,jj,iku,Kaa)
+                  zWus = ( e1e2t(ji,jj)*wi(ji,jj,iku+1) + e1e2t(ji+1,jj)*wi(ji+1,jj,iku+1) ) * zDt_2bua
+                  zws(ji,iku) = zws(ji,iku) - MAX( zWus, 0._wp )
+                  zwd(ji,iku) = zwd(ji,iku) - MIN( zWus, 0._wp )
                END_1D
             ENDIF
             !
@@ -402,7 +420,8 @@ CONTAINS
             IF( ln_dynadv_vec ) THEN            !  Vector Invariant Form  !   Wv * upstream dk[V]
                DO_2Dik( 0, 0,    2, jpkm1, 1 )
                   zWv  = zDt_4 * (  ( e1e2t(ji,jj)*wi(ji,jj,jk  ) + e1e2t(ji,jj+1)*wi(ji,jj+1,jk  ) )  &
-                     &            + ( e1e2t(ji,jj)*wi(ji,jj,jk+1) + e1e2t(ji,jj+1)*wi(ji,jj+1,jk+1) )  ) * r1_e1e2v(ji,jj)
+                     &            + ( e1e2t(ji,jj)*wi(ji,jj,jk+1) + e1e2t(ji,jj+1)*wi(ji,jj+1,jk+1) )  & 
+                     &           ) * wvmask(ji,jj,jk) * wvmask(ji,jj,jk+1) * r1_e1e2v(ji,jj)
                   zzWn_e3 = MIN( zWv, 0._wp ) / e3vw(ji,jj,jk  ,Kaa)
                   zzWp_e3 = MAX( zWv, 0._wp ) / e3vw(ji,jj,jk+1,Kaa)
                   zwi(ji,jk) = zwi(ji,jk) + zzWn_e3
@@ -415,12 +434,22 @@ CONTAINS
                   zws(ji,1) = zws(ji,1)             - zzWp_e3
                   zwd(ji,1) = zwd(ji,1)             + zzWp_e3
                END_1D
+               DO_1Di( 0, 0 )
+                  ikv = mbkv(ji,jj)       ! ocean bottom level at u- and v-points
+                  zWv  = zDt_4 * (  ( e1e2t(ji,jj)*wi(ji,jj,ikv  ) + e1e2t(ji,jj+1)*wi(ji,jj+1,ikv  ) )  &
+                     &            + ( e1e2t(ji,jj)*wi(ji,jj,ikv+1) + e1e2t(ji,jj+1)*wi(ji,jj+1,ikv+1) )  ) * r1_e1e2v(ji,jj)
+                  zzWn_e3 = MIN( zWv, 0._wp ) / e3vw(ji,jj,ikv  ,Kaa)
+                  zzWp_e3 = MAX( zWv, 0._wp ) / e3vw(ji,jj,ikv+1,Kaa)
+                  zwi(ji,ikv) = zwi(ji,ikv) + zzWn_e3
+                  zws(ji,ikv) = zws(ji,ikv)           - zzWp_e3
+                  zwd(ji,ikv) = zwd(ji,ikv) - zzWn_e3 + zzWp_e3
+               END_1D
                !
             ELSE                       !---- Flux form ----!
                DO_2Dik( 0, 0,    2, jpkm1, 1 )
                   zDt_2bva = zDt_2 * r1_e1e2v(ji,jj) / e3v(ji,jj,jk,Kaa)
-                  zWvi = ( e1e2t(ji,jj)*wi(ji,jj,jk  ) + e1e2t(ji,jj+1)*wi(ji,jj+1,jk  ) ) * zDt_2bva
-                  zWvs = ( e1e2t(ji,jj)*wi(ji,jj,jk+1) + e1e2t(ji,jj+1)*wi(ji,jj+1,jk+1) ) * zDt_2bva
+                  zWvi = ( e1e2t(ji,jj)*wi(ji,jj,jk  ) + e1e2t(ji,jj+1)*wi(ji,jj+1,jk  ) ) * zDt_2bva * wvmask(ji,jj,jk  )
+                  zWvs = ( e1e2t(ji,jj)*wi(ji,jj,jk+1) + e1e2t(ji,jj+1)*wi(ji,jj+1,jk+1) ) * zDt_2bva * wvmask(ji,jj,jk+1)
                   zwi(ji,jk) = zwi(ji,jk) + MIN( zWvi, 0._wp )
                   zws(ji,jk) = zws(ji,jk)                      - MAX( zWvs, 0._wp )
                   zwd(ji,jk) = zwd(ji,jk) + MAX( zWvi, 0._wp ) - MIN( zWvs, 0._wp )
@@ -430,6 +459,13 @@ CONTAINS
                   zWvs = ( e1e2t(ji,jj  )*wi(ji,jj  ,2) +  e1e2t(ji,jj+1)*wi(ji,jj+1,2) ) * zDt_2bva
                   zws(ji,1) = zws(ji,1)                        - MAX( zWvs, 0._wp )
                   zwd(ji,1) = zwd(ji,1)                        - MIN( zWvs, 0._wp )
+               END_1D
+               DO_1Di( 0, 0 )
+                  ikv = mbkv(ji,jj)       ! ocean bottom level at u- and v-points
+                  zDt_2bva = zDt_2 * r1_e1e2v(ji,jj) / e3v(ji,jj,ikv,Kaa)
+                  zWvs = ( e1e2t(ji,jj)*wi(ji,jj,ikv+1) + e1e2t(ji,jj+1)*wi(ji,jj+1,ikv+1) ) * zDt_2bva
+                  zws(ji,ikv) = zws(ji,ikv) - MAX( zWvs, 0._wp )
+                  zwd(ji,ikv) = zwd(ji,ikv) - MIN( zWvs, 0._wp )
                END_1D
             ENDIF
             !
