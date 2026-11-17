@@ -155,7 +155,7 @@ MODULE sbcblk
    LOGICAL  ::   ln_humi_dpt    ! humidity read in files ("sn_humi") is dew-point temperature [K] if .true. !LB
    LOGICAL  ::   ln_humi_rlh    ! humidity read in files ("sn_humi") is relative humidity     [%] if .true. !LB
    LOGICAL  ::   ln_tair_pot    ! temperature read in files ("sn_tair") is already potential temperature (not absolute)
-   LOGICAL  ::   ln_prec_met    ! precipitation read in files ("sn_prec") is in m and has to be converted to kg/m2/s
+   LOGICAL, PUBLIC  ::   ln_prec_met    ! precipitation read in files ("sn_prec") is in m and has to be converted to kg/m2/s
    !
    INTEGER  ::   nhumi          ! choice of the bulk algorithm
    !                            ! associated indices:
