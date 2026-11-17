@@ -611,7 +611,7 @@ CONTAINS
          zcff           = rho_air( ztabs( ji, jj ), zhumi, zpre( ji, jj ) )
          psen( ji, jj ) =    - cp_air(zhumi) * zcff * psen(ji,jj) * ( zsspt(ji,jj) - ztemp )         !GS: negative sign to respect aerobulk convention
          pevp( ji, jj ) = rn_efac*MAX( 0._wp,  zcff * pevp(ji,jj) * ( pssq(ji,jj)  - zhumi ) )
-         plat( ji, jj ) = - L_vap( psst(ji,jj) ) * pevp( ji, jj )
+         plat( ji, jj ) = - L_vap( psst(ji,jj)+rt0 ) * pevp( ji, jj )
          rhoa( ji, jj ) = zcff
       END_2D
 

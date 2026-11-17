@@ -240,7 +240,7 @@ CONTAINS
       !!-------------------------------------------------------------------------------------------
       !! Initialize Coriolis frequency, equatorial restoring and land/sea mask
       !!-------------------------------------------------------------------------------------------
-      fft_abl(:,:) = 2._wp * omega * SIN( rad * gphit(:,:) )
+      fft_abl(:,:) = 2._wp * omega * SIN( rad * gphit(A2D(0)) )
 
       ! Equatorial restoring
       IF( nn_dyn_restore == 1 ) THEN
@@ -319,13 +319,19 @@ CONTAINS
 
       IF( MOD( kt - 1, nn_fsbc ) == 0 ) THEN
 
+         IF( ln_prec_met ) THEN
+            precip(:,:) = MAX(0._wp, sf(jp_prec)%fnow(:,:,1) * 1000._wp /(sf(jp_prec)%freqh * 3600._wp ) )
+         ELSE
+            precip(:,:) = sf(jp_prec)%fnow(:,:,1)
+         ENDIF
+
          !!-------------------------------------------------------------------------------------------
          !! 2 - Compute Cd x ||U||, Ch x ||U||, Ce x ||U||, and SSQ using now fields
          !!-------------------------------------------------------------------------------------------
 
          CALL blk_oce_1( kt,  u_abl(:,:,2,nt_n      ),  v_abl(:,:,2,nt_n      ),   &   !   <<= in
             &                tq_abl(:,:,2,nt_n,jp_ta), tq_abl(:,:,2,nt_n,jp_qa),   &   !   <<= in
-            &                sf(jp_slp )%fnow(:,:,1) , sst_m(A2D(0)), ssu_m(A2D(0)), ssv_m(A2D(0)),   &   !   <<= in
+            &                sf(jp_slp )%fnow(:,:,1) , sst_m(:,:), ssu_m(:,:), ssv_m(:,:),   &   !   <<= in
             &                sf(jp_uoatm)%fnow(:,:,1), sf(jp_voatm)%fnow(:,:,1),   &   !   <<= in
             &                sf(jp_qsr )%fnow(:,:,1) , sf(jp_qlw )%fnow(:,:,1) ,   &   !   <<= in
             &                tsk_m, zssq, zcd_du, zsen, zlat, zevp                 )   !   =>> out
