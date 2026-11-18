@@ -370,28 +370,34 @@ CONTAINS
       !
       CASE(  31  )       !==  time varying 3D field  ==!   = F( local velocity )
          !
-         IF( ln_dynldf_lap   ) THEN        ! laplacian operator : |u| e / 2 = |u/ 4| e
-            DO jk = 1, jpkm1               ! r1_8 = 1 / (2*2 * 2)
+         IF( ln_dynldf_lap   ) THEN                 ! laplacian operator : |u| e / 2 = |u/ 4| e
+            zdb = 1._wp / ( 4._wp * rn_Dt )         ! r1_8 = 1 / (2*2 * 2) 
+            DO jk = 1, jpkm1               
                DO_2D( 0, 0, 0, 0 )
                   zu2pv2_ij    = uu(ji  ,jj  ,jk,Kbb) * uu(ji  ,jj  ,jk,Kbb) + vv(ji  ,jj  ,jk,Kbb) * vv(ji  ,jj  ,jk,Kbb)
                   zu2pv2_ij_m1 = uu(ji-1,jj  ,jk,Kbb) * uu(ji-1,jj  ,jk,Kbb) + vv(ji  ,jj-1,jk,Kbb) * vv(ji  ,jj-1,jk,Kbb)
                   zu2pv2_ij_p1 = uu(ji  ,jj+1,jk,Kbb) * uu(ji  ,jj+1,jk,Kbb) + vv(ji+1,jj  ,jk,Kbb) * vv(ji+1,jj  ,jk,Kbb)
                   zemax = MAX( e1t(ji,jj) , e2t(ji,jj) )
                   ahmt(ji,jj,jk) = SQRT( (zu2pv2_ij + zu2pv2_ij_m1) * r1_8 ) * zemax * tmask(ji,jj,jk)   
+                  ahmt(ji,jj,jk) = MIN( ahmt(ji,jj,jk), zemax**2 * zdb ) ! upper bound: L^2/(4dt)
                   zemax = MAX( e1f(ji,jj) , e2f(ji,jj) )
                   ahmf(ji,jj,jk) = SQRT( (zu2pv2_ij + zu2pv2_ij_p1) * r1_8 ) * zemax * fmask(ji,jj,jk)
+                  ahmf(ji,jj,jk) = MIN( ahmf(ji,jj,jk), zemax**2 * zdb ) ! upper bound: L^2/(4dt) 
                END_2D
             END DO
-         ELSEIF( ln_dynldf_blp ) THEN      ! bilaplacian operator : sqrt( |u| e^3 /12 ) = sqrt( |u/144| e ) * e
-            DO jk = 1, jpkm1               ! r1_288 = 1 / (12*12 * 2)
+         ELSEIF( ln_dynldf_blp ) THEN               ! bilaplacian operator : sqrt( |u| e^3 /12 ) = sqrt( |u/144| e ) * e
+            zdb = SQRT( 1._wp / (32._wp * rn_Dt ) ) ! r1_288 = 1 / (12*12 * 2) 
+            DO jk = 1, jpkm1              
                DO_2D( 0, 0, 0, 0 )
                   zu2pv2_ij    = uu(ji  ,jj  ,jk,Kbb) * uu(ji  ,jj  ,jk,Kbb) + vv(ji  ,jj  ,jk,Kbb) * vv(ji  ,jj  ,jk,Kbb)
                   zu2pv2_ij_m1 = uu(ji-1,jj  ,jk,Kbb) * uu(ji-1,jj  ,jk,Kbb) + vv(ji  ,jj-1,jk,Kbb) * vv(ji  ,jj-1,jk,Kbb)
                   zu2pv2_ij_p1 = uu(ji  ,jj+1,jk,Kbb) * uu(ji  ,jj+1,jk,Kbb) + vv(ji+1,jj  ,jk,Kbb) * vv(ji+1,jj  ,jk,Kbb)
                   zemax = MAX( e1t(ji,jj) , e2t(ji,jj) )
                   ahmt(ji,jj,jk) = SQRT(  SQRT( (zu2pv2_ij + zu2pv2_ij_m1) * r1_288 ) * zemax  ) * zemax * tmask(ji,jj,jk)
+                  ahmt(ji,jj,jk) = MIN( ahmt(ji,jj,jk), zemax**2 * zdb ) ! upper bound: (L^4/(32dt))^1/2
                   zemax = MAX( e1f(ji,jj) , e2f(ji,jj) )
                   ahmf(ji,jj,jk) = SQRT(  SQRT( (zu2pv2_ij + zu2pv2_ij_p1) * r1_288 ) * zemax  ) * zemax * fmask(ji,jj,jk)
+                  ahmf(ji,jj,jk) = MIN( ahmf(ji,jj,jk), zemax**2 * zdb ) ! upper bound: (L^4/(32dt))^1/2
                END_2D
             END DO
          ENDIF
