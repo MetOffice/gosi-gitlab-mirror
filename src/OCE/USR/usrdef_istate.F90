@@ -35,7 +35,7 @@ MODULE usrdef_istate
    !!----------------------------------------------------------------------
 CONTAINS
   
-   ELEMENTAL FUNCTION ana_prof(pz, pb, pa, pzt, pdt, pg, pzm, pw, pc, ph) RESULT(pf)
+   FUNCTION ana_prof(pz, pb, pa, pzt, pdt, pg, pzm, pw, pc, ph) RESULT(pf)
       REAL(wp), INTENT(in) :: pz, pb, pa, pzt, pdt, pg, pzm, pw, pc, ph
       REAL(wp)             :: pf
       pf = pb + 0.5_wp * pa * (1._wp - TANH((pz - pzt) / pdt))   &
