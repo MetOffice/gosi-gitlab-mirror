@@ -24,6 +24,7 @@ MODULE usrdef_istate
 
    PUBLIC   usr_def_istate       ! called in istate.F90
    PUBLIC   usr_def_istate_ssh   ! called by domqco.F90
+   PUBLIC   ana_prof
 
    !! * Substitutions
 #  include "do_loop_substitute.h90"
@@ -91,10 +92,8 @@ CONTAINS
       !
       
       DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpk )
-         pts(ji,jj,jk,jp_sal) = ana_prof(pdept(ji,jj,jk), rs_b, rs_a, rs_zt, rs_dt, &
-                 &                       rs_g, rs_zm, rs_w, rs_c, rs_h)
-         pts(ji,jj,jk,jp_tem) = ana_prof(pdept(ji,jj,jk), rt_b, rt_a, rt_zt, rt_dt, &
-                 &                       rt_g, rt_zm, rt_w, rt_c, rt_h)
+         pts(ji,jj,jk,jp_sal) = ana_prof(pdept(ji,jj,jk), rs_b, rs_a, rs_zt, rs_dt, rs_g, rs_zm, rs_w, rs_c, rs_h)
+         pts(ji,jj,jk,jp_tem) = ana_prof(pdept(ji,jj,jk), rt_b, rt_a, rt_zt, rt_dt, rt_g, rt_zm, rt_w, rt_c, rt_h)
       END_3D
 
       !   
