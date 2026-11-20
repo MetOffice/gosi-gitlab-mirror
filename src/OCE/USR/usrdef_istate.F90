@@ -34,6 +34,14 @@ MODULE usrdef_istate
    !!----------------------------------------------------------------------
 CONTAINS
   
+   ELEMENTAL FUNCTION ana_prof(pz, pb, pa, pzt, pdt, pg, pzm, pw, pc, ph) RESULT(pf)
+      REAL(wp), INTENT(in) :: pz, pb, pa, pzt, pdt, pg, pzm, pw, pc, ph
+      REAL(wp)             :: pf
+      pf = pb + 0.5_wp * pa * (1._wp - TANH((pz - pzt) / pdt))   &
+         &    + pg * EXP(-((pz - pzm) / pw)**2)                  &
+         &    + pc * EXP(-pz / ph)
+   END FUNCTION ana_prof
+
    SUBROUTINE usr_def_istate( pdept, ptmask, pts, pu, pv )
       !!----------------------------------------------------------------------
       !!                   ***  ROUTINE usr_def_istate  ***
@@ -50,6 +58,18 @@ CONTAINS
       REAL(dp), DIMENSION(jpi,jpj,jpk)     , INTENT(  out) ::   pu      ! i-component of the velocity  [m/s]
       REAL(dp), DIMENSION(jpi,jpj,jpk)     , INTENT(  out) ::   pv      ! j-component of the velocity  [m/s]
       !
+      ! Conservative temperature coefficients
+      REAL(wp), PARAMETER :: rt_b  =    1.5196_wp, rt_a  =    1.8005_wp
+      REAL(wp), PARAMETER :: rt_zt =  124.95_wp,   rt_dt =   36.73_wp
+      REAL(wp), PARAMETER :: rt_g  =    3.4597_wp, rt_zm = 1224.21_wp, rt_w = 505.54_wp
+      REAL(wp), PARAMETER :: rt_c  =   15.0181_wp, rt_h  = 1160.54_wp
+
+      ! Absolute salinity coefficients
+      REAL(wp), PARAMETER :: rs_b  =   35.0910_wp, rs_a  =    0.5879_wp
+      REAL(wp), PARAMETER :: rs_zt =  150.97_wp,   rs_dt =   92.20_wp
+      REAL(wp), PARAMETER :: rs_g  =    0.8449_wp, rs_zm = 1184.02_wp, rs_w = 507.13_wp
+      REAL(wp), PARAMETER :: rs_c  =    1.0404_wp, rs_h  = 1069.86_wp
+
       INTEGER :: ji, jj, jk  ! dummy loop indices
       !!----------------------------------------------------------------------
       !
@@ -60,22 +80,23 @@ CONTAINS
       pu  (:,:,:) = 0._wp           ! ocean at rest
       pv  (:,:,:) = 0._wp
       !
-      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpk )   ! horizontally uniform T & S profiles
-         pts(ji,jj,jk,jp_tem) =  (  (  16. - 12. * TANH( (pdept(ji,jj,jk) - 400) / 700 ) )   &
-              &           * (-TANH( (500. - pdept(ji,jj,jk)) / 150. ) + 1.) / 2.             &
-              &           + ( 15. * ( 1. - TANH( (pdept(ji,jj,jk)-50.) / 1500.) )            &
-              &           - 1.4 * TANH((pdept(ji,jj,jk)-100.) / 100.)                        &
-              &           + 7.  * (1500. - pdept(ji,jj,jk) ) / 1500.)                        &
-              &           * (-TANH( (pdept(ji,jj,jk) - 500.) / 150.) + 1.) / 2.  ) * ptmask(ji,jj,jk)
-
-         pts(ji,jj,jk,jp_sal) =  (  (  36.25 - 1.13 * TANH( (pdept(ji,jj,jk) - 305) / 460 ) )  &
-              &         * (-TANH((500. - pdept(ji,jj,jk)) / 150.) + 1.) / 2                  &
-              &         + ( 35.55 + 1.25 * (5000. - pdept(ji,jj,jk)) / 5000.                 &
-              &         - 1.62 * TANH( (pdept(ji,jj,jk) - 60.  ) / 650. )                    &
-              &         + 0.2  * TANH( (pdept(ji,jj,jk) - 35.  ) / 100. )                    &
-              &         + 0.2  * TANH( (pdept(ji,jj,jk) - 1000.) / 5000.) )                  &
-              &         * (-TANH( (pdept(ji,jj,jk) - 500.) / 150.) + 1.) / 2  ) * ptmask(ji,jj,jk)
+      !  Analytical potential temperature / salinity profiles representative
+      !  of a Mediterranean Overflow Water (MOW) environment.
+      !
+      !  F(z) = Fb + A/2 [1 - tanh((z-zt)/dt)] + B exp(-((z-zm)/w)^2) + C exp(-z/H)
+      !
+      !  z is depth [m], positive downward. Coefficients were fitted to a
+      !  reference profile with the constraint that the resulting sigma0
+      !  (TEOS10) increases monotonically with depth (dsigma0/dz > 0).
+      !
+      
+      DO_3D( nn_hls, nn_hls, nn_hls, nn_hls, 1, jpk )
+         pts(ji,jj,jk,jp_sal) = ana_prof(pdept(ji,jj,jk), rs_b, rs_a, rs_zt, rs_dt, &
+                 &                       rs_g, rs_zm, rs_w, rs_c, rs_h)
+         pts(ji,jj,jk,jp_tem) = ana_prof(pdept(ji,jj,jk), rt_b, rt_a, rt_zt, rt_dt, &
+                 &                       rt_g, rt_zm, rt_w, rt_c, rt_h)
       END_3D
+
       !   
    END SUBROUTINE usr_def_istate
 
