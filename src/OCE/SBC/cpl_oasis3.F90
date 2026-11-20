@@ -37,7 +37,7 @@ MODULE cpl_oasis3
    USE in_out_manager               ! I/O manager
    USE lbclnk                       ! ocean lateral boundary conditions (or mpp link)
    USE lib_mpp
-#if defined key_agrif
+#if defined key_agrif || ! defined key_mpi_off
    USE MPI
 #endif
 
@@ -49,10 +49,6 @@ MODULE cpl_oasis3
       MODULE PROCEDURE oasis_get_1d, oasis_get_2d
    END INTERFACE
 #endif 
-
-#if ! defined key_mpi_off
-   INCLUDE 'mpif.h'
-#endif
 
    PUBLIC   cpl_init
    PUBLIC   cpl_define
