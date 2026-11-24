@@ -59,17 +59,17 @@ CONTAINS
       REAL(dp), DIMENSION(jpi,jpj,jpk)     , INTENT(  out) ::   pu      ! i-component of the velocity  [m/s]
       REAL(dp), DIMENSION(jpi,jpj,jpk)     , INTENT(  out) ::   pv      ! j-component of the velocity  [m/s]
       !
-      ! Conservative temperature coefficients
-      REAL(wp), PARAMETER :: rt_b  =    1.5196_wp, rt_a  =    1.8005_wp
-      REAL(wp), PARAMETER :: rt_zt =  124.95_wp,   rt_dt =   36.73_wp
-      REAL(wp), PARAMETER :: rt_g  =    3.4597_wp, rt_zm = 1224.21_wp, rt_w = 505.54_wp
-      REAL(wp), PARAMETER :: rt_c  =   15.0181_wp, rt_h  = 1160.54_wp
+      ! Conservative temperature coefficients 
+      REAL(wp), PARAMETER :: rt_b  =    1.5372_wp, rt_a  =    1.9350_wp
+      REAL(wp), PARAMETER :: rt_zt =  154.62_wp,   rt_dt =  101.50_wp
+      REAL(wp), PARAMETER :: rt_g  =    3.4925_wp, rt_zm = 1214.13_wp, rt_w = 522.56_wp
+      REAL(wp), PARAMETER :: rt_c  =   14.8986_wp, rt_h  = 1172.34_wp
 
       ! Absolute salinity coefficients
-      REAL(wp), PARAMETER :: rs_b  =   35.0910_wp, rs_a  =    0.5879_wp
-      REAL(wp), PARAMETER :: rs_zt =  150.97_wp,   rs_dt =   92.20_wp
-      REAL(wp), PARAMETER :: rs_g  =    0.8449_wp, rs_zm = 1184.02_wp, rs_w = 507.13_wp
-      REAL(wp), PARAMETER :: rs_c  =    1.0404_wp, rs_h  = 1069.86_wp
+      REAL(wp), PARAMETER :: rs_b  =   35.1014_wp, rs_a  =    0.6033_wp
+      REAL(wp), PARAMETER :: rs_zt =  151.42_wp,   rs_dt =  103.11_wp
+      REAL(wp), PARAMETER :: rs_g  =    0.8149_wp, rs_zm = 1191.62_wp, rs_w = 502.27_wp
+      REAL(wp), PARAMETER :: rs_c  =    1.0370_wp, rs_h  = 1098.65_wp
 
       INTEGER :: ji, jj, jk  ! dummy loop indices
       !!----------------------------------------------------------------------
