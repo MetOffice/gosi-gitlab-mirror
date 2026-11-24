@@ -28,6 +28,7 @@ MODULE traadv_fct
    USE lib_mpp        ! MPP library
    USE lbclnk         ! ocean lateral boundary condition (or mpp link)
    USE lib_fortran    ! Fortran utilities (allows no signed zero when 'key_nosignedzero' defined)
+   USE bdy_oce        ! open boundaries
 
    IMPLICIT NONE
    PRIVATE
@@ -390,6 +391,7 @@ CONTAINS
       !
       INTEGER  ::   ji, jj, jk    ! dummy loop indices
       INTEGER  ::   ik            ! local integer
+      INTEGER  ::   ib, ib_bdy    !   "     "
       REAL(wp) ::   ztra   ! local scalar
       !!----------------------------------------------------------------------
 !!$      IF( .NOT. ll_upsxy ) THEN         !** no alternate directions **!
@@ -463,6 +465,20 @@ CONTAINS
             pt_rhs(ji,jj,jk) = pt_rhs(ji,jj,jk) - ( ztmp(ji,jj,jk) - ztmp(ji,jj,jk+1) ) / e3t(ji,jj,jk,Kmm)
          END_3D
       ENDIF
+
+      ! Assume persistence for upstream guess along open boundaries
+      !
+      IF( ln_bdy ) THEN
+         DO ib_bdy=1, nb_bdy                       ! loop over bdy segments
+            DO ib = 1, idx_bdy(ib_bdy)%nblenrim(1) ! loop over segment points
+               ji = idx_bdy(ib_bdy)%nbi(ib,1)
+               jj = idx_bdy(ib_bdy)%nbj(ib,1)
+               DO jk = 1, jpkm1
+                  pt_up1(ji,jj,jk) = pt_b(ji,jj,jk)
+               END DO
+            END DO
+         END DO
+      ENDIF
       !
    END SUBROUTINE fct_up1_1stp
 
@@ -483,6 +499,7 @@ CONTAINS
       !
       INTEGER  ::   ji, jj, jk      ! dummy loop indices
       INTEGER  ::   ik              ! local integer
+      INTEGER  ::   ib, ib_bdy      !   "     "
       REAL(wp) ::   zimp, zDt, ztra ! local scalar
       !!----------------------------------------------------------------------
 !!$      IF( .NOT. ll_upsxy ) THEN         !** no alternate directions **!
@@ -556,6 +573,19 @@ CONTAINS
          END_3D
       ENDIF
 
+      ! Assume persistence for upstream guess along open boundaries
+      !
+      IF( ln_bdy ) THEN
+         DO ib_bdy=1, nb_bdy                       ! loop over bdy segments
+            DO ib = 1, idx_bdy(ib_bdy)%nblenrim(1) ! loop over segment points
+               ji = idx_bdy(ib_bdy)%nbi(ib,1)
+               jj = idx_bdy(ib_bdy)%nbj(ib,1)
+               DO jk = 1, jpkm1
+                  pt_up1(ji,jj,jk) = pt_b(ji,jj,jk)
+               END DO
+            END DO
+         END DO
+      ENDIF
       
       ! *** 2nd step
       zDt = pDt
@@ -635,6 +665,20 @@ CONTAINS
             zwsup(ji,jj,jk) =        - zDt *   MAX( wi(ji,jj,jk+1) , 0._wp )                                   / e3t(ji,jj,jk,Kaa)
          END_3D
          !
+      ENDIF
+
+      ! Assume persistence for upstream guess along open boundaries
+      !
+      IF( ln_bdy ) THEN
+         DO ib_bdy=1, nb_bdy                       ! loop over bdy segments
+            DO ib = 1, idx_bdy(ib_bdy)%nblenrim(1) ! loop over segment points
+               ji = idx_bdy(ib_bdy)%nbi(ib,1)
+               jj = idx_bdy(ib_bdy)%nbj(ib,1)
+               DO jk = 1, jpkm1
+                  pt_up1(ji,jj,jk) = pt_b(ji,jj,jk)
+               END DO
+            END DO
+         END DO
       ENDIF
       !
    END SUBROUTINE fct_up1_2stp
