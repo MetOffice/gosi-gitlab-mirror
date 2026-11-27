@@ -595,7 +595,7 @@ CONTAINS
                ENDIF
                ! Reduce value of v_ice drastically where masks for landfast or grounded icebergs are /=0
                ! In theory one could set v_ice=0 but it may lead to instabilities (cf Noe Pirlet)
-               v_ice(ji,jj) = v_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_vmask(ji,jj) ) * ( 1._wp - 0.99_wp * icb_vmask(ji,jj) ) 
+               v_ice(ji,jj) = v_ice(ji,jj) * ( 1._wp - 0.999_wp * fast_vmask(ji,jj) ) * ( 1._wp - 0.999_wp * icb_vmask(ji,jj) ) 
             END_2D
             !
             DO_2D( 0, 0, 0, 0 )
@@ -647,7 +647,7 @@ CONTAINS
                ENDIF
                ! Reduce value of v_ice drastically where masks for landfast or grounded icebergs are /=0
                ! In theory one could set v_ice=0 but it may lead to instabilities (cf Noe Pirlet)
-               u_ice(ji,jj) = u_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_umask(ji,jj) ) * ( 1._wp - 0.99_wp * icb_umask(ji,jj) ) 
+               u_ice(ji,jj) = u_ice(ji,jj) * ( 1._wp - 0.999_wp * fast_umask(ji,jj) ) * ( 1._wp - 0.999_wp * icb_umask(ji,jj) ) 
             END_2D
 
             CALL lbc_lnk( 'icedyn_rhg_eap', u_ice, 'U', -1.0_wp, v_ice, 'V', -1.0_wp )
@@ -703,7 +703,7 @@ CONTAINS
                ENDIF
                ! Reduce value of v_ice drastically where masks for landfast or grounded icebergs are /=0
                ! In theory one could set v_ice=0 but it may lead to instabilities (cf Noe Pirlet)
-               u_ice(ji,jj) = u_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_umask(ji,jj) ) * ( 1._wp - 0.99_wp * icb_umask(ji,jj) ) 
+               u_ice(ji,jj) = u_ice(ji,jj) * ( 1._wp - 0.999_wp * fast_umask(ji,jj) ) * ( 1._wp - 0.999_wp * icb_umask(ji,jj) ) 
             END_2D
             !
             DO_2D( 0, 0, 0, 0 )
@@ -755,7 +755,7 @@ CONTAINS
                ENDIF
                ! Reduce value of v_ice drastically where masks for landfast or grounded icebergs are /=0
                ! In theory one could set v_ice=0 but it may lead to instabilities (cf Noe Pirlet)
-               v_ice(ji,jj) = v_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_vmask(ji,jj) ) * ( 1._wp - 0.99_wp * icb_vmask(ji,jj) ) 
+               v_ice(ji,jj) = v_ice(ji,jj) * ( 1._wp - 0.999_wp * fast_vmask(ji,jj) ) * ( 1._wp - 0.999_wp * icb_vmask(ji,jj) ) 
             END_2D
             !
             CALL lbc_lnk( 'icedyn_rhg_eap', u_ice, 'U', -1.0_wp, v_ice, 'V', -1.0_wp )
