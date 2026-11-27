@@ -568,7 +568,7 @@ CONTAINS
                v_ice(ji,jj) = ( v_ice(ji,jj)*zmsk01y(ji,jj) + v_oce(ji,jj) * 0.01_wp * (1._wp - zmsk01y(ji,jj)) ) * zmsk00y(ji,jj)
                ! Reduce value of v_ice drastically where masks for landfast or grounded icebergs are /=0
                ! In theory one could set v_ice=0 but it may lead to instabilities (cf Noe Pirlet)
-               v_ice(ji,jj) = v_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_vmask(ji,jj) ) * ( 1._wp - 0.99_wp * icb_vmask(ji,jj) ) 
+               v_ice(ji,jj) = v_ice(ji,jj) * ( 1._wp - 0.999_wp * fast_vmask(ji,jj) ) * ( 1._wp - 0.999_wp * icb_vmask(ji,jj) ) 
             END_2D
             !
             !
@@ -619,7 +619,7 @@ CONTAINS
                u_ice(ji,jj) = ( u_ice(ji,jj)*zmsk01x(ji,jj) + u_oce(ji,jj) * 0.01_wp * (1._wp - zmsk01x(ji,jj)) ) * zmsk00x(ji,jj)
                ! Reduce value of u_ice drastically where masks for landfast or grounded icebergs are /=0
                ! In theory one could set u_ice=0 but it may lead to instabilities (cf Noe Pirlet)
-               u_ice(ji,jj) = u_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_umask(ji,jj) ) * ( 1._wp - 0.99_wp * icb_umask(ji,jj) ) 
+               u_ice(ji,jj) = u_ice(ji,jj) * ( 1._wp - 0.999_wp * fast_umask(ji,jj) ) * ( 1._wp - 0.999_wp * icb_umask(ji,jj) ) 
                !
             END_2D
             !
@@ -674,7 +674,7 @@ CONTAINS
                u_ice(ji,jj) = ( u_ice(ji,jj)*zmsk01x(ji,jj) + u_oce(ji,jj) * 0.01_wp * (1._wp - zmsk01x(ji,jj)) ) * zmsk00x(ji,jj)
                ! Reduce value of u_ice drastically where masks for landfast or grounded icebergs are /=0
                ! In theory one could set u_ice=0 but it may lead to instabilities (cf Noe Pirlet)
-               u_ice(ji,jj) = u_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_umask(ji,jj) ) * ( 1._wp - 0.99_wp * icb_umask(ji,jj) ) 
+               u_ice(ji,jj) = u_ice(ji,jj) * ( 1._wp - 0.999_wp * fast_umask(ji,jj) ) * ( 1._wp - 0.999_wp * icb_umask(ji,jj) ) 
                !
             END_2D
             !
@@ -726,7 +726,7 @@ CONTAINS
                v_ice(ji,jj) = ( v_ice(ji,jj)*zmsk01y(ji,jj) + v_oce(ji,jj) * 0.01_wp * (1._wp - zmsk01y(ji,jj)) ) * zmsk00y(ji,jj)
                ! Reduce value of v_ice drastically where masks for landfast or grounded icebergs are /=0
                ! In theory one could set v_ice=0 but it may lead to instabilities (cf Noe Pirlet)
-               v_ice(ji,jj) = v_ice(ji,jj) * ( 1._wp - 0.99_wp * fast_vmask(ji,jj) ) * ( 1._wp - 0.99_wp * icb_vmask(ji,jj) ) 
+               v_ice(ji,jj) = v_ice(ji,jj) * ( 1._wp - 0.999_wp * fast_vmask(ji,jj) ) * ( 1._wp - 0.999_wp * icb_vmask(ji,jj) ) 
                !
             END_2D
             !
