@@ -92,7 +92,8 @@ CONTAINS
       INTEGER  ::   icycle                  ! number of sub-timestep for the advection
       REAL(wp) ::   zamsk                   ! 1 if advection of concentration, 0 if advection of other tracers
       REAL(wp) ::   zdt, z1_dt, zvi_cen
-      REAL(wp), DIMENSION(1)                  ::   zcflprv, zcflnow   ! for global communication
+      REAL(wp) ::   zcfl
+      REAL(wp), PARAMETER                     ::   zcfl_max = 0.8_wp     ! max CFL allowed
       REAL(wp), DIMENSION(jpi,jpj)            ::   zudy, zvdx, zcu_box, zcv_box
       REAL(wp), DIMENSION(jpi,jpj)            ::   zati1, zati2
       REAL(wp), DIMENSION(jpi,jpj,jpl)        ::   zu_cat, zv_cat
@@ -138,17 +139,16 @@ CONTAINS
       !
       !
       ! --- If ice drift is too fast, use  subtime steps for advection (CFL test for stability) --- !
-      !        Note: the advection split is applied at the next time-step in order to avoid blocking global comm.
-      !              this should not affect too much the stability
-      zcflnow(1) =                  MAXVAL( ABS( pu_ice(:,:) ) * rDt_ice * r1_e1u(:,:) )
-      zcflnow(1) = MAX( zcflnow(1), MAXVAL( ABS( pv_ice(:,:) ) * rDt_ice * r1_e2v(:,:) ) )
+      zcfl = 0._wp
+      DO_2D( 0, 0, 0, 0 )
+         zcfl = MAX( zcfl, (   MAX( pu_ice(ji,jj), 0._wp ) * e2u(ji,jj) - MIN( pu_ice(ji-1,jj), 0._wp ) * e2u(ji-1,jj)   &
+            &                + MAX( pv_ice(ji,jj), 0._wp ) * e1v(ji,jj) - MIN( pv_ice(ji,jj-1), 0._wp ) * e1v(ji,jj-1) ) &
+            &              * rDt_ice * r1_e1e2t(ji,jj) * tmask(ji,jj,1) )
+      END_2D
+      CALL mpp_max( 'icedyn_adv_umx', zcfl )
+      !
+      icycle = MAX( 1, CEILING( zcfl / zcfl_max ) )
 
-      ! non-blocking global communication send zcflnow and receive zcflprv
-      CALL mpp_delay_max( 'icedyn_adv_umx', 'cflice', zcflnow(:), zcflprv(:), kt == nitend - nn_fsbc + 1 )
-
-      IF( zcflprv(1) > .5 ) THEN   ;   icycle = 2
-      ELSE                         ;   icycle = 1
-      ENDIF
       zdt = rDt_ice / REAL(icycle)
       z1_dt = 1._wp / zdt
 
