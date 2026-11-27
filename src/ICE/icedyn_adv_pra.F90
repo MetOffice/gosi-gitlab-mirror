@@ -90,6 +90,7 @@ CONTAINS
       REAL(wp) ::   zdt, z1_dt               !   -      -
       REAL(wp) ::   zati2
       REAL(wp) ::   zcfl
+      REAL(wp), PARAMETER                 ::   zcfl_max = 0.8_wp     ! max CFL allowed
       REAL(wp), DIMENSION(A2D(0))         ::   zati1
       REAL(wp), DIMENSION(jpi,jpj)        ::   zudy, zvdx
       REAL(wp), DIMENSION(jpi,jpj)        ::   zh_i, zh_s, zhi_max, zhs_max, zhip_max, zsi_max
@@ -114,20 +115,16 @@ CONTAINS
       ENDIF
       
       ! --- If ice drift is too fast, use  subtime steps for advection (CFL test for stability) --- !
-      !        Note: the advection split is applied at the next time-step in order to avoid blocking global comm.
-      !              this should not affect too much the stability
-      zcfl =            MAXVAL( ABS( pu_ice(:,:) ) * rDt_ice * r1_e1u(:,:) )
-      zcfl = MAX( zcfl, MAXVAL( ABS( pv_ice(:,:) ) * rDt_ice * r1_e2v(:,:) ) )
+      zcfl = 0._wp
+      DO_2D( 0, 0, 0, 0 )
+         zcfl = MAX( zcfl, (   MAX( pu_ice(ji,jj), 0._wp ) * e2u(ji,jj) - MIN( pu_ice(ji-1,jj), 0._wp ) * e2u(ji-1,jj)   &
+            &                + MAX( pv_ice(ji,jj), 0._wp ) * e1v(ji,jj) - MIN( pv_ice(ji,jj-1), 0._wp ) * e1v(ji,jj-1) ) &
+            &              * rDt_ice * r1_e1e2t(ji,jj) * tmask(ji,jj,1) )
+      END_2D
+      CALL mpp_max( 'icedyn_adv_pra', zcfl )
+      !
+      icycle = MAX( 1, CEILING( zcfl / zcfl_max ) )
 
-      CALL mpp_max( 'icedyn_adv_pra', zcfl, cdelay = 'cflice' )
-
-      IF    ( zcfl > 1.5 ) THEN   ;   icycle = 3
-      ELSEIF( zcfl >  .5 ) THEN   ;   icycle = 2
-      ELSE                        ;   icycle = 1
-      ENDIF
-!!$      !!test clem
-!!$      icycle=3
-!!$      !!test clem      
       zdt = rDt_ice / REAL(icycle)
       z1_dt = 1._wp / zdt
 
